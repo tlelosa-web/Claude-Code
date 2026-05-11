@@ -32,6 +32,10 @@ def _resolve_test_record_template() -> Path:
             if p.exists():
                 return p
 
+    preferred = TEMPLATES_DIR / "Test Sheet Template v2.pdf"
+    if preferred.exists():
+        return preferred
+
     preferred = TEMPLATES_DIR / "Test Sheet Tmp.pdf"
     if preferred.exists():
         return preferred

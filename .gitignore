@@ -1,45 +1,18 @@
-# =========================
-# System / OS
-# =========================
-.DS_Store
-Thumbs.db
-
-# =========================
 # Python
-# =========================
 __pycache__/
-*.pyc
+*.py[cod]
 *.pyo
 *.pyd
-.env
-venv/
 .venv/
+venv/
 
-# =========================
-# Node / Frontend
-# =========================
+# Node
 node_modules/
 dist/
 
-# =========================
-# IDE / Editor
-# =========================
-.vscode/*
-!.vscode/settings.json
+# IDE
+.vscode/
 
-# =========================
-# Generated Outputs (NON-AUTHORITATIVE)
-# =========================
-output/
-backend/output/
-backend/*.pdf
-
-# =========================
-# Runtime / Temporary Files
-# =========================
-backend/doc_history.json
-
-# =========================
-# Logs
-# =========================
-*.log
+# Generated outputs and archives
+3_Live_Reports/
+5_Archive_and_Debug/

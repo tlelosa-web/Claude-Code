@@ -8,6 +8,7 @@ function App() {
   const touchedRef = useRef(new Set());
   const autoTimerRef = useRef(null);
   const previewTimerRef = useRef(null);
+  const previewDataKeyRef = useRef("");
 
   const [formData, setFormData] = useState({
     customer_name: "",
@@ -42,6 +43,27 @@ function App() {
   const [testSheetPreviewUrl, setTestSheetPreviewUrl] = useState("");
 
   const busy = busyState.saving || busyState.loadingExcel || busyState.preview;
+
+  const getPreviewDataKey = (data) =>
+    JSON.stringify({
+      customer_name: data.customer_name,
+      serial_no: data.serial_no,
+      series: data.series,
+      class_pitch: data.class_pitch,
+      imp_form: data.imp_form,
+      size: data.size,
+      motor: data.motor,
+      pole: data.pole,
+      voltage: data.voltage,
+      phase: data.phase,
+      date_of_manuf: data.date_of_manuf,
+      frequency: data.frequency,
+      op_temp: data.op_temp,
+      op_speed: data.op_speed,
+      fla: data.fla,
+      connection: data.connection,
+      relube_interval: data.relube_interval,
+    });
 
   useEffect(() => {
     return () => {
@@ -117,6 +139,9 @@ function App() {
     const errs = validateForm(formData);
     if (Object.keys(errs).length > 0) return;
     if (busyState.saving || busyState.loadingExcel) return;
+
+    const nextPreviewDataKey = getPreviewDataKey(formData);
+    if (nextPreviewDataKey === previewDataKeyRef.current) return;
 
     previewTimerRef.current = setTimeout(() => {
       refreshTestSheetPreview({ silent: true });
@@ -242,6 +267,7 @@ function App() {
         if (prev) URL.revokeObjectURL(prev);
         return url;
       });
+      previewDataKeyRef.current = getPreviewDataKey(formData);
       if (!silent) setStatus("Test Sheet preview updated");
     } catch (err) {
       if (!silent) setStatus(_errMsg(err));

@@ -28,6 +28,7 @@ function App() {
     fla: "",
     connection: "",
     relube_interval: "N/A",
+    manufacturer: "",
   });
 
   const [errors, setErrors] = useState({});
@@ -63,6 +64,7 @@ function App() {
       fla: data.fla,
       connection: data.connection,
       relube_interval: data.relube_interval,
+      manufacturer: data.manufacturer,
     });
 
   useEffect(() => {
@@ -306,6 +308,7 @@ function App() {
         frequency: np.frequency ?? prev.frequency,
         op_temp: np.op_temp ?? prev.op_temp,
         relube_interval: np.relube_interval ?? prev.relube_interval,
+        manufacturer: np.manufacturer ?? prev.manufacturer,
       }));
       setStatus("Loaded values from Excel");
     } catch (err) {
@@ -379,6 +382,7 @@ function App() {
       fla: "",
       connection: "",
       relube_interval: "N/A",
+      manufacturer: "",
     });
     if (testSheetPreviewUrl) URL.revokeObjectURL(testSheetPreviewUrl);
     setTestSheetPreviewUrl("");

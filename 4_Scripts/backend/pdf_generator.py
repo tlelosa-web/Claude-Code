@@ -4,7 +4,7 @@ import io
 import json
 import os
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, datetime
 from pathlib import Path
 from typing import Any, Dict, Optional
 
@@ -76,6 +76,8 @@ class MappingItem:
     value: Optional[str] = None
     transform: Optional[Dict[str, Any]] = None
     clear: Optional[Dict[str, Any]] = None
+    font: Optional[Dict[str, Any]] = None
+    align: str = "left"
 
 
 def _get_nested(data: Dict[str, Any], path: str) -> Any:
@@ -114,25 +116,45 @@ def _apply_transform(raw: Any, transform: Optional[Dict[str, Any]]) -> str:
             s = f"{num:.{int(decimals)}f}"
         else:
             s = str(int(num)) if num.is_integer() else str(num)
+        prefix = transform.get("prefix", "")
         suffix = transform.get("suffix", "")
-        return f"{s}{suffix}"
+        return f"{prefix}{s}{suffix}"
 
     if t == "date":
-        # raw may be date/datetime; if string, pass through
         fmt = transform.get("format", "DD/MM/YYYY")
         if isinstance(raw, date):
             d = raw
         else:
-            return str(raw)
+            s = str(raw).strip()
+            d = None
+            for parse_fmt in ("%Y-%m-%d", "%d/%m/%Y", "%d-%m-%Y", "%Y/%m/%d"):
+                try:
+                    d = datetime.strptime(s, parse_fmt).date()
+                    break
+                except ValueError:
+                    continue
+            if d is None:
+                return s
         if fmt == "DD/MM/YYYY":
-            return d.strftime("%d/%m/%Y")
-        return d.isoformat()
+            s = d.strftime("%d/%m/%Y")
+        else:
+            s = d.isoformat()
+        prefix = transform.get("prefix", "")
+        suffix = transform.get("suffix", "")
+        return f"{prefix}{s}{suffix}"
 
     if t == "fan_size_primary":
         # "315 / 165 / 6 A" -> "315"
         s = str(raw).strip().replace(" ", "")
         parts = s.split("/")
         return parts[0] if parts else str(raw)
+
+    if t == "motor_make":
+        s = str(raw).strip().upper()
+        for brand in ("ACTOM", "ASKARI", "WEG"):
+            if brand in s:
+                return brand
+        return s
 
     # fallback
     return str(raw)
@@ -182,6 +204,8 @@ def render_pdf_from_coordinate_mapping(
                 value=it.get("value"),
                 transform=it.get("transform"),
                 clear=it.get("clear"),
+                font=it.get("font"),
+                align=str(it.get("align", "left")),
             )
         )
 
@@ -209,7 +233,7 @@ def render_pdf_from_coordinate_mapping(
             continue
         if val is None or str(val).strip() == "":
             continue
-        if item.clear:
+        if item.clear and item.align == "left":
             w = float(item.clear.get("w", 120))
             h = float(item.clear.get("h", font_size + 4))
             baseline_offset = float(item.clear.get("baseline_offset", 2))
@@ -218,7 +242,26 @@ def render_pdf_from_coordinate_mapping(
             c.setStrokeColorRGB(1, 1, 1)
             c.rect(item.x, item.y - baseline_offset, w, h, fill=1, stroke=0)
             c.restoreState()
-        c.drawString(item.x, item.y, str(val))
+        text = str(val)
+
+        def draw_value() -> None:
+            if item.align == "center":
+                c.drawCentredString(item.x, item.y, text)
+            elif item.align == "right":
+                c.drawRightString(item.x, item.y, text)
+            else:
+                c.drawString(item.x, item.y, text)
+
+        if item.font:
+            c.saveState()
+            c.setFont(
+                item.font.get("name", font_name),
+                float(item.font.get("size", font_size)),
+            )
+            draw_value()
+            c.restoreState()
+        else:
+            draw_value()
 
     c.save()
     packet.seek(0)

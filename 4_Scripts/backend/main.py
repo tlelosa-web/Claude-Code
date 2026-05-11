@@ -358,6 +358,8 @@ def api_test_record_sheet(payload: TestRecordSheetPayload):
             "date": _clean(data.get("date")),
             "procedure_used": _clean(data.get("procedure_used")),
             "imp_form": _clean(data.get("imp_form")) or "FORM B",
+            "motor_serial_number": _clean(data.get("motor_serial_number")),
+            "blade_pitch_deg": _clean(data.get("blade_pitch_deg")),
             "tacho_clamp_serial_no": _clean(data.get("tacho_clamp_serial_no")) or "N/A",
             "speed_actual": _clean(data.get("speed_actual")),
             "voltage_ph1": _clean(data.get("voltage_ph1")),
@@ -366,6 +368,7 @@ def api_test_record_sheet(payload: TestRecordSheetPayload):
             "current_ph1": _clean(data.get("current_ph1")),
             "current_ph2": _clean(data.get("current_ph2")),
             "current_ph3": _clean(data.get("current_ph3")),
+            "connection": _clean(data.get("connection")),
         }
     }
 

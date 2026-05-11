@@ -69,6 +69,11 @@ export default function FormFields({ data, errors, onChange, options = {}, showA
     { label: "FORM B", value: "FORM B" },
     { label: "FORM C", value: "FORM C" },
   ];
+  const makeOptions = [
+    { label: "ACTOM", value: "ACTOM" },
+    { label: "ASKARI", value: "ASKARI" },
+    { label: "WEG", value: "WEG" },
+  ];
   return (
     <div className="form-grid">
       <SectionHeader title="Customer" />
@@ -79,6 +84,8 @@ export default function FormFields({ data, errors, onChange, options = {}, showA
       <Field label="Size" value={data.size} onChange={(v) => onChange("size", v)} error={errors.size} />
       <Field label="Class/Pitch" value={data.class_pitch} onChange={(v) => onChange("class_pitch", v)} placeholder="e.g. 26" />
       <Select label="Form" value={data.imp_form} onChange={(v) => onChange("imp_form", v)} options={formOptions} placeholder="Select form..." />
+      <SectionHeader title="Motor" />
+      <Select label="Make" value={data.manufacturer} onChange={(v) => onChange("manufacturer", v)} options={makeOptions} placeholder="Select make..." />
       <SectionHeader title="Electrical" />
       <Select label="Voltage" value={data.voltage} onChange={(v) => onChange("voltage", v)} options={volts} error={errors.electrical} />
       <Select label="Poles" value={data.pole} onChange={(v) => onChange("pole", v)} options={poles} error={errors.electrical} />

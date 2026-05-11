@@ -5,16 +5,18 @@ from reportlab.lib.units import mm
 from reportlab.pdfgen import canvas
 
 
-def draw_labeled_box(c: canvas.Canvas, x: float, y: float, w: float, h: float, label: str, font_size: int = 8) -> None:
-    """Draw a box with label positioned above it."""
-    c.setFont("Helvetica", font_size)
-    c.drawString(x, y + h + 2, label)
+def box(c: canvas.Canvas, x: float, y: float, w: float, h: float) -> None:
     c.rect(x, y, w, h, stroke=1, fill=0)
 
 
-def draw_box(c: canvas.Canvas, x: float, y: float, w: float, h: float) -> None:
-    """Draw a simple box."""
-    c.rect(x, y, w, h, stroke=1, fill=0)
+def text(c: canvas.Canvas, x: float, y: float, value: str, size: float = 7.0, bold: bool = False) -> None:
+    c.setFont("Helvetica-Bold" if bold else "Helvetica", size)
+    c.drawString(x, y, value)
+
+
+def center(c: canvas.Canvas, x: float, y: float, value: str, size: float = 7.0, bold: bool = False) -> None:
+    c.setFont("Helvetica-Bold" if bold else "Helvetica", size)
+    c.drawCentredString(x, y, value)
 
 
 def main() -> None:
@@ -24,168 +26,156 @@ def main() -> None:
 
     c = canvas.Canvas(str(out_pdf), pagesize=A4)
     page_w, page_h = A4
+    margin_x = 17 * mm
+    table_w = page_w - 2 * margin_x
 
-    # ============================================
-    # HEADER SECTION
-    # ============================================
-    margin = 10 * mm
-    header_y = page_h - 15 * mm
+    c.setLineWidth(0.55)
 
-    # FAN MOVEMENT branding
-    c.setFont("Helvetica-Bold", 16)
-    c.drawString(margin, header_y, "FAN MOVEMENT")
-    c.setFont("Helvetica", 9)
-    c.drawString(margin, header_y - 5 * mm, "AIR AND GAS MOVEMENT SOLUTIONS")
+    # Metadata is the first visual structure on the page.
+    y = page_h - 12 * mm
+    row_h = 8 * mm
+    meta_x = margin_x
+    meta_w = table_w
+    first_row_y = y - row_h
+    box(c, meta_x, first_row_y, meta_w, row_h)
+    text(c, meta_x + 2, first_row_y + 3 * mm, "Test record sheet", 8.5, True)
+    text(c, meta_x + meta_w - 72 * mm, first_row_y + 3 * mm, "DATE:", 8.5, True)
 
-    # Title on the right
-    c.setFont("Helvetica-Bold", 14)
-    c.drawString(page_w - 80 * mm, header_y, "TEST RECORD SHEET")
+    second_row_y = first_row_y - row_h
+    box(c, meta_x, second_row_y, meta_w, row_h)
+    meta_cells_mm = [22, 26, 25, 25, 23, 27, 23, 29]
+    scale = meta_w / sum(w * mm for w in meta_cells_mm)
+    meta_cells = [w * mm * scale for w in meta_cells_mm]
+    cx = meta_x
+    labels = ["Contract No.", "", "Fan Series", "", "Fan Size", "", "Imp. Form", ""]
+    for idx, cell_w in enumerate(meta_cells):
+        if idx:
+            c.line(cx, second_row_y, cx, second_row_y + row_h)
+        if labels[idx]:
+            center(c, cx + cell_w / 2, second_row_y + 3 * mm, labels[idx], 5.6, True)
+        cx += cell_w
 
-    # ============================================
-    # CONTRACT GRID (2x4)
-    # ============================================
-    grid_y = header_y - 12 * mm
-    grid_row_h = 9 * mm
-    grid_col_w = [50 * mm, 50 * mm, 50 * mm, 40 * mm]
-    grid_x_positions = [margin, margin + grid_col_w[0], margin + grid_col_w[0] + grid_col_w[1], 
-                        margin + grid_col_w[0] + grid_col_w[1] + grid_col_w[2]]
+    spacer_y = second_row_y - row_h
+    box(c, meta_x, spacer_y, meta_w, row_h)
 
-    # Row 1: Contract No, Fan Series, Fan Size, Imp. Form
-    c.setFont("Helvetica-Bold", 8)
-    c.drawString(grid_x_positions[0] + 2, grid_y + grid_row_h + 1, "Contract No")
-    draw_box(c, grid_x_positions[0], grid_y, grid_col_w[0], grid_row_h)
+    # Branding follows the top-level metadata.
+    brand_y = spacer_y - 14 * mm
+    text(c, margin_x, brand_y + 5 * mm, "FAN MOVEMENT", 16, True)
+    text(c, margin_x, brand_y, "AIR AND GAS MOVEMENT SOLUTIONS", 7.5)
+    text(c, meta_x + meta_w - 45 * mm, brand_y + 4 * mm, "Title: Test Record Sheet", 10.5, True)
 
-    c.drawString(grid_x_positions[1] + 2, grid_y + grid_row_h + 1, "Fan Series")
-    draw_box(c, grid_x_positions[1], grid_y, grid_col_w[1], grid_row_h)
+    # Single-line customer row.
+    customer_y = brand_y - 13 * mm
+    box(c, meta_x, customer_y, meta_w, row_h)
+    c.line(meta_x + 25 * mm, customer_y, meta_x + 25 * mm, customer_y + row_h)
+    text(c, meta_x + 2, customer_y + 3 * mm, "Customer Name:", 6.4)
 
-    c.drawString(grid_x_positions[2] + 2, grid_y + grid_row_h + 1, "Fan Size")
-    draw_box(c, grid_x_positions[2], grid_y, grid_col_w[2], grid_row_h)
+    # Motor actual values and make/description block.
+    spec_y = customer_y - 3 * row_h
+    spec_h = 3 * row_h
+    left_w = 65 * mm
+    mid_w = 50 * mm
+    right_w = meta_w - left_w - mid_w
+    box(c, meta_x, spec_y, left_w, spec_h)
+    for i in range(1, 3):
+        c.line(meta_x, spec_y + i * row_h, meta_x + left_w, spec_y + i * row_h)
+    c.line(meta_x + 21 * mm, spec_y, meta_x + 21 * mm, spec_y + spec_h)
+    c.line(meta_x + 43 * mm, spec_y, meta_x + 43 * mm, spec_y + spec_h)
+    text(c, meta_x + 2, spec_y + 2 * row_h + 3 * mm, "Motor Current:", 6.4, True)
+    text(c, meta_x + 2, spec_y + row_h + 3 * mm, "Motor Voltage:", 6.4, True)
+    text(c, meta_x + 2, spec_y + 3 * mm, "Fan Speed:", 6.4, True)
+    center(c, meta_x + 54 * mm, spec_y + 2 * row_h + 3 * mm, "Amp", 6.4, True)
+    center(c, meta_x + 54 * mm, spec_y + row_h + 3 * mm, "Volt", 6.4, True)
+    center(c, meta_x + 54 * mm, spec_y + 3 * mm, "r/min", 6.4, True)
 
-    c.drawString(grid_x_positions[3] + 2, grid_y + grid_row_h + 1, "Imp. Form")
-    draw_box(c, grid_x_positions[3], grid_y, grid_col_w[3], grid_row_h)
+    box(c, meta_x + left_w, spec_y, mid_w, spec_h)
 
-    # Row 2: Date
-    grid_y -= grid_row_h
-    c.setFont("Helvetica-Bold", 8)
-    c.drawString(grid_x_positions[0] + 2, grid_y + grid_row_h + 1, "Date (DD/MM/YYYY)")
-    draw_box(c, grid_x_positions[0], grid_y, grid_col_w[0], grid_row_h)
+    rx = meta_x + left_w + mid_w
+    box(c, rx, spec_y, right_w, spec_h)
+    for i in range(1, 3):
+        c.line(rx, spec_y + i * row_h, rx + right_w, spec_y + i * row_h)
+    make_label_w = 22 * mm
+    c.line(rx + make_label_w, spec_y, rx + make_label_w, spec_y + spec_h)
+    c.line(rx + make_label_w + (right_w - make_label_w) / 3, spec_y + 2 * row_h, rx + make_label_w + (right_w - make_label_w) / 3, spec_y + spec_h)
+    c.line(rx + make_label_w + 2 * (right_w - make_label_w) / 3, spec_y + 2 * row_h, rx + make_label_w + 2 * (right_w - make_label_w) / 3, spec_y + spec_h)
+    text(c, rx + 6 * mm, spec_y + 2 * row_h + 3 * mm, "MAKE:", 6.4, True)
+    brand_w = (right_w - make_label_w) / 3
+    for i, brand in enumerate(("ACTOM", "ASKARI", "WEG")):
+        center(c, rx + make_label_w + i * brand_w + brand_w / 2, spec_y + 2 * row_h + 3 * mm, brand, 6.8, True)
+    text(c, rx + 3 * mm, spec_y + row_h + 3 * mm, "Description:", 6.4, True)
 
-    # ============================================
-    # CUSTOMER & MOTOR SPECS
-    # ============================================
-    customer_y = grid_y - 12 * mm
-    spec_row_h = 8 * mm
+    blank_y = spec_y - row_h
+    box(c, meta_x, blank_y, meta_w, row_h)
+    actual_y = blank_y - row_h
+    box(c, meta_x, actual_y, meta_w, row_h)
+    text(c, meta_x + 2, actual_y + 3 * mm, "ACTUAL VALUES", 6.5)
 
-    # Customer Name
-    c.setFont("Helvetica-Bold", 8)
-    c.drawString(margin + 2, customer_y + spec_row_h + 1, "Customer Name:")
-    draw_box(c, margin, customer_y, 140 * mm, spec_row_h)
+    # Main readings table.
+    table_top = actual_y
+    header_1_h = 12 * mm
+    header_2_h = 8 * mm
+    data_row_h = 7 * mm
+    data_rows = 19
+    sig_h = 15 * mm
+    remarks_h = 8 * mm
+    bottom_blank_h = 8 * mm
+    table_h = header_1_h + header_2_h + data_rows * data_row_h + sig_h + remarks_h + bottom_blank_h
+    table_bottom = table_top - table_h
+    box(c, meta_x, table_bottom, meta_w, table_h)
 
-    # Motor Make
-    motor_make_y = customer_y
-    c.drawString(page_w - 90 * mm + 2, motor_make_y + spec_row_h + 1, "MAKE:")
-    draw_box(c, page_w - 90 * mm, motor_make_y, 80 * mm, spec_row_h)
+    col_mm = [30, 14.5, 14.5, 14.5, 14.5, 14.5, 14.5, 14.5, 14.5, 14.5, 7, 14.5]
+    scale = meta_w / sum(w * mm for w in col_mm)
+    cols = [w * mm * scale for w in col_mm]
+    xs = [meta_x]
+    for w in cols:
+        xs.append(xs[-1] + w)
 
-    # ACTUAL VALUES section header
-    actual_values_y = customer_y - 8 * mm
-    c.setFont("Helvetica-Bold", 9)
-    c.drawString(margin, actual_values_y, "ACTUAL VALUES")
+    data_top = table_top - header_1_h - header_2_h
+    sig_top = data_top - data_rows * data_row_h
+    remarks_top = sig_top - sig_h
+    final_blank_top = remarks_top - remarks_h
 
-    # Motor Current, Voltage, Fan Speed, Connection
-    specs_y = actual_values_y - 9 * mm
-    spec_box_h = 8 * mm
-    spec_col_w = 45 * mm
+    c.line(meta_x, table_top - header_1_h, meta_x + meta_w, table_top - header_1_h)
+    c.line(meta_x, data_top, meta_x + meta_w, data_top)
+    for r in range(data_rows + 1):
+        yy = data_top - r * data_row_h
+        c.line(meta_x, yy, meta_x + meta_w, yy)
+    c.line(meta_x, sig_top, meta_x + meta_w, sig_top)
+    c.line(meta_x, remarks_top, meta_x + meta_w, remarks_top)
+    c.line(meta_x, final_blank_top, meta_x + meta_w, final_blank_top)
 
-    c.setFont("Helvetica-Bold", 7.5)
-    c.drawString(margin + 2, specs_y + spec_box_h + 1, "Motor Current (A)")
-    draw_box(c, margin, specs_y, spec_col_w, spec_box_h)
+    for x in xs[1:-1]:
+        if abs(x - xs[11]) < 0.1:
+            c.line(x, table_top, x, sig_top)
+        else:
+            c.line(x, table_top, x, sig_top)
 
-    c.drawString(margin + spec_col_w + 3, specs_y + spec_box_h + 1, "Motor Voltage (V)")
-    draw_box(c, margin + spec_col_w, specs_y, spec_col_w, spec_box_h)
+    # Signature row split only in half; remarks are full-width.
+    c.line(meta_x + meta_w / 2, sig_top, meta_x + meta_w / 2, remarks_top)
 
-    c.drawString(margin + 2 * spec_col_w + 3, specs_y + spec_box_h + 1, "Fan Speed (r/min)")
-    draw_box(c, margin + 2 * spec_col_w, specs_y, spec_col_w, spec_box_h)
+    center(c, (xs[0] + xs[1]) / 2, table_top - 8 * mm, "Motor Serial Number", 6.0, True)
+    center(c, (xs[1] + xs[2]) / 2, table_top - 7 * mm, "Blade Pitch", 5.8, True)
+    center(c, (xs[1] + xs[2]) / 2, table_top - 10 * mm, "Deg.", 5.8, True)
+    center(c, (xs[2] + xs[3]) / 2, table_top - 4.5 * mm, "Tacho &", 5.5, True)
+    center(c, (xs[2] + xs[3]) / 2, table_top - 7.5 * mm, "Clamp Meter", 5.5, True)
+    center(c, (xs[2] + xs[3]) / 2, table_top - 10.5 * mm, "Serial No", 5.5, True)
+    center(c, (xs[3] + xs[4]) / 2, table_top - 5.5 * mm, "Speed", 6.0, True)
+    center(c, (xs[3] + xs[4]) / 2, table_top - header_1_h - 5 * mm, "r/min", 6.0, True)
+    center(c, (xs[4] + xs[7]) / 2, table_top - 6 * mm, "Current", 6.0, True)
+    center(c, (xs[7] + xs[10]) / 2, table_top - 6 * mm, "Voltage", 6.0, True)
+    center(c, (xs[11] + xs[12]) / 2, table_top - 8 * mm, "Connection", 6.0, True)
+    for idx, phase in zip(range(4, 7), ("PH1", "PH2", "PH3")):
+        center(c, (xs[idx] + xs[idx + 1]) / 2, table_top - header_1_h - 5 * mm, phase, 6.0, True)
+    for idx, phase in zip(range(7, 10), ("PH1", "PH2", "PH3")):
+        center(c, (xs[idx] + xs[idx + 1]) / 2, table_top - header_1_h - 5 * mm, phase, 6.0, True)
 
-    c.drawString(margin + 3 * spec_col_w + 3, specs_y + spec_box_h + 1, "Connection")
-    draw_box(c, margin + 3 * spec_col_w, specs_y, spec_col_w, spec_box_h)
-
-    # Description field
-    desc_y = specs_y - 10 * mm
-    c.setFont("Helvetica-Bold", 8)
-    c.drawString(margin + 2, desc_y + spec_box_h + 1, "Description:")
-    draw_box(c, margin, desc_y, 140 * mm, spec_box_h)
-
-    # ============================================
-    # TEST READINGS TABLE
-    # ============================================
-    table_y = desc_y - 12 * mm
-    table_header_h = 10 * mm
-    table_data_h = 40 * mm
-    table_x = margin
-    table_w = page_w - 2 * margin
-
-    # Table outer border
-    c.rect(table_x, table_y - table_header_h - table_data_h, table_w, table_header_h + table_data_h, stroke=1, fill=0)
-
-    # Column definitions
-    col_defs = [
-        ("Motor Serial No", 30 * mm),
-        ("Blade Pitch (Deg)", 22 * mm),
-        ("Tacho # & Clamp", 22 * mm),
-        ("Speed (r/min)", 18 * mm),
-        ("I1 (A)", 14 * mm),
-        ("I2 (A)", 14 * mm),
-        ("I3 (A)", 14 * mm),
-        ("V1 (V)", 14 * mm),
-        ("V2 (V)", 14 * mm),
-        ("V3 (V)", 14 * mm),
-        ("Connection", 18 * mm),
-    ]
-
-    # Draw vertical lines and headers
-    c.setFont("Helvetica-Bold", 7)
-    cx = table_x
-    for i, (header, col_w) in enumerate(col_defs):
-        # Draw vertical line
-        if i < len(col_defs) - 1:
-            next_cx = cx + col_w
-            c.line(next_cx, table_y - table_header_h, next_cx, table_y - table_header_h - table_data_h)
-        # Draw header text (centered)
-        c.drawString(cx + 2, table_y - 2, header)
-        cx += col_w
-
-    # Horizontal line between header and data
-    c.line(table_x, table_y - table_header_h, table_x + table_w, table_y - table_header_h)
-
-    # ============================================
-    # SIGNATURE & REMARKS SECTION
-    # ============================================
-    sig_y = table_y - table_header_h - table_data_h - 12 * mm
-    sig_box_h = 8 * mm
-
-    c.setFont("Helvetica-Bold", 8)
-    c.drawString(margin + 2, sig_y + sig_box_h + 1, "Testing Operator Signature")
-    draw_box(c, margin, sig_y, 90 * mm, sig_box_h)
-
-    sig_x2 = margin + 100 * mm
-    c.drawString(sig_x2 + 2, sig_y + sig_box_h + 1, "Quality Inspector Signature")
-    draw_box(c, sig_x2, sig_y, 90 * mm, sig_box_h)
-
-    # Remarks
-    remarks_y = sig_y - 10 * mm
-    c.setFont("Helvetica", 7)
-    c.drawString(margin, remarks_y, "Remarks: Operator and Quality to sign on completion of work, with date completed.")
-
-    # Footer date
-    footer_y = remarks_y - 8 * mm
-    c.drawString(margin, footer_y, "Date Completed: _______________")
-
-    c.save()
-    print(f"FM4043 Test Record Sheet template created: {out_pdf}")
+    text(c, meta_x + 2, sig_top - 9 * mm, "Testing Operator Signature:", 6.0)
+    text(c, meta_x + meta_w / 2 + 2, sig_top - 9 * mm, "Quality Inspector Signature:", 6.0)
+    text(c, meta_x + 2, remarks_top - 5 * mm, "Remarks:  Operator and Quality to sign on completion of work, with date competed.", 6.0)
 
     c.showPage()
     c.save()
-    print(f"Created template: {out_pdf}")
+    print(f"FM4043 Test Record Sheet template created: {out_pdf}")
 
 
 if __name__ == "__main__":

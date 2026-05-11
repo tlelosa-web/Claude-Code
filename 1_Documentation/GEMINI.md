@@ -63,4 +63,6 @@ All Python scripts must be wrapped in global `try/except` blocks that print clea
 
 **Execution Log:**
 *Append chronological milestones here. Most recent at the top.*
+- 2026-05-11: Final-polished FM4043 Test Record Sheet hierarchy to metadata-first layout, rebuilt motor spec block, consolidated phase-reading table, and regenerated validated output.
+- 2026-05-11: Rebuilt FM4043 Test Record Sheet template geometry, cleaned unit/date formatting, corrected table headers, and regenerated validated FM4043 output.
 - 2026-05-07: Repository reorganized to GEMINI 5-folder layout and documentation updated.

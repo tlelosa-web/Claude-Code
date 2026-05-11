@@ -32,6 +32,14 @@ def _resolve_test_record_template() -> Path:
             if p.exists():
                 return p
 
+    preferred = TEMPLATES_DIR / "Test Sheet Template v4.pdf"
+    if preferred.exists():
+        return preferred
+
+    preferred = TEMPLATES_DIR / "Test Sheet Template v3.pdf"
+    if preferred.exists():
+        return preferred
+
     preferred = TEMPLATES_DIR / "Test Sheet Template v2.pdf"
     if preferred.exists():
         return preferred
@@ -238,7 +246,7 @@ def render_pdf_from_coordinate_mapping(
 def generate_test_record_sheet(payload: Dict[str, Any], out_dir: Optional[str] = None) -> str:
     """
     Generates a print-ready Test Record Sheet PDF using:
-      - 2_Source_Data/raw_sources/Test Sheet Tmp.pdf (authoritative template by default)
+      - 2_Source_Data/raw_sources/Test Sheet Template v4.pdf (authoritative template by default)
       - 4_Scripts/backend/mappings/test_record_sheet.json (authoritative mapping)
 
     payload must already contain the keys referenced by the mapping under:

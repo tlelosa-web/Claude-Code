@@ -55,6 +55,8 @@ def resolve_paths(base_dir: Path) -> dict:
 
     test_sheet_template = resolve_existing_path(
         "TEST_SHEET_TEMPLATE_PATH",
+        raw_sources_dir / "Test Sheet Template v4.pdf",
+        raw_sources_dir / "Test Sheet Template v3.pdf",
         raw_sources_dir / "Test Sheet Template v2.pdf",
         raw_sources_dir / "Test Sheet Tmp.pdf",
         raw_sources_dir / "Test SheetFM3768.pdf",

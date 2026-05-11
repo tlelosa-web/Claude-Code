@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import io
 import json
+import os
 from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
@@ -15,13 +16,39 @@ from pdf_generator_backup import make_nameplate_pdf
 # ============================================================
 # Authoritative paths (do not hardcode templates elsewhere)
 # ============================================================
-REPO_ROOT = Path(__file__).resolve().parents[1]
-TEMPLATES_DIR = REPO_ROOT / "templates"
-MAPPINGS_DIR = REPO_ROOT / "backend" / "mappings"
-OUTPUT_DIR_DEFAULT = REPO_ROOT / "output"
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+BACKEND_DIR = Path(__file__).resolve().parent
+TEMPLATES_DIR = PROJECT_ROOT / "2_Source_Data" / "raw_sources"
+MAPPINGS_DIR = BACKEND_DIR / "mappings"
+OUTPUT_DIR_DEFAULT = PROJECT_ROOT / "3_Live_Reports" / "output"
 
-TEST_RECORD_TEMPLATE = TEMPLATES_DIR / "TestRecordSheet.pdf"
 TEST_RECORD_MAPPING = MAPPINGS_DIR / "test_record_sheet.json"
+
+def _resolve_test_record_template() -> Path:
+    for env_key in ("TEST_RECORD_TEMPLATE_PATH", "TEST_SHEET_TEMPLATE_PATH", "TEST_RECORD_SHEET_TEMPLATE_PATH"):
+        env_val = os.getenv(env_key)
+        if env_val:
+            p = Path(env_val).expanduser()
+            if p.exists():
+                return p
+
+    preferred = TEMPLATES_DIR / "Test Sheet Tmp.pdf"
+    if preferred.exists():
+        return preferred
+
+    direct = TEMPLATES_DIR / "TestRecordSheet.pdf"
+    if direct.exists():
+        return direct
+
+    if TEMPLATES_DIR.exists():
+        candidates = sorted(TEMPLATES_DIR.glob("Test Sheet*.pdf"))
+        if candidates:
+            return candidates[0]
+
+    raise FileNotFoundError(
+        "Test Record Sheet template PDF not found. "
+        "Set TEST_RECORD_TEMPLATE_PATH to a valid PDF file."
+    )
 
 
 # ============================================================
@@ -36,6 +63,7 @@ class MappingItem:
     required: bool = False
     value: Optional[str] = None
     transform: Optional[Dict[str, Any]] = None
+    clear: Optional[Dict[str, Any]] = None
 
 
 def _get_nested(data: Dict[str, Any], path: str) -> Any:
@@ -141,6 +169,7 @@ def render_pdf_from_coordinate_mapping(
                 required=bool(it.get("required", False)),
                 value=it.get("value"),
                 transform=it.get("transform"),
+                clear=it.get("clear"),
             )
         )
 
@@ -168,6 +197,15 @@ def render_pdf_from_coordinate_mapping(
             continue
         if val is None or str(val).strip() == "":
             continue
+        if item.clear:
+            w = float(item.clear.get("w", 120))
+            h = float(item.clear.get("h", font_size + 4))
+            baseline_offset = float(item.clear.get("baseline_offset", 2))
+            c.saveState()
+            c.setFillColorRGB(1, 1, 1)
+            c.setStrokeColorRGB(1, 1, 1)
+            c.rect(item.x, item.y - baseline_offset, w, h, fill=1, stroke=0)
+            c.restoreState()
         c.drawString(item.x, item.y, str(val))
 
     c.save()
@@ -196,20 +234,33 @@ def render_pdf_from_coordinate_mapping(
 def generate_test_record_sheet(payload: Dict[str, Any], out_dir: Optional[str] = None) -> str:
     """
     Generates a print-ready Test Record Sheet PDF using:
-      - templates/TestRecordSheet.pdf (authoritative template)
-      - backend/mappings/test_record_sheet.json (authoritative mapping)
+      - 2_Source_Data/raw_sources/Test Sheet Tmp.pdf (authoritative template by default)
+      - 4_Scripts/backend/mappings/test_record_sheet.json (authoritative mapping)
 
     payload must already contain the keys referenced by the mapping under:
       - "nameplate": authoritative Nameplate data
       - "derived": computed / test data
     """
     out_base = Path(out_dir) if out_dir else OUTPUT_DIR_DEFAULT
-    output_path = out_base / "TestRecordSheet_filled.pdf"
+
+    mapping_obj = json.loads(TEST_RECORD_MAPPING.read_text(encoding="utf-8"))
+    output_name = str(mapping_obj.get("output_name") or "TestRecordSheet_filled.pdf")
+    output_path = out_base / output_name
 
     data = payload
 
+    # Prefer mapping-declared template path (relative to project root), then fall back to resolver.
+    template_path = None
+    template_decl = mapping_obj.get("template")
+    if isinstance(template_decl, str) and template_decl.strip():
+        candidate = (PROJECT_ROOT / template_decl).resolve()
+        if candidate.exists():
+            template_path = candidate
+    if template_path is None:
+        template_path = _resolve_test_record_template()
+
     render_pdf_from_coordinate_mapping(
-        template_path=TEST_RECORD_TEMPLATE,
+        template_path=template_path,
         mapping_path=TEST_RECORD_MAPPING,
         data=data,
         output_path=output_path,

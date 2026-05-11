@@ -9,24 +9,8 @@ from typing import Any, Dict, Optional
 
 from pypdf import PdfReader, PdfWriter
 from reportlab.pdfgen import canvas
-from pdf_generator_backup import make_nameplate_pdf
 
 
-# ============================================================
-# Authoritative paths (do not hardcode templates elsewhere)
-# ============================================================
-REPO_ROOT = Path(__file__).resolve().parents[1]
-TEMPLATES_DIR = REPO_ROOT / "templates"
-MAPPINGS_DIR = REPO_ROOT / "backend" / "mappings"
-OUTPUT_DIR_DEFAULT = REPO_ROOT / "output"
-
-TEST_RECORD_TEMPLATE = TEMPLATES_DIR / "TestRecordSheet.pdf"
-TEST_RECORD_MAPPING = MAPPINGS_DIR / "test_record_sheet.json"
-
-
-# ============================================================
-# Mapping-driven coordinate overlay renderer (generic)
-# ============================================================
 @dataclass(frozen=True)
 class MappingItem:
     key: str
@@ -40,8 +24,8 @@ class MappingItem:
 
 def _get_nested(data: Dict[str, Any], path: str) -> Any:
     """
-    Resolves dotted-path lookup in a dict.
-    Example: "nameplate.serial_no" -> data["nameplate"]["serial_no"]
+    Supports:
+      - nameplate.serial_no  (reads data["nameplate"]["serial_no"])
     """
     cur: Any = data
     for part in path.split("."):
@@ -64,7 +48,6 @@ def _apply_transform(raw: Any, transform: Optional[Dict[str, Any]]) -> str:
         return str(raw).upper()
 
     if t == "number":
-        # robust parse
         try:
             num = float(str(raw).replace(",", "").strip())
         except Exception:
@@ -73,24 +56,27 @@ def _apply_transform(raw: Any, transform: Optional[Dict[str, Any]]) -> str:
         if decimals is not None:
             s = f"{num:.{int(decimals)}f}"
         else:
+            # keep integer-looking values clean
             s = str(int(num)) if num.is_integer() else str(num)
         suffix = transform.get("suffix", "")
         return f"{s}{suffix}"
 
     if t == "date":
-        # raw may be date/datetime; if string, pass through
+        # raw may be date, datetime, or string; default to today if empty handled elsewhere
         fmt = transform.get("format", "DD/MM/YYYY")
         if isinstance(raw, date):
             d = raw
         else:
+            # if it's already a string, just return it
             return str(raw)
         if fmt == "DD/MM/YYYY":
             return d.strftime("%d/%m/%Y")
         return d.isoformat()
 
     if t == "fan_size_primary":
-        # "315 / 165 / 6 A" -> "315"
-        s = str(raw).strip().replace(" ", "")
+        # Example: "315 / 165 / 6 A" -> "315"
+        s = str(raw).strip()
+        s = s.replace(" ", "")
         parts = s.split("/")
         return parts[0] if parts else str(raw)
 
@@ -103,9 +89,9 @@ def _resolve_value(item: MappingItem, data: Dict[str, Any]) -> str:
         return str(item.value or "")
 
     if item.source == "derived.report_date":
-        # deterministic: generation date (today)
         return _apply_transform(date.today(), item.transform)
 
+    # normal nameplate.* lookups
     raw = _get_nested(data, item.source)
     return _apply_transform(raw, item.transform)
 
@@ -116,17 +102,8 @@ def render_pdf_from_coordinate_mapping(
     data: Dict[str, Any],
     output_path: Path,
 ) -> None:
-    """
-    Loads a coordinate mapping JSON, draws values at (x,y) on a transparent overlay,
-    merges overlay onto the template page, and writes output.
-
-    NOTE: This works even when template has 0 AcroForm fields.
-    """
     if not template_path.exists():
         raise FileNotFoundError(f"Template not found: {template_path}")
-
-    if not mapping_path.exists():
-        raise FileNotFoundError(f"Mapping not found: {mapping_path}")
 
     mapping_obj = json.loads(mapping_path.read_text(encoding="utf-8"))
 
@@ -134,7 +111,7 @@ def render_pdf_from_coordinate_mapping(
     for it in mapping_obj.get("items", []):
         items.append(
             MappingItem(
-                key=str(it["key"]),
+                key=it["key"],
                 x=float(it["x"]),
                 y=float(it["y"]),
                 source=str(it["source"]),
@@ -145,8 +122,7 @@ def render_pdf_from_coordinate_mapping(
         )
 
     reader = PdfReader(str(template_path))
-    page_index = int(mapping_obj.get("page_index", 0))
-    base_page = reader.pages[page_index]
+    base_page = reader.pages[int(mapping_obj.get("page_index", 0))]
 
     page_w = float(base_page.mediabox.width)
     page_h = float(base_page.mediabox.height)
@@ -181,38 +157,10 @@ def render_pdf_from_coordinate_mapping(
 
     # Merge overlay onto template
     out = PdfWriter()
-    merged = reader.pages[page_index]
+    merged = reader.pages[0]
     merged.merge_page(overlay_page)
     out.add_page(merged)
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
     with open(output_path, "wb") as f:
         out.write(f)
-
-
-# ============================================================
-# Public API: generate Test Record Sheet (mapping-driven)
-# ============================================================
-def generate_test_record_sheet(payload: Dict[str, Any], out_dir: Optional[str] = None) -> str:
-    """
-    Generates a print-ready Test Record Sheet PDF using:
-      - templates/TestRecordSheet.pdf (authoritative template)
-      - backend/mappings/test_record_sheet.json (authoritative mapping)
-
-    payload must already contain the keys referenced by the mapping under:
-      - "nameplate": authoritative Nameplate data
-      - "derived": computed / test data
-    """
-    out_base = Path(out_dir) if out_dir else OUTPUT_DIR_DEFAULT
-    output_path = out_base / "TestRecordSheet_filled.pdf"
-
-    data = payload
-
-    render_pdf_from_coordinate_mapping(
-        template_path=TEST_RECORD_TEMPLATE,
-        mapping_path=TEST_RECORD_MAPPING,
-        data=data,
-        output_path=output_path,
-    )
-
-    return str(output_path)

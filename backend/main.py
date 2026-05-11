@@ -3,6 +3,8 @@ import os
 from pathlib import Path
 from io import BytesIO
 from functools import lru_cache
+import logging
+from logging.handlers import RotatingFileHandler
 
 from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
@@ -27,10 +29,26 @@ CONFIG = {
     "DOC_HISTORY_PATH": BASE_DIR / "doc_history.json",
 }
 
+# ------------------------------------------------------------
+# Centralized logging (rotating file)
+# ------------------------------------------------------------
+LOG_DIR = BASE_DIR / "logs"
+LOG_FILE = LOG_DIR / "backend.log"
+LOG_DIR.mkdir(parents=True, exist_ok=True)
+
+_logger = logging.getLogger("nameplate.backend")
+if not _logger.handlers:
+    _logger.setLevel(logging.INFO)
+    handler = RotatingFileHandler(str(LOG_FILE), maxBytes=2_000_000, backupCount=5, encoding="utf-8")
+    formatter = logging.Formatter("[%(asctime)s] [%(levelname)s] [%(name)s]: %(message)s")
+    handler.setFormatter(formatter)
+    _logger.addHandler(handler)
+logger = _logger
+
 # --------------------------------------------
 # Local imports (Post Path Setup)
 # --------------------------------------------
-from pdf_generator import make_nameplate_pdf, make_test_record_sheet_pdf
+from pdf_generator import make_nameplate_pdf, generate_test_record_sheet
 from motor_fla_lookup import lookup_fla_safe, _load_motor_table
 from connection_lookup import (
     suggest_connection,
@@ -40,7 +58,7 @@ from connection_lookup import (
 )
 
 app = FastAPI(
-    title="Name Plate Tool", 
+    title="Name Plate Tool",
     version=CONFIG["APP_VERSION"],
     description=f"Engineering Revision: {CONFIG['ENGINEERING_REVISION']}"
 )
@@ -129,7 +147,7 @@ def _options_cached() -> dict:
     poles_from_conn = sorted({int(p) for (_v, p) in keys})
 
     table = _load_motor_table(str(CONFIG["MOTOR_PDF_PATH"]))
-    
+
     motors_by_pole: dict[str, list[str]] = {}
     poles_from_motor = sorted({int(p) for (_kw, p) in table.keys()})
     validated_poles = sorted(set(poles_from_conn).intersection(set(poles_from_motor)))
@@ -154,15 +172,16 @@ def _ensure_history_file():
         CONFIG["DOC_HISTORY_PATH"].parent.mkdir(parents=True, exist_ok=True)
         if not CONFIG["DOC_HISTORY_PATH"].exists():
             CONFIG["DOC_HISTORY_PATH"].write_text("[]", encoding="utf-8")
-    except Exception:
-        pass
+    except Exception as e:
+        logger.error(f"Failed to ensure history file at {CONFIG['DOC_HISTORY_PATH']}: {e}")
 
 def _load_history() -> list:
     _ensure_history_file()
     try:
         import json
         return json.loads(CONFIG["DOC_HISTORY_PATH"].read_text(encoding="utf-8"))
-    except Exception:
+    except Exception as e:
+        logger.error(f"Failed to load history from {CONFIG['DOC_HISTORY_PATH']}: {e}")
         return []
 
 def _append_history(record: dict):
@@ -170,11 +189,12 @@ def _append_history(record: dict):
     try:
         import json, datetime
         hist = _load_history()
-        record = {**record, "generated_at": datetime.datetime.now().isoformat(timespec="seconds")}
-        hist.append(record)
+        stamped = {"generated_at": datetime.datetime.now().isoformat(timespec="seconds"), **record}
+        hist.append(stamped)
         CONFIG["DOC_HISTORY_PATH"].write_text(json.dumps(hist, ensure_ascii=False, indent=2), encoding="utf-8")
-    except Exception:
-        pass
+        logger.info(f"History appended: {stamped}")
+    except Exception as e:
+        logger.error(f"Failed to append history record {record}: {e}")
 
 def _sanitize_filename(s: str) -> str:
     return "" if s is None else (
@@ -198,7 +218,7 @@ def api_fla(motor: str = "", pole: str = "", voltage: str = ""):
     m_f, p_i, v_f = _to_float(motor), _to_int(pole), _to_float(voltage)
     if None in (m_f, p_i, v_f):
         return JSONResponse({"fla": "", "error": "Incomplete numeric inputs."})
-    
+
     fla, err = lookup_fla_safe(m_f, p_i, v_f, str(CONFIG["MOTOR_PDF_PATH"]))
     return JSONResponse({"fla": fla, "error": err})
 
@@ -214,9 +234,9 @@ def api_connection(voltage: str = "", pole: str = "", motor: str = ""):
 @app.post("/api/generate-pdf")
 def api_generate_pdf(payload: NameplatePayload):
     m_f, p_i, v_f = _to_float(payload.motor), _to_int(payload.pole), _to_float(payload.voltage)
-    
+
     op_speed = _clean(payload.op_speed) or (_speed_from_pole(p_i) if p_i else "")
-    
+
     fla = _clean(payload.fla)
     if not fla and all(x is not None for x in (m_f, p_i, v_f)):
         fla, _ = lookup_fla_safe(m_f, p_i, v_f, str(CONFIG["MOTOR_PDF_PATH"]))
@@ -224,11 +244,24 @@ def api_generate_pdf(payload: NameplatePayload):
     conn = ""
     if all(x is not None for x in (m_f, p_i, v_f)):
         c, _ = suggest_connection(v_f, p_i, m_f)
-        if c in ("STAR", "DELTA"): conn = c
+        if c in ("STAR", "DELTA"):
+            conn = c
+
+    # Server-side validation to enforce engineering correctness before any PDF is generated
+    errors = []
+    if m_f is None or p_i is None or v_f is None:
+        errors.append("Motor (kW), Poles and Voltage must be numeric and non-empty.")
+    if not fla:
+        errors.append("Full Load Amperage (FLA) could not be resolved from performance tables.")
+    if conn not in ("STAR", "DELTA"):
+        errors.append("A valid connection (STAR or DELTA) could not be determined from the supplied values.")
+
+    if errors:
+        return JSONResponse({"error": " ".join(errors)}, status_code=400)
 
     data = payload.dict()
     data.update({"fla": fla, "op_speed": op_speed, "max_speed": op_speed, "connection": conn})
-    
+
     out_path = CONFIG["OUTPUT_DIR"] / "nameplate_web.pdf"
     make_nameplate_pdf(data, str(out_path))
 
@@ -236,14 +269,50 @@ def api_generate_pdf(payload: NameplatePayload):
 
 @app.post("/api/reports/test-record-sheet")
 def api_test_record_sheet(payload: TestRecordSheetPayload):
+    import shutil
+
     data = payload.dict()
-    data["imp_form"] = "Form B" # Hard compliance rule
-    
+    data["imp_form"] = "Form B"  # Hard compliance rule
+
     if data["connection"].upper() not in ("STAR", "DELTA"):
         return JSONResponse({"error": "Invalid connection"}, status_code=400)
 
+    # Build nameplate/derived structure for mapping-driven generator
+    nameplate_data = {
+        "nameplate": {
+            "customer_name": _clean(data.get("customer_name")),
+            "series": _clean(data.get("fan_series")),
+            "size": _clean(data.get("fan_size")),
+            "serial_no": _clean(data.get("contract_no")),
+            "class_pitch": _clean(data.get("blade_pitch_deg")),
+            "voltage": _clean(data.get("motor_voltage")),
+            "op_speed": _clean(data.get("fan_speed")),
+            "phase": "",
+            "connection": _clean(data.get("connection")),
+            "fla": _clean(data.get("motor_current")),
+            "manufacturer": _clean(data.get("make")),
+            "date_of_manuf": "",
+            "relube_interval": "N/A",
+        },
+        "derived": {
+            "date": _clean(data.get("date")),
+            "procedure_used": _clean(data.get("procedure_used")),
+            "imp_form": _clean(data.get("imp_form")),
+            "tacho_clamp_serial_no": _clean(data.get("tacho_clamp_serial_no")) or "N/A",
+            "speed_actual": _clean(data.get("speed_actual")),
+            "voltage_ph1": _clean(data.get("voltage_ph1")),
+            "voltage_ph2": _clean(data.get("voltage_ph2")),
+            "voltage_ph3": _clean(data.get("voltage_ph3")),
+            "current_ph1": _clean(data.get("current_ph1")),
+            "current_ph2": _clean(data.get("current_ph2")),
+            "current_ph3": _clean(data.get("current_ph3")),
+        }
+    }
+
+    # Generate via mapping-driven generator, then keep existing output filename behavior
+    gen_path = Path(generate_test_record_sheet(nameplate_data, out_dir=str(CONFIG["OUTPUT_DIR"])))
     out_path = CONFIG["OUTPUT_DIR"] / "test_record_sheet_web.pdf"
-    make_test_record_sheet_pdf(data, str(out_path))
+    shutil.copyfile(gen_path, out_path)
 
     return StreamingResponse(open(out_path, "rb"), media_type="application/pdf")
 
@@ -260,6 +329,8 @@ def api_reports_download(file: str):
 
 @app.post("/api/reports/test-record-sheet/from-nameplate")
 def api_test_record_sheet_from_nameplate(payload: NameplatePayload):
+    import shutil
+
     m_f, p_i, v_f = _to_float(payload.motor), _to_int(payload.pole), _to_float(payload.voltage)
 
     fan_speed = _clean(payload.op_speed) or (_speed_from_pole(p_i) if p_i else "")
@@ -274,39 +345,42 @@ def api_test_record_sheet_from_nameplate(payload: NameplatePayload):
         if c in ("STAR", "DELTA"):
             conn = c
 
-    data = {
-        "date": _today_ddmmyyyy(),
-        "contract_no": _clean(payload.serial_no),
-        "fan_size": _clean(payload.size),
-        "fan_series": _clean(payload.series),
-        "customer_name": _clean(payload.customer_name),
-        "motor_current": _clean(motor_current),
-        "make": _clean(payload.manufacturer),
-        "procedure_used": "QC-WI-05",
-        "motor_voltage": _clean(payload.voltage),
-        "fan_speed": _clean(fan_speed),
-        "connection": _clean(conn),
-        "imp_form": "Form B",
-        # optional row fields left blank unless provided elsewhere
-    }
-
-    if data["connection"].upper() not in ("STAR", "DELTA"):
+    if conn.upper() not in ("STAR", "DELTA"):
         return JSONResponse({"error": "Invalid connection"}, status_code=400)
 
-    fname = f"Test Sheet{_sanitize_filename(data['contract_no'] or 'UNKNOWN')}.pdf"
+    # Mapping-driven input structure: nameplate.* + derived.*
+    nameplate_data = {
+        "nameplate": payload.dict(),
+        "derived": {
+            "date": _today_ddmmyyyy(),
+            "procedure_used": "QC-WI-05",
+            "imp_form": "Form B",
+            "fan_speed": _clean(fan_speed),
+            "motor_current": _clean(motor_current),
+            "connection": _clean(conn),
+            "tacho_clamp_serial_no": "N/A",
+        }
+    }
+
+    fname = f"Test Sheet{_sanitize_filename(_clean(payload.serial_no) or 'UNKNOWN')}.pdf"
     out_path = CONFIG["OUTPUT_DIR"] / fname
 
-    tpl = CONFIG["TEST_SHEET_TEMPLATE_PATH"]
-    if not tpl.exists():
-        return JSONResponse({"error": "Blank Test Sheet template missing", "template_path": str(tpl)}, status_code=500)
+    # Generate via mapping-driven generator with robust error reporting
+    try:
+        gen_path = Path(generate_test_record_sheet(nameplate_data, out_dir=str(CONFIG["OUTPUT_DIR"])))
+    except FileNotFoundError as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
+    except ValueError as e:
+        # Missing required mapping values or invalid data contract
+        return JSONResponse({"error": str(e)}, status_code=400)
+    except Exception as e:
+        return JSONResponse({"error": "Failed to generate Test Record Sheet PDF.", "detail": str(e)}, status_code=500)
 
-    # Use template-based PDF generation to preserve layout
-    from pdf_generator import make_test_record_sheet_pdf_template
-    make_test_record_sheet_pdf_template(data, str(out_path), str(tpl))
+    shutil.copyfile(gen_path, out_path)
 
     _append_history({
         "type": "Test Sheet",
-        "serial_no": data["contract_no"],
+        "serial_no": _clean(payload.serial_no),
         "file_name": fname,
         "path": str(out_path),
     })

@@ -1,0 +1,137 @@
+{
+  "template": "templates/TestRecordSheet.pdf",
+  "output_name": "TestRecordSheet_filled.pdf",
+  "units": "pdf_points",
+  "page_index": 0,
+  "font": {
+    "name": "Helvetica",
+    "size": 9
+  },
+  "items": [
+    {
+      "key": "date",
+      "x": 95.0,
+      "y": 697.0,
+      "source": "derived.report_date",
+      "transform": { "type": "date", "format": "DD/MM/YYYY" },
+      "required": true
+    },
+    {
+      "key": "contract_no",
+      "x": 91.0,
+      "y": 661.0,
+      "source": "nameplate.serial_no",
+      "required": true
+    },
+    {
+      "key": "fan_size",
+      "x": 213.0,
+      "y": 661.0,
+      "source": "nameplate.size",
+      "transform": { "type": "fan_size_primary" },
+      "required": true
+    },
+    {
+      "key": "fan_series",
+      "x": 455.0,
+      "y": 661.0,
+      "source": "nameplate.series",
+      "required": true
+    },
+    {
+      "key": "customer_name",
+      "x": 130.0,
+      "y": 623.0,
+      "source": "nameplate.customer_name",
+      "required": false
+    },
+
+    {
+      "key": "motor_current",
+      "x": 170.0,
+      "y": 605.0,
+      "source": "nameplate.fla",
+      "transform": { "type": "number", "decimals": 2 },
+      "required": false
+    },
+    {
+      "key": "motor_make",
+      "x": 375.0,
+      "y": 605.0,
+      "source": "nameplate.motor_make",
+      "required": false
+    },
+    {
+      "key": "motor_voltage",
+      "x": 170.0,
+      "y": 586.0,
+      "source": "nameplate.voltage",
+      "transform": { "type": "number", "suffix": " V" },
+      "required": false
+    },
+    {
+      "key": "fan_speed",
+      "x": 170.0,
+      "y": 567.0,
+      "source": "nameplate.op_speed_rpm",
+      "transform": { "type": "number", "suffix": " r/min" },
+      "required": false
+    },
+
+    {
+      "key": "blade_pitch",
+      "x": 175.0,
+      "y": 460.0,
+      "source": "nameplate.class_pitch",
+      "required": false
+    },
+    {
+      "key": "tacho_serial",
+      "x": 225.0,
+      "y": 460.0,
+      "source": "literal",
+      "value": "N/A",
+      "required": true
+    },
+    {
+      "key": "speed_rpm",
+      "x": 271.0,
+      "y": 460.0,
+      "source": "nameplate.op_speed_rpm",
+      "transform": { "type": "number" },
+      "required": false
+    },
+    {
+      "key": "voltage_ph1",
+      "x": 396.0,
+      "y": 460.0,
+      "source": "nameplate.voltage",
+      "transform": { "type": "number" },
+      "required": false
+    },
+    {
+      "key": "voltage_ph2",
+      "x": 436.0,
+      "y": 460.0,
+      "source": "nameplate.voltage",
+      "transform": { "type": "number" },
+      "required": false
+    },
+    {
+      "key": "voltage_ph3",
+      "x": 476.0,
+      "y": 460.0,
+      "source": "nameplate.voltage",
+      "transform": { "type": "number" },
+      "required": false
+    },
+    {
+      "key": "connection",
+      "x": 531.0,
+      "y": 460.0,
+      "source": "nameplate.connection",
+      "transform": { "type": "upper" },
+      "required": false
+    }
+  ]
+}

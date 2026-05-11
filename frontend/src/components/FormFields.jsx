@@ -45,3 +45,24 @@ export function Select({ label, value, onChange, options, disabled, placeholder 
     </div>
   );
 }
+
+export default function FormFields({ data, errors, onChange, options = {} }) {
+  const volts = options.voltages || [];
+  const poles = options.poles || [];
+  const motorsByPole = options.motors_by_pole || {};
+  const motorOptions = motorsByPole[data.pole] || [];
+  return (
+    <div>
+      <SectionHeader title="Customer" />
+      <Field label="Customer Name" value={data.customer_name} onChange={(v) => onChange("customer_name", v)} placeholder="e.g. ACME Ltd" />
+      <Field label="Serial No." value={data.serial_no} onChange={(v) => onChange("serial_no", v)} placeholder="e.g. FM5107" />
+      <SectionHeader title="Fan" />
+      <Field label="Series" value={data.series} onChange={(v) => onChange("series", v)} />
+      <Field label="Size" value={data.size} onChange={(v) => onChange("size", v)} />
+      <SectionHeader title="Electrical" />
+      <Select label="Voltage" value={data.voltage} onChange={(v) => onChange("voltage", v)} options={volts} />
+      <Select label="Poles" value={data.pole} onChange={(v) => onChange("pole", v)} options={poles} />
+      <Select label="Motor kW" value={data.motor} onChange={(v) => onChange("motor", v)} options={motorOptions.length ? motorOptions : []} />
+    </div>
+  );
+}

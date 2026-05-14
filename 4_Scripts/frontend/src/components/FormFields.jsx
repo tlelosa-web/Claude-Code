@@ -77,6 +77,7 @@ export default function FormFields({ data, errors, onChange, options = {}, showA
   return (
     <div className="form-grid">
       <SectionHeader title="Customer" />
+      <Field label="Report Date" type="date" value={data.report_date} onChange={(v) => onChange("report_date", v)} />
       <Field label="Customer Name" value={data.customer_name} onChange={(v) => onChange("customer_name", v)} placeholder="e.g. ACME Ltd" error={errors.customer_name} />
       <Field label="Serial No." value={data.serial_no} onChange={(v) => onChange("serial_no", v)} placeholder="e.g. FM5107" error={errors.serial_no} />
       <SectionHeader title="Fan" />

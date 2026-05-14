@@ -31,18 +31,23 @@ def main() -> None:
 
     c.setLineWidth(0.55)
 
-    # Metadata is the first visual structure on the page.
-    y = page_h - 12 * mm
     row_h = 8 * mm
     meta_x = margin_x
     meta_w = table_w
-    first_row_y = y - row_h
-    box(c, meta_x, first_row_y, meta_w, row_h)
-    text(c, meta_x + 2, first_row_y + 3 * mm, "Test record sheet", 8.5, True)
-    text(c, meta_x + meta_w - 72 * mm, first_row_y + 3 * mm, "DATE:", 8.5, True)
 
-    second_row_y = first_row_y - row_h
-    box(c, meta_x, second_row_y, meta_w, row_h)
+    # Level 1: branding is the primary header.
+    brand_y = page_h - 15 * mm
+    text(c, margin_x, brand_y, "FAN MOVEMENT", 18, True)
+    text(c, margin_x, brand_y - 7 * mm, "AIR AND GAS MOVEMENT SOLUTIONS", 8.0)
+
+    # Level 2: document title, generation date, and contract metadata grid.
+    title_y = page_h - 35 * mm
+    box(c, meta_x, title_y, meta_w, row_h)
+    text(c, meta_x + 2, title_y + 3 * mm, "Test Record Sheet", 9.0, True)
+    text(c, meta_x + meta_w - 72 * mm, title_y + 3 * mm, "DATE:", 8.5, True)
+
+    contract_y = title_y - row_h
+    box(c, meta_x, contract_y, meta_w, row_h)
     meta_cells_mm = [22, 26, 25, 25, 23, 27, 23, 29]
     scale = meta_w / sum(w * mm for w in meta_cells_mm)
     meta_cells = [w * mm * scale for w in meta_cells_mm]
@@ -50,22 +55,13 @@ def main() -> None:
     labels = ["Contract No.", "", "Fan Series", "", "Fan Size", "", "Imp. Form", ""]
     for idx, cell_w in enumerate(meta_cells):
         if idx:
-            c.line(cx, second_row_y, cx, second_row_y + row_h)
+            c.line(cx, contract_y, cx, contract_y + row_h)
         if labels[idx]:
-            center(c, cx + cell_w / 2, second_row_y + 3 * mm, labels[idx], 5.6, True)
+            center(c, cx + cell_w / 2, contract_y + 3 * mm, labels[idx], 5.6, True)
         cx += cell_w
 
-    spacer_y = second_row_y - row_h
-    box(c, meta_x, spacer_y, meta_w, row_h)
-
-    # Branding follows the top-level metadata.
-    brand_y = spacer_y - 14 * mm
-    text(c, margin_x, brand_y + 5 * mm, "FAN MOVEMENT", 16, True)
-    text(c, margin_x, brand_y, "AIR AND GAS MOVEMENT SOLUTIONS", 7.5)
-    text(c, meta_x + meta_w - 45 * mm, brand_y + 4 * mm, "Title: Test Record Sheet", 10.5, True)
-
-    # Single-line customer row.
-    customer_y = brand_y - 13 * mm
+    # Level 3: customer and motor specifications.
+    customer_y = contract_y - 11 * mm
     box(c, meta_x, customer_y, meta_w, row_h)
     c.line(meta_x + 25 * mm, customer_y, meta_x + 25 * mm, customer_y + row_h)
     text(c, meta_x + 2, customer_y + 3 * mm, "Customer Name:", 6.4)
@@ -104,13 +100,11 @@ def main() -> None:
         center(c, rx + make_label_w + i * brand_w + brand_w / 2, spec_y + 2 * row_h + 3 * mm, brand, 6.8, True)
     text(c, rx + 3 * mm, spec_y + row_h + 3 * mm, "Description:", 6.4, True)
 
-    blank_y = spec_y - row_h
-    box(c, meta_x, blank_y, meta_w, row_h)
-    actual_y = blank_y - row_h
+    actual_y = spec_y - row_h
     box(c, meta_x, actual_y, meta_w, row_h)
     text(c, meta_x + 2, actual_y + 3 * mm, "ACTUAL VALUES", 6.5)
 
-    # Main readings table.
+    # Level 4: main readings table.
     table_top = actual_y
     header_1_h = 12 * mm
     header_2_h = 8 * mm
@@ -123,7 +117,7 @@ def main() -> None:
     table_bottom = table_top - table_h
     box(c, meta_x, table_bottom, meta_w, table_h)
 
-    col_mm = [30, 14.5, 14.5, 14.5, 14.5, 14.5, 14.5, 14.5, 14.5, 14.5, 7, 14.5]
+    col_mm = [30, 14.5, 14.5, 14.5, 14.5, 14.5, 14.5, 14.5, 14.5, 14.5, 14.5]
     scale = meta_w / sum(w * mm for w in col_mm)
     cols = [w * mm * scale for w in col_mm]
     xs = [meta_x]
@@ -145,10 +139,7 @@ def main() -> None:
     c.line(meta_x, final_blank_top, meta_x + meta_w, final_blank_top)
 
     for x in xs[1:-1]:
-        if abs(x - xs[11]) < 0.1:
-            c.line(x, table_top, x, sig_top)
-        else:
-            c.line(x, table_top, x, sig_top)
+        c.line(x, table_top, x, sig_top)
 
     # Signature row split only in half; remarks are full-width.
     c.line(meta_x + meta_w / 2, sig_top, meta_x + meta_w / 2, remarks_top)
@@ -163,15 +154,16 @@ def main() -> None:
     center(c, (xs[3] + xs[4]) / 2, table_top - header_1_h - 5 * mm, "r/min", 6.0, True)
     center(c, (xs[4] + xs[7]) / 2, table_top - 6 * mm, "Current", 6.0, True)
     center(c, (xs[7] + xs[10]) / 2, table_top - 6 * mm, "Voltage", 6.0, True)
-    center(c, (xs[11] + xs[12]) / 2, table_top - 8 * mm, "Connection", 6.0, True)
+    center(c, (xs[10] + xs[11]) / 2, table_top - 8 * mm, "Connection", 6.0, True)
     for idx, phase in zip(range(4, 7), ("PH1", "PH2", "PH3")):
         center(c, (xs[idx] + xs[idx + 1]) / 2, table_top - header_1_h - 5 * mm, phase, 6.0, True)
     for idx, phase in zip(range(7, 10), ("PH1", "PH2", "PH3")):
         center(c, (xs[idx] + xs[idx + 1]) / 2, table_top - header_1_h - 5 * mm, phase, 6.0, True)
 
+    # Level 5: sign-offs and remarks.
     text(c, meta_x + 2, sig_top - 9 * mm, "Testing Operator Signature:", 6.0)
     text(c, meta_x + meta_w / 2 + 2, sig_top - 9 * mm, "Quality Inspector Signature:", 6.0)
-    text(c, meta_x + 2, remarks_top - 5 * mm, "Remarks:  Operator and Quality to sign on completion of work, with date competed.", 6.0)
+    text(c, meta_x + 2, remarks_top - 5 * mm, "Remarks:  Operator and Quality to sign on completion of work, with date completed.", 6.0)
 
     c.showPage()
     c.save()

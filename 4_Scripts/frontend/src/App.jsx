@@ -3,6 +3,14 @@ import FormFields from "./components/FormFields";
 import LivePreview from "./components/LivePreview";
 import "./App.css";
 
+const getLocalIsoDate = () => {
+  const d = new Date();
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
+};
+
 function App() {
   const apiBase = useMemo(() => (import.meta.env.VITE_API_BASE || "").replace(/\/$/, ""), []);
   const touchedRef = useRef(new Set());
@@ -11,6 +19,7 @@ function App() {
   const previewDataKeyRef = useRef("");
 
   const [formData, setFormData] = useState({
+    report_date: getLocalIsoDate(),
     customer_name: "",
     serial_no: "",
     series: "",
@@ -48,6 +57,7 @@ function App() {
   const getPreviewDataKey = (data) =>
     JSON.stringify({
       customer_name: data.customer_name,
+      report_date: data.report_date,
       serial_no: data.serial_no,
       series: data.series,
       class_pitch: data.class_pitch,
@@ -116,6 +126,7 @@ function App() {
           }
         }
       } catch {
+        // Auto-fill is opportunistic; manual form values remain authoritative.
       }
 
       try {
@@ -127,6 +138,7 @@ function App() {
           }
         }
       } catch {
+        // Auto-fill is opportunistic; manual form values remain authoritative.
       }
     }, 250);
 
@@ -152,7 +164,28 @@ function App() {
     return () => {
       if (previewTimerRef.current) clearTimeout(previewTimerRef.current);
     };
-  }, [busy, formData.customer_name, formData.serial_no, formData.series, formData.size, formData.motor, formData.pole, formData.voltage, formData.class_pitch, formData.imp_form, formData.phase, formData.date_of_manuf, formData.fla, formData.connection]);
+  }, [
+    busy,
+    formData.customer_name,
+    formData.report_date,
+    formData.serial_no,
+    formData.series,
+    formData.size,
+    formData.motor,
+    formData.pole,
+    formData.voltage,
+    formData.class_pitch,
+    formData.imp_form,
+    formData.phase,
+    formData.date_of_manuf,
+    formData.frequency,
+    formData.op_temp,
+    formData.op_speed,
+    formData.fla,
+    formData.connection,
+    formData.relube_interval,
+    formData.manufacturer,
+  ]);
 
   // =========================
   // CENTRAL VALIDATION (AUTHORITATIVE)
@@ -291,6 +324,7 @@ function App() {
       touchedRef.current = new Set();
       setFormData((prev) => ({
         ...prev,
+        report_date: np.report_date ?? prev.report_date,
         customer_name: np.customer_name ?? prev.customer_name,
         serial_no: np.serial_no ?? prev.serial_no,
         series: np.series ?? prev.series,
@@ -365,6 +399,7 @@ function App() {
     setErrors({});
     setStatus("");
     setFormData({
+      report_date: getLocalIsoDate(),
       customer_name: "",
       serial_no: "",
       series: "",

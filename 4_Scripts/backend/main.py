@@ -114,6 +114,7 @@ app.add_middleware(
 # 3. Models
 # ------------------------------------------------------------
 class NameplatePayload(BaseModel):
+    report_date: str = ""
     customer_name: str = ""
     series: str = ""
     class_pitch: str = ""
@@ -146,6 +147,7 @@ class TestRecordSheetPayload(BaseModel):
     fan_speed: str = Field(...)
     connection: str = Field(..., description="STAR or DELTA")
     imp_form: str = Field(default="FORM B", description="Impeller form e.g. FORM B")
+    description: str = ""
 
     motor_serial_number: str = ""
     blade_pitch_deg: str = ""
@@ -174,6 +176,19 @@ def _speed_from_pole(poles: int) -> str:
     return {2: "2880", 4: "1440", 6: "960", 8: "720"}.get(int(poles), "")
 
 def _fmt_kw(x: float) -> str: return f"{float(x):g}"
+
+def _motor_description(motor: str, pole: str) -> str:
+    motor_s = _clean(motor)
+    pole_s = _clean(pole)
+    if motor_s:
+        motor_f = _to_float(motor_s)
+        motor_part = f"{_fmt_kw(motor_f)}kW" if motor_f is not None else motor_s
+    else:
+        motor_part = ""
+
+    pole_i = _to_int(pole_s)
+    pole_part = f"{pole_i} Pole" if pole_i is not None else (f"{pole_s} Pole" if pole_s else "")
+    return " ".join(part for part in (motor_part, pole_part) if part)
 
 @lru_cache(maxsize=1)
 def _options_cached() -> dict:
@@ -356,6 +371,7 @@ def api_test_record_sheet(payload: TestRecordSheetPayload):
         },
         "derived": {
             "date": _clean(data.get("date")),
+            "motor_description": _clean(data.get("description")),
             "procedure_used": _clean(data.get("procedure_used")),
             "imp_form": _clean(data.get("imp_form")) or "FORM B",
             "motor_serial_number": _clean(data.get("motor_serial_number")),
@@ -444,16 +460,17 @@ def api_test_record_sheet_from_nameplate(payload: NameplatePayload):
     nameplate_data = {
         "nameplate": nameplate_from_payload,
         "derived": {
-            "date": test_sheet.get("date") or date.today(),
+            "date": _clean(payload.report_date) or date.today(),
+            "motor_description": _motor_description(payload.motor, payload.pole) or _clean(test_sheet.get("description")),
             "procedure_used": "QC-WI-05",
             "imp_form": _clean(payload.imp_form) or _clean(test_sheet.get("imp_form")) or "FORM B",
             "fan_speed": _clean(fan_speed),
             "motor_current": _clean(motor_current),
             "connection": _clean(conn),
             "motor_serial_number": _clean(test_sheet.get("motor_serial_number")),
-            "blade_pitch_deg": _clean(test_sheet.get("blade_pitch_deg")),
+            "blade_pitch_deg": _clean(payload.class_pitch) or _clean(test_sheet.get("blade_pitch_deg")),
             "tacho_clamp_serial_no": _clean(test_sheet.get("tacho_clamp_serial_no")) or "N/A",
-            "speed_actual": _clean(test_sheet.get("speed_actual")) or _clean(fan_speed),
+            "speed_actual": _clean(payload.op_speed) or _clean(test_sheet.get("speed_actual")) or _clean(fan_speed),
             "current_ph1": _clean(test_sheet.get("current_ph1")),
             "current_ph2": _clean(test_sheet.get("current_ph2")),
             "current_ph3": _clean(test_sheet.get("current_ph3")),

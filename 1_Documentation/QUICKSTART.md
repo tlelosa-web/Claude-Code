@@ -6,21 +6,21 @@
 
 ```powershell
 # 1. Navigate to project
-cd 'c:\Users\Fan Movement\OneDrive - Fan Movement (Pty) Ltd\Desktop\NamePlateTool'
+cd '<project-root>'
 
 # 2. Create and activate virtual environment for backend
-cd backend
 python -m venv .venv
 .venv\Scripts\Activate.ps1
+cd 4_Scripts\backend
 
 # 3. Install backend dependencies
 pip install -r requirements.txt
-cd ..
+cd ..\..
 
 # 4. Install frontend dependencies
-cd frontend
+cd 4_Scripts\frontend
 npm install
-cd ..
+cd ..\..
 
 # Done! Now use startup instructions below
 ```
@@ -28,20 +28,24 @@ cd ..
 ### Daily Startup (Run this each time you want to use the app)
 
 **Terminal 1 - Backend Server:**
+
 ```powershell
-cd 'c:\Users\Fan Movement\OneDrive - Fan Movement (Pty) Ltd\Desktop\NamePlateTool\backend'
+cd '<project-root>'
 .venv\Scripts\Activate.ps1
+cd 4_Scripts\backend
 python -m uvicorn main:app --reload
 ```
 
 **Terminal 2 - Frontend Server:**
+
 ```powershell
-cd 'c:\Users\Fan Movement\OneDrive - Fan Movement (Pty) Ltd\Desktop\NamePlateTool\frontend'
+cd '<project-root>\4_Scripts\frontend'
 npm run dev
 ```
 
-### Open in Browser
-```
+### Open in Browser on Windows
+
+```text
 http://localhost:5173
 ```
 
@@ -73,6 +77,7 @@ cd ..
 ### Daily Startup
 
 **Terminal 1 - Backend:**
+
 ```bash
 cd ~/NamePlateTool/backend
 source .venv/bin/activate
@@ -80,13 +85,15 @@ python -m uvicorn main:app --reload
 ```
 
 **Terminal 2 - Frontend:**
+
 ```bash
 cd ~/NamePlateTool/frontend
 npm run dev
 ```
 
-### Open in Browser
-```
+### Open in Browser on Linux/macOS
+
+```text
 http://localhost:5173
 ```
 
@@ -95,6 +102,7 @@ http://localhost:5173
 ## Common Tasks
 
 ### Generate Production Build
+
 ```bash
 cd frontend
 npm run build
@@ -102,10 +110,12 @@ npm run build
 ```
 
 ### Stop Servers
+
 - **Backend**: Press `Ctrl+C` in backend terminal
 - **Frontend**: Press `Ctrl+C` in frontend terminal
 
 ### Reset Everything
+
 ```bash
 # Remove node_modules
 cd frontend
@@ -121,6 +131,7 @@ pip install -r requirements.txt
 ```
 
 ### Check if Server is Running
+
 ```bash
 # Backend (should return JSON)
 curl http://127.0.0.1:8000/api/speed?pole=4
@@ -134,7 +145,7 @@ curl http://localhost:5173
 ## Form Fields Explained
 
 | Field | Required | Auto-filled | Notes |
-|-------|----------|-------------|-------|
+| ----- | -------- | ----------- | ----- |
 | Series | No | No | e.g., IE3, Premium Efficiency |
 | Motor (kW) | Yes | No | Motor power in kilowatts |
 | Pole | Yes | No | Must select 2, 4, 6, or 8 |
@@ -148,40 +159,50 @@ curl http://localhost:5173
 | Frequency | No | No | Usually 50 Hz or 60 Hz |
 | Date of Manuf | No | No | e.g., JAN.2025, FEB.2024 |
 | Serial No | No | No | Motor serial number |
-| Op Temp | No | Yes | Operating temperature (default 20°C) |
+| Op Temp | No | Yes | Operating temperature, default 20 C |
 
 ---
 
 ## Troubleshooting
 
 ### Error: "Import could not be resolved"
+
 **Solution:** Install dependencies
+
 ```bash
 cd backend
 pip install -r requirements.txt
 ```
 
 ### Error: "Cannot find module 'react'"
+
 **Solution:** Install frontend dependencies
+
 ```bash
 cd frontend
 npm install
 ```
 
-### Error: "Connection refused" when opening http://localhost:5173
-**Solution:** 
-- Make sure backend is running on another terminal
-- Make sure frontend is running (should see "Local: http://localhost:5173")
-- Check if port 5173 is already in use
+### Error: "Connection refused" when opening localhost
+
+**Solution:**
+
+- Make sure backend is running on another terminal.
+- Make sure frontend is running. It should show `Local: http://localhost:5173`.
+- Check if port 5173 is already in use.
 
 ### Error: "PDF generation failed"
+
 **Solution:**
-- Check that the PDF file exists: `backend/2025 - CTP 022- PB4  Performance Data Rev 0.pdf`
-- Restart backend server
-- Check all form fields are filled correctly
+
+- Check that the performance data PDF exists in the backend directory.
+- Restart backend server.
+- Check all form fields are filled correctly.
 
 ### Backend won't start - Address already in use
+
 **Solution:** Port 8000 is already in use
+
 ```bash
 # Find process using port 8000 and kill it
 # Windows:
@@ -196,20 +217,20 @@ lsof -ti:8000 | xargs kill -9
 ## Keyboard Shortcuts
 
 - **Ctrl+C** - Stop a running server
-- **F12** - Open browser developer tools (for debugging)
-- **Ctrl+R** - Reload page (frontend changes auto-reload)
-- **Ctrl+Shift+Delete** - Clear browser cache (if having issues)
+- **F12** - Open browser developer tools for debugging
+- **Ctrl+R** - Reload page, frontend changes auto-reload
+- **Ctrl+Shift+Delete** - Clear browser cache if having issues
 
 ---
 
 ## Getting Help
 
-1. Check browser console (F12) for JavaScript errors
-2. Check backend terminal for API errors
-3. Check CORS settings if getting "blocked by CORS" error
-4. Review README.md for detailed API documentation
-5. Check DEPLOYMENT.md for production setup help
+1. Check browser console with F12 for JavaScript errors.
+2. Check backend terminal for API errors.
+3. Check CORS settings if getting "blocked by CORS" error.
+4. Review README.md for detailed API documentation.
+5. Check DEPLOYMENT.md for production setup help.
 
 ---
 
-**Happy nameplate generating!** 🎉
+**Happy nameplate generating!**

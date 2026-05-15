@@ -217,6 +217,16 @@
       "align": "center",
       "clear": { "w": 35, "h": 13, "baseline_offset": 3 },
       "required": false
+    },
+    {
+      "key": "date_of_manuf",
+      "x": 439.0,
+      "y": 774.0,
+      "source": "nameplate.date_of_manuf",
+      "transform": { "type": "date", "format": "MONTH YEAR" },
+      "align": "center",
+      "font": { "name": "Helvetica-Bold", "size": 8.5 },
+      "required": false
     }
   ]
 }

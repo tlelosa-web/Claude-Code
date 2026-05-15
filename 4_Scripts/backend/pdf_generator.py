@@ -137,6 +137,9 @@ def _apply_transform(raw: Any, transform: Optional[Dict[str, Any]]) -> str:
                 return s
         if fmt == "DD/MM/YYYY":
             s = d.strftime("%d/%m/%Y")
+        elif fmt == "MONTH YEAR":
+            months = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"]
+            s = f"{months[d.month - 1]} {d.year}"
         else:
             s = d.isoformat()
         prefix = transform.get("prefix", "")
@@ -206,6 +209,8 @@ def render_pdf_from_coordinate_mapping(
                 clear=it.get("clear"),
                 font=it.get("font"),
                 align=str(it.get("align", "left")),
+                wrap_width=it.get("wrap_width"),
+                line_height=it.get("line_height", 10.0),
             )
         )
 
@@ -245,12 +250,40 @@ def render_pdf_from_coordinate_mapping(
         text = str(val)
 
         def draw_value() -> None:
-            if item.align == "center":
-                c.drawCentredString(item.x, item.y, text)
-            elif item.align == "right":
-                c.drawRightString(item.x, item.y, text)
-            else:
-                c.drawString(item.x, item.y, text)
+            lines = [text]
+            if item.wrap_width:
+                from reportlab.pdfbase.pdfmetrics import stringWidth
+                f_name = item.font.get("name", font_name) if item.font else font_name
+                f_size = float(item.font.get("size", font_size) if item.font else font_size)
+                words = text.split()
+                lines = []
+                current_line = []
+                for word in words:
+                    test_line = " ".join(current_line + [word])
+                    if stringWidth(test_line, f_name, f_size) <= item.wrap_width:
+                        current_line.append(word)
+                    else:
+                        if current_line:
+                            lines.append(" ".join(current_line))
+                            current_line = [word]
+                        else:
+                            lines.append(word)
+                if current_line:
+                    lines.append(" ".join(current_line))
+
+            y = item.y
+            if len(lines) > 1:
+                # Center vertically over the bounding box
+                y += (len(lines) - 1) * item.line_height / 2.0
+                
+            for line in lines:
+                if item.align == "center":
+                    c.drawCentredString(item.x, y, line)
+                elif item.align == "right":
+                    c.drawRightString(item.x, y, line)
+                else:
+                    c.drawString(item.x, y, line)
+                y -= item.line_height
 
         if item.font:
             c.saveState()
@@ -262,6 +295,20 @@ def render_pdf_from_coordinate_mapping(
             c.restoreState()
         else:
             draw_value()
+
+    # Draw LOGO
+    logo_path = TEMPLATES_DIR / "FM - LOGO.jpg"
+    if logo_path.exists():
+        # Position logo at the top. 
+        # Coordinates for Test Sheet Template v4.pdf:
+        # "FAN MOVEMENT" is around x=PLATE_W/2? No, test sheet is A4 probably.
+        # page_w is around 595.
+        # Header is usually at the top. 
+        logo_w = 60
+        logo_h = 60
+        # Draw it near the top left or center.
+        # Let's try top left of the header area.
+        c.drawImage(str(logo_path), 50, page_h - 80, width=logo_w, height=logo_h, preserveAspectRatio=True, mask='auto')
 
     c.save()
     packet.seek(0)

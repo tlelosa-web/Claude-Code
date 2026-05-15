@@ -114,7 +114,6 @@ app.add_middleware(
 # 3. Models
 # ------------------------------------------------------------
 class NameplatePayload(BaseModel):
-    report_date: str = ""
     customer_name: str = ""
     series: str = ""
     class_pitch: str = ""
@@ -460,7 +459,7 @@ def api_test_record_sheet_from_nameplate(payload: NameplatePayload):
     nameplate_data = {
         "nameplate": nameplate_from_payload,
         "derived": {
-            "date": _clean(payload.report_date) or date.today(),
+            "date": date.today(),
             "motor_description": _motor_description(payload.motor, payload.pole) or _clean(test_sheet.get("description")),
             "procedure_used": "QC-WI-05",
             "imp_form": _clean(payload.imp_form) or _clean(test_sheet.get("imp_form")) or "FORM B",

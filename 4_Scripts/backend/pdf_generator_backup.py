@@ -119,10 +119,27 @@ def draw_left_text(c: canvas.Canvas, text: str, x_mm: float, y_baseline_mm: floa
     c.drawString(mm_to_pt(x_mm), mm_to_pt(y_baseline_mm), text)
 
 
-def draw_centered_text_in_box(c: canvas.Canvas, text: str, x_mm: float, box_bottom_y_mm: float, w_mm: float, h_mm: float, font_size: int = BOX_FONT):
+def draw_centered_text_in_box(c: canvas.Canvas, text: str, x_mm: float, box_bottom_y_mm: float, w_mm: float, h_mm: float, font_size: int = BOX_FONT, wrap: bool = False):
     text = "" if text is None else str(text)
     c.setFillColor(TEXT)
     c.setFont("Helvetica", font_size)
+
+    if wrap:
+        # Simple wrap for 2 lines
+        words = text.split()
+        if len(words) > 1 and stringWidth(text, "Helvetica", font_size) > mm_to_pt(w_mm):
+            mid = len(words) // 2
+            line1 = " ".join(words[:mid])
+            line2 = " ".join(words[mid:])
+            
+            y_mid_pt = mm_to_pt(box_bottom_y_mm + h_mm / 2.0)
+            
+            w1 = stringWidth(line1, "Helvetica", font_size)
+            c.drawString(mm_to_pt(x_mm) + (mm_to_pt(w_mm) - w1) / 2.0, y_mid_pt + 1, line1)
+            
+            w2 = stringWidth(line2, "Helvetica", font_size)
+            c.drawString(mm_to_pt(x_mm) + (mm_to_pt(w_mm) - w2) / 2.0, y_mid_pt - font_size + 1, line2)
+            return
 
     text_w_pt = stringWidth(text, "Helvetica", font_size)
     x_pt = mm_to_pt(x_mm) + (mm_to_pt(w_mm) - text_w_pt) / 2.0
@@ -199,7 +216,7 @@ def make_nameplate_pdf(data: dict, output_path: str = "nameplate.pdf") -> str:
     box_bottom = draw_box(c, SERIES_X_MM, y_top, SERIES_W_MM, BOX_H_MM)
     y_label_base = centered_baseline_y_mm(box_bottom, BOX_H_MM, LABEL_FONT)
     draw_left_text(c, "Series:", LEFT_LABEL_X_MM, y_label_base, bold=True, size=LABEL_FONT)
-    draw_centered_text_in_box(c, data.get("series"), SERIES_X_MM, box_bottom, SERIES_W_MM, BOX_H_MM)
+    draw_centered_text_in_box(c, data.get("series"), SERIES_X_MM, box_bottom, SERIES_W_MM, BOX_H_MM, wrap=True)
 
     box_bottom = draw_box(c, SIZE_X_MM, y_top, SIZE_W_MM, BOX_H_MM)
     y_label_base = centered_baseline_y_mm(box_bottom, BOX_H_MM, LABEL_FONT)
@@ -291,20 +308,29 @@ def make_nameplate_pdf(data: dict, output_path: str = "nameplate.pdf") -> str:
     y_label_base = centered_baseline_y_mm(box_bottom, BOX_H_MM, LABEL_FONT)
     draw_left_text(c, "Date of", RIGHT_LABEL_X_MM, y_label_base + 1.6, bold=True, size=LABEL_FONT)
     draw_left_text(c, "Manuf.:", RIGHT_LABEL_X_MM, y_label_base - 1.6, bold=True, size=LABEL_FONT)
-    draw_centered_text_in_box(c, data.get("date_of_manuf"), RIGHT_STD_X_MM, box_bottom, RIGHT_STD_W_MM, BOX_H_MM)
+    
+    # Format Date
+    raw_date = data.get("date_of_manuf", "")
+    try:
+        dt = datetime.strptime(raw_date, "%Y-%m-%d")
+        formatted_date = dt.strftime("%b %Y").upper()
+    except:
+        formatted_date = raw_date
 
-    # ROW 7
-    y_top = row_box_top_y_mm(7)
+    draw_centered_text_in_box(c, formatted_date, RIGHT_STD_X_MM, box_bottom, RIGHT_STD_W_MM, BOX_H_MM)
+
+    # ROW 7 - Shifted UP by 3mm
+    y_top = row_box_top_y_mm(7) + 3.0
     relube_box_bottom = draw_box(c, RELUBE_X_MM, y_top, RELUBE_W_MM, BOX_H_MM)
     y_label_base = centered_baseline_y_mm(relube_box_bottom, BOX_H_MM, LABEL_FONT)
     draw_left_text(c, "Re-Lubrication Interval:", LEFT_LABEL_X_MM, y_label_base, bold=True, size=LABEL_FONT)
     draw_centered_text_in_box(c, data.get("relube_interval", "N/A"), RELUBE_X_MM, relube_box_bottom, RELUBE_W_MM, BOX_H_MM)
 
-    # FOOTER (centered)
-    footer_gap_mm = 6.0
+    # FOOTER (centered) - Shifted UP
+    footer_gap_mm = 5.0
     line1_y_mm = relube_box_bottom - footer_gap_mm
-    line2_y_mm = line1_y_mm - 3.5
-    line3_y_mm = line2_y_mm - 3.5
+    line2_y_mm = line1_y_mm - 3.0
+    line3_y_mm = line2_y_mm - 3.0
 
     c.setFillColor(TEXT)
     c.setFont("Helvetica-Bold", 10)

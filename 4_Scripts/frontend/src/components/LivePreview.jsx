@@ -25,6 +25,14 @@ const fonts = {
   footerSmall: mm(7 * 0.35)     // 7pt
 };
 
+const formatMonthYear = (dateStr) => {
+  if (!dateStr) return "";
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return dateStr;
+  const months = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
+  return `${months[d.getMonth()]} ${d.getFullYear()}`;
+};
+
 // Colors
 const COLORS = {
   bg: "#1a3b8e",      // Deep industrial blue
@@ -67,7 +75,7 @@ const ROW_PITCH = 6.5;
 const rowTop = (i) => ROW0_TOP + (i * ROW_PITCH);
 
 // Components
-const AbsoluteBox = ({ x, y, w, h, value, fontSize }) => (
+const AbsoluteBox = ({ x, y, w, h, value, fontSize, wrap = false }) => (
   <div style={{
     position: "absolute",
     left: mm(x),
@@ -82,8 +90,11 @@ const AbsoluteBox = ({ x, y, w, h, value, fontSize }) => (
     color: COLORS.text,
     fontSize: fontSize || fonts.value,
     fontFamily: "Helvetica, Arial, sans-serif",
-    whiteSpace: "nowrap",
-    overflow: "hidden"
+    whiteSpace: wrap ? "normal" : "nowrap",
+    overflow: "hidden",
+    textAlign: "center",
+    lineHeight: "1.1",
+    padding: "0 2px"
   }}>
     {value}
   </div>
@@ -207,7 +218,7 @@ export default function LivePreview({ formData }) {
 
       {/* Row 0 */}
       <AbsoluteLabel x={X.leftLabel} y={rowTop(0) + labelOffsetY} text="Series:" />
-      <AbsoluteBox x={X.series} y={rowTop(0)} w={X.seriesW} h={BOX_H_MM} value={formData.series} />
+      <AbsoluteBox x={X.series} y={rowTop(0)} w={X.seriesW} h={BOX_H_MM} value={formData.series} wrap={true} />
       
       <AbsoluteLabel x={X.rightLabel} y={rowTop(0) + labelOffsetY} text="Size:" />
       <AbsoluteBox x={X.size} y={rowTop(0)} w={X.sizeW} h={BOX_H_MM} value={formData.size} />
@@ -259,22 +270,20 @@ export default function LivePreview({ formData }) {
 
       <AbsoluteLabel x={X.rightLabel} y={rowTop(6)} text="Date of" size={fonts.unit} />
       <AbsoluteLabel x={X.rightLabel} y={rowTop(6) + 2.5} text="Manuf.:" size={fonts.unit} />
-      <AbsoluteBox x={X.rightStd} y={rowTop(6)} w={X.rightStdW} h={BOX_H_MM} value={formData.date_of_manuf} />
+      <AbsoluteBox x={X.rightStd} y={rowTop(6)} w={X.rightStdW} h={BOX_H_MM} value={formatMonthYear(formData.date_of_manuf)} />
 
-      {/* Relube */}
-      {/* PDF: relube_box_top = 18.5 (from bottom?) No, 18.5 is Y coord from bottom. */}
-      {/* Wait, my CSS Top calculation was: 104 - 18.5 = 85.5 */}
-      <AbsoluteLabel x={X.leftLabel} y={85.5 + labelOffsetY} text="Re-Lubrication Interval:" size={fonts.unit} />
-      <AbsoluteBox x={X.relube} y={85.5} w={X.relubeW} h={BOX_H_MM} value={formData.relube_interval} />
+      {/* Relube - Shifted UP */}
+      <AbsoluteLabel x={X.leftLabel} y={82.5 + labelOffsetY} text="Re-Lubrication Interval:" size={fonts.unit} />
+      <AbsoluteBox x={X.relube} y={82.5} w={X.relubeW} h={BOX_H_MM} value={formData.relube_interval} />
 
-      {/* Footer */}
-      <div style={{ position: "absolute", width: "100%", top: mm(93), textAlign: "center" }}>
+      {/* Footer - Shifted UP */}
+      <div style={{ position: "absolute", width: "100%", top: mm(90), textAlign: "center" }}>
         <div style={{ fontSize: fonts.footer, fontWeight: "bold", color: COLORS.label }}>FAN MOVEMENT 011 682 3020</div>
       </div>
-      <div style={{ position: "absolute", width: "100%", top: mm(96), textAlign: "center" }}>
+      <div style={{ position: "absolute", width: "100%", top: mm(93), textAlign: "center" }}>
         <div style={{ fontSize: fonts.footerSmall, color: COLORS.label }}>www.fanmovement.co.za</div>
       </div>
-      <div style={{ position: "absolute", width: "100%", top: mm(98.5), textAlign: "center" }}>
+      <div style={{ position: "absolute", width: "100%", top: mm(95.5), textAlign: "center" }}>
         <div style={{ fontSize: fonts.footerSmall, color: COLORS.label }}>info@fanmovement.co.za</div>
       </div>
 

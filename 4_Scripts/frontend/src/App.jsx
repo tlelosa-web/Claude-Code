@@ -19,7 +19,6 @@ function App() {
   const previewDataKeyRef = useRef("");
 
   const [formData, setFormData] = useState({
-    report_date: getLocalIsoDate(),
     customer_name: "",
     serial_no: "",
     series: "",
@@ -30,7 +29,7 @@ function App() {
     pole: "",
     voltage: "",
     phase: "",
-    date_of_manuf: "",
+    date_of_manuf: getLocalIsoDate(),
     frequency: "50",
     op_temp: "20",
     op_speed: "",
@@ -49,7 +48,6 @@ function App() {
     preview: false,
   });
   const [showAdvanced, setShowAdvanced] = useState(false);
-  const [showBanner, setShowBanner] = useState(true);
   const [testSheetPreviewUrl, setTestSheetPreviewUrl] = useState("");
 
   const busy = busyState.saving || busyState.loadingExcel || busyState.preview;
@@ -57,7 +55,6 @@ function App() {
   const getPreviewDataKey = (data) =>
     JSON.stringify({
       customer_name: data.customer_name,
-      report_date: data.report_date,
       serial_no: data.serial_no,
       series: data.series,
       class_pitch: data.class_pitch,
@@ -150,8 +147,17 @@ function App() {
   useEffect(() => {
     if (previewTimerRef.current) clearTimeout(previewTimerRef.current);
 
+    // Don't block preview on validation errors - just skip auto-refresh
     const errs = validateForm(formData);
-    if (Object.keys(errs).length > 0) return;
+    if (Object.keys(errs).length > 0) {
+      setErrors(errs);
+      // Clear preview if validation fails
+      if (testSheetPreviewUrl) {
+        URL.revokeObjectURL(testSheetPreviewUrl);
+        setTestSheetPreviewUrl("");
+      }
+      return;
+    }
     if (busyState.saving || busyState.loadingExcel) return;
 
     const nextPreviewDataKey = getPreviewDataKey(formData);
@@ -167,7 +173,6 @@ function App() {
   }, [
     busy,
     formData.customer_name,
-    formData.report_date,
     formData.serial_no,
     formData.series,
     formData.size,
@@ -283,6 +288,9 @@ function App() {
 
     if (!silent) setStatus("Refreshing Test Sheet preview...");
 
+    // Update the ref immediately to prevent infinite retry loops if the fetch fails
+    previewDataKeyRef.current = getPreviewDataKey(formData);
+
     setBusyState((prev) => ({ ...prev, preview: true }));
     try {
       const res = await fetch(`${apiBase}/api/reports/test-record-sheet/from-nameplate`, {
@@ -302,7 +310,6 @@ function App() {
         if (prev) URL.revokeObjectURL(prev);
         return url;
       });
-      previewDataKeyRef.current = getPreviewDataKey(formData);
       if (!silent) setStatus("Test Sheet preview updated");
     } catch (err) {
       if (!silent) setStatus(_errMsg(err));
@@ -356,6 +363,7 @@ function App() {
     const errs = validateForm(formData);
     if (Object.keys(errs).length > 0) {
       setErrors(errs);
+      setStatus("Please fix form errors before saving.");
       return;
     }
 
@@ -375,6 +383,7 @@ function App() {
     const errs = validateForm(formData);
     if (Object.keys(errs).length > 0) {
       setErrors(errs);
+      setStatus("Please fix form errors before saving.");
       return;
     }
 
@@ -431,24 +440,13 @@ function App() {
             <span className="brand-badge" />
             NAMEPLATE TOOL
           </div>
-          <div className="topbar-right">
             <div className="status-pill">
               <span className={`dot${busy ? " dot-busy" : ""}`} />
               {busy ? "Busy" : "Ready"}
             </div>
-            <button className="btn btn-ghost" type="button" onClick={loadFromExcel} disabled={busyState.saving || busyState.loadingExcel}>
-              Load From Excel
-            </button>
-          </div>
         </header>
 
         <main className="content">
-          {showBanner ? (
-            <div className="alert-banner">
-              <div>Attention! You can load the latest values from the Excel procedure file.</div>
-              <button className="btn" type="button" onClick={() => setShowBanner(false)}>Dismiss</button>
-            </div>
-          ) : null}
 
           <div className="dashboard">
             <div className="grid-with-preview">

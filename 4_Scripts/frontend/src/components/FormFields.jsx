@@ -77,7 +77,6 @@ export default function FormFields({ data, errors, onChange, options = {}, showA
   return (
     <div className="form-grid">
       <SectionHeader title="Customer" />
-      <Field label="Report Date" type="date" value={data.report_date} onChange={(v) => onChange("report_date", v)} />
       <Field label="Customer Name" value={data.customer_name} onChange={(v) => onChange("customer_name", v)} placeholder="e.g. ACME Ltd" error={errors.customer_name} />
       <Field label="Serial No." value={data.serial_no} onChange={(v) => onChange("serial_no", v)} placeholder="e.g. FM5107" error={errors.serial_no} />
       <SectionHeader title="Fan" />
@@ -92,7 +91,7 @@ export default function FormFields({ data, errors, onChange, options = {}, showA
       <Select label="Poles" value={data.pole} onChange={(v) => onChange("pole", v)} options={poles} error={errors.electrical} />
       <Select label="Motor kW" value={data.motor} onChange={(v) => onChange("motor", v)} options={motorOptions.length ? motorOptions : []} error={errors.electrical} />
       <Select label="Motor Phase" value={data.phase} onChange={(v) => onChange("phase", v)} options={phaseOptions} placeholder="Select..." />
-      <Field label="Date of Manufacture" value={data.date_of_manuf} onChange={(v) => onChange("date_of_manuf", v)} placeholder="e.g. MAY.2026" />
+      <Field label="Date of Manufacture" type="date" value={data.date_of_manuf} onChange={(v) => onChange("date_of_manuf", v)} />
 
       {showAdvanced ? (
         <>

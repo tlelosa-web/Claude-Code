@@ -309,10 +309,12 @@ def api_generate_pdf(payload: NameplatePayload):
 
     op_speed = _clean(payload.op_speed) or (_speed_from_pole(p_i) if p_i else "")
 
-    fla = _clean(payload.fla)
+    fla = None
     motor_pdf = _motor_pdf_path()
-    if not fla and all(x is not None for x in (m_f, p_i, v_f)) and motor_pdf:
+    if all(x is not None for x in (m_f, p_i, v_f)) and motor_pdf:
         fla, _ = lookup_fla_safe(m_f, p_i, v_f, str(motor_pdf))
+    if not fla:
+        fla = _clean(payload.fla)
 
     conn = ""
     if all(x is not None for x in (m_f, p_i, v_f)):
@@ -422,16 +424,20 @@ def api_test_record_sheet_from_nameplate(payload: NameplatePayload):
 
     fan_speed = _clean(payload.op_speed) or _clean(test_sheet.get("fan_speed")) or (_speed_from_pole(p_i) if p_i else "")
 
-    motor_current = _clean(payload.fla) or _clean(test_sheet.get("motor_current"))
+    motor_current = None
     motor_pdf = _motor_pdf_path()
-    if not motor_current and all(x is not None for x in (m_f, p_i, v_f)) and motor_pdf:
+    if all(x is not None for x in (m_f, p_i, v_f)) and motor_pdf:
         motor_current, _ = lookup_fla_safe(m_f, p_i, v_f, str(motor_pdf))
+    if not motor_current:
+        motor_current = _clean(payload.fla) or _clean(test_sheet.get("motor_current"))
 
-    conn = _clean(payload.connection) or _clean(test_sheet.get("connection"))
-    if not conn and all(x is not None for x in (m_f, p_i, v_f)):
+    conn = None
+    if all(x is not None for x in (m_f, p_i, v_f)):
         c, _ = suggest_connection(v_f, p_i, m_f)
         if c in ("STAR", "DELTA"):
             conn = c
+    if not conn:
+        conn = _clean(payload.connection) or _clean(test_sheet.get("connection"))
 
     if conn.upper() not in ("STAR", "DELTA"):
         return JSONResponse({"error": "Invalid connection"}, status_code=400)
@@ -456,6 +462,11 @@ def api_test_record_sheet_from_nameplate(payload: NameplatePayload):
     if not _clean(nameplate_from_payload.get("motor")) and _clean(test_sheet.get("description")):
         nameplate_from_payload["motor"] = _clean(test_sheet.get("description"))
 
+    # Ensure computed values are set in nameplate before building the data structure
+    nameplate_from_payload["op_speed"] = _clean(fan_speed)
+    nameplate_from_payload["fla"] = _clean(motor_current)
+    nameplate_from_payload["connection"] = _clean(conn)
+
     nameplate_data = {
         "nameplate": nameplate_from_payload,
         "derived": {
@@ -463,9 +474,6 @@ def api_test_record_sheet_from_nameplate(payload: NameplatePayload):
             "motor_description": _motor_description(payload.motor, payload.pole) or _clean(test_sheet.get("description")),
             "procedure_used": "QC-WI-05",
             "imp_form": _clean(payload.imp_form) or _clean(test_sheet.get("imp_form")) or "FORM B",
-            "fan_speed": _clean(fan_speed),
-            "motor_current": _clean(motor_current),
-            "connection": _clean(conn),
             "motor_serial_number": _clean(test_sheet.get("motor_serial_number")),
             "blade_pitch_deg": _clean(payload.class_pitch) or _clean(test_sheet.get("blade_pitch_deg")),
             "tacho_clamp_serial_no": _clean(test_sheet.get("tacho_clamp_serial_no")) or "N/A",
@@ -476,15 +484,9 @@ def api_test_record_sheet_from_nameplate(payload: NameplatePayload):
             "voltage_ph1": _clean(test_sheet.get("voltage_ph1")) or _clean(nameplate_from_payload.get("voltage")),
             "voltage_ph2": _clean(test_sheet.get("voltage_ph2")) or _clean(nameplate_from_payload.get("voltage")),
             "voltage_ph3": _clean(test_sheet.get("voltage_ph3")) or _clean(nameplate_from_payload.get("voltage")),
-        }
-    }
-    nameplate_data["nameplate"].update(
-        {
-            "op_speed": _clean(fan_speed),
-            "fla": _clean(motor_current),
             "connection": _clean(conn),
         }
-    )
+    }
 
     fname = f"Test Sheet{_sanitize_filename(_clean(nameplate_data['nameplate'].get('serial_no')) or 'UNKNOWN')}.pdf"
     out_path = CONFIG["OUTPUT_DIR"] / fname

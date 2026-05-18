@@ -2,6 +2,10 @@ from reportlab.pdfgen import canvas
 from reportlab.lib.units import mm
 from reportlab.lib import colors
 from reportlab.pdfbase.pdfmetrics import stringWidth
+from pathlib import Path
+from datetime import datetime
+import io
+from pypdf import PdfReader, PdfWriter
 
 # ============================================================
 # PLATE SIZE (mm)
@@ -74,6 +78,12 @@ RIGHT_STD_W_MM = RIGHT_STD_W_MM - 4.0  # 20.5
 # This keeps RPM/Hz spacing (1mm from box edge) unchanged because unit X is computed from box edge.
 RIGHT_STD_X_MM = RIGHT_STD_X_MM + 2.0  # now 70.5mm
 
+# Ensure right-side standard boxes do not overlap left-side boxes; enforce a minimum gap
+min_gap_mm = 2.0
+min_allowed_x = LEFT_STD_X_MM + LEFT_STD_W_MM + min_gap_mm
+if RIGHT_STD_X_MM < min_allowed_x:
+    RIGHT_STD_X_MM = min_allowed_x
+
 # Relube
 RELUBE_X_MM = 38.0
 RELUBE_W_MM = 29.0
@@ -81,6 +91,11 @@ RELUBE_W_MM = 29.0
 # Label alignment
 RIGHT_LABEL_X_MM = 54.0
 LEFT_LABEL_X_MM = LABEL_LEFT_X_MM
+
+# Logo
+BACKEND_DIR = Path(__file__).resolve().parent
+TEMPLATES_DIR = BACKEND_DIR.parents[1] / "2_Source_Data" / "raw_sources"
+LOGO_PATH = TEMPLATES_DIR / "FM - LOGO.jpg"
 
 
 # ============================================================
@@ -175,6 +190,21 @@ def draw_unit_with_constraints(
     c.drawString(mm_to_pt(x_mm), mm_to_pt(y_base_mm), unit_text)
 
 
+def draw_logo(c: canvas.Canvas, page_w_mm: float, page_h_mm: float):
+    """Draw the FM logo centered at the top of the plate."""
+    if LOGO_PATH.exists():
+        logo_w = min(60, page_w_mm * 0.55)
+        logo_h = logo_w * 0.35
+        logo_x = (page_w_mm - logo_w) / 2.0
+        logo_y = page_h_mm - BORDER_MARGIN_MM - logo_h - 2.0
+        try:
+            c.drawImage(str(LOGO_PATH), mm_to_pt(logo_x), mm_to_pt(logo_y),
+                        width=mm_to_pt(logo_w), height=mm_to_pt(logo_h),
+                        preserveAspectRatio=True, mask='auto')
+        except Exception:
+            pass
+
+
 # ============================================================
 # MAIN PDF
 # ============================================================
@@ -193,20 +223,11 @@ def make_nameplate_pdf(data: dict, output_path: str = "nameplate.pdf") -> str:
         fill=0,
     )
 
-    # HEADER (center aligned)
+    # LOGO (replaces "FAN" / "MOVEMENT" / "AIR AND GAS MOVEMENT SOLUTIONS" text)
+    draw_logo(c, PLATE_W_MM, PLATE_H_MM)
+
+    # FAN DATA title
     header_top_y_mm = PLATE_H_MM - (BORDER_MARGIN_MM + 3.0)
-
-    c.setFillColor(TEXT)
-    c.setFont("Helvetica-Bold", HEADER_MAIN_FONT)
-    c.drawCentredString(mm_to_pt(PLATE_W_MM / 2), mm_to_pt(header_top_y_mm - 6.0), "FAN")
-
-    c.setFont("Helvetica-Bold", HEADER_SUB_FONT)
-    c.drawCentredString(mm_to_pt(PLATE_W_MM / 2), mm_to_pt(header_top_y_mm - 12.0), "MOVEMENT")
-
-    c.setFont("Helvetica", HEADER_TAGLINE_FONT)
-    c.drawCentredString(mm_to_pt(PLATE_W_MM / 2), mm_to_pt(header_top_y_mm - 18.0), "AIR AND GAS MOVEMENT SOLUTIONS")
-
-    # FAN DATA title UP by 2mm
     c.setFont("Helvetica-Bold", HEADER_TITLE_FONT)
     c.drawString(mm_to_pt(LEFT_LABEL_X_MM), mm_to_pt(header_top_y_mm - 24.0), "FAN DATA")
 
@@ -319,8 +340,8 @@ def make_nameplate_pdf(data: dict, output_path: str = "nameplate.pdf") -> str:
 
     draw_centered_text_in_box(c, formatted_date, RIGHT_STD_X_MM, box_bottom, RIGHT_STD_W_MM, BOX_H_MM)
 
-    # ROW 7 - Shifted UP by 3mm
-    y_top = row_box_top_y_mm(7) + 3.0
+    # ROW 7 - proper gap below Row 6
+    y_top = row_box_top_y_mm(7)
     relube_box_bottom = draw_box(c, RELUBE_X_MM, y_top, RELUBE_W_MM, BOX_H_MM)
     y_label_base = centered_baseline_y_mm(relube_box_bottom, BOX_H_MM, LABEL_FONT)
     draw_left_text(c, "Re-Lubrication Interval:", LEFT_LABEL_X_MM, y_label_base, bold=True, size=LABEL_FONT)

@@ -20,6 +20,29 @@ def _speed_to_poles(speed: str) -> str:
         return ""
     return {2880: "2", 1440: "4", 960: "6", 720: "8"}.get(v, "")
 
+def _speed_code_to_poles(speed: str) -> str:
+    if not isinstance(speed, str):
+        return ""
+    s = speed.strip().upper()
+    if s.endswith("P"):
+        try:
+            p = int(s[:-1])
+            return str(p) if p in (2, 4, 6, 8) else ""
+        except Exception:
+            return ""
+    return ""
+
+def _speed_code_to_rpm(speed: str) -> str:
+    if not isinstance(speed, str):
+        return ""
+    return {
+        "2P": "2880",
+        "4P": "1440",
+        "6P": "960",
+        "8P": "720",
+    }.get(speed.strip().upper(), "")
+
+
 def _find_labeled_value(ws, label: str):
     target = str(label).strip().lower()
     for r in range(1, ws.max_row + 1):
@@ -141,6 +164,26 @@ def read_nameplate_from_excel(xlsx_path: str) -> dict:
             date_of_manuf = pick(right, "Date of Manuf", "Date of Manufacture")
             customer_name = ""
             relube_interval = "N/A"
+        elif "Info+Data Entry Form" in wb.sheetnames:
+            ws = wb["Info+Data Entry Form"]
+            series = _find_labeled_value(ws, "Fan Series")
+            size = _find_labeled_value(ws, "Fan Size")
+            class_pitch = _find_labeled_value(ws, "Class/Pitch")
+            motor_kw_str = _find_labeled_value(ws, "Power (kW)") or _find_labeled_value(ws, "Motor")
+            voltage_str = _find_labeled_value(ws, "Voltage")
+            speed_str = _find_labeled_value(ws, "Speed")
+            op_speed = _speed_code_to_rpm(speed_str) or str(speed_str).strip() if speed_str is not None else ""
+            pole_str = _speed_code_to_poles(speed_str) or _speed_to_poles(op_speed)
+            fla_str = _find_labeled_value(ws, "F.L.A") or _find_labeled_value(ws, "Motor Current")
+            op_temp = _find_labeled_value(ws, "Op Temp") or "20"
+            serial_no = _find_labeled_value(ws, "Contract No")
+            phase = _find_labeled_value(ws, "Phase")
+            frequency = _find_labeled_value(ws, "Frequency")
+            connection = _find_labeled_value(ws, "Connection") or _find_labeled_value(ws, "Conn") or _find_labeled_value(ws, "Connetion")
+            date_of_manuf = _find_labeled_value(ws, "Date")
+            customer_name = _find_labeled_value(ws, "Customer Name") or ""
+            relube_interval = _find_labeled_value(ws, "Re-Lubrication Int") or "N/A"
+            max_speed = op_speed
         else:
             ws = wb["Name Plate"]
             series = _find_labeled_value(ws, "Series")

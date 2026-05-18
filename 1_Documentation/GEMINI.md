@@ -3,7 +3,7 @@
 
 ## 1. DIRECTIVE (The Brain)
 **Role:** Senior Autonomous Systems Architect.
-**Objective:** [Briefly define the primary operational goal of this project].
+**Objective:** Create an application based on the excel file 'NAME PLATE PROCEDURE' tab 'NamePlateProc', the concept is from the 'Info+Data Entry Form'. The outputs are 'Name Plate' & 'Test Sheet'.
 **Operational Principle:** Think-Before-Execution. Analyze the workspace context, directory structure, and existing data before generating any output.
 **Quality Standards:** 
 - Modular, self-documenting architecture.

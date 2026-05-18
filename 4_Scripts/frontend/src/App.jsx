@@ -108,7 +108,7 @@ function App() {
         const map = { "2": "2880", "4": "1440", "6": "960", "8": "720" };
         const sp = map[pole] || "";
         if (sp) {
-          setFormData((prev) => ({ ...prev, op_speed: prev.op_speed || sp }));
+          setFormData((prev) => ({ ...prev, op_speed: sp }));
         }
       }
 
@@ -119,7 +119,7 @@ function App() {
           const flaRes = await fetch(`${apiBase}/api/fla?motor=${encodeURIComponent(motor)}&pole=${encodeURIComponent(pole)}&voltage=${encodeURIComponent(voltage)}`);
           const flaData = await _readJsonSafely(flaRes);
           if (flaRes.ok && flaData?.fla) {
-            setFormData((prev) => ({ ...prev, fla: prev.fla || String(flaData.fla) }));
+            setFormData((prev) => ({ ...prev, fla: String(flaData.fla) }));
           }
         }
       } catch {

@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import logo from "../assets/FM - LOGO.jpg";
 
 // Physical dimensions in mm (from pdf_generator.py)
 const PLATE_W_MM = 105.0;
@@ -14,9 +15,6 @@ const mm = (val) => `${val * SCALE}px`;
 
 // Font sizes (converted from pt to mm approx: 1pt ~ 0.35mm)
 const fonts = {
-  headerMain: mm(18 * 0.35),    // 18pt
-  headerSub: mm(12 * 0.35),     // 12pt
-  headerTag: mm(8 * 0.35),      // 8pt
   sectionTitle: mm(12 * 0.35),  // 12pt
   label: mm(8 * 0.35),          // 8pt
   value: mm(8 * 0.35),          // 8pt
@@ -68,8 +66,6 @@ const X = {
 };
 
 // Row Top Y calculation (CSS Top)
-// PDF: ROW0_BOX_TOP_Y_MM = 104 - 34 = 70
-// CSS Top = 34
 const ROW0_TOP = 34.0;
 const ROW_PITCH = 6.5;
 const rowTop = (i) => ROW0_TOP + (i * ROW_PITCH);
@@ -104,14 +100,14 @@ const AbsoluteLabel = ({ x, y, text, width, align = "left", size = fonts.label, 
   <div style={{
     position: "absolute",
     left: mm(x),
-    top: mm(y), // This should be centered relative to the box
+    top: mm(y),
     width: width ? mm(width) : "auto",
     color: COLORS.label,
     fontSize: size,
     fontFamily: "Helvetica, Arial, sans-serif",
     fontWeight: bold ? "bold" : "normal",
     textAlign: align,
-    whiteSpace: "pre" // Respect newlines
+    whiteSpace: "pre"
   }}>
     {text}
   </div>
@@ -131,7 +127,6 @@ const UnitLabel = ({ x, y, text }) => (
   </div>
 );
 
-// Screw Helper
 const Screw = ({ x, y }) => (
   <div style={{
     position: "absolute",
@@ -165,12 +160,9 @@ export default function LivePreview({ formData }) {
     return () => ro.disconnect();
   }, []);
 
-  // Box vertical offset for labels (centering text vertically relative to 5.5mm box)
-  // Box is 5.5mm high. Text is ~2.8mm high.
-  // Top padding approx 1.35mm.
-  const labelOffsetY = 1.2; 
-  const unitOffsetY = 1.5;
-  const maxSpeed = formData.max_speed || formData.op_speed || "";
+  const labelOffsetY = 1.2;
+  const unitOffsetY  = 1.5;
+  const maxSpeed     = formData.max_speed || formData.op_speed || "";
 
   return (
     <div ref={hostRef} style={{ width: "100%", display: "flex", justifyContent: "center" }}>
@@ -186,106 +178,110 @@ export default function LivePreview({ formData }) {
           fontFamily: "Helvetica, Arial, sans-serif",
           boxSizing: "border-box",
         }}>
-      {/* Inner Border Line (White/Silver line inside) */}
-      <div style={{
-        position: "absolute",
-        left: mm(BORDER_MARGIN_MM),
-        top: mm(BORDER_MARGIN_MM),
-        width: mm(PLATE_W_MM - 2 * BORDER_MARGIN_MM),
-        height: mm(PLATE_H_MM - 2 * BORDER_MARGIN_MM),
-        border: "2px solid #d1d5db",
-        pointerEvents: "none"
-      }} />
 
-      {/* Screws */}
-      <Screw x={1.5} y={1.5} />
-      <Screw x={PLATE_W_MM - 4.5} y={1.5} />
-      <Screw x={1.5} y={PLATE_H_MM - 4.5} />
-      <Screw x={PLATE_W_MM - 4.5} y={PLATE_H_MM - 4.5} />
+          {/* Inner Border Line */}
+          <div style={{
+            position: "absolute",
+            left: mm(BORDER_MARGIN_MM),
+            top: mm(BORDER_MARGIN_MM),
+            width: mm(PLATE_W_MM - 2 * BORDER_MARGIN_MM),
+            height: mm(PLATE_H_MM - 2 * BORDER_MARGIN_MM),
+            border: "2px solid #d1d5db",
+            pointerEvents: "none"
+          }} />
 
-      {/* Header */}
-      <div style={{ position: "absolute", width: "100%", top: mm(10 - 5), textAlign: "center" }}>
-        <div style={{ fontSize: fonts.headerMain, fontWeight: "bold", color: COLORS.label }}>FAN</div>
-      </div>
-      <div style={{ position: "absolute", width: "100%", top: mm(17 - 3.5), textAlign: "center" }}>
-        <div style={{ fontSize: fonts.headerSub, fontWeight: "bold", color: COLORS.label }}>MOVEMENT</div>
-      </div>
-      <div style={{ position: "absolute", width: "100%", top: mm(22 - 2), textAlign: "center" }}>
-        <div style={{ fontSize: fonts.headerTag, fontWeight: "bold", color: COLORS.label }}>AIR AND GAS MOVEMENT SOLUTIONS</div>
-      </div>
+          {/* Screws */}
+          <Screw x={1.5}               y={1.5} />
+          <Screw x={PLATE_W_MM - 4.5}  y={1.5} />
+          <Screw x={1.5}               y={PLATE_H_MM - 4.5} />
+          <Screw x={PLATE_W_MM - 4.5}  y={PLATE_H_MM - 4.5} />
 
-      <AbsoluteLabel x={X.leftLabel} y={27} text="FAN DATA" size={fonts.sectionTitle} />
+          {/* Logo — mixBlendMode multiply makes the white background
+              transparent against the blue nameplate */}
+          <div style={{
+            position: "absolute",
+            top: mm(7),
+            left: "50%",
+            transform: "translateX(-50%)",
+            textAlign: "center"
+          }}>
+            <img
+              src={logo}
+              alt="FM Logo"
+              style={{
+                width: mm(28.7),
+                height: "auto",
+                mixBlendMode: "multiply",
+                display: "block"
+              }}
+            />
+          </div>
 
-      {/* Row 0 */}
-      <AbsoluteLabel x={X.leftLabel} y={rowTop(0) + labelOffsetY} text="Series:" />
-      <AbsoluteBox x={X.series} y={rowTop(0)} w={X.seriesW} h={BOX_H_MM} value={formData.series} wrap={true} />
-      
-      <AbsoluteLabel x={X.rightLabel} y={rowTop(0) + labelOffsetY} text="Size:" />
-      <AbsoluteBox x={X.size} y={rowTop(0)} w={X.sizeW} h={BOX_H_MM} value={formData.size} />
+          <AbsoluteLabel x={X.leftLabel} y={27} text="FAN DATA" size={fonts.sectionTitle} />
 
-      {/* Row 1 */}
-      <AbsoluteLabel x={X.leftLabel} y={rowTop(1) + labelOffsetY - 0.4} text={"Class /\nPitch:"} size={fonts.unit} />
-      <AbsoluteBox x={X.leftStd} y={rowTop(1)} w={X.leftStdW} h={BOX_H_MM} value={formData.class_pitch} />
+          {/* Row 0 */}
+          <AbsoluteLabel x={X.leftLabel} y={rowTop(0) + labelOffsetY} text="Series:" />
+          <AbsoluteBox   x={X.series}    y={rowTop(0)} w={X.seriesW} h={BOX_H_MM} value={formData.series} wrap={true} />
+          <AbsoluteLabel x={X.rightLabel} y={rowTop(0) + labelOffsetY} text="Size:" />
+          <AbsoluteBox   x={X.size}       y={rowTop(0)} w={X.sizeW}   h={BOX_H_MM} value={formData.size} />
 
-      <AbsoluteLabel x={X.rightLabel} y={rowTop(1) + labelOffsetY} text="Op. Speed:" />
-      <AbsoluteBox x={X.rightStd} y={rowTop(1)} w={X.rightStdW} h={BOX_H_MM} value={formData.op_speed} />
-      <UnitLabel x={X.rightStd + X.rightStdW + 1} y={rowTop(1) + unitOffsetY} text="RPM" />
+          {/* Row 1 */}
+          <AbsoluteLabel x={X.leftLabel} y={rowTop(1) + labelOffsetY - 0.4} text={"Class /\nPitch:"} size={fonts.unit} />
+          <AbsoluteBox   x={X.leftStd}   y={rowTop(1)} w={X.leftStdW} h={BOX_H_MM} value={formData.class_pitch} />
+          <AbsoluteLabel x={X.rightLabel} y={rowTop(1) + labelOffsetY} text="Op. Speed:" />
+          <AbsoluteBox   x={X.rightStd}   y={rowTop(1)} w={X.rightStdW} h={BOX_H_MM} value={formData.op_speed} />
+          <UnitLabel x={X.rightStd + X.rightStdW + 1} y={rowTop(1) + unitOffsetY} text="RPM" />
 
-      {/* Row 2 */}
-      <AbsoluteLabel x={X.leftLabel} y={rowTop(2) + labelOffsetY} text="Motor:" />
-      <AbsoluteBox x={X.leftStd} y={rowTop(2)} w={X.leftStdW} h={BOX_H_MM} value={formData.motor} />
-      <UnitLabel x={X.leftStd + X.leftStdW + 1} y={rowTop(2) + unitOffsetY} text="kW" />
+          {/* Row 2 */}
+          <AbsoluteLabel x={X.leftLabel} y={rowTop(2) + labelOffsetY} text="Motor:" />
+          <AbsoluteBox   x={X.leftStd}   y={rowTop(2)} w={X.leftStdW} h={BOX_H_MM} value={formData.motor} />
+          <UnitLabel x={X.leftStd + X.leftStdW + 1} y={rowTop(2) + unitOffsetY} text="kW" />
+          <AbsoluteLabel x={X.rightLabel} y={rowTop(2) + labelOffsetY} text="Max Speed:" />
+          <AbsoluteBox   x={X.rightStd}   y={rowTop(2)} w={X.rightStdW} h={BOX_H_MM} value={maxSpeed} />
+          <UnitLabel x={X.rightStd + X.rightStdW + 1} y={rowTop(2) + unitOffsetY} text="RPM" />
 
-      <AbsoluteLabel x={X.rightLabel} y={rowTop(2) + labelOffsetY} text="Max Speed:" />
-      <AbsoluteBox x={X.rightStd} y={rowTop(2)} w={X.rightStdW} h={BOX_H_MM} value={maxSpeed} />
-      <UnitLabel x={X.rightStd + X.rightStdW + 1} y={rowTop(2) + unitOffsetY} text="RPM" />
+          {/* Row 3 */}
+          <AbsoluteLabel x={X.leftLabel} y={rowTop(3) + labelOffsetY} text="Voltage:" />
+          <AbsoluteBox   x={X.leftStd}   y={rowTop(3)} w={X.leftStdW} h={BOX_H_MM} value={formData.voltage} />
+          <UnitLabel x={X.leftStd + X.leftStdW + 1} y={rowTop(3) + unitOffsetY} text="V" />
+          <AbsoluteLabel x={X.rightLabel} y={rowTop(3) + labelOffsetY} text="Phase:" />
+          <AbsoluteBox   x={X.rightStd}   y={rowTop(3)} w={X.rightStdW} h={BOX_H_MM} value={formData.phase} />
 
-      {/* Row 3 */}
-      <AbsoluteLabel x={X.leftLabel} y={rowTop(3) + labelOffsetY} text="Voltage:" />
-      <AbsoluteBox x={X.leftStd} y={rowTop(3)} w={X.leftStdW} h={BOX_H_MM} value={formData.voltage} />
-      <UnitLabel x={X.leftStd + X.leftStdW + 1} y={rowTop(3) + unitOffsetY} text="V" />
+          {/* Row 4 */}
+          <AbsoluteLabel x={X.leftLabel} y={rowTop(4) + labelOffsetY} text="F.L.A:" />
+          <AbsoluteBox   x={X.leftStd}   y={rowTop(4)} w={X.leftStdW} h={BOX_H_MM} value={formData.fla} />
+          <AbsoluteLabel x={X.rightLabel} y={rowTop(4) + labelOffsetY} text="Frequency:" />
+          <AbsoluteBox   x={X.rightStd}   y={rowTop(4)} w={X.rightStdW} h={BOX_H_MM} value={formData.frequency} />
+          <UnitLabel x={X.rightStd + X.rightStdW + 1} y={rowTop(4) + unitOffsetY} text="Hz" />
 
-      <AbsoluteLabel x={X.rightLabel} y={rowTop(3) + labelOffsetY} text="Phase:" />
-      <AbsoluteBox x={X.rightStd} y={rowTop(3)} w={X.rightStdW} h={BOX_H_MM} value={formData.phase} />
+          {/* Row 5 */}
+          <AbsoluteLabel x={X.leftLabel} y={rowTop(5) + labelOffsetY} text="Op Temp:" />
+          <AbsoluteBox   x={X.leftSmall}  y={rowTop(5)} w={X.leftSmallW} h={BOX_H_MM} value={formData.op_temp} />
+          <UnitLabel x={X.leftSmall + X.leftSmallW + 1} y={rowTop(5) + unitOffsetY} text="°C" />
+          <AbsoluteLabel x={X.rightLabel} y={rowTop(5) + labelOffsetY} text="Conn:" />
+          <AbsoluteBox   x={X.rightStd}   y={rowTop(5)} w={X.rightStdW} h={BOX_H_MM} value={formData.connection} />
 
-      {/* Row 4 */}
-      <AbsoluteLabel x={X.leftLabel} y={rowTop(4) + labelOffsetY} text="F.L.A:" />
-      <AbsoluteBox x={X.leftStd} y={rowTop(4)} w={X.leftStdW} h={BOX_H_MM} value={formData.fla} />
+          {/* Row 6 */}
+          <AbsoluteLabel x={X.leftLabel} y={rowTop(6) + labelOffsetY} text="Serial No:" />
+          <AbsoluteBox   x={X.leftSmall}  y={rowTop(6)} w={X.leftSmallW} h={BOX_H_MM} value={formData.serial_no} />
+          <AbsoluteLabel x={X.rightLabel} y={rowTop(6)}       text="Date of"  size={fonts.unit} />
+          <AbsoluteLabel x={X.rightLabel} y={rowTop(6) + 2.5} text="Manuf.:"  size={fonts.unit} />
+          <AbsoluteBox   x={X.rightStd}   y={rowTop(6)} w={X.rightStdW} h={BOX_H_MM} value={formatMonthYear(formData.date_of_manuf)} />
 
-      <AbsoluteLabel x={X.rightLabel} y={rowTop(4) + labelOffsetY} text="Frequency:" />
-      <AbsoluteBox x={X.rightStd} y={rowTop(4)} w={X.rightStdW} h={BOX_H_MM} value={formData.frequency} />
-      <UnitLabel x={X.rightStd + X.rightStdW + 1} y={rowTop(4) + unitOffsetY} text="Hz" />
+          {/* Re-Lubrication Interval */}
+          <AbsoluteLabel x={X.leftLabel} y={82.5 + labelOffsetY} text="Re-Lubrication Interval:" size={fonts.unit} />
+          <AbsoluteBox   x={X.relube}    y={82.5} w={X.relubeW} h={BOX_H_MM} value={formData.relube_interval} />
 
-      {/* Row 5 */}
-      <AbsoluteLabel x={X.leftLabel} y={rowTop(5) + labelOffsetY} text="Op Temp:" />
-      <AbsoluteBox x={X.leftSmall} y={rowTop(5)} w={X.leftSmallW} h={BOX_H_MM} value={formData.op_temp} />
-      <UnitLabel x={X.leftSmall + X.leftSmallW + 1} y={rowTop(5) + unitOffsetY} text="°C" />
-
-      <AbsoluteLabel x={X.rightLabel} y={rowTop(5) + labelOffsetY} text="Conn:" />
-      <AbsoluteBox x={X.rightStd} y={rowTop(5)} w={X.rightStdW} h={BOX_H_MM} value={formData.connection} />
-
-      {/* Row 6 */}
-      <AbsoluteLabel x={X.leftLabel} y={rowTop(6) + labelOffsetY} text="Serial No:" />
-      <AbsoluteBox x={X.leftSmall} y={rowTop(6)} w={X.leftSmallW} h={BOX_H_MM} value={formData.serial_no} />
-
-      <AbsoluteLabel x={X.rightLabel} y={rowTop(6)} text="Date of" size={fonts.unit} />
-      <AbsoluteLabel x={X.rightLabel} y={rowTop(6) + 2.5} text="Manuf.:" size={fonts.unit} />
-      <AbsoluteBox x={X.rightStd} y={rowTop(6)} w={X.rightStdW} h={BOX_H_MM} value={formatMonthYear(formData.date_of_manuf)} />
-
-      {/* Relube - Shifted UP */}
-      <AbsoluteLabel x={X.leftLabel} y={82.5 + labelOffsetY} text="Re-Lubrication Interval:" size={fonts.unit} />
-      <AbsoluteBox x={X.relube} y={82.5} w={X.relubeW} h={BOX_H_MM} value={formData.relube_interval} />
-
-      {/* Footer - Shifted UP */}
-      <div style={{ position: "absolute", width: "100%", top: mm(90), textAlign: "center" }}>
-        <div style={{ fontSize: fonts.footer, fontWeight: "bold", color: COLORS.label }}>FAN MOVEMENT 011 682 3020</div>
-      </div>
-      <div style={{ position: "absolute", width: "100%", top: mm(93), textAlign: "center" }}>
-        <div style={{ fontSize: fonts.footerSmall, color: COLORS.label }}>www.fanmovement.co.za</div>
-      </div>
-      <div style={{ position: "absolute", width: "100%", top: mm(95.5), textAlign: "center" }}>
-        <div style={{ fontSize: fonts.footerSmall, color: COLORS.label }}>info@fanmovement.co.za</div>
-      </div>
+          {/* Footer */}
+          <div style={{ position: "absolute", width: "100%", top: mm(90), textAlign: "center" }}>
+            <div style={{ fontSize: fonts.footer, fontWeight: "bold", color: COLORS.label }}>FAN MOVEMENT 011 682 3020</div>
+          </div>
+          <div style={{ position: "absolute", width: "100%", top: mm(93), textAlign: "center" }}>
+            <div style={{ fontSize: fonts.footerSmall, color: COLORS.label }}>www.fanmovement.co.za</div>
+          </div>
+          <div style={{ position: "absolute", width: "100%", top: mm(95.5), textAlign: "center" }}>
+            <div style={{ fontSize: fonts.footerSmall, color: COLORS.label }}>info@fanmovement.co.za</div>
+          </div>
 
         </div>
       </div>

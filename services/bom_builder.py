@@ -1,0 +1,73 @@
+from datetime import datetime
+from models import db, Item, WorksOrder, BOMLine, SalesOrder
+
+def generate_wo_number():
+    """
+    Generates a Works Order number in format: WO-YYYYMMDD-NNN
+    """
+    today_str = datetime.utcnow().strftime('%Y%m%d')
+    prefix = f"WO-{today_str}-"
+    
+    # Query works orders created today matching this prefix pattern
+    today_wos = WorksOrder.query.filter(WorksOrder.wo_number.like(f"{prefix}%")).all()
+    
+    # Extract numbers and find max
+    max_num = 0
+    for wo in today_wos:
+        try:
+            num_part = int(wo.wo_number.split('-')[-1])
+            if num_part > max_num:
+                max_num = num_part
+        except (ValueError, IndexError):
+            continue
+            
+    next_num = max_num + 1
+    return f"{prefix}{next_num:03d}"
+
+def create_works_order_or_picking_list(so_id, order_type, items_list, issued_by="System"):
+    """
+    Creates a WorksOrder (ASSEMBLY or STOCK) and associated BOMLines.
+    items_list is a list of dicts: [{'item_id': int, 'qty_required': float, 'notes': str}]
+    """
+    so = SalesOrder.query.get(so_id)
+    if not so:
+        raise ValueError(f"Sales Order with id {so_id} not found.")
+
+    wo_number = generate_wo_number()
+    
+    wo = WorksOrder(
+        wo_number=wo_number,
+        so_id=so_id,
+        order_type=order_type, # 'ASSEMBLY' or 'STOCK'
+        status='Open',
+        issued_by=issued_by,
+        created_at=datetime.utcnow()
+    )
+    
+    db.session.add(wo)
+    db.session.flush() # Populate wo.id
+    
+    for item_data in items_list:
+        item_id = item_data['item_id']
+        qty_required = float(item_data['qty_required'])
+        notes = item_data.get('notes', '')
+        
+        item = Item.query.get(item_id)
+        if not item:
+            raise ValueError(f"Item with id {item_id} not found.")
+            
+        # Unit cost is average cost if set, else last cost
+        unit_cost = item.avg_cost if item.avg_cost > 0 else item.last_cost
+        
+        bom_line = BOMLine(
+            wo_id=wo.id,
+            item_id=item_id,
+            qty_required=qty_required,
+            qty_issued=0.0,
+            unit_cost=unit_cost,
+            notes=notes
+        )
+        db.session.add(bom_line)
+        
+    db.session.commit()
+    return wo

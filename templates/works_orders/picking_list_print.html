@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Picking List {{ wo.wo_number }}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/print.css') }}">
+    <style>
+        @page { size: A4; margin: 15mm; }
+        body { font-family: 'Courier New', Courier, monospace; font-size: 11pt; color: #000; background: #fff; }
+        .document-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 3px solid #1A2332; }
+        .doc-title { font-size: 22pt; font-weight: 700; color: #E8610A; text-transform: uppercase; letter-spacing: 2px; }
+        .doc-number { font-size: 14pt; font-weight: 700; text-align: right; }
+        .company-info { font-size: 9pt; line-height: 1.5; }
+        .info-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+        .info-table td { padding: 4px 8px; font-size: 9pt; vertical-align: top; }
+        .info-table td:first-child { font-weight: 600; width: 140px; }
+        .items-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 10pt; }
+        .items-table th { background: #1A2332; color: #fff; padding: 8px 6px; text-align: left; font-size: 8pt; text-transform: uppercase; }
+        .items-table td { padding: 8px 6px; border-bottom: 1px solid #ccc; }
+        .items-table tfoot td { font-weight: 700; padding: 8px 6px; border-top: 2px solid #1A2332; }
+        .signoff-block { margin-top: 40px; display: grid; grid-template-columns: 1fr 1fr; gap: 40px; }
+        .signoff-line { border-top: 1px solid #000; padding-top: 4px; margin-top: 20px; font-size: 9pt; width: 220px; }
+        .status-badge { display: inline-block; padding: 3px 10px; border: 2px solid #16A34A; color: #16A34A; font-weight: 700; font-size: 10pt; }
+        .footer-note { margin-top: 30px; font-size: 7pt; color: #666; text-align: center; border-top: 1px solid #ccc; padding-top: 8px; }
+        .logo-placeholder { font-size: 14pt; font-weight: 700; color: #1A2332; }
+        .logo-placeholder span { color: #E8610A; }
+        .check-col { text-align: center; width: 60px; }
+    </style>
+</head>
+<body>
+    <div class="document-header">
+        <div>
+            <div class="logo-placeholder">FAN <span>MOVEMENT</span></div>
+            <div class="company-info">
+                Fan Movement (Pty) Ltd<br>
+                3 Sivewright Ave, Alrode South<br>
+                VAT: 4080272422
+            </div>
+        </div>
+        <div style="text-align: right;">
+            <div class="doc-title">PICKING LIST</div>
+            <div class="doc-number">{{ wo.wo_number }}</div>
+            <div style="margin-top: 6px;"><span class="status-badge">{{ wo.status }}</span></div>
+        </div>
+    </div>
+
+    <table class="info-table">
+        <tr>
+            <td>SO Number:</td>
+            <td>{{ so.so_number if so else '-' }}</td>
+            <td>Customer:</td>
+            <td>{{ so.customer_name if so else '-' }}</td>
+        </tr>
+        <tr>
+            <td>Reference:</td>
+            <td>{{ so.reference if so else '-' }}</td>
+            <td>Delivery:</td>
+            <td>{{ so.delivery_address if so else '-' }}</td>
+        </tr>
+        <tr>
+            <td>Date Issued:</td>
+            <td>{{ wo.created_at.strftime('%d/%m/%Y') if wo.created_at else '-' }}</td>
+            <td>Delivery Date:</td>
+            <td>{{ so.delivery_date.strftime('%d/%m/%Y') if so and so.delivery_date else '-' }}</td>
+        </tr>
+        <tr>
+            <td>Sales Rep:</td>
+            <td>{{ so.sales_rep if so and so.sales_rep else '-' }}</td>
+            <td>Issued By:</td>
+            <td>{{ wo.issued_by or '-' }}</td>
+        </tr>
+    </table>
+
+    <table class="items-table">
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>Item Code</th>
+                <th>Description</th>
+                <th style="text-align: right;">Qty to Pick</th>
+                <th>Bin/Location</th>
+                <th class="check-col">Picked?</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for line in lines %}
+            <tr>
+                <td>{{ loop.index }}</td>
+                <td><strong>{{ line.item_code }}</strong></td>
+                <td>{{ line.description }}</td>
+                <td style="text-align: right;">{{ "%.2f"|format(line.qty_required) }}</td>
+                <td>-</td>
+                <td class="check-col">[  ]</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+        <tfoot>
+            <tr>
+                <td colspan="3" style="text-align: right; font-weight: 600;">Total Items:</td>
+                <td style="text-align: right; font-weight: 700;">{{ lines|length }}</td>
+                <td colspan="2"></td>
+            </tr>
+        </tfoot>
+    </table>
+
+    <div class="signoff-block">
+        <div>
+            <div style="font-weight: 600; font-size: 9pt; margin-bottom: 4px;">Picked by</div>
+            <div class="signoff-line">_________________________</div>
+            <div style="font-size: 8pt; color: #666; margin-top: 2px;">Name & Signature & Date</div>
+        </div>
+        <div>
+            <div style="font-weight: 600; font-size: 9pt; margin-bottom: 4px;">Checked by</div>
+            <div class="signoff-line">_________________________</div>
+            <div style="font-size: 8pt; color: #666; margin-top: 2px;">Name & Signature & Date</div>
+        </div>
+    </div>
+
+    <div class="footer-note">
+        This Picking List authorises the stores department to release the listed items from finished goods / stores.
+        Tick the "Picked?" column for each item before signing off.
+    </div>
+
+    <script>
+        window.onload = function() { window.print(); };
+    </script>
+</body>
+</html>

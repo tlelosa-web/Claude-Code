@@ -1,0 +1,111 @@
+{% extends 'base.html' %}
+{% block title %}SO {{ so.so_number }} - SOPS{% endblock %}
+{% block page_title %}Sales Order: {{ so.so_number }}{% endblock %}
+
+{% block content %}
+<div class="card animate-fade-in" style="margin-bottom: 24px;">
+    <div class="card-header">
+        <h2 class="card-title">Order Details</h2>
+        <div style="display: flex; gap: 8px;">
+            <a href="{{ url_for('sales_orders.build_bom', order_id=so.id) }}" class="btn btn-primary">Build BOM / Works Pack</a>
+            <a href="{{ url_for('sales_orders.list_orders') }}" class="btn btn-secondary">Back to List</a>
+        </div>
+    </div>
+    
+    <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 24px;">
+        <div>
+            <table class="detail-table">
+                <tr><td class="detail-label">SO Number</td><td class="detail-value">{{ so.so_number }}</td></tr>
+                <tr><td class="detail-label">Reference</td><td class="detail-value">{{ so.reference or '-' }}</td></tr>
+                <tr><td class="detail-label">Customer</td><td class="detail-value">{{ so.customer_name or '-' }}</td></tr>
+                <tr><td class="detail-label">VAT No.</td><td class="detail-value">{{ so.customer_vat or '-' }}</td></tr>
+                <tr><td class="detail-label">Delivery Address</td><td class="detail-value">{{ so.delivery_address or '-' }}</td></tr>
+                <tr><td class="detail-label">Sales Rep</td><td class="detail-value">{{ so.sales_rep or '-' }}</td></tr>
+            </table>
+        </div>
+        <div>
+            <table class="detail-table">
+                <tr><td class="detail-label">Date</td><td class="detail-value">{{ so.so_date.strftime('%Y-%m-%d') if so.so_date else '-' }}</td></tr>
+                <tr><td class="detail-label">Delivery Date</td><td class="detail-value">{{ so.delivery_date.strftime('%Y-%m-%d') if so.delivery_date else '-' }}</td></tr>
+                <tr><td class="detail-label">Status</td><td class="detail-value"><span class="badge badge-{{ so.status.lower() }}">{{ so.status }}</span></td></tr>
+                <tr><td class="detail-label">Created</td><td class="detail-value">{{ so.created_at.strftime('%Y-%m-%d %H:%M') if so.created_at else '-' }}</td></tr>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Line Items Table -->
+<div class="card animate-fade-in" style="margin-bottom: 24px;">
+    <div class="card-header">
+        <h2 class="card-title">Line Items</h2>
+    </div>
+    {% if so.line_items %}
+    <div style="overflow-x: auto;">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Description</th>
+                    <th>Qty</th>
+                    <th>Excl. Price</th>
+                    <th>VAT %</th>
+                    <th>Excl. Total</th>
+                    <th>Incl. Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in so.line_items %}
+                <tr>
+                    <td>{{ loop.index }}</td>
+                    <td>{{ item.description or '' }}</td>
+                    <td>{{ item.qty }}</td>
+                    <td>R {{ "%.2f"|format(item.excl_price) }}</td>
+                    <td>{{ item.vat_pct }}%</td>
+                    <td>R {{ "%.2f"|format(item.excl_total) }}</td>
+                    <td>R {{ "%.2f"|format(item.incl_total) }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p style="padding: 24px; color: var(--text-muted); text-align: center;">No line items recorded.</p>
+    {% endif %}
+</div>
+
+<!-- Related Works Orders -->
+<div class="card animate-fade-in">
+    <div class="card-header">
+        <h2 class="card-title">Related Works Orders / Picking Lists</h2>
+        <a href="{{ url_for('sales_orders.build_bom', order_id=so.id) }}" class="btn btn-primary">Create New</a>
+    </div>
+    {% if wos %}
+    <div style="overflow-x: auto;">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>WO/PL Number</th>
+                    <th>Type</th>
+                    <th>Status</th>
+                    <th>Created</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for wo in wos %}
+                <tr>
+                    <td><a href="{{ url_for('works_orders.view_order', order_id=wo.id) }}" class="link-primary">{{ wo.wo_number }}</a></td>
+                    <td><span class="badge" style="background: var(--brand-secondary);">{{ "Assembly" if wo.order_type == "ASSEMBLY" else "Stock" }}</span></td>
+                    <td><span class="badge badge-{{ wo.status.lower().replace(' ', '') }}">{{ wo.status }}</span></td>
+                    <td>{{ wo.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                    <td><a href="{{ url_for('works_orders.view_order', order_id=wo.id) }}" class="btn btn-secondary" style="padding: 4px 10px; font-size: 0.75rem;">View</a></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p style="padding: 24px; color: var(--text-muted); text-align: center;">No Works Orders or Picking Lists have been created for this Sales Order yet.</p>
+    {% endif %}
+</div>
+{% endblock %}

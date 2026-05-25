@@ -1,0 +1,115 @@
+{% extends 'base.html' %}
+{% block title %}{% if wo.order_type == 'ASSEMBLY' %}Works Order{% else %}Picking List{% endif %} {{ wo.wo_number }} - SOPS{% endblock %}
+{% block page_title %}{% if wo.order_type == 'ASSEMBLY' %}Works Order{% else %}Picking List{% endif %}: {{ wo.wo_number }}{% endblock %}
+
+{% block content %}
+<div class="card animate-fade-in" style="margin-bottom: 24px;">
+    <div class="card-header">
+        <h2 class="card-title">{% if wo.order_type == 'ASSEMBLY' %}Assembly Order Details{% else %}Stock Order Details{% endif %}</h2>
+        <div style="display: flex; gap: 8px;">
+            <a href="{{ url_for('works_orders.print_order', order_id=wo.id) }}" class="btn btn-primary" target="_blank">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+                Print Document
+            </a>
+            {% if wo.status == 'Open' or wo.status == 'In Progress' %}
+                {% if wo.order_type == 'ASSEMBLY' %}
+                <form method="POST" action="{{ url_for('works_orders.mark_complete', order_id=wo.id) }}" style="display: inline;">
+                    <button type="submit" class="btn btn-success" onclick="return confirm('Mark this Works Order as Complete and deduct stock?')">Mark as Complete</button>
+                </form>
+                {% else %}
+                <form method="POST" action="{{ url_for('works_orders.confirm_pick', order_id=wo.id) }}" style="display: inline;">
+                    <button type="submit" class="btn btn-success" onclick="return confirm('Confirm pick and issue stock?')">Confirm Pick & Issue</button>
+                </form>
+                {% endif %}
+            {% endif %}
+            <a href="{{ url_for('works_orders.list_orders') }}" class="btn btn-secondary">Back</a>
+        </div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 24px;">
+        <div>
+            <table class="detail-table">
+                <tr><td class="detail-label">WO Number</td><td class="detail-value">{{ wo.wo_number }}</td></tr>
+                <tr><td class="detail-label">Sales Order</td><td class="detail-value">{{ so.so_number if so else '-' }}</td></tr>
+                <tr><td class="detail-label">Customer</td><td class="detail-value">{{ so.customer_name if so else '-' }}</td></tr>
+                <tr><td class="detail-label">Delivery Address</td><td class="detail-value">{{ so.delivery_address if so else '-' }}</td></tr>
+            </table>
+        </div>
+        <div>
+            <table class="detail-table">
+                <tr><td class="detail-label">Order Type</td><td class="detail-value"><span class="badge" style="background: var(--brand-primary);">{{ "Assembly" if wo.order_type == "ASSEMBLY" else "Stock" }}</span></td></tr>
+                <tr><td class="detail-label">Status</td><td class="detail-value"><span class="badge badge-{{ wo.status.lower().replace(' ', '') }}">{{ wo.status }}</span></td></tr>
+                <tr><td class="detail-label">Issued By</td><td class="detail-value">{{ wo.issued_by or '-' }}</td></tr>
+                <tr><td class="detail-label">Date Issued</td><td class="detail-value">{{ wo.created_at.strftime('%Y-%m-%d') if wo.created_at else '-' }}</td></tr>
+                {% if wo.completed_at %}
+                <tr><td class="detail-label">Completed</td><td class="detail-value">{{ wo.completed_at.strftime('%Y-%m-%d %H:%M') }}</td></tr>
+                {% endif %}
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Components Table -->
+<div class="card animate-fade-in">
+    <div class="card-header">
+        <h2 class="card-title">{% if wo.order_type == 'ASSEMBLY' %}Components{% else %}Items to Pick{% endif %}</h2>
+    </div>
+    {% if lines %}
+    <div style="overflow-x: auto;">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Item Code</th>
+                    <th>Description</th>
+                    <th>Category</th>
+                    <th>Qty Required</th>
+                    {% if wo.order_type == 'ASSEMBLY' %}
+                    <th>Qty Issued</th>
+                    <th>Unit Cost</th>
+                    {% endif %}
+                    <th>Total Cost</th>
+                    <th>Qty on Hand</th>
+                    {% if wo.order_type == 'STOCK' %}
+                    <th>Bin/Location</th>
+                    {% endif %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for line in lines %}
+                <tr class="{% if line.shortfall > 0 %}row-amber{% endif %}">
+                    <td>{{ loop.index }}</td>
+                    <td><strong>{{ line.item_code }}</strong></td>
+                    <td>{{ line.description }}</td>
+                    <td>{{ line.category or '-' }}</td>
+                    <td>{{ line.qty_required }}</td>
+                    {% if wo.order_type == 'ASSEMBLY' %}
+                    <td>{{ line.qty_issued }}</td>
+                    <td>R {{ "%.2f"|format(line.unit_cost) }}</td>
+                    {% endif %}
+                    <td>R {{ "%.2f"|format(line.total_cost) }}</td>
+                    <td style="{% if line.shortfall > 0 %}color: var(--brand-amber); font-weight: 600;{% endif %}">
+                        {{ line.qty_on_hand }}
+                        {% if line.shortfall > 0 %}
+                        <span style="color: var(--brand-danger);">(shortfall: {{ line.shortfall }})</span>
+                        {% endif %}
+                    </td>
+                    {% if wo.order_type == 'STOCK' %}
+                    <td>-</td>
+                    {% endif %}
+                </tr>
+                {% endfor %}
+            </tbody>
+            <tfoot>
+                <tr style="font-weight: 700; background: var(--bg-secondary);">
+                    <td colspan="{% if wo.order_type == 'ASSEMBLY' %}6{% else %}5{% endif %}" style="text-align: right; padding: 12px;">Total Excl. Cost:</td>
+                    <td colspan="2" style="padding: 12px; color: var(--brand-primary); font-size: 1.1rem;">R {{ "%.2f"|format(total_excl_cost) }}</td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+    {% else %}
+    <p style="padding: 24px; color: var(--text-muted); text-align: center;">No components have been added to this order.</p>
+    {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,63 @@
+{% extends 'base.html' %}
+{% block title %}Works Orders - SOPS{% endblock %}
+{% block page_title %}Works Orders & Picking Lists{% endblock %}
+
+{% block content %}
+<div class="card animate-fade-in">
+    <div class="card-header">
+        <h2 class="card-title">All Orders</h2>
+    </div>
+
+    {% if orders %}
+    <div style="overflow-x: auto;">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>WO/PL Number</th>
+                    <th>Type</th>
+                    <th>Sales Order</th>
+                    <th>Customer</th>
+                    <th>Status</th>
+                    <th>Issued By</th>
+                    <th>Created</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for wo in orders %}
+                <tr>
+                    <td><a href="{{ url_for('works_orders.view_order', order_id=wo.id) }}" class="link-primary">{{ wo.wo_number }}</a></td>
+                    <td>
+                        <span class="badge" style="background: {% if wo.order_type == 'ASSEMBLY' %}var(--brand-primary){% else %}var(--brand-secondary){% endif %};">
+                            {{ "Assembly" if wo.order_type == "ASSEMBLY" else "Stock" }}
+                        </span>
+                    </td>
+                    <td>
+                        {% if wo.sales_order %}
+                        <a href="{{ url_for('sales_orders.view_order', order_id=wo.so_id) }}" class="link-primary">{{ wo.sales_order.so_number }}</a>
+                        {% else %}
+                        -
+                        {% endif %}
+                    </td>
+                    <td>{{ wo.sales_order.customer_name if wo.sales_order else '-' }}</td>
+                    <td><span class="badge badge-{{ wo.status.lower().replace(' ', '') }}">{{ wo.status }}</span></td>
+                    <td>{{ wo.issued_by or '-' }}</td>
+                    <td>{{ wo.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                    <td style="display: flex; gap: 4px;">
+                        <a href="{{ url_for('works_orders.view_order', order_id=wo.id) }}" class="btn btn-secondary" style="padding: 4px 8px; font-size: 0.75rem;">View</a>
+                        <a href="{{ url_for('works_orders.print_order', order_id=wo.id) }}" class="btn btn-secondary" style="padding: 4px 8px; font-size: 0.75rem;" target="_blank">Print</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div style="text-align: center; padding: 60px 20px; color: var(--text-muted);">
+        <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 16px; opacity: 0.4;"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+        <p style="font-size: 1.1rem;">No Works Orders or Picking Lists yet.</p>
+        <p style="margin-top: 8px;">Upload a Sales Order and build a BOM to generate one.</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,119 @@
+{% extends 'base.html' %}
+{% block title %}{{ item.code }} - Items - SOPS{% endblock %}
+{% block page_title %}Item: {{ item.code }}{% endblock %}
+
+{% block content %}
+<div class="card animate-fade-in" style="margin-bottom: 24px;">
+    <div class="card-header">
+        <h2 class="card-title">Item Details</h2>
+        <a href="{{ url_for('items.catalogue') }}" class="btn btn-secondary">Back to Catalogue</a>
+    </div>
+    
+    <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 24px;">
+        <div>
+            <table class="detail-table">
+                <tr><td class="detail-label">Code</td><td class="detail-value"><strong>{{ item.code }}</strong></td></tr>
+                <tr><td class="detail-label">Description</td><td class="detail-value">{{ item.description }}</td></tr>
+                <tr><td class="detail-label">Category</td><td class="detail-value">{{ item.category or '-' }}</td></tr>
+                <tr><td class="detail-label">Status</td><td class="detail-value">
+                    <span class="badge {% if item.active %}badge-complete{% else %}badge-cancelled{% endif %}">
+                        {{ 'Active' if item.active else 'Inactive' }}
+                    </span>
+                </td></tr>
+            </table>
+        </div>
+        <div>
+            <table class="detail-table">
+                <tr><td class="detail-label">Qty on Hand</td><td class="detail-value" style="font-size: 1.5rem; font-weight: 700; color: var(--brand-primary);">{{ item.qty_on_hand }}</td></tr>
+                <tr><td class="detail-label">Last Cost</td><td class="detail-value">R {{ "%.2f"|format(item.last_cost) }}</td></tr>
+                <tr><td class="detail-label">Avg. Cost</td><td class="detail-value">R {{ "%.2f"|format(item.avg_cost) }}</td></tr>
+                <tr><td class="detail-label">Excl. Price</td><td class="detail-value">R {{ "%.2f"|format(item.excl_price) }}</td></tr>
+                <tr><td class="detail-label">Incl. Price</td><td class="detail-value">R {{ "%.2f"|format(item.incl_price) }}</td></tr>
+                <tr><td class="detail-label">Stock Value</td><td class="detail-value">R {{ "%.2f"|format(item.qty_on_hand * item.avg_cost) }}</td></tr>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Quantity Adjustment Form -->
+<div class="card animate-fade-in" style="margin-bottom: 24px;">
+    <div class="card-header">
+        <h2 class="card-title">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+            Manual Stock Adjustment
+        </h2>
+    </div>
+    <form method="POST" action="{{ url_for('items.adjust_stock', item_id=item.id) }}">
+        <div style="display: grid; grid-template-columns: 1fr 1fr 2fr; gap: 16px; align-items: end;">
+            <div class="form-group">
+                <label for="new_qty">New Qty on Hand</label>
+                <input type="number" id="new_qty" name="new_qty" value="{{ item.qty_on_hand }}" step="0.01" required class="form-input">
+            </div>
+            <div class="form-group">
+                <label for="adjusted_by">Adjusted By</label>
+                <input type="text" id="adjusted_by" name="adjusted_by" class="form-input" placeholder="Your name">
+            </div>
+            <div class="form-group">
+                <label for="reason">Reason *</label>
+                <input type="text" id="reason" name="reason" required class="form-input" placeholder="e.g. Cycle count correction, damaged stock">
+            </div>
+        </div>
+        <div class="form-actions" style="margin-top: 12px;">
+            <button type="submit" class="btn btn-primary" onclick="return confirm('Adjust stock for {{ item.code }}? This will create a StockMovement record.')">Apply Adjustment</button>
+        </div>
+    </form>
+</div>
+
+<!-- Movement History -->
+<div class="card animate-fade-in">
+    <div class="card-header">
+        <h2 class="card-title">Stock Movement History</h2>
+    </div>
+    {% if movements %}
+    <div style="overflow-x: auto;">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Type</th>
+                    <th>Reference</th>
+                    <th>Qty Change</th>
+                    <th>Qty After</th>
+                    <th>Notes</th>
+                    <th>By</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for m in movements %}
+                <tr>
+                    <td>{{ m.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                    <td>
+                        <span class="badge" style="background: 
+                            {% if m.movement_type == 'ISSUE' %}var(--brand-danger);
+                            {% elif m.movement_type == 'RECEIPT' %}var(--brand-success);
+                            {% elif m.movement_type == 'ADJUSTMENT' %}var(--brand-amber);
+                            {% else %}var(--text-muted);{% endif %}">
+                            {{ m.movement_type }}
+                        </span>
+                    </td>
+                    <td>{{ m.reference or '-' }}</td>
+                    <td style="color: {% if m.qty_change < 0 %}var(--brand-danger){% else %}var(--brand-success){% endif %}; font-weight: 600;">
+                        {{ "+" if m.qty_change > 0 else "" }}{{ "%.2f"|format(m.qty_change) }}
+                    </td>
+                    <td>{{ "%.2f"|format(m.qty_after) }}</td>
+                    <td>{{ m.notes or '' }}</td>
+                    <td>{{ m.created_by or '-' }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p style="padding: 24px; color: var(--text-muted); text-align: center;">No stock movements recorded for this item.</p>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{{ url_for('static', filename='js/adjustments.js') }}"></script>
+{% endblock %}

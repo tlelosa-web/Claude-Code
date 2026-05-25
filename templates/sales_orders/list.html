@@ -1,0 +1,56 @@
+{% extends 'base.html' %}
+{% block title %}Sales Orders - SOPS{% endblock %}
+{% block page_title %}Sales Orders{% endblock %}
+
+{% block content %}
+<div class="card animate-fade-in">
+    <div class="card-header">
+        <h2 class="card-title">All Sales Orders</h2>
+        <a href="{{ url_for('sales_orders.upload_order') }}" class="btn btn-primary">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+            Upload New SO
+        </a>
+    </div>
+
+    {% if orders %}
+    <div style="overflow-x: auto;">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>SO Number</th>
+                    <th>Reference</th>
+                    <th>Customer</th>
+                    <th>Date</th>
+                    <th>Delivery Date</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for so in orders %}
+                <tr>
+                    <td><a href="{{ url_for('sales_orders.view_order', order_id=so.id) }}" class="link-primary">{{ so.so_number }}</a></td>
+                    <td>{{ so.reference or '-' }}</td>
+                    <td>{{ so.customer_name or '-' }}</td>
+                    <td>{{ so.so_date.strftime('%Y-%m-%d') if so.so_date else '-' }}</td>
+                    <td>{{ so.delivery_date.strftime('%Y-%m-%d') if so.delivery_date else '-' }}</td>
+                    <td><span class="badge badge-{{ so.status.lower() }}">{{ so.status }}</span></td>
+                    <td>
+                        <a href="{{ url_for('sales_orders.view_order', order_id=so.id) }}" class="btn btn-secondary" style="padding: 4px 10px; font-size: 0.75rem;">View</a>
+                        <a href="{{ url_for('sales_orders.build_bom', order_id=so.id) }}" class="btn btn-primary" style="padding: 4px 10px; font-size: 0.75rem;">Build BOM</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div style="text-align: center; padding: 60px 20px; color: var(--text-muted);">
+        <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 16px; opacity: 0.4;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+        <p style="font-size: 1.1rem;">No Sales Orders yet.</p>
+        <p style="margin-top: 8px;">Upload a PDF to get started.</p>
+        <a href="{{ url_for('sales_orders.upload_order') }}" class="btn btn-primary" style="margin-top: 16px;">Upload First SO</a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

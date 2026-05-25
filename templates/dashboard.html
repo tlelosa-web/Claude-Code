@@ -1,0 +1,130 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard - SOPS{% endblock %}
+{% block page_title %}Operational Dashboard{% endblock %}
+
+{% block content %}
+<!-- Quick Actions Row -->
+<div class="card animate-fade-in" style="margin-bottom: 24px;">
+    <div class="card-header">
+        <h2 class="card-title">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path></svg>
+            Quick Actions Panel
+        </h2>
+    </div>
+    <div style="display: flex; gap: 16px; flex-wrap: wrap;">
+        <a href="{{ url_for('sales_orders.upload_order') }}" class="btn btn-primary">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+            Upload Sales Order PDF
+        </a>
+        <a href="{{ url_for('items.import_csv') }}" class="btn btn-secondary">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="8" x2="8" y2="8"></line><line x1="16" y1="12" x2="8" y2="12"></line><line x1="16" y1="16" x2="8" y2="16"></line></svg>
+            Import Item CSV
+        </a>
+        <a href="{{ url_for('items.catalogue') }}" class="btn btn-secondary">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l-7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
+            View Stock Catalogue
+        </a>
+    </div>
+</div>
+
+<!-- Stats Grid -->
+<div class="stats-grid animate-fade-in" style="margin-bottom: 24px;">
+    <!-- Open WOs -->
+    <div class="card stat-card" style="--accent: var(--brand-primary);">
+        <div class="stat-label">Active Works Orders</div>
+        <div class="stat-val">{{ open_wos }}</div>
+        <div style="font-size: 0.85rem; color: var(--text-secondary);">Orders in production</div>
+    </div>
+    
+    <!-- Completed WOs -->
+    <div class="card stat-card" style="--accent: var(--brand-success);">
+        <div class="stat-label">Completed Orders</div>
+        <div class="stat-val">{{ completed_wos }}</div>
+        <div style="font-size: 0.85rem; color: var(--text-secondary);">Historically completed WOs</div>
+    </div>
+    
+    <!-- Pending Sales Orders -->
+    <div class="card stat-card" style="--accent: var(--brand-secondary);">
+        <div class="stat-label">Inbound Sales Orders</div>
+        <div class="stat-val">{{ pending_sos }}</div>
+        <div style="font-size: 0.85rem; color: var(--text-secondary);">Uploaded Draft SOs awaiting WOs</div>
+    </div>
+    
+    <!-- Low Stock count -->
+    <div class="card stat-card" style="--accent: var(--brand-danger);">
+        <div class="stat-label">Low Stock Warnings</div>
+        <div class="stat-val">{{ low_stock_count }}</div>
+        <div style="font-size: 0.85rem; color: var(--text-secondary);">Items with <= 10 units remaining</div>
+    </div>
+</div>
+
+<!-- Recent Works Orders -->
+<div class="card animate-fade-in">
+    <div class="card-header">
+        <h2 class="card-title">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+            Recent Works Orders Activity
+        </h2>
+        <a href="{{ url_for('works_orders.list_orders') }}" class="btn btn-secondary" style="padding: 6px 12px; font-size: 0.8rem;">
+            View All
+        </a>
+    </div>
+
+    {% if recent_wos %}
+        <div style="overflow-x: auto;">
+            <table style="width: 100%; border-collapse: collapse; text-align: left;">
+                <thead>
+                    <tr style="border-bottom: 2px solid var(--border-color); color: var(--text-secondary); font-size: 0.85rem; text-transform: uppercase;">
+                        <th style="padding: 12px;">WO Number</th>
+                        <th style="padding: 12px;">Sales Order</th>
+                        <th style="padding: 12px;">Type</th>
+                        <th style="padding: 12px;">Issued By</th>
+                        <th style="padding: 12px;">Created Date</th>
+                        <th style="padding: 12px;">Status</th>
+                        <th style="padding: 12px; text-align: right;">Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for wo in recent_wos %}
+                        <tr style="border-bottom: 1px solid var(--border-color); font-size: 0.95rem;">
+                            <td style="padding: 16px; font-weight: 600; color: var(--brand-primary);">
+                                {{ wo.wo_number }}
+                            </td>
+                            <td style="padding: 16px;">
+                                <a href="{{ url_for('sales_orders.view_order', order_id=wo.so_id) }}" style="color: var(--brand-secondary); text-decoration: none;">
+                                    {{ wo.sales_order.so_number }}
+                                </a>
+                            </td>
+                            <td style="padding: 16px;">
+                                <span class="badge" style="background: rgba(255,255,255,0.05); color: var(--text-primary);">
+                                    {{ wo.order_type }}
+                                </span>
+                            </td>
+                            <td style="padding: 16px;">{{ wo.issued_by }}</td>
+                            <td style="padding: 16px; color: var(--text-secondary);">
+                                {{ wo.created_at.strftime('%Y-%m-%d %H:%M') }}
+                            </td>
+                            <td style="padding: 16px;">
+                                <span class="badge badge-{{ wo.status.lower().replace(' ', '') }}">
+                                    {{ wo.status }}
+                                </span>
+                            </td>
+                            <td style="padding: 16px; text-align: right;">
+                                <a href="{{ url_for('works_orders.view_order', order_id=wo.id) }}" class="btn btn-secondary" style="padding: 4px 10px; font-size: 0.75rem;">
+                                    Manage
+                                </a>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <div style="text-align: center; padding: 40px; color: var(--text-muted);">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 16px; opacity: 0.5;"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+            <p>No Works Orders found. Upload a Sales Order to get started.</p>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

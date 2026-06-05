@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
-{% block title %}Build BOM - {{ so.so_number }} - SOPS{% endblock %}
-{% block page_title %}BOM Builder: {{ so.so_number }}{% endblock %}
+{% block title %}Build BOM - {{ so.job_reference }} - SOPS{% endblock %}
+{% block page_title %}BOM Builder: {{ so.job_reference }}{% endblock %}
 
 {% block extra_head %}
 <link rel="stylesheet" href="{{ url_for('static', filename='vendor/tabulator/tabulator.min.css') }}">
@@ -15,7 +15,7 @@
             Select Components for {{ so.customer_name or so.so_number }}
         </h2>
         <div class="alert alert-info" style="font-size: 0.85rem; margin: 0; padding: 8px 16px;">
-            Reference: {{ so.reference or '-' }} | Delivery: {{ so.delivery_date.strftime('%Y-%m-%d') if so.delivery_date else '-' }}
+            Job/SO: {{ so.job_reference }} | Reference: {{ so.reference or '-' }} | Delivery: {{ so.delivery_date.strftime('%Y-%m-%d') if so.delivery_date else '-' }}
         </div>
     </div>
 </div>
@@ -114,7 +114,6 @@
 {% endblock %}
 
 {% block extra_scripts %}
-<script src="{{ url_for('static', filename='js/bom_builder.js') }}"></script>
 <script>
     window.SOPS_BOM = {
         items: {{ items | tojson | safe }},
@@ -122,4 +121,5 @@
         initialQty: 1
     };
 </script>
+<script src="{{ url_for('static', filename='js/bom_builder.js') }}"></script>
 {% endblock %}

@@ -1,5 +1,6 @@
 import pdfplumber
 import re
+import os
 from collections import defaultdict
 from datetime import datetime
 
@@ -15,6 +16,7 @@ def clean_numerical_str(val):
 def parse_sales_order_pdf(pdf_path):
     result = {
         'so_number': '',
+        'job_numbers': '',
         'reference': '',
         'so_date': None,
         'delivery_date': None,
@@ -28,6 +30,11 @@ def parse_sales_order_pdf(pdf_path):
     }
 
     try:
+        filename = os.path.basename(pdf_path)
+        job_match = re.match(r'\s*((?:FM\d+\s*(?:-\s*FM\d+)?)(?:\s*,\s*FM\d+\s*(?:-\s*FM\d+)?)*)', filename, re.IGNORECASE)
+        if job_match:
+            result['job_numbers'] = re.sub(r'\s*-\s*', '-', job_match.group(1).strip().upper())
+
         with pdfplumber.open(pdf_path) as pdf:
             if not pdf.pages:
                 result['parse_errors'].append("PDF has no pages.")

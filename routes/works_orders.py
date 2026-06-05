@@ -50,7 +50,7 @@ def mark_complete(order_id):
                     item_id=bom_line.item_id,
                     qty=qty_to_issue,
                     reference=wo.wo_number,
-                    notes=f"Issued for {wo.wo_number} ({wo.sales_order.so_number if wo.sales_order else ''})",
+                    notes=f"Issued for {wo.wo_number} ({wo.sales_order.job_reference if wo.sales_order else ''})",
                     created_by=request.form.get('completed_by', 'System').strip() or 'System'
                 )
                 bom_line.qty_issued = bom_line.qty_required
@@ -102,7 +102,7 @@ def confirm_pick(order_id):
                     item_id=bom_line.item_id,
                     qty=qty_to_pick,
                     reference=wo.wo_number,
-                    notes=f"Picked for {wo.wo_number} ({wo.sales_order.so_number if wo.sales_order else ''})",
+                    notes=f"Picked for {wo.wo_number} ({wo.sales_order.job_reference if wo.sales_order else ''})",
                     created_by=request.form.get('picked_by', 'System').strip() or 'System'
                 )
                 bom_line.qty_issued = bom_line.qty_required

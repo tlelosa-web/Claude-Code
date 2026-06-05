@@ -119,5 +119,8 @@ def import_items_from_csv(csv_path):
 
             inserted_count += 1
 
+        if (inserted_count + updated_count) % 100 == 0:
+            db.session.commit()
+
     db.session.commit()
     return updated_count, inserted_count, skipped_count

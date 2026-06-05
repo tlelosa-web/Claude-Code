@@ -18,6 +18,7 @@
             <thead>
                 <tr>
                     <th>SO Number</th>
+                    <th>Job Number(s)</th>
                     <th>Reference</th>
                     <th>Customer</th>
                     <th>Date</th>
@@ -30,6 +31,7 @@
                 {% for so in orders %}
                 <tr>
                     <td><a href="{{ url_for('sales_orders.view_order', order_id=so.id) }}" class="link-primary">{{ so.so_number }}</a></td>
+                    <td>{{ so.job_numbers or '-' }}</td>
                     <td>{{ so.reference or '-' }}</td>
                     <td>{{ so.customer_name or '-' }}</td>
                     <td>{{ so.so_date.strftime('%Y-%m-%d') if so.so_date else '-' }}</td>

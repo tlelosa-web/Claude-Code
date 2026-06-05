@@ -47,10 +47,16 @@
 
     <table class="info-table">
         <tr>
-            <td>SO Number:</td>
-            <td>{{ so.so_number if so else '-' }}</td>
+            <td>Job/SO Ref:</td>
+            <td>{{ so.job_reference if so else '-' }}</td>
             <td>Customer:</td>
             <td>{{ so.customer_name if so else '-' }}</td>
+        </tr>
+        <tr>
+            <td>Job Number(s):</td>
+            <td>{{ so.job_numbers if so and so.job_numbers else '-' }}</td>
+            <td>SO Number:</td>
+            <td>{{ so.so_number if so else '-' }}</td>
         </tr>
         <tr>
             <td>Reference:</td>

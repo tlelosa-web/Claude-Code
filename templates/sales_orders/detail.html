@@ -16,6 +16,8 @@
         <div>
             <table class="detail-table">
                 <tr><td class="detail-label">SO Number</td><td class="detail-value">{{ so.so_number }}</td></tr>
+                <tr><td class="detail-label">Job Number(s)</td><td class="detail-value">{{ so.job_numbers or '-' }}</td></tr>
+                <tr><td class="detail-label">Job/SO Ref</td><td class="detail-value">{{ so.job_reference }}</td></tr>
                 <tr><td class="detail-label">Reference</td><td class="detail-value">{{ so.reference or '-' }}</td></tr>
                 <tr><td class="detail-label">Customer</td><td class="detail-value">{{ so.customer_name or '-' }}</td></tr>
                 <tr><td class="detail-label">VAT No.</td><td class="detail-value">{{ so.customer_vat or '-' }}</td></tr>

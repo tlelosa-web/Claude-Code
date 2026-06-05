@@ -13,6 +13,20 @@ def list_orders():
     orders = SalesOrder.query.order_by(SalesOrder.created_at.desc()).all()
     return render_template('sales_orders/list.html', orders=orders)
 
+def item_to_bom_json(item):
+    """Return the plain JSON shape consumed by the BOM builder UI."""
+    return {
+        'id': item.id,
+        'code': item.code,
+        'description': item.description,
+        'category': item.category,
+        'last_cost': item.last_cost or 0.0,
+        'avg_cost': item.avg_cost or 0.0,
+        'excl_price': item.excl_price or 0.0,
+        'incl_price': item.incl_price or 0.0,
+        'qty_on_hand': item.qty_on_hand or 0.0,
+    }
+
 @sales_orders_bp.route('/sales-orders/upload', methods=['GET', 'POST'])
 def upload_order():
     if request.method == 'POST':
@@ -86,6 +100,7 @@ def save_order():
         
         so = SalesOrder(
             so_number=so_number,
+            job_numbers=request.form.get('job_numbers', '').strip(),
             reference=request.form.get('reference', '').strip(),
             so_date=so_date,
             delivery_date=delivery_date,
@@ -171,7 +186,8 @@ def build_bom(order_id):
     
     # GET: show item catalogue for selection
     items = Item.query.filter_by(active=True).order_by(Item.category, Item.code).all()
+    item_payload = [item_to_bom_json(item) for item in items]
     categories = db.session.query(Item.category).filter(Item.active == True, Item.category != None).distinct().order_by(Item.category).all()
     categories = [c[0] for c in categories if c[0]]
     
-    return render_template('sales_orders/bom_builder.html', so=so, items=items, categories=categories)
+    return render_template('sales_orders/bom_builder.html', so=so, items=item_payload, categories=categories)

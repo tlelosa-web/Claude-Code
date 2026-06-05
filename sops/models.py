@@ -17,7 +17,7 @@ class Item(db.Model):
     qty_on_hand = db.Column(db.Float, default=0.0)
     active = db.Column(db.Boolean, default=True)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-
+    
     # Relationships
     movements = db.relationship('StockMovement', backref='item', lazy=True)
     bom_lines = db.relationship('BOMLine', backref='item', lazy=True)
@@ -27,7 +27,6 @@ class SalesOrder(db.Model):
     
     id = db.Column(db.Integer, primary_key=True)
     so_number = db.Column(db.String(100), unique=True, nullable=False)
-    job_numbers = db.Column(db.String(255))
     reference = db.Column(db.String(100))
     so_date = db.Column(db.Date)
     delivery_date = db.Column(db.Date)
@@ -38,16 +37,10 @@ class SalesOrder(db.Model):
     raw_pdf_text = db.Column(db.Text)
     status = db.Column(db.String(50), default='Draft')  # Draft / Open / Closed
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-
+    
     # Relationships
     line_items = db.relationship('SOLineItem', backref='sales_order', lazy=True, cascade="all, delete-orphan")
     works_orders = db.relationship('WorksOrder', backref='sales_order', lazy=True)
-
-    @property
-    def job_reference(self):
-        if self.job_numbers:
-            return f"{self.job_numbers} - {self.so_number}"
-        return self.so_number
 
 class SOLineItem(db.Model):
     __tablename__ = 'so_line_item'
@@ -72,7 +65,7 @@ class WorksOrder(db.Model):
     issued_by = db.Column(db.String(255))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     completed_at = db.Column(db.DateTime)
-
+    
     # Relationships
     bom_lines = db.relationship('BOMLine', backref='works_order', lazy=True, cascade="all, delete-orphan")
 

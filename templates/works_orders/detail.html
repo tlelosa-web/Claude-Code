@@ -30,7 +30,8 @@
         <div>
             <table class="detail-table">
                 <tr><td class="detail-label">WO Number</td><td class="detail-value">{{ wo.wo_number }}</td></tr>
-                <tr><td class="detail-label">Sales Order</td><td class="detail-value">{{ so.so_number if so else '-' }}</td></tr>
+                <tr><td class="detail-label">Job/SO Ref</td><td class="detail-value">{{ so.job_reference if so else '-' }}</td></tr>
+                <tr><td class="detail-label">Job Number(s)</td><td class="detail-value">{{ so.job_numbers if so and so.job_numbers else '-' }}</td></tr>
                 <tr><td class="detail-label">Customer</td><td class="detail-value">{{ so.customer_name if so else '-' }}</td></tr>
                 <tr><td class="detail-label">Delivery Address</td><td class="detail-value">{{ so.delivery_address if so else '-' }}</td></tr>
             </table>

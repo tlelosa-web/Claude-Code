@@ -121,3 +121,17 @@ class TestBOMBuilder:
         # Expected: (3 * 50.00) + (2 * 30.00) = 150 + 60 = 210
         assert context['total_excl_cost'] == 210.0
         assert len(context['lines']) == 2
+
+    def test_build_bom_page_renders_item_catalogue(self, client, session, setup_data):
+        """BOM builder page should JSON-render item catalogue data for the UI."""
+        so = setup_data['so']
+
+        response = client.get(f"/sales-orders/{so.id}/build-bom")
+        body = response.get_data(as_text=True)
+
+        assert response.status_code == 200
+        assert "BOM Builder" in body
+        assert "window.SOPS_BOM" in body
+        assert "Object of type Item is not JSON serializable" not in body
+        assert setup_data['items']['comp_a'].code in body
+        assert body.index("window.SOPS_BOM") < body.index("js/bom_builder.js")

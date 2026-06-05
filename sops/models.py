@@ -65,9 +65,11 @@ class WorksOrder(db.Model):
     issued_by = db.Column(db.String(255))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     completed_at = db.Column(db.DateTime)
+    related_wo_id = db.Column(db.Integer, db.ForeignKey('works_order.id'))  # For combined orders
     
     # Relationships
     bom_lines = db.relationship('BOMLine', backref='works_order', lazy=True, cascade="all, delete-orphan")
+    related_order = db.relationship('WorksOrder', remote_side=[id], backref='paired_order', uselist=False)
 
 class BOMLine(db.Model):
     __tablename__ = 'bom_line'

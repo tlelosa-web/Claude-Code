@@ -3,11 +3,26 @@
 {% block page_title %}Sales Order: {{ so.so_number }}{% endblock %}
 
 {% block content %}
+{% if so.status == 'Cancelled' %}
+<div class="alert alert-warning" style="margin-bottom: 16px; padding: 12px 16px; border-left: 4px solid var(--brand-amber);">
+    <strong>⚠️ This Sales Order has been cancelled.</strong>
+</div>
+{% endif %}
+
 <div class="card animate-fade-in" style="margin-bottom: 24px;">
     <div class="card-header">
         <h2 class="card-title">Order Details</h2>
-        <div style="display: flex; gap: 8px;">
+        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+            {% if so.status != 'Cancelled' %}
             <a href="{{ url_for('sales_orders.build_bom', order_id=so.id) }}" class="btn btn-primary">Build BOM / Works Pack</a>
+            <a href="{{ url_for('sales_orders.reupload_order', order_id=so.id) }}" class="btn btn-secondary">Re-upload PDF</a>
+            <form method="POST" action="{{ url_for('sales_orders.cancel_order', order_id=so.id) }}" style="display: inline;" onsubmit="return confirm('Cancel this Sales Order? This will also cancel any open Works Orders.')">
+                <button type="submit" class="btn btn-warning">Cancel Order</button>
+            </form>
+            {% endif %}
+            <form method="POST" action="{{ url_for('sales_orders.delete_order', order_id=so.id) }}" style="display: inline;" onsubmit="return confirm('Permanently delete Sales Order {{ so.so_number }}? This cannot be undone and requires no Works Orders to exist.')">
+                <button type="submit" class="btn btn-danger">Delete Order</button>
+            </form>
             <a href="{{ url_for('sales_orders.list_orders') }}" class="btn btn-secondary">Back to List</a>
         </div>
     </div>

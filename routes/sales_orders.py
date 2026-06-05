@@ -156,8 +156,8 @@ def build_bom(order_id):
     
     if request.method == 'POST':
         order_type = request.form.get('order_type', '').strip()
-        if order_type not in ('ASSEMBLY', 'STOCK'):
-            flash("Please select an order type (Assembly Order or Stock Order).", "error")
+        if order_type not in ('ASSEMBLY', 'STOCK', 'COMBINED'):
+            flash("Please select an order type (Assembly Order, Stock Order, or Combined).", "error")
             return redirect(url_for('sales_orders.build_bom', order_id=order_id))
         
         # Parse selected items from JSON
@@ -175,19 +175,129 @@ def build_bom(order_id):
         try:
             issued_by = request.form.get('issued_by', 'System').strip() or 'System'
             from services.bom_builder import create_works_order_or_picking_list
-            wo = create_works_order_or_picking_list(so_id=order_id, order_type=order_type,
-                                                     items_list=items_data, issued_by=issued_by)
-            flash(f"{( 'Works Order' if order_type == 'ASSEMBLY' else 'Picking List' )} {wo.wo_number} created successfully.", "success")
-            return redirect(url_for('works_orders.view_order', order_id=wo.id))
+            
+            if order_type == 'COMBINED':
+                # Create both Assembly and Stock orders
+                assembly_wo = create_works_order_or_picking_list(so_id=order_id, order_type='ASSEMBLY',
+                                                                 items_list=items_data, issued_by=issued_by)
+                stock_wo = create_works_order_or_picking_list(so_id=order_id, order_type='STOCK',
+                                                              items_list=items_data, issued_by=issued_by)
+                
+                # Link the two orders together
+                assembly_wo.related_wo_id = stock_wo.id
+                stock_wo.related_wo_id = assembly_wo.id
+                db.session.commit()
+                
+                flash(f"Combined orders created: Assembly {assembly_wo.wo_number} and Picking List {stock_wo.wo_number}", "success")
+                return redirect(url_for('works_orders.view_order', order_id=assembly_wo.id))
+            else:
+                wo = create_works_order_or_picking_list(so_id=order_id, order_type=order_type,
+                                                        items_list=items_data, issued_by=issued_by)
+                flash(f"{( 'Works Order' if order_type == 'ASSEMBLY' else 'Picking List' )} {wo.wo_number} created successfully.", "success")
+                return redirect(url_for('works_orders.view_order', order_id=wo.id))
         except Exception as e:
             db.session.rollback()
             flash(f"Error creating order: {str(e)}", "error")
             return redirect(url_for('sales_orders.build_bom', order_id=order_id))
     
-    # GET: show item catalogue for selection
+    # GET: show SO line items for selection
+    so_line_items = SOLineItem.query.filter_by(so_id=order_id).all()
+    
+    # Also load catalogue items for BOM building
     items = Item.query.filter_by(active=True).order_by(Item.category, Item.code).all()
     item_payload = [item_to_bom_json(item) for item in items]
     categories = db.session.query(Item.category).filter(Item.active == True, Item.category != None).distinct().order_by(Item.category).all()
     categories = [c[0] for c in categories if c[0]]
     
-    return render_template('sales_orders/bom_builder.html', so=so, items=item_payload, categories=categories)
+    return render_template('sales_orders/bom_builder.html', 
+                          so=so, 
+                          so_line_items=so_line_items,
+                          items=item_payload, 
+                          categories=categories)
+
+@sales_orders_bp.route('/sales-orders/<int:order_id>/cancel', methods=['POST'])
+def cancel_order(order_id):
+    """Cancel a Sales Order."""
+    so = SalesOrder.query.get_or_404(order_id)
+    
+    # Check if any works orders exist and their status
+    wos = WorksOrder.query.filter_by(so_id=order_id).all()
+    
+    if wos:
+        completed_wos = [wo for wo in wos if wo.status == 'Complete']
+        if completed_wos:
+            flash(f"Cannot cancel Sales Order {so.so_number}. {len(completed_wos)} Works Order(s) already completed.", "error")
+            return redirect(url_for('sales_orders.view_order', order_id=order_id))
+        
+        # Cancel all open works orders first
+        for wo in wos:
+            if wo.status != 'Cancelled':
+                wo.status = 'Cancelled'
+    
+    so.status = 'Cancelled'
+    db.session.commit()
+    
+    flash(f"Sales Order {so.so_number} has been cancelled.", "success")
+    return redirect(url_for('sales_orders.view_order', order_id=order_id))
+
+@sales_orders_bp.route('/sales-orders/<int:order_id>/delete', methods=['POST'])
+def delete_order(order_id):
+    """Delete a Sales Order permanently."""
+    so = SalesOrder.query.get_or_404(order_id)
+    
+    # Safety check: cannot delete if works orders exist
+    wos = WorksOrder.query.filter_by(so_id=order_id).all()
+    if wos:
+        flash(f"Cannot delete Sales Order {so.so_number}. {len(wos)} Works Order(s) exist. Cancel/delete them first.", "error")
+        return redirect(url_for('sales_orders.view_order', order_id=order_id))
+    
+    so_number = so.so_number
+    db.session.delete(so)
+    db.session.commit()
+    
+    flash(f"Sales Order {so_number} deleted permanently.", "success")
+    return redirect(url_for('sales_orders.list_orders'))
+
+@sales_orders_bp.route('/sales-orders/<int:order_id>/reupload', methods=['GET', 'POST'])
+def reupload_order(order_id):
+    """Re-upload a PDF for an existing Sales Order."""
+    so = SalesOrder.query.get_or_404(order_id)
+    
+    if request.method == 'POST':
+        uploaded_file = request.files.get('pdf_file')
+        
+        if not uploaded_file or not uploaded_file.filename:
+            flash("Please select a PDF file to upload.", "error")
+            return redirect(url_for('sales_orders.reupload_order', order_id=order_id))
+        
+        if not uploaded_file.filename.lower().endswith('.pdf'):
+            flash("Only PDF files are accepted.", "error")
+            return redirect(url_for('sales_orders.reupload_order', order_id=order_id))
+        
+        # Save PDF temporarily
+        upload_dir = current_app.config['UPLOAD_FOLDER']
+        os.makedirs(upload_dir, exist_ok=True)
+        filename = secure_filename(uploaded_file.filename)
+        filepath = os.path.join(upload_dir, filename)
+        uploaded_file.save(filepath)
+        
+        try:
+            # Parse PDF
+            parsed = parse_sales_order_pdf(filepath)
+            
+            if parsed['parse_errors']:
+                flash(f"Some fields could not be parsed automatically. Please review and correct below.", "warning")
+            
+            # Pre-fill with existing SO data for editing
+            return render_template('sales_orders/upload.html',
+                                   parsed=parsed,
+                                   existing_so=so,
+                                   json_parsed=json.dumps(parsed, default=str),
+                                   reupload_mode=True)
+            
+        except Exception as e:
+            flash(f"Error processing PDF: {str(e)}", "error")
+            return redirect(url_for('sales_orders.reupload_order', order_id=order_id))
+    
+    # GET: show upload form
+    return render_template('sales_orders/upload.html', existing_so=so, reupload_mode=True)

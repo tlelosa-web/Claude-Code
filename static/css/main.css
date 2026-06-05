@@ -436,6 +436,20 @@ textarea.form-input {
 ::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--fm-muted); }
 
+/* BOM Builder - Item table scrollable container */
+#item-table {
+    max-height: 600px;
+    overflow-y: auto;
+}
+
+#item-table table.data-table tbody tr {
+    height: 40px;
+}
+
+#item-table table.data-table td {
+    padding: 8px 12px;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
     .sidebar { width: 60px; }

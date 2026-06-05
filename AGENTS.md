@@ -1,5 +1,7 @@
 # AGENTS.md — Project Brain
+
 # DCOE Agent Architecture — Tebello's Custom Build
+
 # Version: 1.1 | Evolved from DOE (Nick Saraev) + domain-aware extensions + tool manifests
 
 > Loaded at the start of every session.
@@ -93,6 +95,7 @@ A generic executor without domain context will produce generic, wrong output.
 ## 🌐 DOMAIN CONTEXTS
 
 ### 🔴 Trading Domain
+
 ```
 Active when:  Signal generation, market analysis, risk logic,
               backtest specs, binary options, crash games, P&L calc
@@ -114,6 +117,7 @@ Tool priority order:
 ```
 
 ### 🔵 Engineering Domain
+
 ```
 Active when:  Mechanical design, shaft sizing, torque calculations,
               stress analysis, component specifications
@@ -134,6 +138,7 @@ Tool priority order:
 ```
 
 ### 🟢 Software / AI Domain
+
 ```
 Active when:  Tooling, automation, frontends, agentic workflows,
               Codex setup, local AI (Agent Zero), scripts
@@ -171,6 +176,7 @@ Lives in `.Codex/agents/`. Each executor is domain-aware by design.
 | `debugger` | `agents/debugger.md` | All | Systematic root-cause investigation |
 
 **Model routing:**
+
 - Planning, architecture, multi-domain tasks → `opus`
 - Standard implementation → `sonnet` (default)
 - Search, grep, quick lookups → `haiku`
@@ -183,6 +189,7 @@ Lives in `.Codex/agents/`. Each executor is domain-aware by design.
 on any factual, numerical, or file-based question. Memory is for logic, not data.
 
 **Fallback chain (apply in order if primary tool fails):**
+
 ```
 Primary tool fails → try secondary → if both fail → STOP and report, do not guess
 ```
@@ -321,6 +328,7 @@ Codex --worktree ui-dashboard
 ## 📋 CONTEXT MANAGEMENT
 
 **Session discipline:**
+
 - `/compact` every 2–3 large tasks
 - `/clear` between unrelated domain tasks (Trading → Engineering = clear)
 - `/cost` to monitor token burn
@@ -328,6 +336,7 @@ Codex --worktree ui-dashboard
 - Use `@file-references` over pasting content
 
 **Context budget:**
+
 - Orchestrator session: < 40% at all times
 - Executors: fresh context per task
 - AGENTS.md: < 500 lines
@@ -424,6 +433,7 @@ project-root/
 ---
 
 *This AGENTS.md is a living document. Update when:*
+
 - *New domain or sub-domain identified*
 - *New executor type needed*
 - *A hard-learned lesson from a session*

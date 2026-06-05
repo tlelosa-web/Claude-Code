@@ -5,6 +5,65 @@
 {% block extra_head %}
 <link rel="stylesheet" href="{{ url_for('static', filename='vendor/tabulator/tabulator.min.css') }}">
 <script src="{{ url_for('static', filename='vendor/tabulator/tabulator.min.js') }}"></script>
+<style>
+    /* Two-step workflow styling */
+    .step-panel {
+        margin-bottom: 24px;
+    }
+    .step-panel.hidden {
+        display: none;
+    }
+    .step-active-indicator {
+        display: inline-block;
+        width: 28px;
+        height: 28px;
+        line-height: 28px;
+        text-align: center;
+        border-radius: 50%;
+        background: var(--brand-primary);
+        color: #fff;
+        font-weight: 700;
+        font-size: 0.85rem;
+        margin-right: 8px;
+    }
+    .step-inactive-indicator {
+        display: inline-block;
+        width: 28px;
+        height: 28px;
+        line-height: 28px;
+        text-align: center;
+        border-radius: 50%;
+        background: var(--border-color);
+        color: var(--text-muted);
+        font-weight: 700;
+        font-size: 0.85rem;
+        margin-right: 8px;
+    }
+    #item-table {
+        max-height: 600px;
+        overflow-y: auto;
+    }
+    #item-table table.data-table tbody tr {
+        height: 40px;
+    }
+    #item-table table.data-table td {
+        padding: 8px 12px;
+    }
+    .so-item-row {
+        cursor: pointer;
+        transition: background var(--transition);
+    }
+    .so-item-row:hover {
+        background: rgba(232, 97, 10, 0.05) !important;
+    }
+    .so-item-row.selected {
+        background: rgba(232, 97, 10, 0.12) !important;
+    }
+    .select-all-btn {
+        padding: 4px 12px;
+        font-size: 0.8rem;
+    }
+</style>
 {% endblock %}
 
 {% block content %}
@@ -12,7 +71,7 @@
     <div class="card-header">
         <h2 class="card-title">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l-7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
-            Select Components for {{ so.customer_name or so.so_number }}
+            Build BOM for {{ so.customer_name or so.so_number }}
         </h2>
         <div class="alert alert-info" style="font-size: 0.85rem; margin: 0; padding: 8px 16px;">
             Job/SO: {{ so.job_reference }} | Reference: {{ so.reference or '-' }} | Delivery: {{ so.delivery_date.strftime('%Y-%m-%d') if so.delivery_date else '-' }}
@@ -21,93 +80,152 @@
 </div>
 
 <form method="POST" action="{{ url_for('sales_orders.build_bom', order_id=so.id) }}" id="bom-form">
-    <!-- Item Selection Table -->
-    <div class="card animate-fade-in" style="margin-bottom: 24px;">
-        <div class="card-header">
-            <h2 class="card-title">Item Catalogue</h2>
-            <div style="display: flex; gap: 8px; align-items: center;">
-                <input type="text" id="search-input" placeholder="Search code or description..." class="form-input" style="width: 250px; padding: 6px 10px; font-size: 0.85rem;">
-                <select id="category-filter" class="form-input" style="width: 180px; padding: 6px 10px; font-size: 0.85rem;">
-                    <option value="">All Categories</option>
-                    {% for cat in categories %}
-                    <option value="{{ cat }}">{{ cat }}</option>
-                    {% endfor %}
-                </select>
-                <label style="display: flex; align-items: center; gap: 4px; font-size: 0.85rem;">
-                    <input type="checkbox" id="instock-toggle"> In Stock Only
-                </label>
-            </div>
-        </div>
-        <div id="item-table"></div>
-    </div>
-
-    <!-- Selection Summary Panel -->
-    <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 24px;">
+    <!-- STEP 1: Select SO Line Items -->
+    <div id="step1-panel" class="step-panel">
         <div class="card animate-fade-in">
             <div class="card-header">
-                <h2 class="card-title">Selected Items</h2>
-                <span id="selected-count" style="font-size: 0.85rem; color: var(--text-muted);">0 items selected</span>
+                <h2 class="card-title">
+                    <span class="step-active-indicator">1</span>
+                    Select Sales Order Items for BOM
+                </h2>
+                <div style="display: flex; gap: 8px;">
+                    <button type="button" class="btn btn-secondary select-all-btn" id="select-all-so-btn">Select All</button>
+                    <button type="button" class="btn btn-secondary select-all-btn" id="deselect-all-so-btn">Deselect All</button>
+                </div>
             </div>
             <div style="overflow-x: auto;">
-                <table class="data-table" id="selected-items-table">
+                <table class="data-table" id="so-items-table">
                     <thead>
                         <tr>
-                            <th>Code</th>
+                            <th style="width: 40px;"></th>
                             <th>Description</th>
-                            <th>Qty on Hand</th>
-                            <th>Qty Required</th>
-                            <th>Unit Cost</th>
-                            <th>Total Cost</th>
-                            <th></th>
+                            <th style="text-align: right;">Qty</th>
+                            <th style="text-align: right;">Excl. Price</th>
+                            <th style="text-align: right;">Excl. Total</th>
                         </tr>
                     </thead>
-                    <tbody id="selected-items-body">
+                    <tbody id="so-items-body">
+                        {% for line in so_line_items %}
+                        <tr class="so-item-row" data-line-id="{{ line.id }}" data-description="{{ line.description }}">
+                            <td><input type="checkbox" class="so-item-select" data-line-id="{{ line.id }}" data-description="{{ line.description }}"></td>
+                            <td>{{ line.description or 'N/A' }}</td>
+                            <td style="text-align: right;">{{ "%.2f"|format(line.qty or 0) }}</td>
+                            <td style="text-align: right;">R {{ "%.2f"|format(line.excl_price or 0) }}</td>
+                            <td style="text-align: right;">R {{ "%.2f"|format(line.excl_total or 0) }}</td>
+                        </tr>
+                        {% endfor %}
                     </tbody>
                 </table>
             </div>
-            <div style="padding: 16px; border-top: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
-                <div>
-                    <span style="font-weight: 600; color: var(--text-secondary);">Total Excl. Cost: </span>
-                    <span id="total-cost" style="font-size: 1.3rem; font-weight: 700; color: var(--brand-primary);">R 0.00</span>
+            <div style="padding: 16px; border-top: 1px solid var(--border-color); text-align: right;">
+                <button type="button" class="btn btn-primary" id="proceed-to-bom-btn" disabled>
+                    Proceed to BOM Builder →
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- STEP 2: Build BOM (initially hidden) -->
+    <div id="step2-panel" class="step-panel hidden">
+        <!-- Selection Summary Panel -->
+        <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 24px; margin-bottom: 24px;">
+            <div class="card animate-fade-in">
+                <div class="card-header">
+                    <h2 class="card-title">
+                        <span class="step-active-indicator">2</span>
+                        Selected BOM Components
+                    </h2>
+                    <span id="selected-count" style="font-size: 0.85rem; color: var(--text-muted);">0 items selected</span>
                 </div>
-                <div>
-                    <span id="shortfall-count" style="font-size: 0.85rem; color: var(--brand-amber);"></span>
+                <div style="overflow-x: auto;">
+                    <table class="data-table" id="selected-items-table">
+                        <thead>
+                            <tr>
+                                <th>Code</th>
+                                <th>Description</th>
+                                <th>Qty on Hand</th>
+                                <th>Qty Required</th>
+                                <th>Unit Cost</th>
+                                <th>Total Cost</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody id="selected-items-body">
+                        </tbody>
+                    </table>
+                </div>
+                <div style="padding: 16px; border-top: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <span style="font-weight: 600; color: var(--text-secondary);">Total Excl. Cost: </span>
+                        <span id="total-cost" style="font-size: 1.3rem; font-weight: 700; color: var(--brand-primary);">R 0.00</span>
+                    </div>
+                    <div>
+                        <span id="shortfall-count" style="font-size: 0.85rem; color: var(--brand-amber);"></span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card animate-fade-in">
+                <div class="card-header">
+                    <h2 class="card-title">Order Configuration</h2>
+                </div>
+                <div style="padding: 16px;">
+                    <div class="form-group">
+                        <label>Order Type</label>
+                        <div style="display: flex; gap: 12px; margin-top: 8px;">
+                            <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                                <input type="radio" name="order_type" value="ASSEMBLY" checked>
+                                <strong>Assembly Order</strong>
+                                <span style="font-size: 0.8rem; color: var(--text-muted);">(Works Order for Production)</span>
+                            </label>
+                        </div>
+                        <div style="margin-top: 8px;">
+                            <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                                <input type="radio" name="order_type" value="STOCK">
+                                <strong>Stock Order</strong>
+                                <span style="font-size: 0.8rem; color: var(--text-muted);">(Picking List from Stores)</span>
+                            </label>
+                        </div>
+                        <div style="margin-top: 8px;">
+                            <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                                <input type="radio" name="order_type" value="COMBINED">
+                                <strong>Combined Order</strong>
+                                <span style="font-size: 0.8rem; color: var(--text-muted);">(Both Assembly + Picking List)</span>
+                            </label>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="issued_by">Issued By</label>
+                        <input type="text" id="issued_by" name="issued_by" class="form-input" placeholder="Your name">
+                    </div>
+
+                    <input type="hidden" name="bom_items_json" id="bom-items-json" value="[]">
+                    <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 16px; padding: 12px;" id="generate-btn" disabled>
+                        Generate Documents
+                    </button>
                 </div>
             </div>
         </div>
 
-        <div class="card animate-fade-in">
+        <!-- Item Selection Table -->
+        <div class="card animate-fade-in" style="margin-bottom: 24px;">
             <div class="card-header">
-                <h2 class="card-title">Order Configuration</h2>
-            </div>
-            <div style="padding: 16px;">
-                <div class="form-group">
-                    <label>Order Type</label>
-                    <div style="display: flex; gap: 12px; margin-top: 8px;">
-                        <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
-                            <input type="radio" name="order_type" value="ASSEMBLY" checked>
-                            <strong>Assembly Order</strong>
-                            <span style="font-size: 0.8rem; color: var(--text-muted);">(Works Order for Production)</span>
-                        </label>
-                    </div>
-                    <div style="margin-top: 8px;">
-                        <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
-                            <input type="radio" name="order_type" value="STOCK">
-                            <strong>Stock Order</strong>
-                            <span style="font-size: 0.8rem; color: var(--text-muted);">(Picking List from Stores)</span>
-                        </label>
-                    </div>
+                <h2 class="card-title">Item Catalogue</h2>
+                <div style="display: flex; gap: 8px; align-items: center;">
+                    <input type="text" id="search-input" placeholder="Search code or description..." class="form-input" style="width: 250px; padding: 6px 10px; font-size: 0.85rem;">
+                    <select id="category-filter" class="form-input" style="width: 180px; padding: 6px 10px; font-size: 0.85rem;">
+                        <option value="">All Categories</option>
+                        {% for cat in categories %}
+                        <option value="{{ cat }}">{{ cat }}</option>
+                        {% endfor %}
+                    </select>
+                    <label style="display: flex; align-items: center; gap: 4px; font-size: 0.85rem;">
+                        <input type="checkbox" id="instock-toggle"> In Stock Only
+                    </label>
+                    <button type="button" class="btn btn-secondary" id="back-to-step1-btn" style="margin-left: auto;">← Back to SO Items</button>
                 </div>
-                <div class="form-group">
-                    <label for="issued_by">Issued By</label>
-                    <input type="text" id="issued_by" name="issued_by" class="form-input" placeholder="Your name">
-                </div>
-
-                <input type="hidden" name="bom_items_json" id="bom-items-json" value="[]">
-                <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 16px; padding: 12px;" id="generate-btn" disabled>
-                    Generate Documents
-                </button>
             </div>
+            <div id="item-table"></div>
         </div>
     </div>
 </form>

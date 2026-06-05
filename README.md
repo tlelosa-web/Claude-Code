@@ -7,7 +7,7 @@ A local desktop web application for managing Sales Orders, generating Works Orde
 ## Features
 
 | Feature | Description |
-|---------|-------------|
+| --- | --- |
 | **Item Import** | Import items from `ItemListingReport.csv` with currency parsing |
 | **Sales Order Upload** | Upload PDF sales orders, auto-extract fields using `pdfplumber` |
 | **BOM Builder** | Searchable, filterable item selection with shortfall detection |

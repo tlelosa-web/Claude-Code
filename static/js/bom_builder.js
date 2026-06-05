@@ -1,7 +1,8 @@
 /* ============================================
    SOPS — BOM Builder JavaScript
-   Handles item selection, shortfall detection,
-   and order configuration for BOM generation
+   Two-step workflow:
+   1. Select SO line items that need BOM components
+   2. Build BOM by selecting catalogue items
    ============================================ */
 
 (function() {
@@ -17,9 +18,19 @@
     const initialQty = config.initialQty || 1;
 
     // State
-    let selectedItems = {};  // keyed by item id
+    let selectedItems = {};  // keyed by item id (catalogue items for BOM)
+    let selectedSOLines = new Set();  // SO line item IDs selected
 
-    // DOM refs
+    // DOM refs - Step 1
+    const step1Panel = document.getElementById('step1-panel');
+    const step2Panel = document.getElementById('step2-panel');
+    const soItemsBody = document.getElementById('so-items-body');
+    const selectAllSOBtn = document.getElementById('select-all-so-btn');
+    const deselectAllSOBtn = document.getElementById('deselect-all-so-btn');
+    const proceedToBOMBtn = document.getElementById('proceed-to-bom-btn');
+    const backToStep1Btn = document.getElementById('back-to-step1-btn');
+
+    // DOM refs - Step 2
     const searchInput = document.getElementById('search-input');
     const categoryFilter = document.getElementById('category-filter');
     const instockToggle = document.getElementById('instock-toggle');
@@ -29,6 +40,109 @@
     const shortfallCountEl = document.getElementById('shortfall-count');
     const bomItemsJson = document.getElementById('bom-items-json');
     const generateBtn = document.getElementById('generate-btn');
+
+    // ============================================
+    // STEP 1: SO Line Item Selection
+    // ============================================
+
+    function initSOLineSelection() {
+        if (!soItemsBody) return;
+
+        // Bind checkbox events for SO items
+        soItemsBody.querySelectorAll('.so-item-select').forEach(function(cb) {
+            cb.addEventListener('change', function() {
+                const lineId = this.dataset.lineId;
+                const row = this.closest('.so-item-row');
+                
+                if (this.checked) {
+                    selectedSOLines.add(lineId);
+                    row.classList.add('selected');
+                } else {
+                    selectedSOLines.delete(lineId);
+                    row.classList.remove('selected');
+                }
+                
+                updateSOLineSelectionUI();
+            });
+
+            // Also allow clicking the row to toggle
+            const row = cb.closest('.so-item-row');
+            if (row) {
+                row.addEventListener('click', function(e) {
+                    if (e.target.type !== 'checkbox') {
+                        cb.checked = !cb.checked;
+                        cb.dispatchEvent(new Event('change'));
+                    }
+                });
+            }
+        });
+
+        // Select All button
+        if (selectAllSOBtn) {
+            selectAllSOBtn.addEventListener('click', function() {
+                soItemsBody.querySelectorAll('.so-item-select').forEach(function(cb) {
+                    cb.checked = true;
+                    selectedSOLines.add(cb.dataset.lineId);
+                    cb.closest('.so-item-row').classList.add('selected');
+                });
+                updateSOLineSelectionUI();
+            });
+        }
+
+        // Deselect All button
+        if (deselectAllSOBtn) {
+            deselectAllSOBtn.addEventListener('click', function() {
+                soItemsBody.querySelectorAll('.so-item-select').forEach(function(cb) {
+                    cb.checked = false;
+                    selectedSOLines.delete(cb.dataset.lineId);
+                    cb.closest('.so-item-row').classList.remove('selected');
+                });
+                updateSOLineSelectionUI();
+            });
+        }
+
+        // Proceed to BOM Builder
+        if (proceedToBOMBtn) {
+            proceedToBOMBtn.addEventListener('click', function() {
+                if (selectedSOLines.size === 0) {
+                    alert('Please select at least one SO line item.');
+                    return;
+                }
+                showStep2();
+            });
+        }
+    }
+
+    function updateSOLineSelectionUI() {
+        if (proceedToBOMBtn) {
+            proceedToBOMBtn.disabled = selectedSOLines.size === 0;
+            proceedToBOMBtn.style.opacity = selectedSOLines.size === 0 ? '0.5' : '1';
+            proceedToBOMBtn.textContent = 'Proceed to BOM Builder → (' + selectedSOLines.size + ' selected)';
+        }
+    }
+
+    function showStep2() {
+        step1Panel.classList.add('hidden');
+        step2Panel.classList.remove('hidden');
+        // Scroll to top
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        // Initialize BOM builder
+        filterItems();
+    }
+
+    function showStep1() {
+        step2Panel.classList.add('hidden');
+        step1Panel.classList.remove('hidden');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    if (backToStep1Btn) {
+        backToStep1Btn.addEventListener('click', showStep1);
+    }
+
+    // ============================================
+    // STEP 2: BOM Builder (Catalogue Item Selection)
+    // ============================================
 
     // Render the item selection table
     function renderItemTable(filteredItems) {
@@ -249,6 +363,10 @@
 
     // Initialize event listeners
     function init() {
+        // Initialize Step 1
+        initSOLineSelection();
+
+        // Initialize Step 2 filters
         if (searchInput) {
             searchInput.addEventListener('input', filterItems);
         }
@@ -259,8 +377,8 @@
             instockToggle.addEventListener('change', filterItems);
         }
 
-        // Initial render
-        filterItems();
+        // Initial UI state
+        updateSOLineSelectionUI();
         updateSummary();
     }
 

@@ -34,6 +34,14 @@
                 <tr><td class="detail-label">Job Number(s)</td><td class="detail-value">{{ so.job_numbers if so and so.job_numbers else '-' }}</td></tr>
                 <tr><td class="detail-label">Customer</td><td class="detail-value">{{ so.customer_name if so else '-' }}</td></tr>
                 <tr><td class="detail-label">Delivery Address</td><td class="detail-value">{{ so.delivery_address if so else '-' }}</td></tr>
+                {% if wo.related_order %}
+                <tr><td class="detail-label">Related Order</td><td class="detail-value">
+                    <a href="{{ url_for('works_orders.view_order', order_id=wo.related_order.id) }}" style="color: var(--brand-primary); font-weight: 600;">
+                        {{ wo.related_order.wo_number }} 
+                        <span class="badge" style="background: var(--brand-secondary); font-size: 0.75rem;">{{ "Assembly" if wo.related_order.order_type == "ASSEMBLY" else "Stock" }}</span>
+                    </a>
+                </td></tr>
+                {% endif %}
             </table>
         </div>
         <div>

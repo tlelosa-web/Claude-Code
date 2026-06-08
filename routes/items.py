@@ -2,7 +2,7 @@ import os
 from flask import Blueprint, render_template, request, redirect, url_for, flash, current_app, jsonify
 from werkzeug.utils import secure_filename
 from models import db, Item, StockMovement
-from services.item_importer import import_items_from_csv
+from services.item_importer import import_items_from_csv, import_items_from_csv_skip_quantities
 from services.stock_service import adjust
 
 items_bp = Blueprint('items', __name__)
@@ -68,6 +68,10 @@ def adjust_stock(item_id):
 @items_bp.route('/items/import', methods=['GET', 'POST'])
 def import_csv():
     if request.method == 'POST':
+        # Determine import mode: preserve quantities or not
+        preserve_quantities = request.form.get('preserve_quantities') == '1'
+        import_func = import_items_from_csv_skip_quantities if preserve_quantities else import_items_from_csv
+        
         # Check if they uploaded a file
         uploaded_file = request.files.get('csv_file')
         
@@ -79,8 +83,11 @@ def import_csv():
             uploaded_file.save(file_path)
             
             try:
-                updated_count, inserted_count, skipped_count = import_items_from_csv(file_path)
-                flash(f"Import complete! {inserted_count} items inserted, {updated_count} items updated, {skipped_count} items skipped (inactive or empty code).", "success")
+                updated_count, inserted_count, skipped_count = import_func(file_path)
+                if preserve_quantities:
+                    flash(f"Import complete (quantities preserved)! {inserted_count} items inserted, {updated_count} items updated, {skipped_count} items skipped.", "success")
+                else:
+                    flash(f"Import complete! {inserted_count} items inserted, {updated_count} items updated, {skipped_count} items skipped (inactive or empty code).", "success")
                 return redirect(url_for('items.catalogue'))
             except Exception as e:
                 flash(f"Error importing CSV: {str(e)}", "error")
@@ -88,14 +95,17 @@ def import_csv():
                 
         elif request.form.get('seed_default') == '1':
             # Seed from default file in project directory
-            default_path = os.path.join(current_app.config['BASE_DIR'], 'ItemListingReport.csv')
+            default_path = os.path.join(current_app.config['BASE_DIR'], 'data', 'ItemListingReport.csv')
             if not os.path.exists(default_path):
                 # Fallback check
-                default_path = 'ItemListingReport.csv'
+                default_path = os.path.join('data', 'ItemListingReport.csv')
                 
             try:
-                updated_count, inserted_count, skipped_count = import_items_from_csv(default_path)
-                flash(f"Seed complete! {inserted_count} items inserted, {updated_count} items updated, {skipped_count} items skipped.", "success")
+                updated_count, inserted_count, skipped_count = import_func(default_path)
+                if preserve_quantities:
+                    flash(f"Seed complete (quantities preserved)! {inserted_count} items inserted, {updated_count} items updated, {skipped_count} items skipped.", "success")
+                else:
+                    flash(f"Seed complete! {inserted_count} items inserted, {updated_count} items updated, {skipped_count} items skipped.", "success")
                 return redirect(url_for('items.catalogue'))
             except Exception as e:
                 flash(f"Error seeding default CSV: {str(e)}", "error")

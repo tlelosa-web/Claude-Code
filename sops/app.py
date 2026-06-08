@@ -33,7 +33,7 @@ def create_app(config_class=Config):
         from sops.models import Item
         db.create_all()
         if Item.query.count() == 0:
-            csv_path = os.path.join(Config.BASE_DIR, 'ItemListingReport.csv')
+            csv_path = os.path.join(Config.BASE_DIR, 'data', 'ItemListingReport.csv')
             if os.path.exists(csv_path):
                 try:
                     from sops.services.item_importer import import_items_from_csv

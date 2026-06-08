@@ -6,7 +6,7 @@ import sys
 from pathlib import Path
 
 # Get database path
-db_path = Path(__file__).parent / 'instance' / 'sops.db'
+db_path = Path(__file__).parent.parent / 'instance' / 'sops.db'
 
 if not db_path.exists():
     print(f"Database not found at {db_path}")

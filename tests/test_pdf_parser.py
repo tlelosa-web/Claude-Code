@@ -10,7 +10,7 @@ class TestPDFParser:
         from services.pdf_parser import parse_sales_order_pdf
         
         # Get the fixture PDF path
-        pdf_path = os.path.join(os.path.dirname(__file__), '..', 
+        pdf_path = os.path.join(os.path.dirname(__file__), '..', 'data',
                                 'FM4087 - ARCTIC AIR - Sales Order - SO4603.pdf')
         
         if not os.path.exists(pdf_path):

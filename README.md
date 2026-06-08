@@ -8,7 +8,7 @@ A local desktop web application for managing Sales Orders, generating Works Orde
 
 | Feature | Description |
 | --- | --- |
-| **Item Import** | Import items from `ItemListingReport.csv` with currency parsing |
+| **Item Import** | Import items from `data/ItemListingReport.csv` with currency parsing |
 | **Sales Order Upload** | Upload PDF sales orders, auto-extract fields using `pdfplumber` |
 | **BOM Builder** | Searchable, filterable item selection with shortfall detection |
 | **Works Orders** | A4-printable Works Order documents (Assembly Orders) |
@@ -78,7 +78,23 @@ sops/
 ├── models.py                 ← SQLAlchemy ORM models (6 tables)
 ├── config.py                 ← Configuration
 ├── requirements.txt          ← Python dependencies
+├── launch.bat                ← Windows launch batch script
+├── launch.ps1                ← Windows launch PowerShell script
 ├── instance/sops.db          ← SQLite database (auto-created)
+├── data/                     ← Data sheets and PDF samples
+│   ├── ItemListingReport.csv
+│   ├── ItemMovementReport.csv
+│   └── FM4087 - ARCTIC AIR - Sales Order - SO4603.pdf
+├── logs/                     ← Application logs and run outputs
+│   ├── startup.log
+│   └── startup.err.log
+├── scripts/                  ← Helper and utility scripts
+│   ├── download_vendor.sh
+│   ├── fast_import.py
+│   ├── fix_so_status.py
+│   ├── migrate_add_related_wo.py
+│   ├── quick_update_items.py
+│   └── test_import.py
 ├── routes/                   ← Route handlers
 │   ├── dashboard.py
 │   ├── sales_orders.py

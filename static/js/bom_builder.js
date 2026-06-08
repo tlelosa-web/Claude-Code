@@ -126,8 +126,50 @@
         step2Panel.classList.remove('hidden');
         // Scroll to top
         window.scrollTo({ top: 0, behavior: 'smooth' });
+        // Display selected parent items
+        updateParentItemsTable();
         // Initialize BOM builder
         filterItems();
+    }
+
+    // Display selected parent items (SO line items) in Step 2
+    function updateParentItemsTable() {
+        const parentItemsBody = document.getElementById('parent-items-body');
+        const parentItemsCount = document.getElementById('parent-items-count');
+        if (!parentItemsBody || !parentItemsCount) return;
+
+        if (selectedSOLines.size === 0) {
+            parentItemsBody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: var(--text-muted); padding: 20px;">No parent items selected</td></tr>';
+            parentItemsCount.textContent = '0 items selected';
+            return;
+        }
+
+        let html = '';
+        let count = 0;
+
+        // Get all SO item rows and filter selected ones
+        const allRows = document.querySelectorAll('#so-items-body .so-item-row');
+        allRows.forEach(function(row) {
+            const lineId = row.dataset.lineId;
+            if (selectedSOLines.has(lineId)) {
+                const description = row.dataset.description || 'N/A';
+                const cells = row.querySelectorAll('td');
+                const qty = cells[2] ? cells[2].textContent.trim() : '0.00';
+                const exclPrice = cells[3] ? cells[3].textContent.trim() : 'R 0.00';
+                const exclTotal = cells[4] ? cells[4].textContent.trim() : 'R 0.00';
+
+                html += '<tr>' +
+                    '<td>' + escHtml(description) + '</td>' +
+                    '<td style="text-align: right;">' + qty + '</td>' +
+                    '<td style="text-align: right;">' + exclPrice + '</td>' +
+                    '<td style="text-align: right;">' + exclTotal + '</td>' +
+                    '</tr>';
+                count++;
+            }
+        });
+
+        parentItemsBody.innerHTML = html;
+        parentItemsCount.textContent = count + ' item' + (count !== 1 ? 's' : '') + ' selected';
     }
 
     function showStep1() {

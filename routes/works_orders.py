@@ -57,6 +57,19 @@ def mark_complete(order_id):
         
         wo.status = 'Complete'
         wo.completed_at = datetime.utcnow()
+        db.session.flush()  # Flush to save before checking related WOs
+        
+        # Check if all related Works Orders for this Sales Order are complete
+        if wo.sales_order:
+            all_wos = WorksOrder.query.filter_by(so_id=wo.sales_order.id).all()
+            all_complete = all(wo.status == 'Complete' or wo.status == 'Cancelled' for wo in all_wos)
+            has_any_complete = any(wo.status == 'Complete' for wo in all_wos)
+            
+            # Update Sales Order status if all WOs are complete/cancelled and at least one is complete
+            if all_complete and has_any_complete:
+                wo.sales_order.status = 'Complete'
+                db.session.flush()
+        
         db.session.commit()
         
         flash(f"Works Order {wo.wo_number} marked as Complete. Stock deducted.", "success")
@@ -109,6 +122,19 @@ def confirm_pick(order_id):
         
         wo.status = 'Complete'
         wo.completed_at = datetime.utcnow()
+        db.session.flush()  # Flush to save before checking related WOs
+        
+        # Check if all related Works Orders for this Sales Order are complete
+        if wo.sales_order:
+            all_wos = WorksOrder.query.filter_by(so_id=wo.sales_order.id).all()
+            all_complete = all(wo.status == 'Complete' or wo.status == 'Cancelled' for wo in all_wos)
+            has_any_complete = any(wo.status == 'Complete' for wo in all_wos)
+            
+            # Update Sales Order status if all WOs are complete/cancelled and at least one is complete
+            if all_complete and has_any_complete:
+                wo.sales_order.status = 'Complete'
+                db.session.flush()
+        
         db.session.commit()
         
         flash(f"Picking List {wo.wo_number} confirmed. Stock deducted.", "success")

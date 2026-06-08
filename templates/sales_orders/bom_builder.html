@@ -127,6 +127,32 @@
 
     <!-- STEP 2: Build BOM (initially hidden) -->
     <div id="step2-panel" class="step-panel hidden">
+        <!-- Selected Parent Items Panel -->
+        <div class="card animate-fade-in" style="margin-bottom: 24px;">
+            <div class="card-header">
+                <h2 class="card-title">
+                    <span class="step-active-indicator" style="background: var(--brand-secondary);">✓</span>
+                    Parent Items to Build
+                </h2>
+                <span id="parent-items-count" style="font-size: 0.85rem; color: var(--text-muted);">0 items selected</span>
+            </div>
+            <div style="overflow-x: auto;">
+                <table class="data-table" id="parent-items-table">
+                    <thead>
+                        <tr>
+                            <th>Description</th>
+                            <th style="text-align: right;">Qty</th>
+                            <th style="text-align: right;">Excl. Price</th>
+                            <th style="text-align: right;">Excl. Total</th>
+                        </tr>
+                    </thead>
+                    <tbody id="parent-items-body">
+                        <!-- Populated by JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
         <!-- Selection Summary Panel -->
         <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 24px; margin-bottom: 24px;">
             <div class="card animate-fade-in">

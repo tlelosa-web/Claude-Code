@@ -257,28 +257,48 @@ def _render_test_sheet_direct(data: Dict[str, Any], output_path: Path) -> None:
                 line, "Helvetica-Bold", 6, "center")
     y -= HDR_H
 
-    # First data row — auto-populated; Current PH columns left blank
+    # Data rows — one per fan on the order, then blanks for manual entries.
     DRH = 14
-    row1 = [
-        "",           # Motor Serial Number  — filled in manually
-        blade_pitch,  # Blade Pitch Deg.
-        "N/A",        # Tacho & Clamp Meter Serial No
-        op_speed,     # Speed r/min
-        "",           # Current PH1 — blank (measured during physical testing)
-        "",           # Current PH2 — blank
-        "",           # Current PH3 — blank
-        voltage,      # Voltage PH1
-        voltage,      # Voltage PH2
-        voltage,      # Voltage PH3
-        connection,   # Connection
-    ]
-    for i, (cx, cw) in enumerate(zip(col_xs, TCW)):
-        box(cx, y - DRH, cw, DRH)
-        txt(cx + cw / 2, y - DRH + 4, row1[i], "Helvetica", 7, "center")
-    y -= DRH
+    MAX_ROWS = 20
+    test_lines = dr.get("test_lines") if isinstance(dr.get("test_lines"), list) else []
+    if not test_lines:
+        test_lines = [{
+            "motor_serial_number": dr.get("motor_serial_number", ""),
+            "blade_pitch_deg": blade_pitch,
+            "tacho_clamp_serial_no": dr.get("tacho_clamp_serial_no", "N/A") or "N/A",
+            "speed_actual": dr.get("speed_actual", "") or op_speed,
+            "current_ph1": dr.get("current_ph1", ""),
+            "current_ph2": dr.get("current_ph2", ""),
+            "current_ph3": dr.get("current_ph3", ""),
+            "voltage_ph1": dr.get("voltage_ph1", "") or voltage,
+            "voltage_ph2": dr.get("voltage_ph2", "") or voltage,
+            "voltage_ph3": dr.get("voltage_ph3", "") or voltage,
+            "connection": dr.get("connection", "") or connection,
+        }]
 
-    # 19 additional blank rows
-    for _ in range(19):
+    def test_line_row(line: Dict[str, Any]) -> list[str]:
+        return [
+            str(line.get("motor_serial_number", "") or ""),
+            str(line.get("blade_pitch_deg", "") or blade_pitch),
+            str(line.get("tacho_clamp_serial_no", "") or "N/A"),
+            str(line.get("speed_actual", "") or op_speed),
+            str(line.get("current_ph1", "") or ""),
+            str(line.get("current_ph2", "") or ""),
+            str(line.get("current_ph3", "") or ""),
+            str(line.get("voltage_ph1", "") or voltage),
+            str(line.get("voltage_ph2", "") or voltage),
+            str(line.get("voltage_ph3", "") or voltage),
+            str(line.get("connection", "") or connection),
+        ]
+
+    populated_rows = [test_line_row(line) for line in test_lines[:MAX_ROWS]]
+    for row in populated_rows:
+        for i, (cx, cw) in enumerate(zip(col_xs, TCW)):
+            box(cx, y - DRH, cw, DRH)
+            txt(cx + cw / 2, y - DRH + 4, row[i], "Helvetica", 7, "center")
+        y -= DRH
+
+    for _ in range(MAX_ROWS - len(populated_rows)):
         for cx, cw in zip(col_xs, TCW):
             box(cx, y - DRH, cw, DRH)
         y -= DRH

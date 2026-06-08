@@ -1,7 +1,23 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import FormFields from "./components/FormFields";
+import FormFields, { Field, Select } from "./components/FormFields";
 import LivePreview from "./components/LivePreview";
 import "./App.css";
+
+const MAX_TEST_LINES = 20;
+
+const createTestLine = () => ({
+  motor_serial_number: "",
+  blade_pitch_deg: "",
+  tacho_clamp_serial_no: "",
+  speed_actual: "",
+  current_ph1: "",
+  current_ph2: "",
+  current_ph3: "",
+  voltage_ph1: "",
+  voltage_ph2: "",
+  voltage_ph3: "",
+  connection: "",
+});
 
 const getLocalIsoDate = () => {
   const d = new Date();
@@ -49,10 +65,31 @@ function App() {
   });
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [testSheetPreviewUrl, setTestSheetPreviewUrl] = useState("");
+  const [testLines, setTestLines] = useState([createTestLine()]);
 
   const busy = busyState.saving || busyState.loadingExcel || busyState.preview;
 
-  const getPreviewDataKey = (data) =>
+  const buildTestLinesPayload = (lines = testLines, data = formData) =>
+    lines.map((line) => ({
+      motor_serial_number: line.motor_serial_number || "",
+      blade_pitch_deg: line.blade_pitch_deg || data.class_pitch || "",
+      tacho_clamp_serial_no: line.tacho_clamp_serial_no || "N/A",
+      speed_actual: line.speed_actual || data.op_speed || "",
+      current_ph1: line.current_ph1 || "",
+      current_ph2: line.current_ph2 || "",
+      current_ph3: line.current_ph3 || "",
+      voltage_ph1: line.voltage_ph1 || data.voltage || "",
+      voltage_ph2: line.voltage_ph2 || data.voltage || "",
+      voltage_ph3: line.voltage_ph3 || data.voltage || "",
+      connection: line.connection || data.connection || "",
+    }));
+
+  const buildRequestPayload = () => ({
+    ...formData,
+    test_lines: buildTestLinesPayload(),
+  });
+
+  const getPreviewDataKey = (data, lines = testLines) =>
     JSON.stringify({
       customer_name: data.customer_name,
       serial_no: data.serial_no,
@@ -72,6 +109,7 @@ function App() {
       connection: data.connection,
       relube_interval: data.relube_interval,
       manufacturer: data.manufacturer,
+      test_lines: buildTestLinesPayload(lines, data),
     });
 
   useEffect(() => {
@@ -160,7 +198,7 @@ function App() {
     }
     if (busyState.saving || busyState.loadingExcel) return;
 
-    const nextPreviewDataKey = getPreviewDataKey(formData);
+    const nextPreviewDataKey = getPreviewDataKey(formData, testLines);
     if (nextPreviewDataKey === previewDataKeyRef.current) return;
 
     previewTimerRef.current = setTimeout(() => {
@@ -190,6 +228,7 @@ function App() {
     formData.connection,
     formData.relube_interval,
     formData.manufacturer,
+    testLines,
   ]);
 
   // =========================
@@ -215,6 +254,9 @@ function App() {
         "Motor kW, Pole count, and Voltage are all required";
     }
 
+    if (testLines.length > MAX_TEST_LINES)
+      errs.test_lines = `A single test sheet can hold ${MAX_TEST_LINES} fan lines.`;
+
     return errs;
   };
 
@@ -227,6 +269,34 @@ function App() {
       ...prev,
       [field]: value,
     }));
+  };
+
+  const updateTestLine = (index, field, value) => {
+    setTestLines((prev) =>
+      prev.map((line, i) => (i === index ? { ...line, [field]: value } : line))
+    );
+  };
+
+  const addTestLine = () => {
+    setTestLines((prev) => {
+      if (prev.length >= MAX_TEST_LINES) return prev;
+      return [...prev, createTestLine()];
+    });
+  };
+
+  const duplicateTestLine = (index) => {
+    setTestLines((prev) => {
+      if (prev.length >= MAX_TEST_LINES) return prev;
+      const source = prev[index] || createTestLine();
+      return [...prev.slice(0, index + 1), { ...source }, ...prev.slice(index + 1)];
+    });
+  };
+
+  const removeTestLine = (index) => {
+    setTestLines((prev) => {
+      if (prev.length <= 1) return [createTestLine()];
+      return prev.filter((_line, i) => i !== index);
+    });
   };
 
   const _errMsg = (err) => {
@@ -289,14 +359,14 @@ function App() {
     if (!silent) setStatus("Refreshing Test Sheet preview...");
 
     // Update the ref immediately to prevent infinite retry loops if the fetch fails
-    previewDataKeyRef.current = getPreviewDataKey(formData);
+    previewDataKeyRef.current = getPreviewDataKey(formData, testLines);
 
     setBusyState((prev) => ({ ...prev, preview: true }));
     try {
       const res = await fetch(`${apiBase}/api/reports/test-record-sheet/from-nameplate`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(buildRequestPayload()),
       });
 
       if (!res.ok) {
@@ -394,7 +464,7 @@ function App() {
       const serialSafe = (formData.serial_no || "UNKNOWN").trim() || "UNKNOWN";
       await requestPdf(
         "/api/reports/test-record-sheet/from-nameplate",
-        formData,
+        buildRequestPayload(),
         `TestSheet_${serialSafe}.pdf`
       );
       setStatus("Test Record Sheet generated and downloaded");
@@ -428,6 +498,7 @@ function App() {
       relube_interval: "N/A",
       manufacturer: "",
     });
+    setTestLines([createTestLine()]);
     if (testSheetPreviewUrl) URL.revokeObjectURL(testSheetPreviewUrl);
     setTestSheetPreviewUrl("");
   };
@@ -470,6 +541,54 @@ function App() {
                     options={options}
                     showAdvanced={showAdvanced}
                   />
+                  <div className="test-lines-panel">
+                    <div className="test-lines-header">
+                      <div>
+                        <h3>Test Sheet Fan Lines</h3>
+                        {errors.test_lines ? <div className="field-error">{errors.test_lines}</div> : null}
+                      </div>
+                      <button className="btn" type="button" onClick={addTestLine} disabled={testLines.length >= MAX_TEST_LINES}>
+                        Add Fan
+                      </button>
+                    </div>
+                    {testLines.map((line, index) => (
+                      <div className="test-line" key={index}>
+                        <div className="test-line-title">
+                          <span>Fan {index + 1}</span>
+                          <div className="test-line-actions">
+                            <button className="btn btn-small" type="button" onClick={() => duplicateTestLine(index)} disabled={testLines.length >= MAX_TEST_LINES}>
+                              Duplicate
+                            </button>
+                            <button className="btn btn-small" type="button" onClick={() => removeTestLine(index)} disabled={testLines.length === 1}>
+                              Remove
+                            </button>
+                          </div>
+                        </div>
+                        <div className="test-line-grid">
+                          <Field label="Motor Serial No." value={line.motor_serial_number} onChange={(v) => updateTestLine(index, "motor_serial_number", v)} />
+                          <Field label="Blade Pitch Deg." value={line.blade_pitch_deg} onChange={(v) => updateTestLine(index, "blade_pitch_deg", v)} placeholder={formData.class_pitch || ""} />
+                          <Field label="Tacho/Clamp Serial" value={line.tacho_clamp_serial_no} onChange={(v) => updateTestLine(index, "tacho_clamp_serial_no", v)} placeholder="N/A" />
+                          <Field label="Speed r/min" value={line.speed_actual} onChange={(v) => updateTestLine(index, "speed_actual", v)} placeholder={formData.op_speed || ""} />
+                          <Field label="Current PH1" value={line.current_ph1} onChange={(v) => updateTestLine(index, "current_ph1", v)} />
+                          <Field label="Current PH2" value={line.current_ph2} onChange={(v) => updateTestLine(index, "current_ph2", v)} />
+                          <Field label="Current PH3" value={line.current_ph3} onChange={(v) => updateTestLine(index, "current_ph3", v)} />
+                          <Field label="Voltage PH1" value={line.voltage_ph1} onChange={(v) => updateTestLine(index, "voltage_ph1", v)} placeholder={formData.voltage || ""} />
+                          <Field label="Voltage PH2" value={line.voltage_ph2} onChange={(v) => updateTestLine(index, "voltage_ph2", v)} placeholder={formData.voltage || ""} />
+                          <Field label="Voltage PH3" value={line.voltage_ph3} onChange={(v) => updateTestLine(index, "voltage_ph3", v)} placeholder={formData.voltage || ""} />
+                          <Select
+                            label="Connection"
+                            value={line.connection}
+                            onChange={(v) => updateTestLine(index, "connection", v)}
+                            options={[
+                              { label: "STAR", value: "STAR" },
+                              { label: "DELTA", value: "DELTA" },
+                            ]}
+                            placeholder={formData.connection || "Select..."}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
                 <div className="footer-actions">
                   <button className="btn btn-primary" type="button" onClick={generateNameplatePDF} disabled={busyState.saving || busyState.loadingExcel}>

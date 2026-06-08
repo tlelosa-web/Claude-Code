@@ -17,4 +17,8 @@ start "Backend" cmd /k "cd /d %~dp0\4_Scripts\backend && call venv\Scripts\activ
 echo Launching frontend server...
 start "Frontend" cmd /k "cd /d %~dp0\4_Scripts\frontend && npm run dev"
 
+echo Opening NamePlate Tool in your browser...
+timeout /t 4 /nobreak >nul
+start "" "http://localhost:5173"
+
 :end

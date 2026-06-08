@@ -113,6 +113,19 @@ app.add_middleware(
 # ------------------------------------------------------------
 # 3. Models
 # ------------------------------------------------------------
+class TestLinePayload(BaseModel):
+    motor_serial_number: str = ""
+    blade_pitch_deg: str = ""
+    tacho_clamp_serial_no: str = ""
+    speed_actual: str = ""
+    current_ph1: str = ""
+    current_ph2: str = ""
+    current_ph3: str = ""
+    voltage_ph1: str = ""
+    voltage_ph2: str = ""
+    voltage_ph3: str = ""
+    connection: str = ""
+
 class NameplatePayload(BaseModel):
     customer_name: str = ""
     series: str = ""
@@ -132,6 +145,7 @@ class NameplatePayload(BaseModel):
     date_of_manuf: str = ""
     relube_interval: str = "N/A"
     manufacturer: str = ""
+    test_lines: list[TestLinePayload] = Field(default_factory=list)
 
 class TestRecordSheetPayload(BaseModel):
     date: str = Field(..., description="Date e.g. 22/01/2026")
@@ -154,6 +168,7 @@ class TestRecordSheetPayload(BaseModel):
     speed_actual: str = ""
     current_ph1: str = ""; current_ph2: str = ""; current_ph3: str = ""
     voltage_ph1: str = ""; voltage_ph2: str = ""; voltage_ph3: str = ""
+    test_lines: list[TestLinePayload] = Field(default_factory=list)
 
 # ------------------------------------------------------------
 # 4. Helpers
@@ -259,6 +274,25 @@ def _today_ddmmyyyy() -> str:
     import datetime
     return datetime.datetime.now().strftime("%d/%m/%Y")
 
+def _normalise_test_lines(lines: list[TestLinePayload], fallback: dict) -> list[dict]:
+    normalised = []
+    for line in lines[:20]:
+        data = line.dict()
+        normalised.append({
+            "motor_serial_number": _clean(data.get("motor_serial_number")),
+            "blade_pitch_deg": _clean(data.get("blade_pitch_deg")) or _clean(fallback.get("blade_pitch_deg")),
+            "tacho_clamp_serial_no": _clean(data.get("tacho_clamp_serial_no")) or "N/A",
+            "speed_actual": _clean(data.get("speed_actual")) or _clean(fallback.get("speed_actual")),
+            "current_ph1": _clean(data.get("current_ph1")),
+            "current_ph2": _clean(data.get("current_ph2")),
+            "current_ph3": _clean(data.get("current_ph3")),
+            "voltage_ph1": _clean(data.get("voltage_ph1")) or _clean(fallback.get("voltage_ph1")),
+            "voltage_ph2": _clean(data.get("voltage_ph2")) or _clean(fallback.get("voltage_ph2")),
+            "voltage_ph3": _clean(data.get("voltage_ph3")) or _clean(fallback.get("voltage_ph3")),
+            "connection": _clean(data.get("connection")) or _clean(fallback.get("connection")),
+        })
+    return normalised
+
 # ------------------------------------------------------------
 # 5. API Endpoints
 # ------------------------------------------------------------
@@ -350,6 +384,9 @@ def api_test_record_sheet(payload: TestRecordSheetPayload):
 
     data = payload.dict()
 
+    if len(payload.test_lines) > 20:
+        return JSONResponse({"error": "A single test sheet can hold up to 20 fan lines."}, status_code=400)
+
     if data["connection"].upper() not in ("STAR", "DELTA"):
         return JSONResponse({"error": "Invalid connection"}, status_code=400)
 
@@ -388,6 +425,10 @@ def api_test_record_sheet(payload: TestRecordSheetPayload):
             "connection": _clean(data.get("connection")),
         }
     }
+    nameplate_data["derived"]["test_lines"] = _normalise_test_lines(
+        payload.test_lines,
+        nameplate_data["derived"],
+    )
 
     # Generate via mapping-driven generator, then keep existing output filename behavior
     gen_path = Path(generate_test_record_sheet(nameplate_data, out_dir=str(CONFIG["OUTPUT_DIR"])))
@@ -410,6 +451,9 @@ def api_reports_download(file: str):
 @app.post("/api/reports/test-record-sheet/from-nameplate")
 def api_test_record_sheet_from_nameplate(payload: NameplatePayload):
     import shutil
+
+    if len(payload.test_lines) > 20:
+        return JSONResponse({"error": "A single test sheet can hold up to 20 fan lines."}, status_code=400)
 
     m_f, p_i, v_f = _to_float(payload.motor), _to_int(payload.pole), _to_float(payload.voltage)
 
@@ -467,25 +511,28 @@ def api_test_record_sheet_from_nameplate(payload: NameplatePayload):
     nameplate_from_payload["fla"] = _clean(motor_current)
     nameplate_from_payload["connection"] = _clean(conn)
 
+    derived_fallback = {
+        "date": date.today(),
+        "motor_description": _motor_description(payload.motor, payload.pole) or _clean(test_sheet.get("description")),
+        "procedure_used": "QC-WI-05",
+        "imp_form": _clean(payload.imp_form) or _clean(test_sheet.get("imp_form")) or "FORM B",
+        "motor_serial_number": _clean(test_sheet.get("motor_serial_number")),
+        "blade_pitch_deg": _clean(payload.class_pitch) or _clean(test_sheet.get("blade_pitch_deg")),
+        "tacho_clamp_serial_no": _clean(test_sheet.get("tacho_clamp_serial_no")) or "N/A",
+        "speed_actual": _clean(payload.op_speed) or _clean(test_sheet.get("speed_actual")) or _clean(fan_speed),
+        "current_ph1": _clean(test_sheet.get("current_ph1")),
+        "current_ph2": _clean(test_sheet.get("current_ph2")),
+        "current_ph3": _clean(test_sheet.get("current_ph3")),
+        "voltage_ph1": _clean(test_sheet.get("voltage_ph1")) or _clean(nameplate_from_payload.get("voltage")),
+        "voltage_ph2": _clean(test_sheet.get("voltage_ph2")) or _clean(nameplate_from_payload.get("voltage")),
+        "voltage_ph3": _clean(test_sheet.get("voltage_ph3")) or _clean(nameplate_from_payload.get("voltage")),
+        "connection": _clean(conn),
+    }
+    derived_fallback["test_lines"] = _normalise_test_lines(payload.test_lines, derived_fallback)
+
     nameplate_data = {
         "nameplate": nameplate_from_payload,
-        "derived": {
-            "date": date.today(),
-            "motor_description": _motor_description(payload.motor, payload.pole) or _clean(test_sheet.get("description")),
-            "procedure_used": "QC-WI-05",
-            "imp_form": _clean(payload.imp_form) or _clean(test_sheet.get("imp_form")) or "FORM B",
-            "motor_serial_number": _clean(test_sheet.get("motor_serial_number")),
-            "blade_pitch_deg": _clean(payload.class_pitch) or _clean(test_sheet.get("blade_pitch_deg")),
-            "tacho_clamp_serial_no": _clean(test_sheet.get("tacho_clamp_serial_no")) or "N/A",
-            "speed_actual": _clean(payload.op_speed) or _clean(test_sheet.get("speed_actual")) or _clean(fan_speed),
-            "current_ph1": _clean(test_sheet.get("current_ph1")),
-            "current_ph2": _clean(test_sheet.get("current_ph2")),
-            "current_ph3": _clean(test_sheet.get("current_ph3")),
-            "voltage_ph1": _clean(test_sheet.get("voltage_ph1")) or _clean(nameplate_from_payload.get("voltage")),
-            "voltage_ph2": _clean(test_sheet.get("voltage_ph2")) or _clean(nameplate_from_payload.get("voltage")),
-            "voltage_ph3": _clean(test_sheet.get("voltage_ph3")) or _clean(nameplate_from_payload.get("voltage")),
-            "connection": _clean(conn),
-        }
+        "derived": derived_fallback,
     }
 
     fname = f"Test Sheet{_sanitize_filename(_clean(nameplate_data['nameplate'].get('serial_no')) or 'UNKNOWN')}.pdf"

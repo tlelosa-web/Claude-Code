@@ -103,7 +103,7 @@ class TestBOMBuilder:
         assert shortfall == 8.0
     
     def test_total_cost_calculation(self, app, db, session, setup_data):
-        """Test total cost calculation for BOM lines."""
+        """Test that cost fields are removed from print context."""
         from services.bom_builder import create_works_order_or_picking_list
         from services.doc_generator import get_works_order_print_context
         
@@ -118,9 +118,14 @@ class TestBOMBuilder:
         # Get print context
         context = get_works_order_print_context(wo.id)
         
-        # Expected: (3 * 50.00) + (2 * 30.00) = 150 + 60 = 210
-        assert context['total_excl_cost'] == 210.0
+        # Verify cost fields are NOT present
+        assert 'total_excl_cost' not in context
         assert len(context['lines']) == 2
+        
+        # Verify individual lines don't have cost fields
+        for line in context['lines']:
+            assert 'unit_cost' not in line
+            assert 'total_cost' not in line
 
     def test_build_bom_page_renders_item_catalogue(self, client, session, setup_data):
         """BOM builder page should JSON-render item catalogue data for the UI."""

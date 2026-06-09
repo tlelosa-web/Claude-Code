@@ -120,10 +120,17 @@ class TestBOMBuilder:
         
         # Verify cost fields are NOT present
         assert 'total_excl_cost' not in context
-        assert len(context['lines']) == 2
+        
+        # Verify new structure: assembly_items and flat_lines
+        assert 'assembly_items' in context
+        assert 'flat_lines' in context
+        
+        # All items should be in flat_lines (no nested structure in this test)
+        assert len(context['flat_lines']) == 2
+        assert len(context['assembly_items']) == 0
         
         # Verify individual lines don't have cost fields
-        for line in context['lines']:
+        for line in context['flat_lines']:
             assert 'unit_cost' not in line
             assert 'total_cost' not in line
 

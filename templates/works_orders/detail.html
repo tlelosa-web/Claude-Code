@@ -63,7 +63,7 @@
     <div class="card-header">
         <h2 class="card-title">{% if wo.order_type == 'ASSEMBLY' %}Components{% else %}Items to Pick{% endif %}</h2>
     </div>
-    {% if lines %}
+    {% if assembly_items or flat_lines %}
     <div style="overflow-x: auto;">
         <table class="data-table">
             <thead>
@@ -83,7 +83,54 @@
                 </tr>
             </thead>
             <tbody>
-                {% for line in lines %}
+                <!-- Assembly Items with nested components -->
+                {% set global_index = [1] %}
+                {% for assembly in assembly_items %}
+                <tr style="background: rgba(232, 97, 10, 0.05);">
+                    <td>{{ global_index[0] }}</td>
+                    <td colspan="2"><strong>{{ assembly.item_code }} - {{ assembly.description }}</strong></td>
+                    <td>{{ assembly.category or '-' }}</td>
+                    <td>{{ assembly.qty_required }}</td>
+                    {% if wo.order_type == 'ASSEMBLY' %}
+                    <td>{{ assembly.qty_issued }}</td>
+                    {% endif %}
+                    <td style="{% if assembly.shortfall > 0 %}color: var(--brand-amber); font-weight: 600;{% endif %}">
+                        {{ assembly.qty_on_hand }}
+                        {% if assembly.shortfall > 0 %}
+                        <span style="color: var(--brand-danger);">(shortfall: {{ assembly.shortfall }})</span>
+                        {% endif %}
+                    </td>
+                    {% if wo.order_type == 'STOCK' %}
+                    <td>-</td>
+                    {% endif %}
+                </tr>
+                <!-- Nested components -->
+                {% for comp in assembly.components %}
+                <tr>
+                    <td></td>
+                    <td style="padding-left: 20px; color: #666;">└─ {{ comp.item_code }}</td>
+                    <td style="color: #666;">{{ comp.description }}</td>
+                    <td>{{ comp.category or '-' }}</td>
+                    <td>{{ comp.qty_required }}</td>
+                    {% if wo.order_type == 'ASSEMBLY' %}
+                    <td>{{ comp.qty_issued }}</td>
+                    {% endif %}
+                    <td style="{% if comp.shortfall > 0 %}color: var(--brand-amber); font-weight: 600;{% endif %}">
+                        {{ comp.qty_on_hand }}
+                        {% if comp.shortfall > 0 %}
+                        <span style="color: var(--brand-danger);">(shortfall: {{ comp.shortfall }})</span>
+                        {% endif %}
+                    </td>
+                    {% if wo.order_type == 'STOCK' %}
+                    <td>-</td>
+                    {% endif %}
+                </tr>
+                {% endfor %}
+                {% if global_index.append(global_index.pop() + 1) %}{% endif %}
+                {% endfor %}
+                
+                <!-- Flat lines (no parent) -->
+                {% for line in flat_lines %}
                 <tr class="{% if line.shortfall > 0 %}row-amber{% endif %}">
                     <td>{{ loop.index }}</td>
                     <td><strong>{{ line.item_code }}</strong></td>

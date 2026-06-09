@@ -90,7 +90,32 @@
             </tr>
         </thead>
         <tbody>
-            {% for line in lines %}
+            <!-- Assembly Items with nested components -->
+            {% set global_index = [1] %}
+            {% for assembly in assembly_items %}
+            <tr style="background: rgba(232, 97, 10, 0.05);">
+                <td>{{ global_index[0] }}</td>
+                <td colspan="2"><strong>{{ assembly.item_code }} - {{ assembly.description }}</strong></td>
+                <td>{{ assembly.category or '-' }}</td>
+                <td style="text-align: right;">{{ "%.2f"|format(assembly.qty_required) }}</td>
+                <td style="text-align: right;">{{ "%.2f"|format(assembly.qty_issued) }}</td>
+            </tr>
+            <!-- Nested components -->
+            {% for comp in assembly.components %}
+            <tr>
+                <td></td>
+                <td style="padding-left: 20px; color: #666;">└─ {{ comp.item_code }}</td>
+                <td style="color: #666;">{{ comp.description }}</td>
+                <td>{{ comp.category or '-' }}</td>
+                <td style="text-align: right;">{{ "%.2f"|format(comp.qty_required) }}</td>
+                <td style="text-align: right;">{{ "%.2f"|format(comp.qty_issued) }}</td>
+            </tr>
+            {% endfor %}
+            {% if global_index.append(global_index.pop() + 1) %}{% endif %}
+            {% endfor %}
+            
+            <!-- Flat lines (no parent) -->
+            {% for line in flat_lines %}
             <tr>
                 <td>{{ loop.index }}</td>
                 <td><strong>{{ line.item_code }}</strong></td>

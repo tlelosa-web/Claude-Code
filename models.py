@@ -86,6 +86,13 @@ class BOMLine(db.Model):
     qty_issued = db.Column(db.Float, default=0.0)
     unit_cost = db.Column(db.Float)
     notes = db.Column(db.Text)
+    
+    # NEW FIELDS for nested BOM structure
+    line_type = db.Column(db.String(20), default='COMPONENT')  # 'ASSEMBLY_ITEM' | 'COMPONENT'
+    parent_line_id = db.Column(db.Integer, db.ForeignKey('bom_line.id'), nullable=True)
+    
+    # Self-referential relationship for children
+    children = db.relationship('BOMLine', backref=db.backref('parent', remote_side=[id]), lazy=True)
 
 class StockMovement(db.Model):
     __tablename__ = 'stock_movement'

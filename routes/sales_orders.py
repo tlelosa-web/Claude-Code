@@ -157,19 +157,7 @@ def build_bom(order_id):
     if request.method == 'POST':
         order_type = request.form.get('order_type', '').strip()
         if order_type not in ('ASSEMBLY', 'STOCK', 'COMBINED'):
-            flash("Please select an order type (Assembly Order, Stock Order, or Combined).", "error")
-            return redirect(url_for('sales_orders.build_bom', order_id=order_id))
-        
-        # Parse selected items from JSON
-        items_json = request.form.get('bom_items_json', '[]')
-        try:
-            items_data = json.loads(items_json)
-        except json.JSONDecodeError:
-            flash("Invalid BOM data. Please try again.", "error")
-            return redirect(url_for('sales_orders.build_bom', order_id=order_id))
-        
-        if not items_data:
-            flash("Please select at least one item for the BOM.", "error")
+            flash("Please select an order type.", "error")
             return redirect(url_for('sales_orders.build_bom', order_id=order_id))
         
         try:
@@ -177,23 +165,61 @@ def build_bom(order_id):
             from services.bom_builder import create_works_order_or_picking_list
             
             if order_type == 'COMBINED':
-                # Create both Assembly and Stock orders
-                assembly_wo = create_works_order_or_picking_list(so_id=order_id, order_type='ASSEMBLY',
-                                                                 items_list=items_data, issued_by=issued_by)
-                stock_wo = create_works_order_or_picking_list(so_id=order_id, order_type='STOCK',
-                                                              items_list=items_data, issued_by=issued_by)
+                # Parse TWO separate item lists
+                assembly_json = request.form.get('assembly_items_json', '[]')
+                stock_json = request.form.get('stock_items_json', '[]')
                 
-                # Link the two orders together
+                try:
+                    assembly_items = json.loads(assembly_json)
+                    stock_items = json.loads(stock_json)
+                except json.JSONDecodeError:
+                    flash("Invalid BOM data.", "error")
+                    return redirect(url_for('sales_orders.build_bom', order_id=order_id))
+                
+                # Validate: at least one item in each group
+                if not assembly_items:
+                    flash("Combined orders require at least one Works item.", "error")
+                    return redirect(url_for('sales_orders.build_bom', order_id=order_id))
+                if not stock_items:
+                    flash("Combined orders require at least one Stock item.", "error")
+                    return redirect(url_for('sales_orders.build_bom', order_id=order_id))
+                
+                # Create both orders
+                assembly_wo = create_works_order_or_picking_list(
+                    so_id=order_id, order_type='ASSEMBLY',
+                    items_list=assembly_items, issued_by=issued_by
+                )
+                stock_wo = create_works_order_or_picking_list(
+                    so_id=order_id, order_type='STOCK',
+                    items_list=stock_items, issued_by=issued_by
+                )
+                
+                # Link them
                 assembly_wo.related_wo_id = stock_wo.id
                 stock_wo.related_wo_id = assembly_wo.id
                 db.session.commit()
                 
                 flash(f"Combined orders created: Assembly {assembly_wo.wo_number} and Picking List {stock_wo.wo_number}", "success")
                 return redirect(url_for('works_orders.view_order', order_id=assembly_wo.id))
+            
             else:
-                wo = create_works_order_or_picking_list(so_id=order_id, order_type=order_type,
-                                                        items_list=items_data, issued_by=issued_by)
-                flash(f"{( 'Works Order' if order_type == 'ASSEMBLY' else 'Picking List' )} {wo.wo_number} created successfully.", "success")
+                # ASSEMBLY or STOCK: use single bom_items_json (backward compatible)
+                items_json = request.form.get('bom_items_json', '[]')
+                try:
+                    items_data = json.loads(items_json)
+                except json.JSONDecodeError:
+                    flash("Invalid BOM data.", "error")
+                    return redirect(url_for('sales_orders.build_bom', order_id=order_id))
+                
+                if not items_data:
+                    flash("Please select at least one item.", "error")
+                    return redirect(url_for('sales_orders.build_bom', order_id=order_id))
+                
+                wo = create_works_order_or_picking_list(
+                    so_id=order_id, order_type=order_type,
+                    items_list=items_data, issued_by=issued_by
+                )
+                flash(f"{('Works Order' if order_type == 'ASSEMBLY' else 'Picking List')} {wo.wo_number} created successfully.", "success")
                 return redirect(url_for('works_orders.view_order', order_id=wo.id))
         except Exception as e:
             db.session.rollback()

@@ -300,8 +300,14 @@
                     (shortfall > 0 ? ' <span style="color: var(--brand-danger); font-size: 0.75rem;">(short ' + shortfall + ')</span>' : '') +
                 '</td>' +
                 '<td><input type="number" class="qty-input form-input" data-id="' + id + '" value="' + entry.qty_required + '" min="0" step="0.01" style="width: 80px; padding: 4px 6px; font-size: 0.85rem;"></td>' +
-                '<td>R ' + entry.unit_cost.toFixed(2) + '</td>' +
-                '<td>R ' + totalCost.toFixed(2) + '</td>' +
+                '<td>' +
+                    '<label style="display: flex; align-items: center; gap: 4px; font-size: 0.8rem;">' +
+                        '<input type="radio" name="item_type_' + id + '" value="WORKS" checked onchange="updateItemType(' + id + ', \'WORKS\')"> Works' +
+                    '</label>' +
+                    '<label style="display: flex; align-items: center; gap: 4px; font-size: 0.8rem; margin-top: 4px;">' +
+                        '<input type="radio" name="item_type_' + id + '" value="STOCK" onchange="updateItemType(' + id + ', \'STOCK\')"> Stock' +
+                    '</label>' +
+                '</td>' +
                 '<td><button type="button" class="btn btn-danger remove-btn" data-id="' + id + '" style="padding: 2px 6px; font-size: 0.7rem;">&times;</button></td>' +
                 '</tr>';
         });
@@ -393,6 +399,66 @@
         });
 
         renderItemTable(filtered);
+    }
+
+    // Update item type (Works/Stock)
+    window.updateItemType = function(itemId, itemType) {
+        if (!selectedItems[itemId]) return;
+        selectedItems[itemId].item_type = itemType;
+    };
+
+    // Prepare form data for submission - split items by type for COMBINED orders
+    function prepareFormData() {
+        const ids = Object.keys(selectedItems);
+        const assemblyItems = [];
+        const stockItems = [];
+        const allItems = [];
+
+        ids.forEach(function(id) {
+            const entry = selectedItems[id];
+            const itemType = entry.item_type || 'WORKS';  // Default to WORKS
+            
+            const itemData = {
+                item_id: parseInt(id),
+                qty_required: entry.qty_required,
+                notes: entry.notes || ''
+            };
+
+            if (itemType === 'WORKS') {
+                assemblyItems.push(itemData);
+            } else {
+                stockItems.push(itemData);
+            }
+            
+            // For backward compatibility (non-COMBINED orders)
+            allItems.push(itemData);
+        });
+
+        // Set hidden fields
+        document.getElementById('bom-items-json').value = JSON.stringify(allItems);
+        document.getElementById('assembly-items-json').value = JSON.stringify(assemblyItems);
+        document.getElementById('stock-items-json').value = JSON.stringify(stockItems);
+
+        // Validate for COMBINED type
+        const orderTypeRadio = document.querySelector('input[name="order_type"]:checked');
+        if (orderTypeRadio && orderTypeRadio.value === 'COMBINED') {
+            if (assemblyItems.length === 0 || stockItems.length === 0) {
+                alert('Combined orders require at least one Works item and one Stock item.');
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    // Bind form submit event
+    const bomForm = document.getElementById('bom-form');
+    if (bomForm) {
+        bomForm.addEventListener('submit', function(e) {
+            if (!prepareFormData()) {
+                e.preventDefault();
+            }
+        });
     }
 
     // Utility: escape HTML

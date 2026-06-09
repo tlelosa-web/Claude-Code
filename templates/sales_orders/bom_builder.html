@@ -171,8 +171,7 @@
                                 <th>Description</th>
                                 <th>Qty on Hand</th>
                                 <th>Qty Required</th>
-                                <th>Unit Cost</th>
-                                <th>Total Cost</th>
+                                <th>Type</th>
                                 <th></th>
                             </tr>
                         </thead>
@@ -226,6 +225,8 @@
                     </div>
 
                     <input type="hidden" name="bom_items_json" id="bom-items-json" value="[]">
+                    <input type="hidden" name="assembly_items_json" id="assembly-items-json" value="[]">
+                    <input type="hidden" name="stock_items_json" id="stock-items-json" value="[]">
                     <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 16px; padding: 12px;" id="generate-btn" disabled>
                         Generate Documents
                     </button>

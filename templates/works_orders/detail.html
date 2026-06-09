@@ -75,9 +75,7 @@
                     <th>Qty Required</th>
                     {% if wo.order_type == 'ASSEMBLY' %}
                     <th>Qty Issued</th>
-                    <th>Unit Cost</th>
                     {% endif %}
-                    <th>Total Cost</th>
                     <th>Qty on Hand</th>
                     {% if wo.order_type == 'STOCK' %}
                     <th>Bin/Location</th>
@@ -94,9 +92,7 @@
                     <td>{{ line.qty_required }}</td>
                     {% if wo.order_type == 'ASSEMBLY' %}
                     <td>{{ line.qty_issued }}</td>
-                    <td>R {{ "%.2f"|format(line.unit_cost) }}</td>
                     {% endif %}
-                    <td>R {{ "%.2f"|format(line.total_cost) }}</td>
                     <td style="{% if line.shortfall > 0 %}color: var(--brand-amber); font-weight: 600;{% endif %}">
                         {{ line.qty_on_hand }}
                         {% if line.shortfall > 0 %}
@@ -111,8 +107,7 @@
             </tbody>
             <tfoot>
                 <tr style="font-weight: 700; background: var(--bg-secondary);">
-                    <td colspan="{% if wo.order_type == 'ASSEMBLY' %}6{% else %}5{% endif %}" style="text-align: right; padding: 12px;">Total Excl. Cost:</td>
-                    <td colspan="2" style="padding: 12px; color: var(--brand-primary); font-size: 1.1rem;">R {{ "%.2f"|format(total_excl_cost) }}</td>
+                    <td colspan="100%" style="text-align: right; padding: 12px;">End of BOM</td>
                 </tr>
             </tfoot>
         </table>

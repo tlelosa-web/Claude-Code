@@ -87,8 +87,6 @@
                 <th>Category</th>
                 <th style="text-align: right;">Qty Required</th>
                 <th style="text-align: right;">Qty Issued</th>
-                <th style="text-align: right;">Unit Cost</th>
-                <th style="text-align: right;">Total Cost</th>
             </tr>
         </thead>
         <tbody>
@@ -100,17 +98,9 @@
                 <td>{{ line.category or '-' }}</td>
                 <td style="text-align: right;">{{ "%.2f"|format(line.qty_required) }}</td>
                 <td style="text-align: right;">{{ "%.2f"|format(line.qty_issued) }}</td>
-                <td style="text-align: right;">R {{ "%.2f"|format(line.unit_cost) }}</td>
-                <td style="text-align: right;">R {{ "%.2f"|format(line.total_cost) }}</td>
             </tr>
             {% endfor %}
         </tbody>
-        <tfoot>
-            <tr>
-                <td colspan="7" style="text-align: right;">Total Excl. Cost:</td>
-                <td style="text-align: right;">R {{ "%.2f"|format(total_excl_cost) }}</td>
-            </tr>
-        </tfoot>
     </table>
 
     <div class="signoff-block">

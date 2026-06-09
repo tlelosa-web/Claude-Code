@@ -11,6 +11,18 @@
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
                 Print Document
             </a>
+            
+            <!-- EDIT BUTTON -->
+            {% if wo.status in ['Open', 'In Progress'] %}
+            <a href="{{ url_for('works_orders.edit_order', order_id=wo.id) }}" class="btn btn-secondary">
+                Edit Order
+            </a>
+            {% else %}
+            <button class="btn btn-secondary" disabled title="Cannot edit a completed or cancelled order.">
+                Edit Order
+            </button>
+            {% endif %}
+            
             {% if wo.status == 'Open' or wo.status == 'In Progress' %}
                 {% if wo.order_type == 'ASSEMBLY' %}
                 <form method="POST" action="{{ url_for('works_orders.mark_complete', order_id=wo.id) }}" style="display: inline;">

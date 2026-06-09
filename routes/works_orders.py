@@ -143,3 +143,115 @@ def confirm_pick(order_id):
         flash(f"Error confirming pick: {str(e)}", "error")
     
     return redirect(url_for('works_orders.view_order', order_id=order_id))
+
+@works_orders_bp.route('/works-orders/<int:order_id>/edit', methods=['GET'])
+def edit_order(order_id):
+    """Render edit form pre-populated with existing BOM lines."""
+    wo = WorksOrder.query.get_or_404(order_id)
+    
+    if wo.status not in ['Open', 'In Progress']:
+        flash(f"Cannot edit Works Order {wo.wo_number}. Status is {wo.status}.", "error")
+        return redirect(url_for('works_orders.view_order', order_id=order_id))
+    
+    # Load existing BOM lines structured for edit UI
+    from services.doc_generator import get_works_order_print_context
+    context = get_works_order_print_context(order_id)
+    
+    # Also load catalogue for adding new items
+    items = Item.query.filter_by(active=True).order_by(Item.category, Item.code).all()
+    from routes.sales_orders import item_to_bom_json
+    item_payload = [item_to_bom_json(item) for item in items]
+    categories = db.session.query(Item.category).filter(
+        Item.active == True, Item.category != None
+    ).distinct().order_by(Item.category).all()
+    categories = [c[0] for c in categories if c[0]]
+    
+    return render_template('works_orders/edit.html', 
+                          wo=wo, 
+                          **context,
+                          items=item_payload,
+                          categories=categories)
+
+
+@works_orders_bp.route('/works-orders/<int:order_id>/edit', methods=['POST'])
+def update_order(order_id):
+    """Receive updated BOM lines JSON, replace BOMLines, redirect to detail."""
+    import json
+    wo = WorksOrder.query.get_or_404(order_id)
+    
+    if wo.status not in ['Open', 'In Progress']:
+        flash(f"Cannot edit Works Order {wo.wo_number}. Status is {wo.status}.", "error")
+        return redirect(url_for('works_orders.view_order', order_id=order_id))
+    
+    try:
+        # Parse updated BOM items
+        items_json = request.form.get('bom_items_json', '[]')
+        try:
+            items_data = json.loads(items_json)
+        except json.JSONDecodeError:
+            flash("Invalid BOM data.", "error")
+            return redirect(url_for('works_orders.edit_order', order_id=order_id))
+        
+        if not items_data:
+            flash("At least one item is required.", "error")
+            return redirect(url_for('works_orders.edit_order', order_id=order_id))
+        
+        # Delete all existing BOM lines (cascade handles this)
+        BOMLine.query.filter_by(wo_id=wo.id).delete()
+        db.session.flush()
+        
+        # Re-create BOM lines using same logic as bom_builder
+        for item_data in items_data:
+            item_id = item_data['item_id']
+            qty_required = float(item_data['qty_required'])
+            notes = item_data.get('notes', '')
+            line_type = item_data.get('line_type', 'COMPONENT')
+            components = item_data.get('components', [])
+            
+            item = Item.query.get(item_id)
+            if not item:
+                raise ValueError(f"Item with id {item_id} not found.")
+            
+            unit_cost = item.avg_cost if item.avg_cost > 0 else item.last_cost
+            
+            bom_line = BOMLine(
+                wo_id=wo.id,
+                item_id=item_id,
+                qty_required=qty_required,
+                qty_issued=0.0,  # Reset issued qty on edit
+                unit_cost=unit_cost,
+                notes=notes,
+                line_type=line_type
+            )
+            db.session.add(bom_line)
+            db.session.flush()
+            
+            # Handle nested components
+            if line_type == 'ASSEMBLY_ITEM' and components:
+                for comp_data in components:
+                    comp_item = Item.query.get(comp_data['item_id'])
+                    if not comp_item:
+                        raise ValueError(f"Component item with id {comp_data['item_id']} not found.")
+                    
+                    comp_unit_cost = comp_item.avg_cost if comp_item.avg_cost > 0 else comp_item.last_cost
+                    
+                    comp_line = BOMLine(
+                        wo_id=wo.id,
+                        item_id=comp_data['item_id'],
+                        qty_required=float(comp_data['qty_required']),
+                        qty_issued=0.0,
+                        unit_cost=comp_unit_cost,
+                        notes=comp_data.get('notes', ''),
+                        line_type='COMPONENT',
+                        parent_line_id=bom_line.id
+                    )
+                    db.session.add(comp_line)
+        
+        db.session.commit()
+        flash(f"Works Order {wo.wo_number} updated successfully.", "success")
+        return redirect(url_for('works_orders.view_order', order_id=order_id))
+    
+    except Exception as e:
+        db.session.rollback()
+        flash(f"Error updating Works Order: {str(e)}", "error")
+        return redirect(url_for('works_orders.edit_order', order_id=order_id))

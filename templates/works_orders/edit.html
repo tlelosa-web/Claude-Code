@@ -1,0 +1,126 @@
+{% extends 'base.html' %}
+{% block title %}Edit {{ "Assembly Order" if wo.order_type == "ASSEMBLY" else "Picking List" }} {{ wo.wo_number }} - SOPS{% endblock %}
+{% block page_title %}Edit Order: {{ wo.wo_number }}{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='vendor/tabulator/tabulator.min.css') }}">
+<script src="{{ url_for('static', filename='vendor/tabulator/tabulator.min.js') }}"></script>
+<style>
+    #item-table { max-height: 600px; overflow-y: auto; }
+    #item-table table.data-table tbody tr { height: 40px; }
+    #item-table table.data-table td { padding: 8px 12px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="card animate-fade-in" style="margin-bottom: 24px;">
+    <div class="card-header">
+        <h2 class="card-title">Editing {{ wo.wo_number }}</h2>
+        <div class="alert alert-warning" style="font-size: 0.85rem; margin: 0; padding: 8px 16px;">
+            Editing will reset qty_issued to 0. Stock movements only occur on Complete/Confirm Pick.
+        </div>
+    </div>
+</div>
+
+<form method="POST" action="{{ url_for('works_orders.update_order', order_id=wo.id) }}" id="edit-form">
+    <!-- Pre-populated selected items -->
+    <div class="card animate-fade-in" style="margin-bottom: 24px;">
+        <div class="card-header">
+            <h2 class="card-title">Current BOM Items</h2>
+            <span id="selected-count" style="font-size: 0.85rem; color: var(--text-muted);">{{ (assembly_items|length + flat_lines|length) }} items</span>
+        </div>
+        <div style="overflow-x: auto;">
+            <table class="data-table" id="selected-items-table">
+                <thead>
+                    <tr>
+                        <th>Code</th>
+                        <th>Description</th>
+                        <th>Qty Required</th>
+                        <th>Type</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody id="selected-items-body">
+                    {% for assembly in assembly_items %}
+                    <tr data-item-id="{{ assembly.item_code }}" class="assembly-row">
+                        <td><strong>{{ assembly.item_code }}</strong></td>
+                        <td>{{ assembly.description }}</td>
+                        <td>{{ assembly.qty_required }}</td>
+                        <td>
+                            <label style="display: flex; align-items: center; gap: 4px; font-size: 0.8rem;">
+                                <input type="radio" name="item_type_{{ assembly.item_code }}" value="WORKS" checked> Works
+                            </label>
+                        </td>
+                        <td><button type="button" class="btn btn-danger btn-sm" onclick="removeItemByCode('{{ assembly.item_code }}')">Remove</button></td>
+                    </tr>
+                    {% for comp in assembly.components %}
+                    <tr data-item-id="{{ comp.item_code }}" class="component-row">
+                        <td style="padding-left: 20px;">└─ {{ comp.item_code }}</td>
+                        <td>{{ comp.description }}</td>
+                        <td>{{ comp.qty_required }}</td>
+                        <td>-</td>
+                        <td><button type="button" class="btn btn-danger btn-sm" onclick="removeItemByCode('{{ comp.item_code }}')">Remove</button></td>
+                    </tr>
+                    {% endfor %}
+                    {% endfor %}
+                    
+                    {% for line in flat_lines %}
+                    <tr data-item-id="{{ line.item_code }}" class="flat-row">
+                        <td><strong>{{ line.item_code }}</strong></td>
+                        <td>{{ line.description }}</td>
+                        <td>{{ line.qty_required }}</td>
+                        <td>
+                            <label style="display: flex; align-items: center; gap: 4px; font-size: 0.8rem;">
+                                <input type="radio" name="item_type_{{ line.item_code }}" value="WORKS" checked> Works
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 4px; font-size: 0.8rem; margin-top: 4px;">
+                                <input type="radio" name="item_type_{{ line.item_code }}" value="STOCK"> Stock
+                            </label>
+                        </td>
+                        <td><button type="button" class="btn btn-danger btn-sm" onclick="removeItemByCode('{{ line.item_code }}')">Remove</button></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Item Catalogue for adding new items -->
+    <div class="card animate-fade-in" style="margin-bottom: 24px;">
+        <div class="card-header">
+            <h2 class="card-title">Add Items from Catalogue</h2>
+            <div style="display: flex; gap: 8px;">
+                <input type="text" id="search-input" placeholder="Search..." class="form-input">
+                <select id="category-filter" class="form-input">
+                    <option value="">All Categories</option>
+                    {% for cat in categories %}
+                    <option value="{{ cat }}">{{ cat }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+        <div id="item-table"></div>
+    </div>
+
+    <input type="hidden" name="bom_items_json" id="bom-items-json" value="[]">
+    
+    <div style="display: flex; gap: 12px; justify-content: flex-end;">
+        <a href="{{ url_for('works_orders.view_order', order_id=wo.id) }}" class="btn btn-secondary">Cancel</a>
+        <button type="submit" class="btn btn-primary">Save Changes</button>
+    </div>
+</form>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    window.SOPS_EDIT = {
+        items: {{ items | tojson | safe }},
+        woId: {{ wo.id }},
+        existingItems: {
+            assembly_items: {{ assembly_items | tojson | safe }},
+            flat_lines: {{ flat_lines | tojson | safe }}
+        }
+    };
+</script>
+<script src="{{ url_for('static', filename='js/bom_builder.js') }}"></script>
+{% endblock %}

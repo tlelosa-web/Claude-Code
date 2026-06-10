@@ -14,7 +14,7 @@
                 <ul class="dropdown-menu">
                     <li><a href="{{ url_for('works_orders.print_order', order_id=wo.id) }}" target="_blank">Print Document</a></li>
                     {% if wo.status in ['Open', 'In Progress'] %}
-                    <li><a href="{{ url_for('works_orders.edit_order', order_id=wo.id) %}">Edit Order</a></li>
+                    <li><a href="{{ url_for('works_orders.edit_order', order_id=wo.id) }}">Edit Order</a></li>
                     {% else %}
                     <li><a class="disabled" title="Cannot edit a completed or cancelled order.">Edit Order</a></li>
                     {% endif %}

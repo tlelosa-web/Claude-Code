@@ -271,10 +271,10 @@ def delete_order(order_id):
     """Delete a Sales Order permanently."""
     so = SalesOrder.query.get_or_404(order_id)
     
-    # Safety check: cannot delete if works orders exist
+    # Guard: cannot delete if linked Works Orders exist
     wos = WorksOrder.query.filter_by(so_id=order_id).all()
     if wos:
-        flash(f"Cannot delete Sales Order {so.so_number}. {len(wos)} Works Order(s) exist. Cancel/delete them first.", "error")
+        flash(f"Cannot delete Sales Order {so.so_number} — it has linked Works Orders. Delete all Works Orders first.", "error")
         return redirect(url_for('sales_orders.view_order', order_id=order_id))
     
     so_number = so.so_number

@@ -43,6 +43,11 @@
                             <ul class="dropdown-menu">
                                 <li><a href="{{ url_for('sales_orders.view_order', order_id=so.id) }}">View</a></li>
                                 <li><a href="{{ url_for('sales_orders.build_bom', order_id=so.id) }}">Build BOM</a></li>
+                                <li>
+                                    <form method="POST" action="{{ url_for('sales_orders.delete_order', order_id=so.id) }}" style="display: block;" onsubmit="return confirm('Are you sure you want to delete {{ so.so_number }}? This cannot be undone.')">
+                                        <button type="submit" class="danger">Delete Order</button>
+                                    </form>
+                                </li>
                             </ul>
                         </div>
                     </td>

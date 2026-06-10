@@ -144,6 +144,28 @@ def confirm_pick(order_id):
     
     return redirect(url_for('works_orders.view_order', order_id=order_id))
 
+@works_orders_bp.route('/works-orders/<int:order_id>/delete', methods=['POST'])
+def delete_order(order_id):
+    """Delete a Works Order or Picking List. Only allowed for Open or In Progress status."""
+    wo = WorksOrder.query.get_or_404(order_id)
+    
+    if wo.status in ('Complete', 'Cancelled'):
+        flash(f"Cannot delete a completed or cancelled Works Order.", "error")
+        return redirect(url_for('works_orders.view_order', order_id=order_id))
+    
+    wo_number = wo.wo_number
+    
+    # Delete all BOMLine records for this WO
+    BOMLine.query.filter_by(wo_id=wo.id).delete()
+    
+    # Delete the WO record
+    db.session.delete(wo)
+    db.session.commit()
+    
+    flash(f"Works Order {wo_number} deleted successfully.", "success")
+    return redirect(url_for('works_orders.list_orders'))
+
+
 @works_orders_bp.route('/works-orders/<int:order_id>/edit', methods=['GET'])
 def edit_order(order_id):
     """Render edit form pre-populated with existing BOM lines."""

@@ -102,5 +102,38 @@
     </div>
 
     {% block extra_scripts %}{% endblock %}
+    <script>
+    // Global dropdown toggle — used by all action dropdown menus
+    function toggleDropdown(btn) {
+        var dropdown = btn.closest('.dropdown');
+        var menu = dropdown && dropdown.querySelector('.dropdown-menu');
+        if (!dropdown || !menu) return;
+
+        var isOpen = dropdown.classList.contains('open');
+        closeAllDropdowns();
+        if (!isOpen) {
+            dropdown.classList.add('open');
+            menu.classList.add('show');
+            // Create backdrop
+            var backdrop = document.createElement('div');
+            backdrop.className = 'dropdown-backdrop';
+            backdrop.addEventListener('click', closeAllDropdowns);
+            document.body.appendChild(backdrop);
+        }
+    }
+
+    function closeAllDropdowns() {
+        document.querySelectorAll('.dropdown.open, .dropdown-menu.show').forEach(function(el) {
+            el.classList.remove('open', 'show');
+        });
+        var backdrops = document.querySelectorAll('.dropdown-backdrop');
+        backdrops.forEach(function(b) { b.remove(); });
+    }
+
+    // Close on Escape
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') closeAllDropdowns();
+    });
+    </script>
 </body>
 </html>

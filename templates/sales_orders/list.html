@@ -38,8 +38,13 @@
                     <td>{{ so.delivery_date.strftime('%Y-%m-%d') if so.delivery_date else '-' }}</td>
                     <td><span class="badge badge-{{ so.status.lower() }}">{{ so.status }}</span></td>
                     <td>
-                        <a href="{{ url_for('sales_orders.view_order', order_id=so.id) }}" class="btn btn-secondary" style="padding: 4px 10px; font-size: 0.75rem;">View</a>
-                        <a href="{{ url_for('sales_orders.build_bom', order_id=so.id) }}" class="btn btn-primary" style="padding: 4px 10px; font-size: 0.75rem;">Build BOM</a>
+                        <div class="dropdown">
+                            <button type="button" class="btn btn-secondary" style="padding: 4px 10px; font-size: 0.75rem;" onclick="toggleDropdown(this)">Actions ▾</button>
+                            <ul class="dropdown-menu">
+                                <li><a href="{{ url_for('sales_orders.view_order', order_id=so.id) }}">View</a></li>
+                                <li><a href="{{ url_for('sales_orders.build_bom', order_id=so.id) }}">Build BOM</a></li>
+                            </ul>
+                        </div>
                     </td>
                 </tr>
                 {% endfor %}

@@ -450,6 +450,118 @@ textarea.form-input {
     padding: 8px 12px;
 }
 
+/* Dropdown Menu */
+.dropdown {
+    position: relative;
+    display: inline-block;
+}
+.dropdown-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: all var(--transition);
+    text-decoration: none;
+    white-space: nowrap;
+    line-height: 1.4;
+    background: #fff;
+    color: var(--text-primary);
+}
+.dropdown-toggle:hover, .dropdown-toggle:focus {
+    background: var(--bg-secondary);
+}
+.dropdown-toggle.btn-primary-dropdown {
+    background: var(--brand-primary);
+    color: #fff;
+    border-color: var(--brand-primary);
+}
+.dropdown-toggle.btn-primary-dropdown:hover,
+.dropdown-toggle.btn-primary-dropdown:focus {
+    background: #d05a08;
+    border-color: #d05a08;
+    color: #fff;
+}
+.dropdown-menu {
+    display: none;
+    position: absolute;
+    top: 100%;
+    right: 0;
+    z-index: 1000;
+    min-width: 180px;
+    padding: 4px 0;
+    margin-top: 4px;
+    background: #fff;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    box-shadow: var(--shadow-lg);
+    list-style: none;
+}
+.dropdown.open .dropdown-menu,
+.dropdown-menu.show {
+    display: block;
+}
+.dropdown-menu li {
+    margin: 0;
+    padding: 0;
+}
+.dropdown-menu li a,
+.dropdown-menu li button {
+    display: block;
+    width: 100%;
+    padding: 8px 16px;
+    font-size: 0.85rem;
+    font-weight: 400;
+    color: var(--text-primary);
+    text-decoration: none;
+    background: none;
+    border: none;
+    text-align: left;
+    cursor: pointer;
+    transition: background var(--transition);
+    white-space: nowrap;
+    line-height: 1.4;
+}
+.dropdown-menu li a:hover,
+.dropdown-menu li button:hover {
+    background: var(--bg-secondary);
+}
+.dropdown-menu li a.danger,
+.dropdown-menu li button.danger {
+    color: var(--brand-danger);
+}
+.dropdown-menu li a.danger:hover,
+.dropdown-menu li button.danger:hover {
+    background: #FEF2F2;
+}
+.dropdown-menu li a.disabled,
+.dropdown-menu li button.disabled {
+    color: #9CA3AF;
+    pointer-events: none;
+    cursor: not-allowed;
+}
+.dropdown-menu li a.disabled[title],
+.dropdown-menu li button.disabled[title] {
+    pointer-events: auto;
+    cursor: help;
+}
+.dropdown-menu .divider {
+    border-top: 1px solid var(--border-color);
+    margin: 4px 0;
+}
+.dropdown-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 999;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
     .sidebar { width: 60px; }

@@ -9,6 +9,15 @@
     #item-table { max-height: 600px; overflow-y: auto; }
     #item-table table.data-table tbody tr { height: 40px; }
     #item-table table.data-table td { padding: 8px 12px; }
+    #item-table table.data-table tbody tr { cursor: pointer; }
+    #item-table table.data-table tbody tr:hover { background: rgba(232, 97, 10, 0.08); }
+    .flash-warning-toast {
+        position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
+        z-index: 9999; background: #FFFBEB; border: 1px solid #FDE68A;
+        color: #92400E; padding: 12px 24px; border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15); font-size: 0.9rem;
+        animation: fadeIn 0.3s ease-out;
+    }
 </style>
 {% endblock %}
 
@@ -90,8 +99,8 @@
         <div class="card-header">
             <h2 class="card-title">Add Items from Catalogue</h2>
             <div style="display: flex; gap: 8px;">
-                <input type="text" id="search-input" placeholder="Search..." class="form-input">
-                <select id="category-filter" class="form-input">
+                <input type="text" id="search-input" placeholder="Search..." class="form-input" style="width: 200px;">
+                <select id="category-filter" class="form-input" style="width: auto;">
                     <option value="">All Categories</option>
                     {% for cat in categories %}
                     <option value="{{ cat }}">{{ cat }}</option>
@@ -121,6 +130,367 @@
             flat_lines: {{ flat_lines | tojson | safe }}
         }
     };
+
+    (function() {
+        'use strict';
+
+        const config = window.SOPS_EDIT;
+        const items = config.items || [];
+        const existingItems = config.existingItems || {};
+
+        // ============================================
+        // Helper functions
+        // ============================================
+
+        function escHtml(str) {
+            if (!str) return '';
+            var div = document.createElement('div');
+            div.appendChild(document.createTextNode(str));
+            return div.innerHTML;
+        }
+
+        function flashWarning(msg) {
+            // Remove any existing flash
+            var old = document.querySelector('.flash-warning-toast');
+            if (old) old.remove();
+
+            var el = document.createElement('div');
+            el.className = 'flash-warning-toast';
+            el.textContent = msg;
+            document.body.appendChild(el);
+            setTimeout(function() {
+                el.style.transition = 'opacity 0.3s';
+                el.style.opacity = '0';
+                setTimeout(function() { el.remove(); }, 400);
+            }, 2500);
+        }
+
+        function getExistingItem(itemCode) {
+            var assemblyItems = existingItems.assembly_items || [];
+
+            for (var i = 0; i < assemblyItems.length; i += 1) {
+                if (assemblyItems[i].item_code === itemCode) {
+                    return { type: 'assembly', item: assemblyItems[i] };
+                }
+                if (Array.isArray(assemblyItems[i].components)) {
+                    for (var j = 0; j < assemblyItems[i].components.length; j += 1) {
+                        if (assemblyItems[i].components[j].item_code === itemCode) {
+                            return { type: 'component', item: assemblyItems[i].components[j], parent: assemblyItems[i] };
+                        }
+                    }
+                }
+            }
+
+            var flatLines = existingItems.flat_lines || [];
+            for (var k = 0; k < flatLines.length; k += 1) {
+                if (flatLines[k].item_code === itemCode) {
+                    return { type: 'flat', item: flatLines[k] };
+                }
+            }
+
+            return null;
+        }
+
+        function getItemIdByCode(itemCode) {
+            for (var i = 0; i < items.length; i += 1) {
+                if (items[i].code === itemCode) {
+                    return items[i].id;
+                }
+            }
+            return null;
+        }
+
+        function getItemById(itemId) {
+            for (var i = 0; i < items.length; i += 1) {
+                if (items[i].id === itemId) {
+                    return items[i];
+                }
+            }
+            return null;
+        }
+
+        function isItemInTable(itemCode) {
+            var body = document.getElementById('selected-items-body');
+            if (!body) return false;
+            var rows = body.querySelectorAll('tr[data-item-id]');
+            for (var i = 0; i < rows.length; i += 1) {
+                if (rows[i].getAttribute('data-item-id') === itemCode) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        function buildPayloadFromRow(row) {
+            var itemCode = row.getAttribute('data-item-id');
+            var existing = getExistingItem(itemCode);
+            var qtyRequired = 0;
+            var notes = '';
+            var lineType = 'COMPONENT';
+
+            if (existing && existing.item) {
+                qtyRequired = existing.item.qty_required !== undefined ? existing.item.qty_required : 0;
+                notes = existing.item.notes || '';
+                lineType = existing.item.line_type || (row.classList.contains('assembly-row') ? 'ASSEMBLY_ITEM' : 'COMPONENT');
+            } else {
+                // Dynamically added row — read from inputs
+                var qtyInput = row.querySelector('.qty-input');
+                if (qtyInput) {
+                    qtyRequired = parseFloat(qtyInput.value) || 0;
+                }
+                var typeRadios = row.querySelectorAll('input[type="radio"]');
+                for (var r = 0; r < typeRadios.length; r += 1) {
+                    if (typeRadios[r].checked) {
+                        // Keep COMPONENT for WORKS, but we don't change line_type for this context
+                        break;
+                    }
+                }
+                lineType = 'COMPONENT';
+            }
+
+            var payload = {
+                item_id: row.dataset.numericId ? parseInt(row.dataset.numericId) : getItemIdByCode(itemCode),
+                qty_required: qtyRequired,
+                line_type: lineType,
+                notes: notes
+            };
+
+            if (row.classList.contains('assembly-row')) {
+                payload.components = [];
+            }
+
+            return payload;
+        }
+
+        // ============================================
+        // Remove item function
+        // ============================================
+
+        window.removeItemByCode = function(itemCode) {
+            var body = document.getElementById('selected-items-body');
+            if (!body) return;
+
+            var rows = Array.prototype.slice.call(body.querySelectorAll('tr[data-item-id]'));
+            for (var i = 0; i < rows.length; i += 1) {
+                var row = rows[i];
+                if (row.getAttribute('data-item-id') !== itemCode) continue;
+
+                if (row.classList.contains('assembly-row')) {
+                    var nextRow = row.nextElementSibling;
+                    while (nextRow && nextRow.classList.contains('component-row')) {
+                        var followingRow = nextRow.nextElementSibling;
+                        nextRow.remove();
+                        nextRow = followingRow;
+                    }
+                }
+
+                row.remove();
+                window.updateEditCount();
+                window.syncEditJSON();
+                return;
+            }
+        };
+
+        window.updateEditCount = function() {
+            var body = document.getElementById('selected-items-body');
+            var countEl = document.getElementById('selected-count');
+            if (!body || !countEl) return;
+            var count = body.querySelectorAll('tr[data-item-id]').length;
+            countEl.textContent = count + ' item' + (count === 1 ? '' : 's');
+        };
+
+        // ============================================
+        // Add item from catalogue
+        // ============================================
+
+        window.addItemFromCatalogue = function(itemId) {
+            var item = getItemById(itemId);
+            if (!item) return;
+
+            // Check if already in table
+            if (isItemInTable(item.code)) {
+                flashWarning('Item "' + item.code + '" already added');
+                return;
+            }
+
+            var body = document.getElementById('selected-items-body');
+            if (!body) return;
+
+            var tr = document.createElement('tr');
+            tr.setAttribute('data-item-id', item.code);
+            tr.setAttribute('data-numeric-id', item.id);
+            tr.className = 'flat-row';
+
+            tr.innerHTML =
+                '<td><strong>' + escHtml(item.code) + '</strong></td>' +
+                '<td>' + escHtml(item.description) + '</td>' +
+                '<td><input type="number" class="qty-input form-input" value="1" min="0" step="0.01" style="width: 80px; padding: 4px 6px; font-size: 0.85rem;"></td>' +
+                '<td>' +
+                    '<label style="display: flex; align-items: center; gap: 4px; font-size: 0.8rem;">' +
+                        '<input type="radio" name="item_type_' + item.code.replace(/[^a-zA-Z0-9]/g, '_') + '" value="WORKS" checked> Works' +
+                    '</label>' +
+                    '<label style="display: flex; align-items: center; gap: 4px; font-size: 0.8rem; margin-top: 4px;">' +
+                        '<input type="radio" name="item_type_' + item.code.replace(/[^a-zA-Z0-9]/g, '_') + '" value="STOCK"> Stock' +
+                    '</label>' +
+                '</td>' +
+                '<td><button type="button" class="btn btn-danger btn-sm" onclick="removeItemByCode(\'' + item.code.replace(/'/g, "\\'") + '\')">Remove</button></td>';
+
+            body.appendChild(tr);
+
+            // Bind qty input to syncEditJSON
+            var qtyInput = tr.querySelector('.qty-input');
+            if (qtyInput) {
+                qtyInput.addEventListener('input', function() {
+                    window.syncEditJSON();
+                });
+            }
+
+            window.updateEditCount();
+            window.syncEditJSON();
+        };
+
+        // ============================================
+        // syncEditJSON — updated to capture new rows
+        // ============================================
+
+        window.syncEditJSON = function() {
+            var body = document.getElementById('selected-items-body');
+            var field = document.getElementById('bom-items-json');
+            var payload = [];
+
+            if (!body) return;
+
+            var rows = Array.prototype.slice.call(body.querySelectorAll('tr[data-item-id]'));
+            for (var i = 0; i < rows.length; i += 1) {
+                var row = rows[i];
+                if (!row || !row.getAttribute('data-item-id')) continue;
+
+                if (row.classList.contains('assembly-row')) {
+                    var assemblyPayload = buildPayloadFromRow(row);
+                    var componentRows = [];
+                    var nextRow = row.nextElementSibling;
+
+                    while (nextRow && nextRow.classList.contains('component-row')) {
+                        componentRows.push(buildPayloadFromRow(nextRow));
+                        nextRow = nextRow.nextElementSibling;
+                    }
+
+                    if (componentRows.length) {
+                        assemblyPayload.components = componentRows;
+                    }
+
+                    payload.push(assemblyPayload);
+                } else if (!row.classList.contains('component-row')) {
+                    // Both existing flat rows AND newly added rows
+                    var p = buildPayloadFromRow(row);
+                    // For dynamically added rows, ensure numericId is captured
+                    if (row.dataset.numericId && !p.item_id) {
+                        p.item_id = parseInt(row.dataset.numericId);
+                    }
+                    payload.push(p);
+                }
+            }
+
+            if (field) {
+                field.value = JSON.stringify(payload);
+            }
+        };
+
+        // ============================================
+        // Catalogue table rendering with search/filter
+        // ============================================
+
+        function renderCatalogueTable(filteredItems) {
+            var tableEl = document.getElementById('item-table');
+            if (!tableEl) return;
+
+            if (filteredItems.length === 0) {
+                tableEl.innerHTML = '<div style="padding: 40px; text-align: center; color: var(--text-muted);">No items match your filter criteria.</div>';
+                return;
+            }
+
+            var html = '<table class="data-table" style="font-size: 0.85rem;"><thead><tr>' +
+                '<th>Code</th>' +
+                '<th>Description</th>' +
+                '<th>Category</th>' +
+                '<th style="text-align: right;">Qty on Hand</th>' +
+                '<th style="text-align: right;">Excl. Price</th>' +
+                '</tr></thead><tbody>';
+
+            for (var i = 0; i < filteredItems.length; i += 1) {
+                var item = filteredItems[i];
+                var isLowStock = item.qty_on_hand <= 0;
+
+                html += '<tr class="' + (isLowStock ? 'row-amber' : '') + '">' +
+                    '<td><strong>' + escHtml(item.code) + '</strong></td>' +
+                    '<td>' + escHtml(item.description) + '</td>' +
+                    '<td>' + escHtml(item.category || '-') + '</td>' +
+                    '<td style="text-align: right; ' + (isLowStock ? 'color: var(--brand-danger); font-weight: 600;' : '') + '">' + item.qty_on_hand + '</td>' +
+                    '<td style="text-align: right;">R ' + (item.excl_price || 0).toFixed(2) + '</td>' +
+                    '</tr>';
+            }
+
+            html += '</tbody></table>';
+            tableEl.innerHTML = html;
+
+            // Bind click handlers on rows
+            var rows = tableEl.querySelectorAll('tbody tr');
+            for (var j = 0; j < rows.length; j += 1) {
+                (function(idx) {
+                    rows[idx].addEventListener('click', function() {
+                        window.addItemFromCatalogue(filteredItems[idx].id);
+                    });
+                })(j);
+            }
+        }
+
+        function filterCatalogueItems() {
+            var searchInput = document.getElementById('search-input');
+            var categoryFilter = document.getElementById('category-filter');
+            var search = (searchInput ? searchInput.value : '').toLowerCase().trim();
+            var category = categoryFilter ? categoryFilter.value : '';
+
+            var filtered = [];
+            for (var i = 0; i < items.length; i += 1) {
+                var item = items[i];
+
+                if (search) {
+                    var codeMatch = item.code.toLowerCase().indexOf(search) !== -1;
+                    var descMatch = item.description.toLowerCase().indexOf(search) !== -1;
+                    if (!codeMatch && !descMatch) continue;
+                }
+
+                if (category && item.category !== category) continue;
+
+                filtered.push(item);
+            }
+
+            renderCatalogueTable(filtered);
+        }
+
+        // ============================================
+        // DOMContentLoaded — initialise everything
+        // ============================================
+
+        document.addEventListener('DOMContentLoaded', function() {
+            window.updateEditCount();
+            window.syncEditJSON();
+
+            // Render catalogue table
+            filterCatalogueItems();
+
+            // Bind search/filter
+            var searchInput = document.getElementById('search-input');
+            var categoryFilter = document.getElementById('category-filter');
+            if (searchInput) {
+                searchInput.addEventListener('input', filterCatalogueItems);
+            }
+            if (categoryFilter) {
+                categoryFilter.addEventListener('change', filterCatalogueItems);
+            }
+        });
+
+    })();
 </script>
 <script src="{{ url_for('static', filename='js/bom_builder.js') }}"></script>
 {% endblock %}

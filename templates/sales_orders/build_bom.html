@@ -77,17 +77,19 @@
     <!-- Component add panel -->
     <div style="padding: 16px; background: rgba(255,255,255,0.03); border-radius: 6px; margin: 0 16px 16px;">
         <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
-            <select id="componentSelect" style="flex: 1; min-width: 200px;">
-                <option value="">-- Select Item --</option>
-                {% for item in catalogue_items %}
-                <option value="{{ item.id }}">{{ item.code }} — {{ item.description }}</option>
-                {% endfor %}
-            </select>
+            <div style="flex: 1; min-width: 300px; position: relative;">
+                <input type="text" id="component-search" placeholder="Search by code or description..." 
+                       style="width: 100%; padding: 8px 12px; background: rgba(255,255,255,0.05); border: 1px solid var(--border-color); border-radius: 4px; color: var(--text-primary);">
+                <div id="search-results" style="position: absolute; top: 100%; left: 0; right: 0; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 4px; max-height: 300px; overflow-y: auto; z-index: 1000; display: none; margin-top: 4px;"></div>
+            </div>
             <input type="number" id="componentQty" placeholder="Qty" min="0.1" step="0.1" 
-                   style="width: 100px;">
+                   style="width: 100px; padding: 8px 12px; background: rgba(255,255,255,0.05); border: 1px solid var(--border-color); border-radius: 4px; color: var(--text-primary);">
             <button type="button" onclick="addComponent()" class="btn btn-primary" style="padding: 8px 16px;">
                 Add Component
             </button>
+        </div>
+        <div id="selected-item-display" style="margin-top: 8px; font-size: 0.85rem; color: var(--text-muted); display: none;">
+            Selected: <span id="selected-item-code" style="color: var(--brand-accent);"></span> — <span id="selected-item-desc"></span>
         </div>
     </div>
     
@@ -123,6 +125,10 @@
 </div>
 
 <script>
+// Catalogue items as JSON
+const catalogueItems = {{ catalogue_json | tojson }};
+let selectedItemId = null;
+
 // Enforce single fan selection
 function enforceSingleFan(selectedRadio) {
     if (selectedRadio.value === 'fan') {
@@ -134,26 +140,94 @@ function enforceSingleFan(selectedRadio) {
     }
 }
 
+// Search functionality
+const searchInput = document.getElementById('component-search');
+const searchResults = document.getElementById('search-results');
+const selectedDisplay = document.getElementById('selected-item-display');
+const selectedCode = document.getElementById('selected-item-code');
+const selectedDesc = document.getElementById('selected-item-desc');
+
+searchInput.addEventListener('input', function() {
+    const query = this.value.toLowerCase().trim();
+    
+    if (!query) {
+        searchResults.style.display = 'none';
+        return;
+    }
+    
+    // Filter items by code or description
+    const matches = catalogueItems.filter(item => 
+        item.code.toLowerCase().includes(query) || 
+        item.description.toLowerCase().includes(query)
+    ).slice(0, 10); // Top 10 matches
+    
+    if (matches.length === 0) {
+        searchResults.innerHTML = '<div style="padding: 12px; color: var(--text-muted);">No matches found</div>';
+        searchResults.style.display = 'block';
+        return;
+    }
+    
+    // Render results
+    searchResults.innerHTML = matches.map(item => `
+        <div class="search-result-item" data-id="${item.id}" data-code="${item.code}" data-desc="${item.description}"
+             style="padding: 10px 12px; cursor: pointer; border-bottom: 1px solid rgba(255,255,255,0.05); transition: background 0.2s;"
+             onmouseover="this.style.background='rgba(255,255,255,0.05)'" 
+             onmouseout="this.style.background='transparent'">
+            <strong>${item.code}</strong> — ${item.description}
+        </div>
+    `).join('');
+    
+    // Add click handlers
+    searchResults.querySelectorAll('.search-result-item').forEach(el => {
+        el.addEventListener('click', function() {
+            selectItem(this.dataset.id, this.dataset.code, this.dataset.desc);
+        });
+    });
+    
+    searchResults.style.display = 'block';
+});
+
+// Close search results when clicking outside
+document.addEventListener('click', function(e) {
+    if (!searchInput.contains(e.target) && !searchResults.contains(e.target)) {
+        searchResults.style.display = 'none';
+    }
+});
+
+function selectItem(id, code, desc) {
+    selectedItemId = id;
+    searchInput.value = `${code} — ${desc}`;
+    searchResults.style.display = 'none';
+    
+    // Show selected item display
+    selectedCode.textContent = code;
+    selectedDesc.textContent = desc;
+    selectedDisplay.style.display = 'block';
+}
+
 // Add component to table
 let componentCount = 0;
 
 function addComponent() {
-    const select = document.getElementById('componentSelect');
-    const qtyInput = document.getElementById('componentQty');
-    
-    const itemId = select.value;
-    const qty = parseFloat(qtyInput.value);
-    
-    if (!itemId || !qty || qty <= 0) {
-        alert('Please select an item and enter a valid quantity.');
+    if (!selectedItemId) {
+        alert('Please search and select an item first.');
         return;
     }
     
-    const option = select.options[select.selectedIndex];
-    const text = option.text;
-    const parts = text.split(' — ', 2);
-    const code = parts[0] || '';
-    const description = parts[1] || '';
+    const qtyInput = document.getElementById('componentQty');
+    const qty = parseFloat(qtyInput.value);
+    
+    if (!qty || qty <= 0) {
+        alert('Please enter a valid quantity.');
+        return;
+    }
+    
+    // Find the selected item details
+    const item = catalogueItems.find(i => i.id == selectedItemId);
+    if (!item) {
+        alert('Selected item not found.');
+        return;
+    }
     
     // Hide "no components" message
     document.getElementById('noComponentsMsg').style.display = 'none';
@@ -162,8 +236,8 @@ function addComponent() {
     const tbody = document.getElementById('componentsBody');
     const row = document.createElement('tr');
     row.innerHTML = `
-        <td>${code}</td>
-        <td>${description}</td>
+        <td>${item.code}</td>
+        <td>${item.description}</td>
         <td>${qty}</td>
         <td><button type="button" onclick="removeComponent(this)" style="background: none; border: none; color: var(--brand-danger); cursor: pointer;">✕</button></td>
     `;
@@ -172,7 +246,7 @@ function addComponent() {
     const hiddenItemId = document.createElement('input');
     hiddenItemId.type = 'hidden';
     hiddenItemId.name = 'component_item_id[]';
-    hiddenItemId.value = itemId;
+    hiddenItemId.value = selectedItemId;
     row.appendChild(hiddenItemId);
     
     const hiddenQty = document.createElement('input');
@@ -184,8 +258,10 @@ function addComponent() {
     tbody.appendChild(row);
     
     // Reset inputs
-    select.value = '';
+    selectedItemId = null;
+    searchInput.value = '';
     qtyInput.value = '';
+    selectedDisplay.style.display = 'none';
 }
 
 function removeComponent(btn) {

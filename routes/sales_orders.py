@@ -157,6 +157,12 @@ def build_bom(order_id):
     so = SalesOrder.query.get_or_404(order_id)
     
     if request.method == 'POST':
+        print("=" * 80)
+        print("POST /build-bom reached!")
+        print(f"Form data keys: {list(request.form.keys())}")
+        print(f"Component IDs: {request.form.getlist('component_item_id[]')}")
+        print(f"Component Qtys: {request.form.getlist('component_qty[]')}")
+        print("=" * 80)
         try:
             # Parse form data
             line_items = SOLineItem.query.filter_by(so_id=order_id).all()
@@ -317,10 +323,14 @@ def build_bom(order_id):
     line_items = SOLineItem.query.filter_by(so_id=order_id).all()
     catalogue_items = Item.query.filter_by(active=True).order_by(Item.category, Item.code).all()
     
+    # Prepare JSON for JavaScript
+    catalogue_json = [{'id': i.id, 'code': i.code, 'description': i.description} for i in catalogue_items]
+    
     return render_template('sales_orders/build_bom.html', 
                           so=so, 
                           line_items=line_items,
-                          catalogue_items=catalogue_items)
+                          catalogue_items=catalogue_items,
+                          catalogue_json=catalogue_json)
 
 @sales_orders_bp.route('/sales-orders/<int:order_id>/cancel', methods=['POST'])
 def cancel_order(order_id):

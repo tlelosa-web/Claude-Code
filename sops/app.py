@@ -16,12 +16,12 @@ def create_app(config_class=Config):
     db.init_app(app)
 
     # Register blueprints
-    from sops.routes.dashboard import dashboard_bp
-    from sops.routes.items import items_bp
-    from sops.routes.sales_orders import sales_orders_bp
-    from sops.routes.works_orders import works_orders_bp
-    from sops.routes.reports import reports_bp
-    from sops.routes.stock_orders import stock_orders_bp
+    from routes.dashboard import dashboard_bp
+    from routes.items import items_bp
+    from routes.sales_orders import sales_orders_bp
+    from routes.works_orders import works_orders_bp
+    from routes.reports import reports_bp
+    from routes.stock_orders import stock_orders_bp
 
     app.register_blueprint(dashboard_bp)
     app.register_blueprint(items_bp)

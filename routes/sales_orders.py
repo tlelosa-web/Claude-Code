@@ -151,95 +151,174 @@ def view_order(order_id):
 
 @sales_orders_bp.route('/sales-orders/<int:order_id>/build-bom', methods=['GET', 'POST'])
 def build_bom(order_id):
-    """BOM Builder page — select items from catalogue to build Works Order or Picking List."""
+    """Build BOM / Works Pack — classify SO lines and create WorksOrder + StockOrder."""
     so = SalesOrder.query.get_or_404(order_id)
     
     if request.method == 'POST':
-        order_type = request.form.get('order_type', '').strip()
-        if order_type not in ('ASSEMBLY', 'STOCK', 'COMBINED'):
-            flash("Please select an order type.", "error")
-            return redirect(url_for('sales_orders.build_bom', order_id=order_id))
-        
         try:
-            issued_by = request.form.get('issued_by', 'System').strip() or 'System'
-            from services.bom_builder import create_works_order_or_picking_list
+            # Parse form data
+            line_items = SOLineItem.query.filter_by(so_id=order_id).all()
+            fan_line_id = None
+            stock_line_ids = []
             
-            if order_type == 'COMBINED':
-                # Parse TWO separate item lists
-                assembly_json = request.form.get('assembly_items_json', '[]')
-                stock_json = request.form.get('stock_items_json', '[]')
-                
-                try:
-                    assembly_items = json.loads(assembly_json)
-                    stock_items = json.loads(stock_json)
-                except json.JSONDecodeError:
-                    flash("Invalid BOM data.", "error")
-                    return redirect(url_for('sales_orders.build_bom', order_id=order_id))
-                
-                # Validate: at least one item in each group
-                if not assembly_items:
-                    flash("Combined orders require at least one Works item.", "error")
-                    return redirect(url_for('sales_orders.build_bom', order_id=order_id))
-                if not stock_items:
-                    flash("Combined orders require at least one Stock item.", "error")
-                    return redirect(url_for('sales_orders.build_bom', order_id=order_id))
-                
-                # Create both orders
-                assembly_wo = create_works_order_or_picking_list(
-                    so_id=order_id, order_type='ASSEMBLY',
-                    items_list=assembly_items, issued_by=issued_by
-                )
-                stock_wo = create_works_order_or_picking_list(
-                    so_id=order_id, order_type='STOCK',
-                    items_list=stock_items, issued_by=issued_by
-                )
-                
-                # Link them
-                assembly_wo.related_wo_id = stock_wo.id
-                stock_wo.related_wo_id = assembly_wo.id
-                db.session.commit()
-                
-                flash(f"Combined orders created: Assembly {assembly_wo.wo_number} and Picking List {stock_wo.wo_number}", "success")
-                return redirect(url_for('works_orders.view_order', order_id=assembly_wo.id))
+            # Classify lines
+            for line in line_items:
+                role = request.form.get(f'line_role_{line.id}', 'ignore')
+                if role == 'fan':
+                    if fan_line_id is not None:
+                        flash("Only one line can be marked as Fan.", "error")
+                        return redirect(url_for('sales_orders.build_bom', order_id=order_id))
+                    fan_line_id = line.id
+                elif role == 'stock':
+                    stock_line_ids.append(line.id)
             
-            else:
-                # ASSEMBLY or STOCK: use single bom_items_json (backward compatible)
-                items_json = request.form.get('bom_items_json', '[]')
-                try:
-                    items_data = json.loads(items_json)
-                except json.JSONDecodeError:
-                    flash("Invalid BOM data.", "error")
-                    return redirect(url_for('sales_orders.build_bom', order_id=order_id))
+            created_wo = None
+            created_stock_order = None
+            
+            # Create WorksOrder if fan line selected
+            if fan_line_id:
+                # Check if WO already exists
+                existing_wo = WorksOrder.query.filter_by(so_id=order_id).first()
+                if existing_wo:
+                    flash("A Works Order already exists for this Sales Order.", "warning")
+                    return redirect(url_for('sales_orders.view_order', order_id=order_id))
                 
-                if not items_data:
-                    flash("Please select at least one item.", "error")
-                    return redirect(url_for('sales_orders.build_bom', order_id=order_id))
+                # Generate WO number
+                last_wo = WorksOrder.query.order_by(WorksOrder.id.desc()).first()
+                if last_wo:
+                    # Extract number from format "WO0042"
+                    try:
+                        last_num = int(last_wo.wo_number.replace('WO', ''))
+                        next_num = last_num + 1
+                    except ValueError:
+                        next_num = 1
+                else:
+                    next_num = 1
+                wo_number = f"WO{next_num:04d}"
                 
-                wo = create_works_order_or_picking_list(
-                    so_id=order_id, order_type=order_type,
-                    items_list=items_data, issued_by=issued_by
+                # Create WorksOrder
+                works_order = WorksOrder(
+                    wo_number=wo_number,
+                    so_id=order_id,
+                    order_type='ASSEMBLY',
+                    status='Open',
+                    issued_by=request.form.get('issued_by', 'System').strip() or 'System'
                 )
-                flash(f"{('Works Order' if order_type == 'ASSEMBLY' else 'Picking List')} {wo.wo_number} created successfully.", "success")
-                return redirect(url_for('works_orders.view_order', order_id=wo.id))
+                db.session.add(works_order)
+                db.session.flush()  # Get wo.id
+                
+                # Parse BOM components
+                component_item_ids = request.form.getlist('component_item_id[]')
+                component_qtys = request.form.getlist('component_qty[]')
+                
+                for i, item_id_str in enumerate(component_item_ids):
+                    if not item_id_str:
+                        continue
+                    try:
+                        item_id = int(item_id_str)
+                        qty = float(component_qtys[i]) if i < len(component_qtys) else 0
+                        if qty <= 0:
+                            continue
+                        
+                        # Load Item to get unit_cost
+                        item = Item.query.get(item_id)
+                        if not item:
+                            continue
+                        
+                        bom_line = BOMLine(
+                            wo_id=works_order.id,
+                            item_id=item.id,
+                            qty_required=qty,
+                            unit_cost=item.last_cost or 0.0
+                        )
+                        db.session.add(bom_line)
+                    except (ValueError, IndexError):
+                        continue
+                
+                created_wo = works_order
+            
+            # Create StockOrder if stock lines exist
+            if stock_line_ids:
+                # Generate Stock Order number
+                last_so = StockOrder.query.order_by(StockOrder.id.desc()).first()
+                if last_so:
+                    try:
+                        last_num = int(last_so.stock_order_number.replace('STO', ''))
+                        next_num = last_num + 1
+                    except ValueError:
+                        next_num = 1
+                else:
+                    next_num = 1
+                stock_order_number = f"STO{next_num:04d}"
+                
+                # Create StockOrder
+                stock_order = StockOrder(
+                    stock_order_number=stock_order_number,
+                    so_id=order_id,
+                    status='Open'
+                )
+                db.session.add(stock_order)
+                db.session.flush()
+                
+                # Create StockOrderLines
+                for line_id in stock_line_ids:
+                    line = SOLineItem.query.get(line_id)
+                    if not line:
+                        continue
+                    
+                    # Parse item_code from description (text before first " - ")
+                    item_code = ''
+                    if line.description:
+                        parts = line.description.split(' - ', 1)
+                        item_code = parts[0].strip() if parts else ''
+                    
+                    stock_line = StockOrderLine(
+                        stock_order_id=stock_order.id,
+                        item_code=item_code,
+                        description=line.description,
+                        qty=line.qty
+                    )
+                    db.session.add(stock_line)
+                
+                created_stock_order = stock_order
+            
+            # Validate at least one order type was created
+            if not created_wo and not created_stock_order:
+                flash("Please select at least one Fan line or Stock Order line.", "warning")
+                return redirect(url_for('sales_orders.build_bom', order_id=order_id))
+            
+            # Update SO status to Open
+            so.status = 'Open'
+            
+            db.session.commit()
+            
+            # Flash success message
+            messages = []
+            if created_wo:
+                messages.append(f"Works Order {created_wo.wo_number}")
+            if created_stock_order:
+                messages.append(f"Stock Order {created_stock_order.stock_order_number}")
+            flash(f"Works Pack created successfully: {', '.join(messages)}", "success")
+            return redirect(url_for('sales_orders.view_order', order_id=order_id))
+            
         except Exception as e:
             db.session.rollback()
-            flash(f"Error creating order: {str(e)}", "error")
-            return redirect(url_for('sales_orders.build_bom', order_id=order_id))
+            flash(f"Error creating Works Pack: {str(e)}", "error")
+            # Re-render with current data
+            catalogue_items = Item.query.filter_by(active=True).order_by(Item.category, Item.code).all()
+            return render_template('sales_orders/build_bom.html', 
+                                  so=so, 
+                                  line_items=line_items,
+                                  catalogue_items=catalogue_items)
     
-    # GET: show SO line items for selection
-    so_line_items = SOLineItem.query.filter_by(so_id=order_id).all()
+    # GET: Show build BOM form
+    line_items = SOLineItem.query.filter_by(so_id=order_id).all()
+    catalogue_items = Item.query.filter_by(active=True).order_by(Item.category, Item.code).all()
     
-    # Also load catalogue items for BOM building
-    items = Item.query.filter_by(active=True).order_by(Item.category, Item.code).all()
-    item_payload = [item_to_bom_json(item) for item in items]
-    categories = db.session.query(Item.category).filter(Item.active == True, Item.category != None).distinct().order_by(Item.category).all()
-    categories = [c[0] for c in categories if c[0]]
-    
-    return render_template('sales_orders/bom_builder.html', 
+    return render_template('sales_orders/build_bom.html', 
                           so=so, 
-                          so_line_items=so_line_items,
-                          items=item_payload, 
-                          categories=categories)
+                          line_items=line_items,
+                          catalogue_items=catalogue_items)
 
 @sales_orders_bp.route('/sales-orders/<int:order_id>/cancel', methods=['POST'])
 def cancel_order(order_id):

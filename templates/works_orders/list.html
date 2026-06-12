@@ -10,7 +10,7 @@
 
     {% if orders %}
     <div style="overflow-x: auto;">
-        <table class="data-table">
+        <table class="data-table" id="orders-table">
             <thead>
                 <tr>
                     <th>WO/PL Number</th>
@@ -74,4 +74,44 @@
     </div>
     {% endif %}
 </div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+// Override toggleDropdown to handle viewport overflow
+(function() {
+    var originalToggleDropdown = window.toggleDropdown;
+    
+    window.toggleDropdown = function(btn) {
+        // Call original function
+        if (originalToggleDropdown) {
+            originalToggleDropdown(btn);
+        }
+        
+        // Find the dropdown menu
+        var dropdown = btn.closest('.dropdown');
+        var menu = dropdown.querySelector('.dropdown-menu');
+        
+        if (!menu || !dropdown.classList.contains('open')) return;
+        
+        // Check if menu would overflow viewport
+        var rect = menu.getBoundingClientRect();
+        var viewportHeight = window.innerHeight || document.documentElement.clientHeight;
+        
+        // If menu extends below viewport, flip it upward
+        if (rect.bottom > viewportHeight) {
+            menu.style.top = 'auto';
+            menu.style.bottom = '100%';
+            menu.style.marginTop = '0';
+            menu.style.marginBottom = '4px';
+        } else {
+            // Reset to default position
+            menu.style.top = '100%';
+            menu.style.bottom = 'auto';
+            menu.style.marginTop = '4px';
+            menu.style.marginBottom = '0';
+        }
+    };
+})();
+</script>
 {% endblock %}

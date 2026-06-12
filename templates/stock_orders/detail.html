@@ -1,0 +1,80 @@
+{% extends 'base.html' %}
+{% block title %}Stock Order: {{ stock_order.stock_order_number }} - SOPS{% endblock %}
+{% block page_title %}Stock Order: {{ stock_order.stock_order_number }}{% endblock %}
+
+{% block content %}
+<div class="card animate-fade-in" style="margin-bottom: 24px;">
+    <div class="card-header">
+        <h2 class="card-title">Stock Order Details</h2>
+        <div style="display: flex; gap: 8px;">
+            {% if stock_order.status == 'Open' %}
+            <form method="POST" action="{{ url_for('stock_orders.cancel_order', order_id=stock_order.id) }}" 
+                  onsubmit="return confirm('Cancel this Stock Order?')">
+                <button type="submit" class="btn btn-danger">Cancel Order</button>
+            </form>
+            {% endif %}
+            <a href="{{ url_for('sales_orders.view_order', order_id=stock_order.so_id) }}" class="btn btn-secondary">Back to SO</a>
+        </div>
+    </div>
+    
+    <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 24px;">
+        <div>
+            <table class="detail-table">
+                <tr><td class="detail-label">Stock Order No</td><td class="detail-value">{{ stock_order.stock_order_number }}</td></tr>
+                <tr><td class="detail-label">SO Reference</td><td class="detail-value">
+                    {% if stock_order.sales_order %}
+                        <a href="{{ url_for('sales_orders.view_order', order_id=stock_order.sales_order.id) }}" class="link-primary">
+                            {{ stock_order.sales_order.so_number }}
+                        </a>
+                    {% else %}
+                        -
+                    {% endif %}
+                </td></tr>
+                <tr><td class="detail-label">Customer</td><td class="detail-value">{{ stock_order.sales_order.customer_name if stock_order.sales_order else '-' }}</td></tr>
+                <tr><td class="detail-label">Delivery Date</td><td class="detail-value">{{ stock_order.sales_order.delivery_date.strftime('%Y-%m-%d') if stock_order.sales_order and stock_order.sales_order.delivery_date else '-' }}</td></tr>
+            </table>
+        </div>
+        <div>
+            <table class="detail-table">
+                <tr><td class="detail-label">Status</td><td class="detail-value"><span class="badge badge-{{ stock_order.status.lower() }}">{{ stock_order.status }}</span></td></tr>
+                <tr><td class="detail-label">Created</td><td class="detail-value">{{ stock_order.created_at.strftime('%Y-%m-%d %H:%M') if stock_order.created_at else '-' }}</td></tr>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Line Items -->
+<div class="card animate-fade-in">
+    <div class="card-header">
+        <h2 class="card-title">Line Items</h2>
+    </div>
+    {% if stock_order.lines %}
+    <div style="overflow-x: auto;">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Item Code</th>
+                    <th>Description</th>
+                    <th>Qty</th>
+                    <th>Notes</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for line in stock_order.lines %}
+                <tr>
+                    <td>{{ loop.index }}</td>
+                    <td>{{ line.item_code or '-' }}</td>
+                    <td>{{ line.description or '' }}</td>
+                    <td>{{ line.qty }}</td>
+                    <td>{{ line.notes or '-' }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p style="padding: 24px; color: var(--text-muted); text-align: center;">No line items.</p>
+    {% endif %}
+</div>
+{% endblock %}

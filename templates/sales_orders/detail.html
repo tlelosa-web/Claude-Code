@@ -106,38 +106,85 @@
     {% endif %}
 </div>
 
-<!-- Related Works Orders -->
+<!-- Related Works Orders / Picking Lists -->
 <div class="card animate-fade-in">
     <div class="card-header">
         <h2 class="card-title">Related Works Orders / Picking Lists</h2>
-        <a href="{{ url_for('sales_orders.build_bom', order_id=so.id) }}" class="btn btn-primary">Create New</a>
+        {% set has_wo = wos|length > 0 %}
+        <a href="{{ url_for('sales_orders.build_bom', order_id=so.id) }}" 
+           class="btn btn-primary" 
+           {% if has_wo %}disabled style="opacity: 0.5; cursor: not-allowed;" title="A Works Order already exists for this SO"{% endif %}>
+            Create New
+        </a>
     </div>
+    
+    <!-- Works Orders sub-table -->
     {% if wos %}
-    <div style="overflow-x: auto;">
-        <table class="data-table">
-            <thead>
-                <tr>
-                    <th>WO/PL Number</th>
-                    <th>Type</th>
-                    <th>Status</th>
-                    <th>Created</th>
-                    <th>Action</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for wo in wos %}
-                <tr>
-                    <td><a href="{{ url_for('works_orders.view_order', order_id=wo.id) }}" class="link-primary">{{ wo.wo_number }}</a></td>
-                    <td><span class="badge" style="background: var(--brand-secondary);">{{ "Assembly" if wo.order_type == "ASSEMBLY" else "Stock" }}</span></td>
-                    <td><span class="badge badge-{{ wo.status.lower().replace(' ', '') }}">{{ wo.status }}</span></td>
-                    <td>{{ wo.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
-                    <td><a href="{{ url_for('works_orders.view_order', order_id=wo.id) }}" class="btn btn-secondary" style="padding: 4px 10px; font-size: 0.75rem;">View</a></td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+    <div style="padding: 16px;">
+        <h3 style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 12px;">Works Orders</h3>
+        <div style="overflow-x: auto;">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>WO Number</th>
+                        <th>Type</th>
+                        <th>Status</th>
+                        <th>Created</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for wo in wos %}
+                    <tr>
+                        <td><a href="{{ url_for('works_orders.view_order', order_id=wo.id) }}" class="link-primary">{{ wo.wo_number }}</a></td>
+                        <td><span class="badge" style="background: var(--brand-secondary);">{{ "Assembly" if wo.order_type == "ASSEMBLY" else "Stock" }}</span></td>
+                        <td><span class="badge badge-{{ wo.status.lower().replace(' ', '') }}">{{ wo.status }}</span></td>
+                        <td>{{ wo.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                        <td><a href="{{ url_for('works_orders.view_order', order_id=wo.id) }}" class="btn btn-secondary" style="padding: 4px 10px; font-size: 0.75rem;">View</a></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
     </div>
-    {% else %}
+    {% endif %}
+    
+    <!-- Divider between tables -->
+    {% if wos and stock_orders %}
+    <hr style="border: none; border-top: 1px solid rgba(255,255,255,0.1); margin: 0 16px;">
+    {% endif %}
+    
+    <!-- Stock Orders sub-table -->
+    {% if stock_orders %}
+    <div style="padding: 16px;">
+        <h3 style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 12px;">Stock Orders</h3>
+        <div style="overflow-x: auto;">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Stock Order No</th>
+                        <th>Status</th>
+                        <th>Created</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for sto in stock_orders %}
+                    <tr>
+                        <td><a href="{{ url_for('stock_orders.view_order', order_id=sto.id) }}" class="link-primary">{{ sto.stock_order_number }}</a></td>
+                        <td><span class="badge badge-{{ sto.status.lower() }}">{{ sto.status }}</span></td>
+                        <td>{{ sto.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                        <td><a href="{{ url_for('stock_orders.view_order', order_id=sto.id) }}" class="btn btn-secondary" style="padding: 4px 10px; font-size: 0.75rem;">View</a></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+    
+    <!-- Empty state -->
+    {% if not wos and not stock_orders %}
     <p style="padding: 24px; color: var(--text-muted); text-align: center;">No Works Orders or Picking Lists have been created for this Sales Order yet.</p>
     {% endif %}
 </div>

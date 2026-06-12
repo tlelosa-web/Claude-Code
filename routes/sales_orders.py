@@ -145,9 +145,11 @@ def save_order():
 @sales_orders_bp.route('/sales-orders/<int:order_id>')
 def view_order(order_id):
     so = SalesOrder.query.get_or_404(order_id)
-    # Also fetch related works orders if any
+    # Also fetch related works orders and stock orders if any
+    from models import StockOrder
     wos = WorksOrder.query.filter_by(so_id=order_id).all()
-    return render_template('sales_orders/detail.html', so=so, wos=wos)
+    stock_orders = StockOrder.query.filter_by(so_id=order_id).all()
+    return render_template('sales_orders/detail.html', so=so, wos=wos, stock_orders=stock_orders)
 
 @sales_orders_bp.route('/sales-orders/<int:order_id>/build-bom', methods=['GET', 'POST'])
 def build_bom(order_id):

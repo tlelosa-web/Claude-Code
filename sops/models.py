@@ -94,3 +94,27 @@ class StockMovement(db.Model):
     notes = db.Column(db.Text)
     created_by = db.Column(db.String(255))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+class StockOrder(db.Model):
+    __tablename__ = 'stock_order'
+
+    id = db.Column(db.Integer, primary_key=True)
+    stock_order_number = db.Column(db.String(100), unique=True, nullable=False)
+    so_id = db.Column(db.Integer, db.ForeignKey('sales_order.id'), nullable=False)
+    status = db.Column(db.String(50), default='Open')  # Open / Complete / Cancelled
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    lines = db.relationship('StockOrderLine', backref='stock_order', lazy=True,
+                            cascade='all, delete-orphan')
+    sales_order = db.relationship('SalesOrder', backref='stock_orders')
+
+
+class StockOrderLine(db.Model):
+    __tablename__ = 'stock_order_line'
+
+    id = db.Column(db.Integer, primary_key=True)
+    stock_order_id = db.Column(db.Integer, db.ForeignKey('stock_order.id'), nullable=False)
+    item_code = db.Column(db.String(100))
+    description = db.Column(db.Text)
+    qty = db.Column(db.Float)
+    notes = db.Column(db.Text)

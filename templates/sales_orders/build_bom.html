@@ -1,0 +1,202 @@
+{% extends 'base.html' %}
+{% block title %}Build Works Pack — {{ so.so_number }} - SOPS{% endblock %}
+{% block page_title %}Build Works Pack: {{ so.so_number }}{% endblock %}
+
+{% block content %}
+<div class="card animate-fade-in" style="margin-bottom: 24px;">
+    <div class="card-header">
+        <h2 class="card-title">Sales Order Header</h2>
+    </div>
+    <table class="detail-table">
+        <tr><td class="detail-label">SO Number</td><td class="detail-value">{{ so.so_number }}</td></tr>
+        <tr><td class="detail-label">Customer</td><td class="detail-value">{{ so.customer_name or '-' }}</td></tr>
+        <tr><td class="detail-label">Delivery Date</td><td class="detail-value">{{ so.delivery_date.strftime('%Y-%m-%d') if so.delivery_date else '-' }}</td></tr>
+        <tr><td class="detail-label">Sales Rep</td><td class="detail-value">{{ so.sales_rep or '-' }}</td></tr>
+    </table>
+</div>
+
+<!-- Section 2: Classify Line Items -->
+<div class="card animate-fade-in" style="margin-bottom: 24px;">
+    <div class="card-header">
+        <h2 class="card-title">Classify Line Items</h2>
+    </div>
+    <p style="padding: 0 16px 8px; color: var(--text-muted); font-size: 0.85rem;">
+        <strong>Note:</strong> Only one line can be marked as Fan. Default selection is "Stock Order".
+    </p>
+    {% if line_items %}
+    <div style="overflow-x: auto;">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Description</th>
+                    <th>Qty</th>
+                    <th>Role</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for line in line_items %}
+                <tr>
+                    <td>{{ loop.index }}</td>
+                    <td>{{ line.description or '' }}</td>
+                    <td>{{ line.qty }}</td>
+                    <td>
+                        <label style="display: inline-flex; align-items: center; gap: 6px; margin-right: 12px;">
+                            <input type="radio" name="line_role_{{ line.id }}" value="fan" 
+                                   onchange="enforceSingleFan(this)">
+                            Fan / WO Subject
+                        </label>
+                        <label style="display: inline-flex; align-items: center; gap: 6px; margin-right: 12px;">
+                            <input type="radio" name="line_role_{{ line.id }}" value="stock" checked>
+                            Stock Order
+                        </label>
+                        <label style="display: inline-flex; align-items: center; gap: 6px;">
+                            <input type="radio" name="line_role_{{ line.id }}" value="ignore">
+                            Ignore
+                        </label>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p style="padding: 24px; color: var(--text-muted); text-align: center;">No line items found.</p>
+    {% endif %}
+</div>
+
+<!-- Section 3: BOM Components -->
+<div class="card animate-fade-in" style="margin-bottom: 24px;">
+    <div class="card-header">
+        <h2 class="card-title">BOM Components (for Fan / Assembly WO)</h2>
+    </div>
+    <p style="padding: 0 16px 8px; color: var(--text-muted); font-size: 0.85rem;">
+        If no Fan line is selected above, this section will be ignored.
+    </p>
+    
+    <!-- Component add panel -->
+    <div style="padding: 16px; background: rgba(255,255,255,0.03); border-radius: 6px; margin: 0 16px 16px;">
+        <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+            <select id="componentSelect" style="flex: 1; min-width: 200px;">
+                <option value="">-- Select Item --</option>
+                {% for item in catalogue_items %}
+                <option value="{{ item.id }}">{{ item.code }} — {{ item.description }}</option>
+                {% endfor %}
+            </select>
+            <input type="number" id="componentQty" placeholder="Qty" min="0.1" step="0.1" 
+                   style="width: 100px;">
+            <button type="button" onclick="addComponent()" class="btn btn-primary" style="padding: 8px 16px;">
+                Add Component
+            </button>
+        </div>
+    </div>
+    
+    <!-- Components table -->
+    <div style="overflow-x: auto;">
+        <table class="data-table" id="componentsTable">
+            <thead>
+                <tr>
+                    <th>Item Code</th>
+                    <th>Description</th>
+                    <th>Qty</th>
+                    <th>Remove</th>
+                </tr>
+            </thead>
+            <tbody id="componentsBody">
+                <!-- Dynamic rows added here -->
+            </tbody>
+        </table>
+    </div>
+    <p id="noComponentsMsg" style="padding: 24px; color: var(--text-muted); text-align: center;">
+        No components added yet.
+    </p>
+</div>
+
+<!-- Section 4: Actions -->
+<div class="card animate-fade-in">
+    <form method="POST" action="{{ url_for('sales_orders.build_bom', order_id=so.id) }}">
+        <div style="display: flex; gap: 12px; justify-content: flex-end; padding: 16px;">
+            <a href="{{ url_for('sales_orders.view_order', order_id=so.id) }}" class="btn btn-secondary">Cancel</a>
+            <button type="submit" class="btn btn-primary">Save Works Pack</button>
+        </div>
+    </form>
+</div>
+
+<script>
+// Enforce single fan selection
+function enforceSingleFan(selectedRadio) {
+    if (selectedRadio.value === 'fan') {
+        document.querySelectorAll('input[type="radio"][value="fan"]').forEach(function(radio) {
+            if (radio !== selectedRadio) {
+                radio.checked = false;
+            }
+        });
+    }
+}
+
+// Add component to table
+let componentCount = 0;
+
+function addComponent() {
+    const select = document.getElementById('componentSelect');
+    const qtyInput = document.getElementById('componentQty');
+    
+    const itemId = select.value;
+    const qty = parseFloat(qtyInput.value);
+    
+    if (!itemId || !qty || qty <= 0) {
+        alert('Please select an item and enter a valid quantity.');
+        return;
+    }
+    
+    const option = select.options[select.selectedIndex];
+    const text = option.text;
+    const parts = text.split(' — ', 2);
+    const code = parts[0] || '';
+    const description = parts[1] || '';
+    
+    // Hide "no components" message
+    document.getElementById('noComponentsMsg').style.display = 'none';
+    
+    // Add row
+    const tbody = document.getElementById('componentsBody');
+    const row = document.createElement('tr');
+    row.innerHTML = `
+        <td>${code}</td>
+        <td>${description}</td>
+        <td>${qty}</td>
+        <td><button type="button" onclick="removeComponent(this)" style="background: none; border: none; color: var(--brand-danger); cursor: pointer;">✕</button></td>
+    `;
+    
+    // Add hidden inputs
+    const hiddenItemId = document.createElement('input');
+    hiddenItemId.type = 'hidden';
+    hiddenItemId.name = 'component_item_id[]';
+    hiddenItemId.value = itemId;
+    row.appendChild(hiddenItemId);
+    
+    const hiddenQty = document.createElement('input');
+    hiddenQty.type = 'hidden';
+    hiddenQty.name = 'component_qty[]';
+    hiddenQty.value = qty;
+    row.appendChild(hiddenQty);
+    
+    tbody.appendChild(row);
+    
+    // Reset inputs
+    select.value = '';
+    qtyInput.value = '';
+}
+
+function removeComponent(btn) {
+    const row = btn.closest('tr');
+    row.remove();
+    
+    // Show "no components" message if empty
+    const tbody = document.getElementById('componentsBody');
+    if (tbody.children.length === 0) {
+        document.getElementById('noComponentsMsg').style.display = 'block';
+    }
+}
+</script>
+{% endblock %}

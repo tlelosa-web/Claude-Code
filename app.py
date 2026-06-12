@@ -34,12 +34,14 @@ def create_app(config_class=Config):
     from routes.sales_orders import sales_orders_bp
     from routes.works_orders import works_orders_bp
     from routes.reports import reports_bp
+    from routes.stock_orders import stock_orders_bp
     
     app.register_blueprint(dashboard_bp)
     app.register_blueprint(items_bp)
     app.register_blueprint(sales_orders_bp)
     app.register_blueprint(works_orders_bp)
     app.register_blueprint(reports_bp)
+    app.register_blueprint(stock_orders_bp)
     
     # Bootstrap database and seed data on first run
     with app.app_context():

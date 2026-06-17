@@ -189,7 +189,6 @@ def edit_order(order_id):
     categories = [c[0] for c in categories if c[0]]
     
     return render_template('works_orders/edit.html', 
-                          wo=wo, 
                           **context,
                           items=item_payload,
                           categories=categories)

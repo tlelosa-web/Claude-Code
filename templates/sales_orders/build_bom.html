@@ -15,6 +15,8 @@
     </table>
 </div>
 
+<form method="POST" action="{{ url_for('sales_orders.build_bom', order_id=so.id) }}">
+
 <!-- Section 2: Classify Line Items -->
 <div class="card animate-fade-in" style="margin-bottom: 24px;">
     <div class="card-header">
@@ -116,13 +118,13 @@
 
 <!-- Section 4: Actions -->
 <div class="card animate-fade-in">
-    <form method="POST" action="{{ url_for('sales_orders.build_bom', order_id=so.id) }}">
-        <div style="display: flex; gap: 12px; justify-content: flex-end; padding: 16px;">
-            <a href="{{ url_for('sales_orders.view_order', order_id=so.id) }}" class="btn btn-secondary">Cancel</a>
-            <button type="submit" class="btn btn-primary">Save Works Pack</button>
-        </div>
-    </form>
+    <div style="display: flex; gap: 12px; justify-content: flex-end; padding: 16px;">
+        <a href="{{ url_for('sales_orders.view_order', order_id=so.id) }}" class="btn btn-secondary">Cancel</a>
+        <button type="submit" class="btn btn-primary">Save Works Pack</button>
+    </div>
 </div>
+
+</form>
 
 <script>
 // Catalogue items as JSON

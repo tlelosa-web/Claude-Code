@@ -36,6 +36,13 @@
 - [x] Fix BOM Builder item catalogue JSON serialization
 - [x] Fix BOM Builder script initialization order so item selection works
 
+## Works Pack Debug Session (2026-06-17)
+- [x] Fix 1: Component search input wired up in build_bom.html (live search autocomplete)
+- [x] Fix 2: Save Works Pack POST debug logging added (terminal confirms form keys)
+- [x] Fix 3: `<form>` tag moved to wrap Sections 2+3+4 — line_role_* and component hidden inputs now POST correctly
+- [x] Fix 4: StockOrder/StockOrderLine imports added to routes/sales_orders.py; catalogue_json serialisation hardened
+- [x] E2E Verified: SO4652 (Setati Sol) — WO0001 created (2 BOM lines), STO0001 created (8 stock lines), SO status = Open
+
 ## Acceptance Criteria
 All items below must be green before delivery:
 - [x] `pip install -r requirements.txt && python app.py` starts with no errors

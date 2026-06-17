@@ -3,7 +3,7 @@ import json
 from datetime import datetime
 from flask import Blueprint, render_template, request, redirect, url_for, flash, current_app, jsonify
 from werkzeug.utils import secure_filename
-from models import db, SalesOrder, SOLineItem, Item, WorksOrder, BOMLine, StockMovement
+from models import db, SalesOrder, SOLineItem, Item, WorksOrder, BOMLine, StockMovement, StockOrder, StockOrderLine
 from services.pdf_parser import parse_sales_order_pdf
 
 sales_orders_bp = Blueprint('sales_orders', __name__)
@@ -324,7 +324,10 @@ def build_bom(order_id):
     catalogue_items = Item.query.filter_by(active=True).order_by(Item.category, Item.code).all()
     
     # Prepare JSON for JavaScript
-    catalogue_json = [{'id': i.id, 'code': i.code, 'description': i.description} for i in catalogue_items]
+    catalogue_json = [
+        {'id': i.id or 0, 'code': i.code or '', 'description': i.description or ''}
+        for i in catalogue_items
+    ]
     
     return render_template('sales_orders/build_bom.html', 
                           so=so, 

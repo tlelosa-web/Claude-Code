@@ -314,10 +314,14 @@ def build_bom(order_id):
             flash(f"Error creating Works Pack: {str(e)}", "error")
             # Re-render with current data
             catalogue_items = Item.query.filter_by(active=True).order_by(Item.category, Item.code).all()
+            catalogue_json = [
+                {'id': i.id or 0, 'code': i.code or '', 'description': i.description or ''}
+                for i in catalogue_items
+            ]
             return render_template('sales_orders/build_bom.html', 
                                   so=so, 
                                   line_items=line_items,
-                                  catalogue_items=catalogue_items)
+                                  catalogue_json=catalogue_json)
     
     # GET: Show build BOM form
     line_items = SOLineItem.query.filter_by(so_id=order_id).all()

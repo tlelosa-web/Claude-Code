@@ -142,8 +142,8 @@ class TestBOMBuilder:
         body = response.get_data(as_text=True)
 
         assert response.status_code == 200
-        assert "BOM Builder" in body
-        assert "window.SOPS_BOM" in body
+        assert "Build Works Pack" in body
+        assert "catalogueItems" in body
         assert "Object of type Item is not JSON serializable" not in body
         assert setup_data['items']['comp_a'].code in body
-        assert body.index("window.SOPS_BOM") < body.index("js/bom_builder.js")
+        assert "Save Works Pack" in body

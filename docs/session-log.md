@@ -10,3 +10,27 @@
 - Verified no CDN references in templates and no Google Fonts references in static assets.
 - Fixed Windows console encoding risk in `app.py` by replacing Unicode status glyphs with ASCII output.
 - Logged remaining pytest/import hang under `docs/bugs/pytest-flask-sqlalchemy-import-hang.md`.
+
+## 2026-06-24 — Full Health Screen
+
+- Domain classified as Software/AI.
+- Ran full health screen per Debugger Brief (7 checks), assigned manually.
+- **Check 1 (App Startup):** PASS — Flask starts cleanly on localhost:5000.
+- **Check 2 (Route Registration):** PASS — 31 routes, all blueprints registered.
+- **Check 3 (Test Suite):** WARNING — 15 passed, 1 failed (stale assertion: `"BOM Builder"` → `"Build Works Pack"`), 2 root scripts blocked by missing `requests` module, 75 deprecation warnings.
+- **Check 4 (Database Integrity):** PASS — 8 tables present, 2,999 items vs 2,967 expected. DB in `instance/sops.db`. Root `sops.db` is 0-byte stub.
+- **Check 5 (Offline Assets):** PASS — No CDN, Google Fonts, or unpkg references. All vendors self-hosted in `static/vendor/`.
+- **Check 6 (Known Risk Areas):** PASS — All 4 inspected files clean (imports, kwargs, form wrappers, model definitions).
+- **Check 7 (June 17 Fix Verification):** PASS — All 5 fixes confirmed present in current code.
+- Written findings to `docs/bugs/health-screen-2026-06-24.md`.
+- **Outcome:** Codebase is STABLE. No production-impacting defects. Three action items identified: fix stale test assertion, install/remove `requests`, plan deprecation cleanup.
+- **Next task:** Human review of health-screen report, then assign Executor to fix Check 3 issues.
+- **Blockers:** None — report ready for human review.
+
+## 2026-06-24 — Task 1: Fix stale test assertion
+
+- Date: 2026-06-24
+- Task: Fix stale test assertion — test_build_bom_page_renders_item_catalogue
+- Files changed: tests/test_bom_builder.py
+- Commit hash: bae4d6d
+- Next task: Task 2 — install requests or remove root-level test scripts

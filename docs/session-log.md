@@ -34,3 +34,11 @@
 - Files changed: tests/test_bom_builder.py
 - Commit hash: bae4d6d
 - Next task: Task 2 — install requests or remove root-level test scripts
+
+## 2026-06-24 — Task 2: Remove root-level ad-hoc test scripts
+
+- Date: 2026-06-24
+- Task: Remove root-level ad-hoc test scripts that blocked pytest collection
+- Files changed: test_build_bom_post.py, test_build_bom_with_correct_ids.py
+- Commit hash: f54d4e9
+- Next task: Task 3 — migrate Query.get() and utcnow() deprecations

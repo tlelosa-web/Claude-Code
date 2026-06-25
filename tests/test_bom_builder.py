@@ -1,6 +1,6 @@
 """Tests for bom_builder module."""
 import pytest
-from datetime import datetime
+from datetime import datetime, timezone
 from models import db, Item, SalesOrder, WorksOrder, BOMLine
 
 class TestBOMBuilder:
@@ -14,7 +14,7 @@ class TestBOMBuilder:
         
         # Create sales order
         so = SalesOrder(so_number=f"SO-TEST-{c:03d}", reference="REF001", customer_name="Test Customer",
-                        status='Draft', created_at=datetime.utcnow())
+                        status='Draft', created_at=datetime.now(timezone.utc))
         session.add(so)
         session.flush()
         
@@ -62,7 +62,7 @@ class TestBOMBuilder:
         
         # Check unit costs were set from avg_cost
         for line in bom_lines:
-            item = Item.query.get(line.item_id)
+            item = db.session.get(Item, line.item_id)
             assert line.unit_cost == item.avg_cost
     
     def test_create_picking_list(self, app, db, session, setup_data):
@@ -98,7 +98,7 @@ class TestBOMBuilder:
         assert bom_line.qty_required == 10.0
         
         # Shortfall = qty_required - qty_on_hand = 10 - 2 = 8
-        item = Item.query.get(bom_line.item_id)
+        item = db.session.get(Item, bom_line.item_id)
         shortfall = max(0.0, bom_line.qty_required - item.qty_on_hand)
         assert shortfall == 8.0
     

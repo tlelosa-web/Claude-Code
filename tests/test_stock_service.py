@@ -1,6 +1,6 @@
 """Tests for stock_service module."""
 import pytest
-from datetime import datetime
+from datetime import datetime, timezone
 from models import db, Item, StockMovement
 
 class TestStockService:
@@ -19,7 +19,7 @@ class TestStockService:
         session.commit()
         
         # Verify
-        item = Item.query.get(item.id)
+        item = db.session.get(Item, item.id)
         assert item.qty_on_hand == 75.0
         
         movement = StockMovement.query.filter_by(item_id=item.id, movement_type='ISSUE').first()
@@ -39,7 +39,7 @@ class TestStockService:
         receipt(item.id, 30, "PO-TEST-001", "Test receipt", "Tester")
         session.commit()
         
-        item = Item.query.get(item.id)
+        item = db.session.get(Item, item.id)
         assert item.qty_on_hand == 80.0
         
         movement = StockMovement.query.filter_by(item_id=item.id, movement_type='RECEIPT').first()
@@ -58,7 +58,7 @@ class TestStockService:
         adjust(item.id, 120.0, "Cycle count correction", "Stock Clerk")
         session.commit()
         
-        item = Item.query.get(item.id)
+        item = db.session.get(Item, item.id)
         assert item.qty_on_hand == 120.0
         
         movement = StockMovement.query.filter_by(item_id=item.id, movement_type='ADJUSTMENT').first()

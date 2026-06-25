@@ -1,14 +1,14 @@
-from models import WorksOrder, BOMLine, Item, SalesOrder
+from models import db, WorksOrder, BOMLine, Item, SalesOrder
 
 def get_works_order_print_context(wo_id):
     """
     Assembles information for printing Works Order with nested BOM structure.
     """
-    wo = WorksOrder.query.get(wo_id)
+    wo = db.session.get(WorksOrder, wo_id)
     if not wo:
         raise ValueError(f"Works Order with id {wo_id} not found.")
     
-    so = SalesOrder.query.get(wo.so_id)
+    so = db.session.get(SalesOrder, wo.so_id)
     
     # Query top-level lines only (parent_line_id IS NULL)
     top_lines = BOMLine.query.filter_by(wo_id=wo_id, parent_line_id=None).all()

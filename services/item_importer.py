@@ -1,6 +1,6 @@
 import os
 import pandas as pd
-from datetime import datetime
+from datetime import datetime, timezone
 from models import db, Item, StockMovement
 
 def clean_currency(val):
@@ -81,7 +81,7 @@ def import_items_from_csv(csv_path):
                     qty_after=qty_on_hand,
                     notes=f"Stock updated via CSV import from {old_qty} to {qty_on_hand}",
                     created_by='System',
-                    created_at=datetime.utcnow()
+                    created_at=datetime.now(timezone.utc)
                 )
                 db.session.add(movement)
             
@@ -98,7 +98,7 @@ def import_items_from_csv(csv_path):
                 incl_price=incl_price,
                 qty_on_hand=qty_on_hand,
                 active=True,
-                updated_at=datetime.utcnow()
+                updated_at=datetime.now(timezone.utc)
             )
             db.session.add(new_item)
             db.session.flush()  # Get new_item.id
@@ -113,7 +113,7 @@ def import_items_from_csv(csv_path):
                     qty_after=qty_on_hand,
                     notes=f"Initial import of item with quantity {qty_on_hand}",
                     created_by='System',
-                    created_at=datetime.utcnow()
+                    created_at=datetime.now(timezone.utc)
                 )
                 db.session.add(movement)
 
@@ -190,7 +190,7 @@ def import_items_from_csv_skip_quantities(csv_path):
                 incl_price=incl_price,
                 qty_on_hand=qty_on_hand,
                 active=True,
-                updated_at=datetime.utcnow()
+                updated_at=datetime.now(timezone.utc)
             )
             db.session.add(new_item)
             db.session.flush()  # Get new_item.id
@@ -205,7 +205,7 @@ def import_items_from_csv_skip_quantities(csv_path):
                     qty_after=qty_on_hand,
                     notes=f"Initial import of item with quantity {qty_on_hand}",
                     created_by='System',
-                    created_at=datetime.utcnow()
+                    created_at=datetime.now(timezone.utc)
                 )
                 db.session.add(movement)
 

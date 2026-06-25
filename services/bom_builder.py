@@ -1,11 +1,11 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from models import db, Item, WorksOrder, BOMLine, SalesOrder
 
 def generate_wo_number():
     """
     Generates a Works Order number in format: WO-YYYYMMDD-NNN
     """
-    today_str = datetime.utcnow().strftime('%Y%m%d')
+    today_str = datetime.now(timezone.utc).strftime('%Y%m%d')
     prefix = f"WO-{today_str}-"
     
     # Query works orders created today matching this prefix pattern
@@ -33,7 +33,7 @@ def create_works_order_or_picking_list(so_id, order_type, items_list, issued_by=
     2. Nested: [{'item_id': int, 'qty_required': float, 'line_type': 'ASSEMBLY_ITEM', 
                  'notes': str, 'components': [...]}]
     """
-    so = SalesOrder.query.get(so_id)
+    so = db.session.get(SalesOrder, so_id)
     if not so:
         raise ValueError(f"Sales Order with id {so_id} not found.")
 
@@ -45,7 +45,7 @@ def create_works_order_or_picking_list(so_id, order_type, items_list, issued_by=
         order_type=order_type, # 'ASSEMBLY' or 'STOCK'
         status='Open',
         issued_by=issued_by,
-        created_at=datetime.utcnow()
+        created_at=datetime.now(timezone.utc)
     )
     
     db.session.add(wo)
@@ -58,7 +58,7 @@ def create_works_order_or_picking_list(so_id, order_type, items_list, issued_by=
         line_type = item_data.get('line_type', 'COMPONENT')
         components = item_data.get('components', [])
         
-        item = Item.query.get(item_id)
+        item = db.session.get(Item, item_id)
         if not item:
             raise ValueError(f"Item with id {item_id} not found.")
             
@@ -81,7 +81,7 @@ def create_works_order_or_picking_list(so_id, order_type, items_list, issued_by=
         # If this is an assembly item with components, create child lines
         if line_type == 'ASSEMBLY_ITEM' and components:
             for comp_data in components:
-                comp_item = Item.query.get(comp_data['item_id'])
+                comp_item = db.session.get(Item, comp_data['item_id'])
                 if not comp_item:
                     raise ValueError(f"Component item with id {comp_data['item_id']} not found.")
                 

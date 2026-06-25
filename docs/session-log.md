@@ -42,3 +42,20 @@
 - Files changed: test_build_bom_post.py, test_build_bom_with_correct_ids.py
 - Commit hash: f54d4e9
 - Next task: Task 3 — migrate Query.get() and utcnow() deprecations
+
+## 2026-06-25 — Task 3: Deprecation cleanup — Query.get() and utcnow()
+
+- Date: 2026-06-25
+- Task: Deprecation cleanup — Query.get() and utcnow()
+- Files changed: services/bom_builder.py, services/doc_generator.py, services/stock_service.py, services/item_importer.py, tests/test_bom_builder.py, tests/test_stock_service.py
+- Commit hash: 32a1405
+- Next task: None — all 3 tasks complete, SOPS baseline clean
+
+## 2026-06-25 — Add /continue command and executor session-log rule
+
+- Date: 2026-06-25
+- Task: Add /continue command and executor session-log rule
+- Files changed: .claude/commands/continue.md, .claude/agents/executor.md
+- Commit hash: 97369be
+- Next task: None — baseline complete
+- Blockers: None

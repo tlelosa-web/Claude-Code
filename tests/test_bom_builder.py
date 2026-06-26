@@ -147,3 +147,45 @@ class TestBOMBuilder:
         assert "Object of type Item is not JSON serializable" not in body
         assert setup_data['items']['comp_a'].code in body
         assert "Save Works Pack" in body
+
+    def test_build_bom_persists_fan_as_assembly_parent(self, client, db, session, setup_data):
+        """Fan line selected in build-bom is saved as an ASSEMBLY_ITEM parent with
+        its components nested beneath, so the print context renders a header row."""
+        from services.doc_generator import get_works_order_print_context
+        from models import SOLineItem
+
+        data = setup_data
+        so = data['so']
+        comp_a = data['items']['comp_a']  # resolves to the fan/assembly item
+        comp_b = data['items']['comp_b']
+        comp_c = data['items']['comp_c']
+
+        # SO line whose parsed code ("BOM-A..") resolves to comp_a, marked as fan
+        fan_line = SOLineItem(so_id=so.id, description=f"{comp_a.code} - Fan Assembly", qty=1.0)
+        session.add(fan_line)
+        session.flush()
+
+        resp = client.post(f"/sales-orders/{so.id}/build-bom", data={
+            f"line_role_{fan_line.id}": "fan",
+            "issued_by": "Tester",
+            "component_item_id[]": [str(comp_b.id), str(comp_c.id)],
+            "component_qty[]": ["4", "6"],
+        })
+        assert resp.status_code in (200, 302)
+
+        wo = WorksOrder.query.filter_by(so_id=so.id).first()
+        assert wo is not None
+
+        # Assembly parent persisted; components re-parented under it
+        assemblies = BOMLine.query.filter_by(wo_id=wo.id, line_type='ASSEMBLY_ITEM').all()
+        assert len(assemblies) == 1
+        assert assemblies[0].item_id == comp_a.id
+        children = BOMLine.query.filter_by(parent_line_id=assemblies[0].id).all()
+        assert len(children) == 2
+        assert all(ch.line_type == 'COMPONENT' for ch in children)
+
+        # Print context surfaces a single assembly header with nested components
+        ctx = get_works_order_print_context(wo.id)
+        assert len(ctx['assembly_items']) == 1
+        assert len(ctx['assembly_items'][0]['components']) == 2
+        assert ctx['flat_lines'] == []

@@ -44,6 +44,10 @@ def mark_complete(order_id):
     try:
         # Issue stock for each BOM line (only deduct qty_issued)
         for bom_line in wo.bom_lines:
+            # Assembly header lines represent the finished product, not a stored
+            # component, so they must never be issued from stores.
+            if bom_line.line_type == 'ASSEMBLY_ITEM':
+                continue
             qty_to_issue = bom_line.qty_required - bom_line.qty_issued
             if qty_to_issue > 0:
                 issue(

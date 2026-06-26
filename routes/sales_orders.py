@@ -215,10 +215,38 @@ def build_bom(order_id):
                 db.session.add(works_order)
                 db.session.flush()  # Get wo.id
                 
-                # Parse BOM components
+                # Persist the user-selected fan line as the assembly parent so the
+                # printed Works Order shows it as a header row with its components
+                # nested beneath. Uses the existing line_type/parent_line_id columns
+                # (no schema change). Components are re-parented to this line below.
+                parent_line_id = None
+                fan_line = db.session.get(SOLineItem, fan_line_id)
+                fan_item = None
+                if fan_line and fan_line.description:
+                    fan_code = fan_line.description.split(' - ', 1)[0].strip()
+                    if fan_code:
+                        fan_item = Item.query.filter_by(code=fan_code).first()
+                if fan_item:
+                    assembly_line = BOMLine(
+                        wo_id=works_order.id,
+                        item_id=fan_item.id,
+                        qty_required=fan_line.qty or 1.0,
+                        unit_cost=fan_item.last_cost or 0.0,
+                        line_type='ASSEMBLY_ITEM'
+                    )
+                    db.session.add(assembly_line)
+                    db.session.flush()  # Get assembly_line.id for child parent_line_id
+                    parent_line_id = assembly_line.id
+                else:
+                    flash(
+                        "Fan line could not be matched to a catalogue item; "
+                        "components saved without an assembly header.", "warning"
+                    )
+
+                # Parse BOM components (nested under the assembly parent when present)
                 component_item_ids = request.form.getlist('component_item_id[]')
                 component_qtys = request.form.getlist('component_qty[]')
-                
+
                 for i, item_id_str in enumerate(component_item_ids):
                     if not item_id_str:
                         continue
@@ -227,22 +255,24 @@ def build_bom(order_id):
                         qty = float(component_qtys[i]) if i < len(component_qtys) else 0
                         if qty <= 0:
                             continue
-                        
+
                         # Load Item to get unit_cost
                         item = Item.query.get(item_id)
                         if not item:
                             continue
-                        
+
                         bom_line = BOMLine(
                             wo_id=works_order.id,
                             item_id=item.id,
                             qty_required=qty,
-                            unit_cost=item.last_cost or 0.0
+                            unit_cost=item.last_cost or 0.0,
+                            line_type='COMPONENT',
+                            parent_line_id=parent_line_id
                         )
                         db.session.add(bom_line)
                     except (ValueError, IndexError):
                         continue
-                
+
                 created_wo = works_order
             
             # Create StockOrder if stock lines exist

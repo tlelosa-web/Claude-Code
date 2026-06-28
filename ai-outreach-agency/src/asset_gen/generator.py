@@ -1,18 +1,14 @@
+import os
+
 from src.lead_import.schema import Lead
 from src.research.schema import ResearchResult
+from src.shared.openrouter_client import call_openrouter
 from .prompt_builder import build_prompt
 from .schema import AssetResult, AssetType
 
 
-# TODO: replace with OpenRouter claude-sonnet-4-6 call using built prompt
-def generate_asset(
-    lead: Lead,
-    research: ResearchResult,
-    asset_type: AssetType = AssetType.INSIGHT_DOC,
-) -> AssetResult:
-    prompt = build_prompt(lead, research)
-
-    stub_text = (
+def _stub_text(lead: Lead) -> str:
+    return (
         f"# AI Automation Insight: {lead.company_name}\n\n"
         f"Based on our research, {lead.company_name} operates in the "
         f"{lead.industry or 'heavy engineering'} sector with services that "
@@ -26,8 +22,21 @@ def generate_asset(
         f"to {lead.company_name}. Would next week work for a quick call?"
     )
 
+
+def generate_asset(
+    lead: Lead,
+    research: ResearchResult,
+    asset_type: AssetType = AssetType.INSIGHT_DOC,
+) -> AssetResult:
+    prompt = build_prompt(lead, research)
+
+    if os.environ.get("OFFLINE_MODE", "").lower() in ("1", "true"):
+        text = _stub_text(lead)
+    else:
+        text = call_openrouter(prompt)
+
     return AssetResult(
         lead_id=lead.id,
-        asset_text=stub_text,
+        asset_text=text,
         asset_type=asset_type,
     )

@@ -7,6 +7,7 @@ import subprocess
 import sys
 import tempfile
 
+from src.lead_import.db import update_lead_status
 from src.lead_import.schema import Lead
 from src.asset_gen.schema import AssetResult
 from .schema import ApprovalResult, Decision
@@ -57,18 +58,22 @@ def run_approval_gate(
     lead: Lead,
     asset: AssetResult,
     input_fn=input,
+    db_path: str | None = None,
 ) -> ApprovalResult:
     _print_review(lead, asset)
     choice = _get_choice(input_fn=input_fn)
 
     if choice == "a":
+        update_lead_status(lead.id, "approved", db_path)
         return ApprovalResult(lead_id=lead.id, decision=Decision.APPROVED)
 
     if choice == "r":
+        update_lead_status(lead.id, "rejected", db_path)
         return ApprovalResult(lead_id=lead.id, decision=Decision.REJECTED)
 
     if choice == "e":
         edited_text = _edit_asset(asset.asset_text)
+        update_lead_status(lead.id, "approved", db_path)
         return ApprovalResult(
             lead_id=lead.id,
             decision=Decision.EDITED,

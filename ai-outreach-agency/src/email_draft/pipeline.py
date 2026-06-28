@@ -1,3 +1,4 @@
+from src.lead_import.db import update_lead_status
 from src.lead_import.schema import Lead
 from src.approval.schema import ApprovalResult, Decision
 from src.asset_gen.schema import AssetResult
@@ -11,6 +12,7 @@ def run_email_draft(
     approval: ApprovalResult,
     asset: AssetResult,
     gmail: GmailClient | None = None,
+    db_path: str | None = None,
 ) -> DraftResult:
     if approval.decision not in (Decision.APPROVED, Decision.EDITED):
         raise ValueError("Cannot draft email without approval")
@@ -24,6 +26,7 @@ def run_email_draft(
     email = compose_email(lead, asset_text)
     draft_id = gmail.create_draft(email["to"], email["subject"], email["body"])
 
+    update_lead_status(lead.id, "drafted", db_path)
     return DraftResult(
         lead_id=lead.id,
         gmail_draft_id=draft_id,

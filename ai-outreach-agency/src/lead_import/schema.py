@@ -3,7 +3,7 @@ from datetime import date
 from typing import Optional
 
 VALID_SOURCES = {"apollo", "manual", "referral"}
-VALID_STATUSES = {"new", "researched", "asset_ready", "approved", "drafted", "sent"}
+VALID_STATUSES = {"new", "researched", "asset_ready", "approved", "drafted", "sent", "rejected"}
 
 REQUIRED_FIELDS = {"company_name", "contact_name", "contact_title", "email"}
 

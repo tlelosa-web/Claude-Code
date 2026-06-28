@@ -98,3 +98,32 @@ def get_lead_by_id(conn: sqlite3.Connection, lead_id: int) -> Optional[Lead]:
     if row is None:
         return None
     return _lead_from_row(row)
+
+
+VALID_TRANSITIONS = {
+    "new": {"researched"},
+    "researched": {"asset_ready"},
+    "asset_ready": {"approved", "rejected"},
+    "approved": {"drafted"},
+    "drafted": set(),
+    "rejected": set(),
+}
+
+
+def update_lead_status(lead_id: int, status: str, db_path: str | None = None) -> None:
+    db = Path(db_path) if db_path else DEFAULT_DB_PATH
+    conn = sqlite3.connect(str(db))
+    conn.row_factory = sqlite3.Row
+    try:
+        row = conn.execute("SELECT status FROM leads WHERE id = ?", (lead_id,)).fetchone()
+        if row is None:
+            raise ValueError(f"Lead {lead_id} not found")
+        current = row["status"]
+        if status not in VALID_TRANSITIONS.get(current, set()):
+            raise ValueError(
+                f"Invalid transition: {current} → {status}"
+            )
+        conn.execute("UPDATE leads SET status = ? WHERE id = ?", (status, lead_id))
+        conn.commit()
+    finally:
+        conn.close()

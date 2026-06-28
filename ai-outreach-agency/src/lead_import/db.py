@@ -86,6 +86,13 @@ def get_all_leads(conn: sqlite3.Connection) -> List[Lead]:
     return [_lead_from_row(r) for r in rows]
 
 
+def get_leads_by_status(conn: sqlite3.Connection, status: str) -> List[Lead]:
+    rows = conn.execute(
+        "SELECT * FROM leads WHERE status = ? ORDER BY id", (status,)
+    ).fetchall()
+    return [_lead_from_row(r) for r in rows]
+
+
 def get_lead_by_id(conn: sqlite3.Connection, lead_id: int) -> Optional[Lead]:
     row = conn.execute("SELECT * FROM leads WHERE id = ?", (lead_id,)).fetchone()
     if row is None:

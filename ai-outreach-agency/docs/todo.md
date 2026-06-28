@@ -8,16 +8,17 @@
 
 - [x] **ADR-001**: Lead store format — SQLite is source of truth, Sheets/Apollo are CSV input only. See `docs/decisions/ADR-001-lead-store.md`.
 - [x] Scaffold `lead_import` module — schema dataclass, CSV reader, SQLite layer, 16 unit tests passing.
+- [x] Scaffold `research` module — Apify stub, Claude summariser stub, pipeline with missing-website handling.
+- [x] Scaffold `asset_gen` module — prompt builder, generator stub, AssetType enum, pipeline with logging.
+- [x] Scaffold `approval` module — CLI approval gate (approve/reject/edit/quit), SQLite persistence.
+- [x] Scaffold `email_draft` module — composer, Gmail stub, pipeline guard on approval decision.
+- [x] Create `.env.example` + `.gitignore` + `src/config.py` (Settings from .env via python-dotenv).
+- [x] Create `src/main.py` CLI runner — import, list, run, run-all commands. 53 tests passing.
 
 ---
 
 ## Build Queue
 
-- [ ] Scaffold `research` module — stub Apify integration, stub Claude summary call
-- [ ] Scaffold `asset_gen` module — Claude API call stub via OpenRouter, template selection
-- [ ] Scaffold `approval` module — CLI approval loop (print lead + asset, y/n/edit)
-- [ ] Scaffold `email_draft` module — Gmail API draft creation stub
-- [ ] Create `.env.example` with required environment variables
 - [ ] Set up `pyproject.toml` with dependencies
 
 ---

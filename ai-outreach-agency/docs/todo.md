@@ -4,20 +4,19 @@
 
 ---
 
-## Pending Decisions
+## Completed
 
-- [ ] **ADR-001**: Choose lead store format — Google Sheets vs SQLite local vs hybrid. Blocks all module scaffolding that touches data persistence. See `docs/architecture.md` § Lead Store for trade-off analysis.
+- [x] **ADR-001**: Lead store format — SQLite is source of truth, Sheets/Apollo are CSV input only. See `docs/decisions/ADR-001-lead-store.md`.
+- [x] Scaffold `lead_import` module — schema dataclass, CSV reader, SQLite layer, 16 unit tests passing.
 
 ---
 
 ## Build Queue
 
-- [ ] Scaffold `lead_import` module — CSV reader + schema validator (dataclass + validation logic)
 - [ ] Scaffold `research` module — stub Apify integration, stub Claude summary call
 - [ ] Scaffold `asset_gen` module — Claude API call stub via OpenRouter, template selection
 - [ ] Scaffold `approval` module — CLI approval loop (print lead + asset, y/n/edit)
 - [ ] Scaffold `email_draft` module — Gmail API draft creation stub
-- [ ] Write unit tests for `lead_import` schema validator
 - [ ] Create `.env.example` with required environment variables
 - [ ] Set up `pyproject.toml` with dependencies
 
@@ -28,7 +27,7 @@
 - [ ] Implement Apify actor integration for company research
 - [ ] Implement OpenRouter client wrapper with model routing
 - [ ] Implement Gmail OAuth2 flow + draft creation
-- [ ] Implement Google Sheets sync (if hybrid store chosen)
+- [ ] Implement Google Sheets sync (optional — not in current architecture)
 - [ ] Build n8n workflow definitions
 - [ ] Add lead deduplication logic
 - [ ] Add rate limiting for external API calls

@@ -59,3 +59,24 @@
 - Commit hash: 97369be
 - Next task: None — baseline complete
 - Blockers: None
+
+## 2026-06-29 — Remaining Plan Items
+
+- Domain: Software/AI.
+- Audited codebase against AGENT_build_bom_works_pack.md spec and found 4 gaps.
+- **Fix 1 (Spec gap):** `build_bom` GET handler now checks for existing WorksOrder and
+  redirects with flash — spec required this but only POST had the guard.
+- **Fix 2 (Code quality):** Removed debug `print()` statements from `build_bom` POST.
+- **Fix 3 (Deprecations):** Replaced remaining `Query.get()` calls in routes with
+  `db.session.get()` — previous cleanup (2026-06-25) covered services/tests only.
+- **Fix 4 (Deprecations):** Replaced `datetime.utcnow()` with `datetime.now()` in routes.
+- **Fix 5 (Functional gap):** Added `POST /stock-orders/<id>/complete` route — `StockOrder`
+  model had `Complete` as a valid status but there was no route or UI to set it.
+- **Fix 6:** Added Mark Complete button to `templates/stock_orders/detail.html`.
+- **Fix 7 (Test coverage):** Added `tests/test_stock_orders.py` with 8 tests covering
+  list, detail, 404, cancel (open), cancel (complete blocked), complete (open),
+  complete (cancelled blocked), complete (idempotent).
+- Commit: `520f955` — 25 tests passing, 2 residual LegacyAPIWarnings from `get_or_404()`
+  inside Flask-SQLAlchemy (not controllable from app code).
+- Next task: None — plan complete.
+- Blockers: None. Note: git lock files on OneDrive mount required direct ref write.

@@ -57,3 +57,13 @@ All items below must be green before delivery:
 - [x] `pytest` — all tests green
 - [x] `grep -r "cdn\." templates/` — returns empty (fully offline)
 - [x] `grep -r "fonts.googleapis" static/` — returns empty
+
+## Batch 6 — Remaining Plan Items (2026-06-29)
+- [x] Fix 1: Add GET guard to `build_bom` — redirects with flash if WO already exists (spec requirement, was POST-only)
+- [x] Fix 2: Remove debug `print()` statements from `build_bom` POST handler
+- [x] Fix 3: Replace all `Query.get()` legacy calls with `db.session.get()` in routes (items.py, sales_orders.py, works_orders.py)
+- [x] Fix 4: Replace `datetime.utcnow()` with `datetime.now()` in routes (works_orders.py, sales_orders.py)
+- [x] Fix 5: Add `POST /stock-orders/<id>/complete` route — StockOrder had `Complete` status with no way to set it
+- [x] Fix 6: Add Mark Complete button to `templates/stock_orders/detail.html`
+- [x] Fix 7: Add `tests/test_stock_orders.py` — 8 tests covering list, detail, cancel, complete (all passing)
+- [x] Commit: `520f955` — all 25 tests green

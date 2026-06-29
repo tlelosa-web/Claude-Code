@@ -60,7 +60,7 @@ def mark_complete(order_id):
                 bom_line.qty_issued = bom_line.qty_required
         
         wo.status = 'Complete'
-        wo.completed_at = datetime.utcnow()
+        wo.completed_at = datetime.now()
         db.session.flush()  # Flush to save before checking related WOs
         
         # Check if all related Works Orders for this Sales Order are complete
@@ -125,7 +125,7 @@ def confirm_pick(order_id):
                 bom_line.qty_issued = bom_line.qty_required
         
         wo.status = 'Complete'
-        wo.completed_at = datetime.utcnow()
+        wo.completed_at = datetime.now()
         db.session.flush()  # Flush to save before checking related WOs
         
         # Check if all related Works Orders for this Sales Order are complete
@@ -233,7 +233,7 @@ def update_order(order_id):
             line_type = item_data.get('line_type', 'COMPONENT')
             components = item_data.get('components', [])
             
-            item = Item.query.get(item_id)
+            item = db.session.get(Item, item_id)
             if not item:
                 raise ValueError(f"Item with id {item_id} not found.")
             
@@ -254,7 +254,7 @@ def update_order(order_id):
             # Handle nested components
             if line_type == 'ASSEMBLY_ITEM' and components:
                 for comp_data in components:
-                    comp_item = Item.query.get(comp_data['item_id'])
+                    comp_item = db.session.get(Item, comp_data['item_id'])
                     if not comp_item:
                         raise ValueError(f"Component item with id {comp_data['item_id']} not found.")
                     

@@ -1,0 +1,147 @@
+"""Tests for the stock_orders blueprint (list, detail, cancel, complete)."""
+import pytest
+from datetime import datetime, timezone
+from models import db, SalesOrder, StockOrder, StockOrderLine
+
+
+class TestStockOrders:
+    _so_counter = 0
+
+    @pytest.fixture
+    def setup_data(self, app, db, session):
+        """Create a SalesOrder and a linked StockOrder with two lines."""
+        TestStockOrders._so_counter += 1
+        c = TestStockOrders._so_counter
+
+        so = SalesOrder(
+            so_number=f"SO-STO-{c:03d}",
+            customer_name="Test Customer",
+            status="Open",
+            created_at=datetime.now(timezone.utc),
+        )
+        session.add(so)
+        session.flush()
+
+        sto = StockOrder(
+            stock_order_number=f"STO{c:04d}",
+            so_id=so.id,
+            status="Open",
+            created_at=datetime.now(timezone.utc),
+        )
+        session.add(sto)
+        session.flush()
+
+        line1 = StockOrderLine(
+            stock_order_id=sto.id,
+            item_code="FAN-001",
+            description="FAN-001 - Fan Unit 600mm",
+            qty=2.0,
+        )
+        line2 = StockOrderLine(
+            stock_order_id=sto.id,
+            item_code="BRG-007",
+            description="BRG-007 - Bearing Set",
+            qty=4.0,
+        )
+        session.add_all([line1, line2])
+        session.commit()
+
+        return {"so": so, "sto": sto}
+
+    # ------------------------------------------------------------------
+    # List view
+    # ------------------------------------------------------------------
+
+    def test_list_renders(self, client, setup_data):
+        """GET /stock-orders returns 200 and shows the order number."""
+        sto = setup_data["sto"]
+        resp = client.get("/stock-orders")
+        assert resp.status_code == 200
+        assert sto.stock_order_number.encode() in resp.data
+
+    # ------------------------------------------------------------------
+    # Detail view
+    # ------------------------------------------------------------------
+
+    def test_detail_renders(self, client, setup_data):
+        """GET /stock-orders/<id> returns 200 and shows line items."""
+        sto = setup_data["sto"]
+        resp = client.get(f"/stock-orders/{sto.id}")
+        assert resp.status_code == 200
+        assert b"FAN-001" in resp.data
+        assert b"BRG-007" in resp.data
+
+    def test_detail_404_for_missing(self, client):
+        """GET /stock-orders/99999 returns 404."""
+        resp = client.get("/stock-orders/99999")
+        assert resp.status_code == 404
+
+    # ------------------------------------------------------------------
+    # Cancel
+    # ------------------------------------------------------------------
+
+    def test_cancel_open_order(self, client, app, setup_data):
+        """POST /cancel on an Open order sets status to Cancelled."""
+        sto = setup_data["sto"]
+        resp = client.post(f"/stock-orders/{sto.id}/cancel", follow_redirects=True)
+        assert resp.status_code == 200
+
+        with app.app_context():
+            updated = db.session.get(StockOrder, sto.id)
+            assert updated.status == "Cancelled"
+
+    def test_cancel_complete_order_blocked(self, client, app, db, session, setup_data):
+        """POST /cancel on a Complete order returns an error flash."""
+        sto = setup_data["sto"]
+        # Force status to Complete
+        sto.status = "Complete"
+        session.commit()
+
+        resp = client.post(f"/stock-orders/{sto.id}/cancel", follow_redirects=True)
+        assert resp.status_code == 200
+        assert b"Cannot cancel" in resp.data
+
+        with app.app_context():
+            updated = db.session.get(StockOrder, sto.id)
+            assert updated.status == "Complete"  # unchanged
+
+    # ------------------------------------------------------------------
+    # Complete
+    # ------------------------------------------------------------------
+
+    def test_complete_open_order(self, client, app, setup_data):
+        """POST /complete on an Open order sets status to Complete."""
+        sto = setup_data["sto"]
+        resp = client.post(f"/stock-orders/{sto.id}/complete", follow_redirects=True)
+        assert resp.status_code == 200
+
+        with app.app_context():
+            updated = db.session.get(StockOrder, sto.id)
+            assert updated.status == "Complete"
+
+    def test_complete_cancelled_order_blocked(self, client, app, db, session, setup_data):
+        """POST /complete on a Cancelled order returns an error flash."""
+        sto = setup_data["sto"]
+        sto.status = "Cancelled"
+        session.commit()
+
+        resp = client.post(f"/stock-orders/{sto.id}/complete", follow_redirects=True)
+        assert resp.status_code == 200
+        assert b"Cannot complete" in resp.data
+
+        with app.app_context():
+            updated = db.session.get(StockOrder, sto.id)
+            assert updated.status == "Cancelled"  # unchanged
+
+    def test_complete_already_complete_is_idempotent(self, client, app, db, session, setup_data):
+        """POST /complete on an already-Complete order flashes a warning, stays Complete."""
+        sto = setup_data["sto"]
+        sto.status = "Complete"
+        session.commit()
+
+        resp = client.post(f"/stock-orders/{sto.id}/complete", follow_redirects=True)
+        assert resp.status_code == 200
+
+        with app.app_context():
+            updated = db.session.get(StockOrder, sto.id)
+            assert updated.status == "Complete"

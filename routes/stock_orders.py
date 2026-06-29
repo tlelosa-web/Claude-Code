@@ -30,3 +30,22 @@ def cancel_order(order_id):
     
     flash(f"Stock Order {stock_order.stock_order_number} has been cancelled.", "success")
     return redirect(url_for('stock_orders.view_order', order_id=order_id))
+
+@stock_orders_bp.route('/stock-orders/<int:order_id>/complete', methods=['POST'])
+def complete_order(order_id):
+    """Mark a Stock Order as Complete."""
+    stock_order = StockOrder.query.get_or_404(order_id)
+
+    if stock_order.status == 'Cancelled':
+        flash("Cannot complete a cancelled Stock Order.", "error")
+        return redirect(url_for('stock_orders.view_order', order_id=order_id))
+
+    if stock_order.status == 'Complete':
+        flash(f"Stock Order {stock_order.stock_order_number} is already complete.", "warning")
+        return redirect(url_for('stock_orders.view_order', order_id=order_id))
+
+    stock_order.status = 'Complete'
+    db.session.commit()
+
+    flash(f"Stock Order {stock_order.stock_order_number} marked as Complete.", "success")
+    return redirect(url_for('stock_orders.view_order', order_id=order_id))

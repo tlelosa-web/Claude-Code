@@ -8,8 +8,12 @@
         <h2 class="card-title">Stock Order Details</h2>
         <div style="display: flex; gap: 8px;">
             {% if stock_order.status == 'Open' %}
+            <form method="POST" action="{{ url_for('stock_orders.complete_order', order_id=stock_order.id) }}"
+                  onsubmit="return confirm('Mark this Stock Order as Complete?')" style="display:inline;">
+                <button type="submit" class="btn btn-primary">Mark Complete</button>
+            </form>
             <form method="POST" action="{{ url_for('stock_orders.cancel_order', order_id=stock_order.id) }}" 
-                  onsubmit="return confirm('Cancel this Stock Order?')">
+                  onsubmit="return confirm('Cancel this Stock Order?')" style="display:inline;">
                 <button type="submit" class="btn btn-danger">Cancel Order</button>
             </form>
             {% endif %}

@@ -40,7 +40,7 @@ def detail(item_id):
 
 @items_bp.route('/items/<int:item_id>/adjust', methods=['POST'])
 def adjust_stock(item_id):
-    item = Item.query.get(item_id)
+    item = db.session.get(Item, item_id)
     if not item:
         flash("Item not found.", "error")
         return redirect(url_for('items.catalogue'))

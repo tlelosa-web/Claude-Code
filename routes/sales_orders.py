@@ -110,7 +110,7 @@ def save_order():
             sales_rep=request.form.get('sales_rep', '').strip(),
             raw_pdf_text=request.form.get('raw_pdf_text', ''),
             status='Draft',
-            created_at=datetime.utcnow()
+            created_at=datetime.now()
         )
         db.session.add(so)
         db.session.flush()  # Get so.id
@@ -155,14 +155,13 @@ def view_order(order_id):
 def build_bom(order_id):
     """Build BOM / Works Pack — classify SO lines and create WorksOrder + StockOrder."""
     so = SalesOrder.query.get_or_404(order_id)
-    
+
+    # Guard: redirect if a WorksOrder already exists for this SO (GET only)
+    if request.method == 'GET' and WorksOrder.query.filter_by(so_id=order_id).first():
+        flash("A Works Order already exists for this Sales Order.", "warning")
+        return redirect(url_for('sales_orders.view_order', order_id=order_id))
+
     if request.method == 'POST':
-        print("=" * 80)
-        print("POST /build-bom reached!")
-        print(f"Form data keys: {list(request.form.keys())}")
-        print(f"Component IDs: {request.form.getlist('component_item_id[]')}")
-        print(f"Component Qtys: {request.form.getlist('component_qty[]')}")
-        print("=" * 80)
         try:
             # Parse form data
             line_items = SOLineItem.query.filter_by(so_id=order_id).all()
@@ -257,7 +256,7 @@ def build_bom(order_id):
                             continue
 
                         # Load Item to get unit_cost
-                        item = Item.query.get(item_id)
+                        item = db.session.get(Item, item_id)
                         if not item:
                             continue
 
@@ -300,7 +299,7 @@ def build_bom(order_id):
                 
                 # Create StockOrderLines
                 for line_id in stock_line_ids:
-                    line = SOLineItem.query.get(line_id)
+                    line = db.session.get(SOLineItem, line_id)
                     if not line:
                         continue
                     

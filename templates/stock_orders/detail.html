@@ -8,6 +8,7 @@
         <h2 class="card-title">Stock Order Details</h2>
         <div style="display: flex; gap: 8px;">
             {% if stock_order.status == 'Open' %}
+            <a href="{{ url_for('stock_orders.edit_order', order_id=stock_order.id) }}" class="btn btn-secondary">Edit</a>
             <form method="POST" action="{{ url_for('stock_orders.complete_order', order_id=stock_order.id) }}"
                   onsubmit="return confirm('Mark this Stock Order as Complete?')" style="display:inline;">
                 <button type="submit" class="btn btn-primary">Mark Complete</button>

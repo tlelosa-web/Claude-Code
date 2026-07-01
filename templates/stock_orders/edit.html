@@ -1,0 +1,275 @@
+{% extends 'base.html' %}
+{% block title %}Edit Stock Order: {{ stock_order.stock_order_number }} - SOPS{% endblock %}
+{% block page_title %}Edit Stock Order: {{ stock_order.stock_order_number }}{% endblock %}
+
+{% block extra_head %}
+<style>
+    #item-table { max-height: 600px; overflow-y: auto; }
+    #item-table table.data-table tbody tr { height: 40px; cursor: pointer; }
+    #item-table table.data-table tbody tr:hover { background: rgba(232, 97, 10, 0.08); }
+    .flash-warning-toast {
+        position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
+        z-index: 9999; background: #FFFBEB; border: 1px solid #FDE68A;
+        color: #92400E; padding: 12px 24px; border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15); font-size: 0.9rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="card animate-fade-in" style="margin-bottom: 24px;">
+    <div class="card-header">
+        <h2 class="card-title">Editing {{ stock_order.stock_order_number }}</h2>
+        <div class="alert alert-warning" style="font-size: 0.85rem; margin: 0; padding: 8px 16px;">
+            Editing replaces all existing lines. Only Open Stock Orders can be edited.
+        </div>
+    </div>
+    <div style="padding: 0 0 8px 0;">
+        <table class="detail-table">
+            <tr><td class="detail-label">SO Reference</td><td class="detail-value">{{ stock_order.sales_order.so_number if stock_order.sales_order else '-' }}</td></tr>
+            <tr><td class="detail-label">Customer</td><td class="detail-value">{{ stock_order.sales_order.customer_name if stock_order.sales_order else '-' }}</td></tr>
+        </table>
+    </div>
+</div>
+
+<form method="POST" action="{{ url_for('stock_orders.edit_order', order_id=stock_order.id) }}" id="sto-edit-form">
+    <input type="hidden" name="lines_json" id="lines-json" value="[]">
+
+    <!-- Selected lines table -->
+    <div class="card animate-fade-in" style="margin-bottom: 24px;">
+        <div class="card-header">
+            <h2 class="card-title">Stock Order Lines</h2>
+            <span id="selected-count" style="font-size: 0.85rem; color: var(--text-muted);">0 items</span>
+        </div>
+        <div style="overflow-x: auto;">
+            <table class="data-table" id="selected-items-table">
+                <thead>
+                    <tr>
+                        <th>Code</th>
+                        <th>Description</th>
+                        <th style="width: 90px;">Qty</th>
+                        <th style="width: 180px;">Notes</th>
+                        <th style="width: 60px;"></th>
+                    </tr>
+                </thead>
+                <tbody id="selected-items-body">
+                    {% for line in stock_order.lines %}
+                    <tr class="sto-line-row"
+                        data-item-code="{{ line.item_code or '' }}"
+                        data-description="{{ line.description or '' }}">
+                        <td><strong>{{ line.item_code or '-' }}</strong></td>
+                        <td>{{ line.description or '' }}</td>
+                        <td><input type="number" class="qty-input form-input" value="{{ line.qty }}" min="0.01" step="0.01" style="width: 76px; padding: 4px 6px; font-size: 0.85rem;"></td>
+                        <td><input type="text" class="notes-input form-input" value="{{ line.notes or '' }}" placeholder="Notes" style="width: 100%; padding: 4px 6px; font-size: 0.85rem;"></td>
+                        <td><button type="button" class="btn btn-danger btn-sm" onclick="removeLine(this)">✕</button></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <div id="empty-state" style="padding: 32px; text-align: center; color: var(--text-muted); display: none;">
+            No items selected. Search the catalogue below and click a row to add.
+        </div>
+    </div>
+
+    <!-- Catalogue panel -->
+    <div class="card animate-fade-in" style="margin-bottom: 24px;">
+        <div class="card-header">
+            <h2 class="card-title">Add Items from Catalogue</h2>
+            <div style="display: flex; gap: 8px;">
+                <input type="text" id="search-input" placeholder="Search code or description…" class="form-input" style="width: 220px;">
+                <select id="category-filter" class="form-input" style="width: auto;">
+                    <option value="">All Categories</option>
+                    {% for cat in categories %}
+                    <option value="{{ cat }}">{{ cat }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+        <div id="item-table"></div>
+    </div>
+
+    <div style="display: flex; gap: 12px; justify-content: flex-end;">
+        <a href="{{ url_for('stock_orders.view_order', order_id=stock_order.id) }}" class="btn btn-secondary">Cancel</a>
+        <button type="submit" class="btn btn-primary">Save Changes</button>
+    </div>
+</form>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+window.SOPS_STO_EDIT = {
+    items: {{ items | tojson | safe }}
+};
+
+(function () {
+    'use strict';
+
+    var items = window.SOPS_STO_EDIT.items || [];
+
+    // ── Helpers ──────────────────────────────────────────────────────────────
+
+    function escHtml(str) {
+        if (!str) return '';
+        var d = document.createElement('div');
+        d.appendChild(document.createTextNode(str));
+        return d.innerHTML;
+    }
+
+    function flashWarning(msg) {
+        var old = document.querySelector('.flash-warning-toast');
+        if (old) old.remove();
+        var el = document.createElement('div');
+        el.className = 'flash-warning-toast';
+        el.textContent = msg;
+        document.body.appendChild(el);
+        setTimeout(function () {
+            el.style.transition = 'opacity 0.3s';
+            el.style.opacity = '0';
+            setTimeout(function () { el.remove(); }, 400);
+        }, 2500);
+    }
+
+    function isAlreadyAdded(itemCode) {
+        var rows = document.querySelectorAll('#selected-items-body .sto-line-row');
+        for (var i = 0; i < rows.length; i++) {
+            if (rows[i].getAttribute('data-item-code') === itemCode) return true;
+        }
+        return false;
+    }
+
+    // ── Sync JSON ─────────────────────────────────────────────────────────────
+
+    function syncJSON() {
+        var rows = document.querySelectorAll('#selected-items-body .sto-line-row');
+        var data = [];
+        for (var i = 0; i < rows.length; i++) {
+            data.push({
+                item_code: rows[i].getAttribute('data-item-code'),
+                description: rows[i].getAttribute('data-description'),
+                qty: parseFloat(rows[i].querySelector('.qty-input').value) || 0,
+                notes: rows[i].querySelector('.notes-input').value.trim()
+            });
+        }
+        document.getElementById('lines-json').value = JSON.stringify(data);
+
+        var count = rows.length;
+        document.getElementById('selected-count').textContent = count + ' item' + (count === 1 ? '' : 's');
+
+        var emptyEl = document.getElementById('empty-state');
+        var tableEl = document.getElementById('selected-items-table');
+        if (emptyEl) emptyEl.style.display = count === 0 ? '' : 'none';
+        if (tableEl) tableEl.style.display = count === 0 ? 'none' : '';
+    }
+
+    function bindRowInputs(row) {
+        var inputs = row.querySelectorAll('input');
+        for (var i = 0; i < inputs.length; i++) {
+            inputs[i].addEventListener('input', syncJSON);
+        }
+    }
+
+    // ── Add from catalogue ────────────────────────────────────────────────────
+
+    function addItem(item) {
+        if (isAlreadyAdded(item.code)) {
+            flashWarning('Item "' + item.code + '" already added');
+            return;
+        }
+        var body = document.getElementById('selected-items-body');
+        var tr = document.createElement('tr');
+        tr.className = 'sto-line-row';
+        tr.setAttribute('data-item-code', item.code);
+        tr.setAttribute('data-description', item.description);
+        tr.innerHTML =
+            '<td><strong>' + escHtml(item.code) + '</strong></td>' +
+            '<td>' + escHtml(item.description) + '</td>' +
+            '<td><input type="number" class="qty-input form-input" value="1" min="0.01" step="0.01" style="width: 76px; padding: 4px 6px; font-size: 0.85rem;"></td>' +
+            '<td><input type="text" class="notes-input form-input" value="" placeholder="Notes" style="width: 100%; padding: 4px 6px; font-size: 0.85rem;"></td>' +
+            '<td><button type="button" class="btn btn-danger btn-sm" onclick="removeLine(this)">✕</button></td>';
+        body.appendChild(tr);
+        bindRowInputs(tr);
+        syncJSON();
+    }
+
+    window.removeLine = function (btn) {
+        var row = btn.closest('tr');
+        if (row) { row.remove(); syncJSON(); }
+    };
+
+    // ── Catalogue table ───────────────────────────────────────────────────────
+
+    function renderCatalogue(filteredItems) {
+        var tableEl = document.getElementById('item-table');
+        if (!tableEl) return;
+
+        if (filteredItems.length === 0) {
+            tableEl.innerHTML = '<div style="padding: 40px; text-align: center; color: var(--text-muted);">No items match your filter.</div>';
+            return;
+        }
+
+        var html = '<table class="data-table" style="font-size: 0.85rem;"><thead><tr>' +
+            '<th>Code</th><th>Description</th><th>Category</th>' +
+            '<th style="text-align:right;">Qty on Hand</th>' +
+            '<th style="text-align:right;">Excl. Price</th>' +
+            '</tr></thead><tbody>';
+
+        for (var i = 0; i < filteredItems.length; i++) {
+            var it = filteredItems[i];
+            var low = it.qty_on_hand <= 0;
+            html += '<tr class="' + (low ? 'row-amber' : '') + '">' +
+                '<td><strong>' + escHtml(it.code) + '</strong></td>' +
+                '<td>' + escHtml(it.description) + '</td>' +
+                '<td>' + escHtml(it.category || '-') + '</td>' +
+                '<td style="text-align:right;' + (low ? 'color:var(--brand-danger);font-weight:600;' : '') + '">' + it.qty_on_hand + '</td>' +
+                '<td style="text-align:right;">R ' + (it.excl_price || 0).toFixed(2) + '</td>' +
+                '</tr>';
+        }
+        html += '</tbody></table>';
+        tableEl.innerHTML = html;
+
+        var rows = tableEl.querySelectorAll('tbody tr');
+        for (var j = 0; j < rows.length; j++) {
+            (function (idx) {
+                rows[idx].addEventListener('click', function () {
+                    addItem(filteredItems[idx]);
+                });
+            })(j);
+        }
+    }
+
+    function filterCatalogue() {
+        var search = (document.getElementById('search-input').value || '').toLowerCase().trim();
+        var category = document.getElementById('category-filter').value;
+        var filtered = [];
+        for (var i = 0; i < items.length; i++) {
+            var it = items[i];
+            if (search && it.code.toLowerCase().indexOf(search) === -1 && it.description.toLowerCase().indexOf(search) === -1) continue;
+            if (category && it.category !== category) continue;
+            filtered.push(it);
+        }
+        renderCatalogue(filtered);
+    }
+
+    // ── Init ──────────────────────────────────────────────────────────────────
+
+    document.addEventListener('DOMContentLoaded', function () {
+        // Bind inputs on pre-existing rows
+        var rows = document.querySelectorAll('#selected-items-body .sto-line-row');
+        for (var i = 0; i < rows.length; i++) { bindRowInputs(rows[i]); }
+        syncJSON();
+
+        // Render catalogue
+        filterCatalogue();
+
+        document.getElementById('search-input').addEventListener('input', filterCatalogue);
+        document.getElementById('category-filter').addEventListener('change', filterCatalogue);
+    });
+
+    document.getElementById('sto-edit-form').addEventListener('submit', function () {
+        syncJSON();
+    });
+
+})();
+</script>
+{% endblock %}

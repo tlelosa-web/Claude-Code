@@ -67,3 +67,7 @@ All items below must be green before delivery:
 - [x] Fix 6: Add Mark Complete button to `templates/stock_orders/detail.html`
 - [x] Fix 7: Add `tests/test_stock_orders.py` — 8 tests covering list, detail, cancel, complete (all passing)
 - [x] Commit: `520f955` — all 25 tests green
+
+## Batch 7 — Edit Fixes (2026-06-29, commit pending 2026-07-01)
+- [x] Fix WO edit: existing BOM line qty fields now render as editable inputs (not static text); buildPayloadFromRow always reads from input
+- [x] Add STO edit: GET/POST /stock-orders/<id>/edit route, templates/stock_orders/edit.html (inline editable table + add/remove lines), Edit button on detail page (Open status only)

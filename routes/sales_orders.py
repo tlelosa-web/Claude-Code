@@ -83,7 +83,19 @@ def save_order():
     # Check if overwriting existing
     existing = SalesOrder.query.filter_by(so_number=so_number).first()
     if existing:
-        # Delete existing and its line items (cascade)
+        # Block overwrite if a Works Order or Stock Order is already linked —
+        # deleting the SO would orphan them (no cascade on those relationships).
+        linked_wos = WorksOrder.query.filter_by(so_id=existing.id).count()
+        linked_stos = StockOrder.query.filter_by(so_id=existing.id).count()
+        if linked_wos or linked_stos:
+            flash(
+                f"Cannot overwrite {so_number}: it has {linked_wos} Works Order(s) and "
+                f"{linked_stos} Stock Order(s) linked to it. "
+                "Delete or reassign them before re-uploading.",
+                "error"
+            )
+            return redirect(url_for('sales_orders.view_order', order_id=existing.id))
+        # Safe to delete — only SOLineItems are linked (cascade handles them)
         db.session.delete(existing)
         db.session.flush()
     
@@ -398,10 +410,20 @@ def delete_order(order_id):
     """Delete a Sales Order permanently."""
     so = SalesOrder.query.get_or_404(order_id)
     
-    # Guard: cannot delete if linked Works Orders exist
+    # Guard: cannot delete if linked Works Orders or Stock Orders exist
     wos = WorksOrder.query.filter_by(so_id=order_id).all()
-    if wos:
-        flash(f"Cannot delete Sales Order {so.so_number} — it has linked Works Orders. Delete all Works Orders first.", "error")
+    stos = StockOrder.query.filter_by(so_id=order_id).all()
+    if wos or stos:
+        parts = []
+        if wos:
+            parts.append(f"{len(wos)} Works Order(s)")
+        if stos:
+            parts.append(f"{len(stos)} Stock Order(s)")
+        flash(
+            f"Cannot delete Sales Order {so.so_number} — it has linked {' and '.join(parts)}. "
+            "Delete them first.",
+            "error"
+        )
         return redirect(url_for('sales_orders.view_order', order_id=order_id))
     
     so_number = so.so_number

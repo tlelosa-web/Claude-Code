@@ -49,3 +49,61 @@ def complete_order(order_id):
 
     flash(f"Stock Order {stock_order.stock_order_number} marked as Complete.", "success")
     return redirect(url_for('stock_orders.view_order', order_id=order_id))
+
+
+@stock_orders_bp.route('/stock-orders/<int:order_id>/edit', methods=['GET', 'POST'])
+def edit_order(order_id):
+    """Edit line items on an Open Stock Order."""
+    import json
+    from flask import request
+    stock_order = StockOrder.query.get_or_404(order_id)
+
+    if stock_order.status != 'Open':
+        flash(f"Cannot edit a {stock_order.status} Stock Order.", "error")
+        return redirect(url_for('stock_orders.view_order', order_id=order_id))
+
+    if request.method == 'GET':
+        from models import Item
+        from routes.sales_orders import item_to_bom_json
+        items = Item.query.filter_by(active=True).order_by(Item.category, Item.code).all()
+        item_payload = [item_to_bom_json(item) for item in items]
+        categories = db.session.query(Item.category).filter(
+            Item.active == True, Item.category != None
+        ).distinct().order_by(Item.category).all()
+        categories = [c[0] for c in categories if c[0]]
+        return render_template('stock_orders/edit.html',
+                               stock_order=stock_order,
+                               items=item_payload,
+                               categories=categories)
+
+    # POST — replace all lines
+    try:
+        lines_json = request.form.get('lines_json', '[]')
+        lines_data = json.loads(lines_json)
+
+        StockOrderLine.query.filter_by(stock_order_id=stock_order.id).delete()
+        db.session.flush()
+
+        for ld in lines_data:
+            qty = ld.get('qty', 0)
+            try:
+                qty = float(qty)
+            except (TypeError, ValueError):
+                qty = 0.0
+            line = StockOrderLine(
+                stock_order_id=stock_order.id,
+                item_code=str(ld.get('item_code', '')).strip(),
+                description=str(ld.get('description', '')).strip(),
+                qty=qty,
+                notes=str(ld.get('notes', '')).strip()
+            )
+            db.session.add(line)
+
+        db.session.commit()
+        flash(f"Stock Order {stock_order.stock_order_number} updated successfully.", "success")
+        return redirect(url_for('stock_orders.view_order', order_id=order_id))
+
+    except Exception as e:
+        db.session.rollback()
+        flash(f"Error updating Stock Order: {str(e)}", "error")
+        return redirect(url_for('stock_orders.edit_order', order_id=order_id))

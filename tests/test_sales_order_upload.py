@@ -7,7 +7,7 @@ def test_upload_pdf_with_line_items_renders_review(client):
     pdf_path = os.path.join(
         os.path.dirname(__file__),
         "..",
-        "FM4087 - ARCTIC AIR - Sales Order - SO4603.pdf",
+        os.path.join(os.path.dirname(__file__), 'fixtures', 'FM4087 - ARCTIC AIR - Sales Order - SO4603.pdf'),
     )
 
     with open(pdf_path, "rb") as pdf_file:

@@ -80,3 +80,59 @@
   inside Flask-SQLAlchemy (not controllable from app code).
 - Next task: None — plan complete.
 - Blockers: None. Note: git lock files on OneDrive mount required direct ref write.
+
+## 2026-07-01 — Batch 7 commit + line-ending normalization (backfill)
+
+- Domain: Software/AI.
+- Commit `21bafc2`: Stock Order edit route/template + WO edit BOM qty fix (work done 2026-06-29, committed 2026-07-01).
+- Commit `2cb58b3`: normalize line endings across repo (OneDrive sync artifact).
+
+## 2026-07-01 — Multi-page Sales Order PDF parser bug fix
+
+- Domain: Software/AI.
+- Task: Verify a user-supplied 2-page Sales Order PDF (SO4684) would upload correctly.
+- Ran the actual PDF (found in `uploads/`) through `parse_sales_order_pdf` directly and found only
+  12 of 16 line items were captured — subtotal R214,574 vs Grand Total R241,125. No parse error was
+  raised because `line_items` wasn't empty, so this would have silently produced an incomplete BOM
+  on upload.
+- **Root cause 1:** The "BANKING DETAILS"/"Total Discount:" footer repeats on every page of the SO
+  template, not just the last page. The old code set a document-level `table_ended` flag on hitting
+  it, which broke the outer per-page loop — so page 2 was never scanned at all.
+- **Root cause 2 (uncovered by fixing #1):** Continuation pages (2+) also repeat the full page header
+  (title, FROM/TO blocks, "Description/Quantity" column header) before their real line items resume.
+  The old code assumed page 2+ dropped straight into table rows and forced `table_started = True`
+  immediately, so the repeated header block was misparsed as ~17 garbage/blank line items.
+- **Fix:** `services/pdf_parser.py` — scoped the footer-triggered `break` to the current page's line
+  loop only (not the whole document), and reset `table_started = False` at the top of every page so
+  each page re-detects its own "Description/Quantity" header before parsing rows.
+- Added `tests/fixtures/FM4167-4771 - Vortron - Sales Order - SO4684.pdf` (real 2-page fixture) and
+  `test_parse_multipage_captures_all_line_items` in `tests/test_pdf_parser.py`.
+- Verified: all 26 tests green (was 25), including the new regression test.
+- Next task: None — awaiting commit confirmation from Tebello.
+- Blockers: None.
+
+## 2026-07-01 — Multi-Fan-Line Works Pack (5 WOs per Sales Order)
+
+- Domain: Software/AI.
+- Tebello reviewed the now-fully-parsed SO4684 in the live Build Works Pack UI and flagged that
+  lines 1, 3, 6, 10 & 12 (5 distinct MAXFLO fan models) each require their own individual BOM — the
+  `build_bom` route only supported a single Fan line per Sales Order and hard-stopped with
+  "Only one line can be marked as Fan" otherwise.
+- Wrote spec `docs/specs/multi-fan-build-bom.md`. Clarified design via AskUserQuestion before
+  building: (1) 5 fan lines → 5 separate Works Orders, not one WO with 5 nested assemblies; (2) keep
+  the single shared BOM Components list, add a per-row "For Fan line..." dropdown rather than
+  repeating the whole components panel per fan.
+- `routes/sales_orders.py build_bom`: classifies multiple `fan_line_ids` instead of one; loops to
+  create a WorksOrder + ASSEMBLY_ITEM header per fan line; groups submitted components via new
+  `component_fan_line_id[]` field (defaults to the single selected fan line when only one is chosen,
+  keeping old single-fan form payloads working unmodified).
+- `templates/sales_orders/build_bom.html`: removed `enforceSingleFan`; added `componentFanLine`
+  dropdown + `refreshFanLineOptions()` rebuilt from currently-checked Fan radios.
+- Added `test_build_bom_creates_separate_wo_per_fan_line` to `tests/test_bom_builder.py`.
+- Verified against the real SO4684 scenario end-to-end (not just unit tests): posted the exact
+  line classification from Tebello's screenshot (lines 1,3,6,10,12 = Fan) through the live route —
+  produced WO0001–WO0005, each correctly matched to its catalogue item (MFAZ5600554, MFAZ5601104,
+  MFAZ8004004, MFAZ8005504 x2), remaining 11 lines collapsed into STO0001.
+- Full suite: 27 tests green.
+- Next task: None — awaiting commit confirmation from Tebello.
+- Blockers: None.

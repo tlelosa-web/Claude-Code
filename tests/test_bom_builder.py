@@ -1,7 +1,7 @@
 """Tests for bom_builder module."""
 import pytest
 from datetime import datetime, timezone
-from models import db, Item, SalesOrder, WorksOrder, BOMLine
+from models import db, Item, SalesOrder, WorksOrder, BOMLine, SOLineItem
 
 class TestBOMBuilder:
     _so_counter = 0
@@ -189,3 +189,51 @@ class TestBOMBuilder:
         assert len(ctx['assembly_items']) == 1
         assert len(ctx['assembly_items'][0]['components']) == 2
         assert ctx['flat_lines'] == []
+
+    def test_build_bom_creates_separate_wo_per_fan_line(self, client, db, session, setup_data):
+        """Multiple Fan lines on one SO (e.g. several fan models on one order)
+        each become their own Works Order, with components scoped to whichever
+        Fan line they were assigned to via the per-row dropdown."""
+        data = setup_data
+        so = data['so']
+        comp_a = data['items']['comp_a']  # fan #1 assembly item
+        comp_b = data['items']['comp_b']  # component for fan #1 only
+        comp_c = data['items']['comp_c']  # component for fan #2 only
+
+        fan_2_item = Item(code=f"BOM-FAN2-{so.id}", description="Second Fan Model",
+                           category="Fans", qty_on_hand=10.0, avg_cost=200.0, last_cost=180.0, active=True)
+        session.add(fan_2_item)
+        session.flush()
+
+        fan_line_1 = SOLineItem(so_id=so.id, description=f"{comp_a.code} - Fan Assembly 1", qty=2.0)
+        fan_line_2 = SOLineItem(so_id=so.id, description=f"{fan_2_item.code} - Fan Assembly 2", qty=3.0)
+        session.add_all([fan_line_1, fan_line_2])
+        session.flush()
+
+        resp = client.post(f"/sales-orders/{so.id}/build-bom", data={
+            f"line_role_{fan_line_1.id}": "fan",
+            f"line_role_{fan_line_2.id}": "fan",
+            "issued_by": "Tester",
+            "component_item_id[]": [str(comp_b.id), str(comp_c.id)],
+            "component_qty[]": ["4", "6"],
+            "component_fan_line_id[]": [str(fan_line_1.id), str(fan_line_2.id)],
+        })
+        assert resp.status_code in (200, 302)
+        body = resp.get_data(as_text=True)
+        assert "Only one line can be marked as Fan" not in body
+
+        wos = WorksOrder.query.filter_by(so_id=so.id).order_by(WorksOrder.id).all()
+        assert len(wos) == 2
+        assert wos[0].wo_number != wos[1].wo_number
+
+        assembly_1 = BOMLine.query.filter_by(wo_id=wos[0].id, line_type='ASSEMBLY_ITEM').first()
+        assert assembly_1.item_id == comp_a.id
+        children_1 = BOMLine.query.filter_by(parent_line_id=assembly_1.id).all()
+        assert len(children_1) == 1
+        assert children_1[0].item_id == comp_b.id
+
+        assembly_2 = BOMLine.query.filter_by(wo_id=wos[1].id, line_type='ASSEMBLY_ITEM').first()
+        assert assembly_2.item_id == fan_2_item.id
+        children_2 = BOMLine.query.filter_by(parent_line_id=assembly_2.id).all()
+        assert len(children_2) == 1
+        assert children_2[0].item_id == comp_c.id

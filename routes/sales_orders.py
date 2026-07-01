@@ -177,87 +177,40 @@ def build_bom(order_id):
         try:
             # Parse form data
             line_items = SOLineItem.query.filter_by(so_id=order_id).all()
-            fan_line_id = None
+            fan_line_ids = []
             stock_line_ids = []
-            
-            # Classify lines
+
+            # Classify lines — a Sales Order may have several distinct Fan
+            # lines (e.g. multiple fan models on one order); each becomes its
+            # own Works Order below.
             for line in line_items:
                 role = request.form.get(f'line_role_{line.id}', 'ignore')
                 if role == 'fan':
-                    if fan_line_id is not None:
-                        flash("Only one line can be marked as Fan.", "error")
-                        return redirect(url_for('sales_orders.build_bom', order_id=order_id))
-                    fan_line_id = line.id
+                    fan_line_ids.append(line.id)
                 elif role == 'stock':
                     stock_line_ids.append(line.id)
-            
-            created_wo = None
+
+            created_wos = []
             created_stock_order = None
-            
-            # Create WorksOrder if fan line selected
-            if fan_line_id:
-                # Check if WO already exists
+
+            # Create one WorksOrder per Fan line selected
+            if fan_line_ids:
+                # Check if a WO already exists for this SO
                 existing_wo = WorksOrder.query.filter_by(so_id=order_id).first()
                 if existing_wo:
                     flash("A Works Order already exists for this Sales Order.", "warning")
                     return redirect(url_for('sales_orders.view_order', order_id=order_id))
-                
-                # Generate WO number
-                last_wo = WorksOrder.query.order_by(WorksOrder.id.desc()).first()
-                if last_wo:
-                    # Extract number from format "WO0042"
-                    try:
-                        last_num = int(last_wo.wo_number.replace('WO', ''))
-                        next_num = last_num + 1
-                    except ValueError:
-                        next_num = 1
-                else:
-                    next_num = 1
-                wo_number = f"WO{next_num:04d}"
-                
-                # Create WorksOrder
-                works_order = WorksOrder(
-                    wo_number=wo_number,
-                    so_id=order_id,
-                    order_type='ASSEMBLY',
-                    status='Open',
-                    issued_by=request.form.get('issued_by', 'System').strip() or 'System'
-                )
-                db.session.add(works_order)
-                db.session.flush()  # Get wo.id
-                
-                # Persist the user-selected fan line as the assembly parent so the
-                # printed Works Order shows it as a header row with its components
-                # nested beneath. Uses the existing line_type/parent_line_id columns
-                # (no schema change). Components are re-parented to this line below.
-                parent_line_id = None
-                fan_line = db.session.get(SOLineItem, fan_line_id)
-                fan_item = None
-                if fan_line and fan_line.description:
-                    fan_code = fan_line.description.split(' - ', 1)[0].strip()
-                    if fan_code:
-                        fan_item = Item.query.filter_by(code=fan_code).first()
-                if fan_item:
-                    assembly_line = BOMLine(
-                        wo_id=works_order.id,
-                        item_id=fan_item.id,
-                        qty_required=fan_line.qty or 1.0,
-                        unit_cost=fan_item.last_cost or 0.0,
-                        line_type='ASSEMBLY_ITEM'
-                    )
-                    db.session.add(assembly_line)
-                    db.session.flush()  # Get assembly_line.id for child parent_line_id
-                    parent_line_id = assembly_line.id
-                else:
-                    flash(
-                        "Fan line could not be matched to a catalogue item; "
-                        "components saved without an assembly header.", "warning"
-                    )
 
-                # Parse BOM components (nested under the assembly parent when present)
+                # Group each submitted BOM component by the Fan line it was
+                # assigned to in the UI. When only one Fan line is selected,
+                # an unassigned component defaults to it (keeps old single-fan
+                # form payloads working without the new dropdown field).
                 component_item_ids = request.form.getlist('component_item_id[]')
                 component_qtys = request.form.getlist('component_qty[]')
+                component_fan_ids = request.form.getlist('component_fan_line_id[]')
 
+                components_by_fan_line = {}
+                unassigned_count = 0
                 for i, item_id_str in enumerate(component_item_ids):
                     if not item_id_str:
                         continue
@@ -266,12 +219,87 @@ def build_bom(order_id):
                         qty = float(component_qtys[i]) if i < len(component_qtys) else 0
                         if qty <= 0:
                             continue
+                    except (ValueError, IndexError):
+                        continue
 
-                        # Load Item to get unit_cost
+                    fan_id_str = component_fan_ids[i] if i < len(component_fan_ids) else ''
+                    assigned_fan_line_id = None
+                    if fan_id_str:
+                        try:
+                            assigned_fan_line_id = int(fan_id_str)
+                        except ValueError:
+                            assigned_fan_line_id = None
+                    elif len(fan_line_ids) == 1:
+                        assigned_fan_line_id = fan_line_ids[0]
+
+                    if assigned_fan_line_id is None or assigned_fan_line_id not in fan_line_ids:
+                        unassigned_count += 1
+                        continue
+
+                    components_by_fan_line.setdefault(assigned_fan_line_id, []).append((item_id, qty))
+
+                if unassigned_count:
+                    flash(
+                        f"{unassigned_count} component(s) had no matching Fan line selected and were skipped.",
+                        "warning"
+                    )
+
+                # Generate sequential WO numbers ("WO0042") for each fan line
+                last_wo = WorksOrder.query.order_by(WorksOrder.id.desc()).first()
+                try:
+                    next_num = int(last_wo.wo_number.replace('WO', '')) + 1 if last_wo else 1
+                except ValueError:
+                    next_num = 1
+
+                issued_by = request.form.get('issued_by', 'System').strip() or 'System'
+
+                for fan_line_id in fan_line_ids:
+                    wo_number = f"WO{next_num:04d}"
+                    next_num += 1
+
+                    works_order = WorksOrder(
+                        wo_number=wo_number,
+                        so_id=order_id,
+                        order_type='ASSEMBLY',
+                        status='Open',
+                        issued_by=issued_by
+                    )
+                    db.session.add(works_order)
+                    db.session.flush()  # Get wo.id
+
+                    # Persist the fan line as the assembly parent so the
+                    # printed Works Order shows it as a header row with its
+                    # components nested beneath. Uses the existing
+                    # line_type/parent_line_id columns (no schema change).
+                    parent_line_id = None
+                    fan_line = db.session.get(SOLineItem, fan_line_id)
+                    fan_item = None
+                    if fan_line and fan_line.description:
+                        fan_code = fan_line.description.split(' - ', 1)[0].strip()
+                        if fan_code:
+                            fan_item = Item.query.filter_by(code=fan_code).first()
+                    if fan_item:
+                        assembly_line = BOMLine(
+                            wo_id=works_order.id,
+                            item_id=fan_item.id,
+                            qty_required=fan_line.qty or 1.0,
+                            unit_cost=fan_item.last_cost or 0.0,
+                            line_type='ASSEMBLY_ITEM'
+                        )
+                        db.session.add(assembly_line)
+                        db.session.flush()  # Get assembly_line.id for child parent_line_id
+                        parent_line_id = assembly_line.id
+                    else:
+                        label = fan_line.description if fan_line else fan_line_id
+                        flash(
+                            f"Fan line '{label}' could not be matched to a catalogue item; "
+                            "components saved without an assembly header.", "warning"
+                        )
+
+                    for item_id, qty in components_by_fan_line.get(fan_line_id, []):
                         item = db.session.get(Item, item_id)
                         if not item:
                             continue
-
                         bom_line = BOMLine(
                             wo_id=works_order.id,
                             item_id=item.id,
@@ -281,11 +309,9 @@ def build_bom(order_id):
                             parent_line_id=parent_line_id
                         )
                         db.session.add(bom_line)
-                    except (ValueError, IndexError):
-                        continue
 
-                created_wo = works_order
-            
+                    created_wos.append(works_order)
+
             # Create StockOrder if stock lines exist
             if stock_line_ids:
                 # Generate Stock Order number
@@ -332,19 +358,21 @@ def build_bom(order_id):
                 created_stock_order = stock_order
             
             # Validate at least one order type was created
-            if not created_wo and not created_stock_order:
+            if not created_wos and not created_stock_order:
                 flash("Please select at least one Fan line or Stock Order line.", "warning")
                 return redirect(url_for('sales_orders.build_bom', order_id=order_id))
-            
+
             # Update SO status to Open
             so.status = 'Open'
-            
+
             db.session.commit()
-            
+
             # Flash success message
             messages = []
-            if created_wo:
-                messages.append(f"Works Order {created_wo.wo_number}")
+            if created_wos:
+                wo_numbers = ', '.join(wo.wo_number for wo in created_wos)
+                label = "Works Order" if len(created_wos) == 1 else "Works Orders"
+                messages.append(f"{label} {wo_numbers}")
             if created_stock_order:
                 messages.append(f"Stock Order {created_stock_order.stock_order_number}")
             flash(f"Works Pack created successfully: {', '.join(messages)}", "success")

@@ -23,7 +23,7 @@
         <h2 class="card-title">Classify Line Items</h2>
     </div>
     <p style="padding: 0 16px 8px; color: var(--text-muted); font-size: 0.85rem;">
-        <strong>Note:</strong> Only one line can be marked as Fan. Default selection is "Stock Order".
+        <strong>Note:</strong> Each line marked as Fan becomes its own Works Order. Default selection is "Stock Order".
     </p>
     {% if line_items %}
     <div style="overflow-x: auto;">
@@ -44,16 +44,20 @@
                     <td>{{ line.qty }}</td>
                     <td>
                         <label style="display: inline-flex; align-items: center; gap: 6px; margin-right: 12px;">
-                            <input type="radio" name="line_role_{{ line.id }}" value="fan" 
-                                   onchange="enforceSingleFan(this)">
+                            <input type="radio" name="line_role_{{ line.id }}" value="fan"
+                                   class="fan-role-radio" data-line-id="{{ line.id }}"
+                                   data-desc="{{ line.description or '' }}"
+                                   onchange="refreshFanLineOptions()">
                             Fan / WO Subject
                         </label>
                         <label style="display: inline-flex; align-items: center; gap: 6px; margin-right: 12px;">
-                            <input type="radio" name="line_role_{{ line.id }}" value="stock" checked>
+                            <input type="radio" name="line_role_{{ line.id }}" value="stock" checked
+                                   onchange="refreshFanLineOptions()">
                             Stock Order
                         </label>
                         <label style="display: inline-flex; align-items: center; gap: 6px;">
-                            <input type="radio" name="line_role_{{ line.id }}" value="ignore">
+                            <input type="radio" name="line_role_{{ line.id }}" value="ignore"
+                                   onchange="refreshFanLineOptions()">
                             Ignore
                         </label>
                     </td>
@@ -73,18 +77,22 @@
         <h2 class="card-title">BOM Components (for Fan / Assembly WO)</h2>
     </div>
     <p style="padding: 0 16px 8px; color: var(--text-muted); font-size: 0.85rem;">
-        If no Fan line is selected above, this section will be ignored.
+        If no Fan line is selected above, this section will be ignored. When more than one Fan line
+        is selected, choose which one each component belongs to.
     </p>
-    
+
     <!-- Component add panel -->
     <div style="padding: 16px; background: rgba(255,255,255,0.03); border-radius: 6px; margin: 0 16px 16px;">
         <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
             <div style="flex: 1; min-width: 300px; position: relative;">
-                <input type="text" id="component-search" placeholder="Search by code or description..." 
+                <input type="text" id="component-search" placeholder="Search by code or description..."
                        style="width: 100%; padding: 8px 12px; background: rgba(255,255,255,0.05); border: 1px solid var(--border-color); border-radius: 4px; color: var(--text-primary);">
                 <div id="search-results" style="position: absolute; top: 100%; left: 0; right: 0; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 4px; max-height: 300px; overflow-y: auto; z-index: 1000; display: none; margin-top: 4px;"></div>
             </div>
-            <input type="number" id="componentQty" placeholder="Qty" min="0.1" step="0.1" 
+            <select id="componentFanLine" style="min-width: 220px; padding: 8px 12px; background: rgba(255,255,255,0.05); border: 1px solid var(--border-color); border-radius: 4px; color: var(--text-primary);">
+                <option value="">For Fan line...</option>
+            </select>
+            <input type="number" id="componentQty" placeholder="Qty" min="0.1" step="0.1"
                    style="width: 100px; padding: 8px 12px; background: rgba(255,255,255,0.05); border: 1px solid var(--border-color); border-radius: 4px; color: var(--text-primary);">
             <button type="button" onclick="addComponent()" class="btn btn-primary" style="padding: 8px 16px;">
                 Add Component
@@ -103,6 +111,7 @@
                     <th>Item Code</th>
                     <th>Description</th>
                     <th>Qty</th>
+                    <th>Fan Line</th>
                     <th>Remove</th>
                 </tr>
             </thead>
@@ -131,16 +140,28 @@
 const catalogueItems = {{ catalogue_json | tojson }};
 let selectedItemId = null;
 
-// Enforce single fan selection
-function enforceSingleFan(selectedRadio) {
-    if (selectedRadio.value === 'fan') {
-        document.querySelectorAll('input[type="radio"][value="fan"]').forEach(function(radio) {
-            if (radio !== selectedRadio) {
-                radio.checked = false;
-            }
-        });
+// Rebuild the "For Fan line..." dropdown from whichever lines are currently
+// checked as Fan / WO Subject, so components get assigned to the right WO.
+function refreshFanLineOptions() {
+    const select = document.getElementById('componentFanLine');
+    const previousValue = select.value;
+    const checkedFanRadios = document.querySelectorAll('input.fan-role-radio:checked');
+
+    select.innerHTML = '<option value="">For Fan line...</option>';
+    checkedFanRadios.forEach(function(radio) {
+        const opt = document.createElement('option');
+        opt.value = radio.dataset.lineId;
+        opt.textContent = radio.dataset.desc || ('Line ' + radio.dataset.lineId);
+        select.appendChild(opt);
+    });
+
+    if ([...select.options].some(o => o.value === previousValue)) {
+        select.value = previousValue;
+    } else if (checkedFanRadios.length === 1) {
+        select.value = checkedFanRadios[0].dataset.lineId;
     }
 }
+document.addEventListener('DOMContentLoaded', refreshFanLineOptions);
 
 // Search functionality
 const searchInput = document.getElementById('component-search');
@@ -215,25 +236,36 @@ function addComponent() {
         alert('Please search and select an item first.');
         return;
     }
-    
+
     const qtyInput = document.getElementById('componentQty');
     const qty = parseFloat(qtyInput.value);
-    
+
     if (!qty || qty <= 0) {
         alert('Please enter a valid quantity.');
         return;
     }
-    
+
+    const fanLineSelect = document.getElementById('componentFanLine');
+    const fanLineId = fanLineSelect.value;
+    const fanLineDesc = fanLineId
+        ? fanLineSelect.options[fanLineSelect.selectedIndex].textContent
+        : '—';
+
+    if (fanLineSelect.options.length > 2 && !fanLineId) {
+        alert('More than one Fan line is selected above — choose which Fan line this component belongs to.');
+        return;
+    }
+
     // Find the selected item details
     const item = catalogueItems.find(i => i.id == selectedItemId);
     if (!item) {
         alert('Selected item not found.');
         return;
     }
-    
+
     // Hide "no components" message
     document.getElementById('noComponentsMsg').style.display = 'none';
-    
+
     // Add row
     const tbody = document.getElementById('componentsBody');
     const row = document.createElement('tr');
@@ -241,24 +273,31 @@ function addComponent() {
         <td>${item.code}</td>
         <td>${item.description}</td>
         <td>${qty}</td>
+        <td>${fanLineDesc}</td>
         <td><button type="button" onclick="removeComponent(this)" style="background: none; border: none; color: var(--brand-danger); cursor: pointer;">✕</button></td>
     `;
-    
+
     // Add hidden inputs
     const hiddenItemId = document.createElement('input');
     hiddenItemId.type = 'hidden';
     hiddenItemId.name = 'component_item_id[]';
     hiddenItemId.value = selectedItemId;
     row.appendChild(hiddenItemId);
-    
+
     const hiddenQty = document.createElement('input');
     hiddenQty.type = 'hidden';
     hiddenQty.name = 'component_qty[]';
     hiddenQty.value = qty;
     row.appendChild(hiddenQty);
-    
+
+    const hiddenFanLineId = document.createElement('input');
+    hiddenFanLineId.type = 'hidden';
+    hiddenFanLineId.name = 'component_fan_line_id[]';
+    hiddenFanLineId.value = fanLineId;
+    row.appendChild(hiddenFanLineId);
+
     tbody.appendChild(row);
-    
+
     // Reset inputs
     selectedItemId = null;
     searchInput.value = '';

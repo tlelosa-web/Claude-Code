@@ -71,3 +71,19 @@ All items below must be green before delivery:
 ## Batch 7 — Edit Fixes (2026-06-29, commit pending 2026-07-01)
 - [x] Fix WO edit: existing BOM line qty fields now render as editable inputs (not static text); buildPayloadFromRow always reads from input
 - [x] Add STO edit: GET/POST /stock-orders/<id>/edit route, templates/stock_orders/edit.html (inline editable table + add/remove lines), Edit button on detail page (Open status only)
+
+## Batch 8 — Multi-page SO PDF Parser Fix (2026-07-01)
+- [x] Bug: `services/pdf_parser.py` silently dropped all line items on page 2+ of multi-page Sales Order PDFs — footer text ("BANKING DETAILS"/"Total Discount:") repeats on every page of the template, and the old code treated hitting it on page 1 as end-of-document, breaking the outer page loop before page 2 was scanned.
+- [x] Fix 1: Scoped the footer-detected `break` to the current page's line loop only, instead of stopping the whole document.
+- [x] Fix 2: Reset `table_started` at the start of every page (header/title/FROM-TO block also repeats per page) so continuation pages re-detect the "Description/Quantity" column header instead of misparsing the repeated header block as line items.
+- [x] Added `tests/fixtures/FM4167-4771 - Vortron - Sales Order - SO4684.pdf` (real 2-page SO) and `test_parse_multipage_captures_all_line_items` regression test — verifies 16 line items across both pages, sum matches Grand Total (R241,125.00).
+- [x] Verified: all 26 tests green, no regressions.
+
+## Batch 9 — Multi-Fan-Line Build Works Pack (2026-07-01)
+- [x] Gap: SO4684 (once fully parsed by Batch 8) has 5 distinct Fan lines (MAXFLO 560/250/14, 560/250/14 1.10KW, 800/250/14 4.00KW, 800/250/14 5.50KW x2) — `build_bom` hard-stopped with "Only one line can be marked as Fan."
+- [x] Decision (Tebello, spec `docs/specs/multi-fan-build-bom.md`): 5 fan lines → 5 separate Works Orders; keep single shared BOM Components list with a per-row "For Fan line..." dropdown instead of repeating the whole panel per fan.
+- [x] `routes/sales_orders.py build_bom`: classify multiple `fan_line_ids`, generate one WorksOrder + ASSEMBLY_ITEM header per fan line, group submitted components by `component_fan_line_id[]` (defaults to the single fan line when only one is selected, for backward compatibility).
+- [x] `templates/sales_orders/build_bom.html`: removed `enforceSingleFan` single-select restriction; added `componentFanLine` dropdown populated from currently-checked Fan radios via `refreshFanLineOptions()`.
+- [x] Added `test_build_bom_creates_separate_wo_per_fan_line` — verifies 2 fan lines produce 2 WOs with correctly scoped components; existing single-fan test unmodified and still passing.
+- [x] Verified against the real SO4684 scenario (lines 1,3,6,10,12 as Fan) end-to-end: 5 WOs created (WO0001–WO0005), each matched to the correct catalogue item; remaining 11 lines collapsed into 1 Stock Order.
+- [x] Full suite: 27 tests green.

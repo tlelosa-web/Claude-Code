@@ -212,16 +212,11 @@ def parse_sales_order_pdf(pdf_path):
                     'incl_total': incl_tot
                 }
 
-            table_started = False
-            table_ended = False
-
             for page_idx, page in enumerate(pdf.pages):
-                if table_ended:
-                    break
                 merged = build_merged_lines(page) if page_idx > 0 else merged_lines_p1
-                # Pages 2+ — table is already in progress
-                if page_idx > 0:
-                    table_started = True
+                # The full page header (title, FROM/TO blocks, column header)
+                # repeats on every page, so re-detect it before parsing rows.
+                table_started = False
 
                 for line in merged:
                     line_str = " ".join([w['text'] for w in sorted(line, key=lambda w: w['x0'])])
@@ -232,7 +227,9 @@ def parse_sales_order_pdf(pdf_path):
                         continue
 
                     if "BANKING DETAILS" in line_str or "Total Discount:" in line_str:
-                        table_ended = True
+                        # This footer repeats on every page of the template, not
+                        # just the last one — stop scanning this page's lines but
+                        # let subsequent pages still be processed for line items.
                         break
 
                     parsed_row = parse_line_item_row(line)

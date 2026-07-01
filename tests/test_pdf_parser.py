@@ -33,6 +33,39 @@ class TestPDFParser:
         if result['so_number']:
             assert result['so_number'].startswith('SO')
     
+    def test_parse_multipage_captures_all_line_items(self):
+        """Line items on page 2+ must be captured, not dropped at the page-1 footer.
+
+        SO4684 spans 2 pages; the 'BANKING DETAILS'/'Total Discount:' footer is
+        repeated on every page of the template, and the full header (title,
+        FROM/TO blocks, column header) repeats before page 2's items resume.
+        """
+        from services.pdf_parser import parse_sales_order_pdf
+
+        pdf_path = os.path.join(os.path.dirname(__file__), 'fixtures',
+                                'FM4167-4771 - Vortron - Sales Order - SO4684.pdf')
+
+        if not os.path.exists(pdf_path):
+            pytest.skip(f"Fixture PDF not found at {pdf_path}")
+
+        result = parse_sales_order_pdf(pdf_path)
+
+        assert result['parse_errors'] == []
+        assert result['so_number'] == 'SO4684'
+        assert len(result['line_items']) == 16
+
+        total_excl = sum(li['excl_total'] for li in result['line_items'])
+        assert total_excl == pytest.approx(241125.00)
+
+        # Last 4 items live on page 2 and must not be garbage/header noise
+        page2_descriptions = [li['description'] for li in result['line_items'][-4:]]
+        assert page2_descriptions == [
+            '630-1000AVMS - 630 to 1000 NDB GREEN Neoprene Floor Mounts',
+            '800CF - 800 Diam Counter Flange',
+            '800MF - 800 Diam Mounting Feet',
+            '800S1.5DP - 800 Diam Silencer 1.5D Podded',
+        ]
+
     def test_parse_error_handling(self):
         """Test that parser returns partial results on error (not crash)."""
         from services.pdf_parser import parse_sales_order_pdf

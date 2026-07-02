@@ -87,3 +87,14 @@ All items below must be green before delivery:
 - [x] Added `test_build_bom_creates_separate_wo_per_fan_line` — verifies 2 fan lines produce 2 WOs with correctly scoped components; existing single-fan test unmodified and still passing.
 - [x] Verified against the real SO4684 scenario (lines 1,3,6,10,12 as Fan) end-to-end: 5 WOs created (WO0001–WO0005), each matched to the correct catalogue item; remaining 11 lines collapsed into 1 Stock Order.
 - [x] Full suite: 27 tests green.
+
+## Batch 10 — STO Print + Required FM Number on Build Works Pack (2026-07-02)
+- [x] `routes/stock_orders.py`: added `GET /stock-orders/<id>/print` route (no status guard, mirrors `works_orders.print_order`).
+- [x] `templates/stock_orders/print.html`: new standalone print document (modeled on `picking_list_print.html`) — STO/SO/customer/job-number info table, line items, signoff block, auto-print script.
+- [x] `templates/stock_orders/detail.html`: added a Print button, always visible regardless of status.
+- [x] `templates/sales_orders/build_bom.html`: added an editable `job_numbers` (FM number) input inside the existing `<form>`, pre-filled from `so.job_numbers`.
+- [x] `routes/sales_orders.py build_bom()`: reads `job_numbers` early, requires it (flash + redirect) when at least one line is marked Fan, persists it onto `so.job_numbers` when non-blank; stock-only builds are unaffected.
+- [x] Fixed an existing test-fixture collision: `tests/test_stock_orders.py` setup_data was minting `StockOrder` numbers in the same `STOxxxx` format the app auto-generates, which collided with the new build_bom-driven STO creation in the shared session-scoped in-memory test DB — renamed to `STO-TEST-xxx` (mirrors the existing `SO-STO-xxx` so_number convention in the same fixture).
+- [x] Added `test_print_renders`/`test_print_404_for_missing` (test_stock_orders.py) and `test_build_bom_requires_job_number_for_assembly`/`test_build_bom_saves_job_number_on_assembly`/`test_build_bom_stock_only_does_not_require_job_number` (test_bom_builder.py); updated the two existing fan-line build_bom tests to supply `job_numbers` now that it's required.
+- [x] Full suite: 32 tests green.
+- Known pre-existing issue flagged (not fixed, out of scope): `templates/sales_orders/detail.html` line ~95 crashes with `TypeError` if any `SOLineItem.excl_price` is `None` (only reachable via lines created outside the normal PDF-parse path, e.g. directly via tests/DB).

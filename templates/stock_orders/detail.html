@@ -7,18 +7,31 @@
     <div class="card-header">
         <h2 class="card-title">Stock Order Details</h2>
         <div style="display: flex; gap: 8px;">
-            {% if stock_order.status == 'Open' %}
-            <a href="{{ url_for('stock_orders.edit_order', order_id=stock_order.id) }}" class="btn btn-secondary">Edit</a>
-            <form method="POST" action="{{ url_for('stock_orders.complete_order', order_id=stock_order.id) }}"
-                  onsubmit="return confirm('Mark this Stock Order as Complete?')" style="display:inline;">
-                <button type="submit" class="btn btn-primary">Mark Complete</button>
-            </form>
-            <form method="POST" action="{{ url_for('stock_orders.cancel_order', order_id=stock_order.id) }}" 
-                  onsubmit="return confirm('Cancel this Stock Order?')" style="display:inline;">
-                <button type="submit" class="btn btn-danger">Cancel Order</button>
-            </form>
-            {% endif %}
-            <a href="{{ url_for('sales_orders.view_order', order_id=stock_order.so_id) }}" class="btn btn-secondary">Back to SO</a>
+            <div class="dropdown">
+                <button type="button" class="dropdown-toggle btn-primary-dropdown" onclick="toggleDropdown(this)">
+                    Actions ▾
+                </button>
+                <ul class="dropdown-menu">
+                    <li><a href="{{ url_for('stock_orders.print_order', order_id=stock_order.id) }}" target="_blank">Print</a></li>
+                    {% if stock_order.status == 'Open' %}
+                    <li><a href="{{ url_for('stock_orders.edit_order', order_id=stock_order.id) }}">Edit</a></li>
+                    <li>
+                        <form method="POST" action="{{ url_for('stock_orders.complete_order', order_id=stock_order.id) }}" style="display: block;" onsubmit="return confirm('Mark this Stock Order as Complete?')">
+                            <button type="submit">Mark Complete</button>
+                        </form>
+                    </li>
+                    <li>
+                        <form method="POST" action="{{ url_for('stock_orders.cancel_order', order_id=stock_order.id) }}" style="display: block;" onsubmit="return confirm('Cancel this Stock Order?')">
+                            <button type="submit" class="danger">Cancel Order</button>
+                        </form>
+                    </li>
+                    {% else %}
+                    <li><a class="disabled" title="Only Open Stock Orders can be edited, completed, or cancelled.">Edit</a></li>
+                    {% endif %}
+                    <li class="divider"></li>
+                    <li><a href="{{ url_for('sales_orders.view_order', order_id=stock_order.so_id) }}">Back to SO</a></li>
+                </ul>
+            </div>
         </div>
     </div>
     

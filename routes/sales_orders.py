@@ -177,6 +177,7 @@ def build_bom(order_id):
         try:
             # Parse form data
             line_items = SOLineItem.query.filter_by(so_id=order_id).all()
+            job_numbers_input = request.form.get('job_numbers', '').strip()
             fan_line_ids = []
             stock_line_ids = []
 
@@ -189,6 +190,13 @@ def build_bom(order_id):
                     fan_line_ids.append(line.id)
                 elif role == 'stock':
                     stock_line_ids.append(line.id)
+
+            # An Assembly Works Order is meaningless without an FM/job number
+            # to reference on the printed document, so require it here even
+            # though it's optional at SO-upload time.
+            if fan_line_ids and not job_numbers_input:
+                flash("FM / Job number is required when building an Assembly Works Order.", "error")
+                return redirect(url_for('sales_orders.build_bom', order_id=order_id))
 
             created_wos = []
             created_stock_order = None
@@ -364,6 +372,8 @@ def build_bom(order_id):
 
             # Update SO status to Open
             so.status = 'Open'
+            if job_numbers_input:
+                so.job_numbers = job_numbers_input
 
             db.session.commit()
 

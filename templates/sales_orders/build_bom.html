@@ -17,6 +17,20 @@
 
 <form method="POST" action="{{ url_for('sales_orders.build_bom', order_id=so.id) }}">
 
+<!-- Section 1b: FM / Job Number -->
+<div class="card animate-fade-in" style="margin-bottom: 24px;">
+    <div class="card-header">
+        <h2 class="card-title">Job / FM Number</h2>
+    </div>
+    <div style="padding: 16px;">
+        <input type="text" name="job_numbers" id="job_numbers" value="{{ so.job_numbers or '' }}"
+               class="form-input" placeholder="FM4046 or FM4047-FM4055" style="width: 100%; max-width: 320px;">
+        <p style="margin-top: 6px; color: var(--text-muted); font-size: 0.85rem;">
+            Required when at least one line below is marked Fan / WO Subject.
+        </p>
+    </div>
+</div>
+
 <!-- Section 2: Classify Line Items -->
 <div class="card animate-fade-in" style="margin-bottom: 24px;">
     <div class="card-header">

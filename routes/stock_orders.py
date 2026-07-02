@@ -15,6 +15,13 @@ def view_order(order_id):
     stock_order = StockOrder.query.get_or_404(order_id)
     return render_template('stock_orders/detail.html', stock_order=stock_order)
 
+@stock_orders_bp.route('/stock-orders/<int:order_id>/print')
+def print_order(order_id):
+    """Render print-friendly Stock Order document."""
+    stock_order = StockOrder.query.get_or_404(order_id)
+    so = stock_order.sales_order
+    return render_template('stock_orders/print.html', stock_order=stock_order, so=so)
+
 @stock_orders_bp.route('/stock-orders/<int:order_id>/cancel', methods=['POST'])
 def cancel_order(order_id):
     """Cancel a Stock Order."""

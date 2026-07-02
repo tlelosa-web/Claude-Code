@@ -166,6 +166,7 @@ class TestBOMBuilder:
         session.flush()
 
         resp = client.post(f"/sales-orders/{so.id}/build-bom", data={
+            "job_numbers": "FM0001",
             f"line_role_{fan_line.id}": "fan",
             "issued_by": "Tester",
             "component_item_id[]": [str(comp_b.id), str(comp_c.id)],
@@ -211,6 +212,7 @@ class TestBOMBuilder:
         session.flush()
 
         resp = client.post(f"/sales-orders/{so.id}/build-bom", data={
+            "job_numbers": "FM0002",
             f"line_role_{fan_line_1.id}": "fan",
             f"line_role_{fan_line_2.id}": "fan",
             "issued_by": "Tester",
@@ -237,3 +239,65 @@ class TestBOMBuilder:
         children_2 = BOMLine.query.filter_by(parent_line_id=assembly_2.id).all()
         assert len(children_2) == 1
         assert children_2[0].item_id == comp_c.id
+
+    def test_build_bom_requires_job_number_for_assembly(self, client, db, session, setup_data):
+        """A Fan line with no FM/job number is rejected — no WorksOrder is created."""
+        data = setup_data
+        so = data['so']
+        comp_a = data['items']['comp_a']
+
+        fan_line = SOLineItem(so_id=so.id, description=f"{comp_a.code} - Fan Assembly", qty=1.0)
+        session.add(fan_line)
+        session.flush()
+
+        resp = client.post(f"/sales-orders/{so.id}/build-bom", data={
+            f"line_role_{fan_line.id}": "fan",
+            "issued_by": "Tester",
+        }, follow_redirects=True)
+        assert resp.status_code == 200
+        assert b"FM / Job number is required" in resp.data
+
+        assert WorksOrder.query.filter_by(so_id=so.id).first() is None
+
+    def test_build_bom_saves_job_number_on_assembly(self, client, db, session, setup_data):
+        """A supplied FM/job number is persisted onto the Sales Order once the WO is created."""
+        data = setup_data
+        so = data['so']
+        comp_a = data['items']['comp_a']
+
+        fan_line = SOLineItem(so_id=so.id, description=f"{comp_a.code} - Fan Assembly", qty=1.0)
+        session.add(fan_line)
+        session.flush()
+
+        resp = client.post(f"/sales-orders/{so.id}/build-bom", data={
+            "job_numbers": "FM9999",
+            f"line_role_{fan_line.id}": "fan",
+            "issued_by": "Tester",
+        })
+        assert resp.status_code in (200, 302)
+
+        assert WorksOrder.query.filter_by(so_id=so.id).first() is not None
+        updated_so = db.session.get(SalesOrder, so.id)
+        assert updated_so.job_numbers == "FM9999"
+
+    def test_build_bom_stock_only_does_not_require_job_number(self, client, db, session, setup_data):
+        """Stock-only builds (no Fan lines) must not be blocked by a missing FM number."""
+        from models import StockOrder
+
+        data = setup_data
+        so = data['so']
+        comp_a = data['items']['comp_a']
+
+        stock_line = SOLineItem(so_id=so.id, description=f"{comp_a.code} - Spare Part", qty=1.0)
+        session.add(stock_line)
+        session.flush()
+
+        resp = client.post(f"/sales-orders/{so.id}/build-bom", data={
+            f"line_role_{stock_line.id}": "stock",
+        })
+        # Redirects to the SO detail page on success, not back to build-bom
+        # with a validation error.
+        assert resp.status_code == 302
+        assert "/build-bom" not in resp.headers.get("Location", "")
+
+        assert StockOrder.query.filter_by(so_id=so.id).first() is not None

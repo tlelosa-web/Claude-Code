@@ -136,3 +136,33 @@
 - Full suite: 27 tests green.
 - Next task: None — awaiting commit confirmation from Tebello.
 - Blockers: None.
+
+## 2026-07-02 — Batch 10: STO Print + Required FM Number on Build Works Pack
+
+- Domain: Software/AI.
+- Added `GET /stock-orders/<id>/print` route (`routes/stock_orders.py`, no status guard,
+  mirrors `works_orders.print_order`) and a new standalone `templates/stock_orders/print.html`
+  (modeled on `picking_list_print.html`) — STO/SO/customer/job-number table, line items,
+  signoff block, auto-print script.
+- Added a Print button to `templates/stock_orders/detail.html`, always visible regardless of
+  status.
+- Added an editable `job_numbers` (FM number) input to `templates/sales_orders/build_bom.html`,
+  pre-filled from `so.job_numbers`.
+- `routes/sales_orders.py build_bom()`: reads `job_numbers` early, requires it (flash + redirect)
+  when at least one line is marked Fan, persists it onto `so.job_numbers` when non-blank;
+  stock-only builds unaffected.
+- Fixed a test-fixture collision in `tests/test_stock_orders.py`: `setup_data` was minting
+  `StockOrder` numbers in the same `STOxxxx` format the app auto-generates, colliding with
+  build_bom-driven STO creation in the shared session-scoped in-memory test DB — renamed to
+  `STO-TEST-xxx`.
+- Added `test_print_renders` / `test_print_404_for_missing` (test_stock_orders.py) and
+  `test_build_bom_requires_job_number_for_assembly` / `test_build_bom_saves_job_number_on_assembly`
+  / `test_build_bom_stock_only_does_not_require_job_number` (test_bom_builder.py); updated the two
+  existing fan-line build_bom tests to supply `job_numbers` now that it's required.
+- Verified full suite green (32 passed) immediately before commit.
+- Commit: `f2438fa`.
+- Known pre-existing issue flagged, not fixed (out of scope): `templates/sales_orders/detail.html`
+  ~line 95 raises `TypeError` if any `SOLineItem.excl_price` is `None` (only reachable via lines
+  created outside the normal PDF-parse path, e.g. directly via tests/DB).
+- Next task: None queued — awaiting Tebello's next task.
+- Blockers: None.

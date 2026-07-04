@@ -210,7 +210,7 @@ Gmail auth files (project root, gitignored): `credentials.json` (Desktop OAuth c
 - **Packaging**: `pyproject.toml` — core deps (`requests`, `python-dotenv`, `google-api-python-client`, `google-auth-httplib2`, `google-auth-oauthlib`); `pytest` as dev extra; `ai-outreach` console-script entry point.
 - **Approval gate is structural**, not advisory — enforced by the status state machine, not just convention.
 - **Offline-first**: no feature may depend on internet connectivity in its core logic.
-- **n8n**: listed historically in the stack but the pipeline is pure-Python CLI. Treat orchestration as in-process unless a future ADR reintroduces n8n. *(Confirm/retire this in an ADR.)*
+- **ADR-002**: n8n retired from the stack — orchestration stays in-process via the `ai-outreach` CLI (`run`/`run-all`). See `docs/decisions/ADR-002-retire-n8n.md`.
 
 See @docs/decisions/ for the full ADR log.
 

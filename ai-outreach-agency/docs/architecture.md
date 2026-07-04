@@ -190,19 +190,18 @@ Inter-module communication happens through the lead store — modules never call
 
 ---
 
-## n8n Integration
+## Orchestration
 
-n8n runs externally and orchestrates the pipeline stages. Each Python module exposes a CLI entry point that n8n calls:
+n8n is **not** part of the stack — see `docs/decisions/ADR-002-retire-n8n.md`. Orchestration stays in-process via the `ai-outreach` console script:
 
 ```
-python -m src.lead_import --file leads.csv
-python -m src.research --lead-id 42
-python -m src.asset_gen --lead-id 42
-python -m src.approval            # interactive — runs locally, not from n8n
-python -m src.email_draft --lead-id 42
+ai-outreach import --csv leads.csv [--campaign <name>]
+ai-outreach list [--status <status>] [--campaign <name>]
+ai-outreach run --lead-id <id> [--asset-type <TYPE>]
+ai-outreach run-all [--status <status>] [--campaign <name>] [--asset-type <TYPE>]
 ```
 
-n8n handles: scheduling, retry logic, batch processing, and status webhooks. The Python code handles: business logic, API calls, and data transformation.
+`run-all` handles batch processing (one lead at a time, in-process); rate limiting and 429 retry/backoff are handled per-client by `src/shared/rate_limiter.py` and each client's own backoff logic — no external scheduler or workflow engine is involved.
 
 ---
 

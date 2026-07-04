@@ -22,6 +22,8 @@
 - [x] Add rate limiting for external API calls — token-bucket `RateLimiter` (`src/shared/rate_limiter.py`) wired into OpenRouter, Apify, and Gmail clients, each with its own conservative default (60/30/20 per minute) overridable via env var.
 - [x] Fix `src/main.py` not threading `db_path` through pipeline stages (would have crashed any real `run`/`run-all` on the first status update). Added CLI-level regression test. Ran a genuine live end-to-end pipeline test (real Apify + OpenRouter + Gmail draft) — all 6 stages confirmed working.
 - [x] Add lead deduplication logic — `normalize_company_name`/`find_duplicate` in `lead_import/db.py` catch near-duplicate company names (case, whitespace, legal suffixes like "Pty Ltd"/"CC"/"Inc") sharing the same email, not just exact-string matches. Wired into `cmd_import` ahead of the existing `UNIQUE(company_name, email)` DB constraint, which stays as a backstop. 6 new tests, 91 passing.
+- [x] **ADR-002**: Retire n8n from the stack — orchestration confirmed as in-process via the `ai-outreach` CLI (`run`/`run-all`), no external workflow engine. Resolves the "Confirm/retire this in an ADR" note that had been sitting in CLAUDE.md. `docs/architecture.md`'s n8n section replaced with a pointer to the ADR.
+- [x] Google Sheets sync — closed, not built. Superseded by ADR-001 (SQLite is source of truth; CSV is the only import path; a live Sheets integration was explicitly rejected there).
 
 ---
 
@@ -39,8 +41,6 @@ _(empty)_
 
 ## Future (not yet scheduled)
 
-- [ ] Implement Google Sheets sync (optional — not in current architecture)
-- [ ] Build n8n workflow definitions
 - [ ] Add campaign management (group leads by campaign, configure asset type per campaign)
 - [ ] PDF export for generated assets
 - [ ] Visual dashboard for lead store (deferred per ADR-001 — DB Browser for SQLite works as a stopgap; consider a lightweight web UI once pipeline runs end-to-end)

@@ -81,21 +81,22 @@ def cmd_list(args, settings) -> None:
 
 
 def _run_single_lead(lead, settings) -> None:
+    db_path = str(Path(settings.DB_PATH))
     print(f"\n=== Processing: {lead.company_name} (ID {lead.id}) ===")
 
     print("\n[1/4] Research...")
-    research = research_lead(lead)
+    research = research_lead(lead, db_path=db_path)
     print(f"  Summary: {research.summary[:80]}...")
 
     asset_type_str = settings.DEFAULT_ASSET_TYPE
     asset_type = AssetType[asset_type_str]
 
     print("\n[2/4] Asset generation...")
-    asset = run_asset_gen(lead, research, asset_type=asset_type)
+    asset = run_asset_gen(lead, research, asset_type=asset_type, db_path=db_path)
     print(f"  Generated {asset.asset_type.value} ({len(asset.asset_text)} chars)")
 
     print("\n[3/4] Approval gate...")
-    approval = run_approval_gate(lead, asset)
+    approval = run_approval_gate(lead, asset, db_path=db_path)
 
     if approval.decision == Decision.REJECTED:
         print("  REJECTED — skipping email draft.")
@@ -105,7 +106,7 @@ def _run_single_lead(lead, settings) -> None:
     print(f"  Decision: {approval.decision.value}")
 
     print("\n[4/4] Email draft...")
-    draft = run_email_draft(lead, approval, asset)
+    draft = run_email_draft(lead, approval, asset, db_path=db_path)
     print(f"  Draft created: {draft.gmail_draft_id}")
     print(f"  Subject: {draft.subject}")
 

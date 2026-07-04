@@ -17,6 +17,7 @@ from src.lead_import.db import (
 from src.research.pipeline import research_lead
 from src.asset_gen.pipeline import run_asset_gen
 from src.asset_gen.schema import AssetType
+from src.asset_gen.pdf_export import export_asset_pdf
 from src.approval.cli import run_approval_gate
 from src.approval.schema import Decision
 from src.email_draft.pipeline import run_email_draft
@@ -98,18 +99,18 @@ def _run_single_lead(lead, settings, asset_type_override: str | None = None) -> 
     db_path = str(Path(settings.DB_PATH))
     print(f"\n=== Processing: {lead.company_name} (ID {lead.id}) ===")
 
-    print("\n[1/4] Research...")
+    print("\n[1/5] Research...")
     research = research_lead(lead, db_path=db_path)
     print(f"  Summary: {research.summary[:80]}...")
 
     asset_type_str = asset_type_override or settings.DEFAULT_ASSET_TYPE
     asset_type = AssetType[asset_type_str]
 
-    print("\n[2/4] Asset generation...")
+    print("\n[2/5] Asset generation...")
     asset = run_asset_gen(lead, research, asset_type=asset_type, db_path=db_path)
     print(f"  Generated {asset.asset_type.value} ({len(asset.asset_text)} chars)")
 
-    print("\n[3/4] Approval gate...")
+    print("\n[3/5] Approval gate...")
     approval = run_approval_gate(lead, asset, db_path=db_path)
 
     if approval.decision == Decision.REJECTED:
@@ -119,7 +120,16 @@ def _run_single_lead(lead, settings, asset_type_override: str | None = None) -> 
 
     print(f"  Decision: {approval.decision.value}")
 
-    print("\n[4/4] Email draft...")
+    final_text = (
+        approval.edited_asset_text
+        if approval.decision == Decision.EDITED
+        else asset.asset_text
+    )
+    print("\n[4/5] PDF export...")
+    pdf_path = export_asset_pdf(lead, final_text, output_dir=settings.EXPORTS_DIR)
+    print(f"  Exported: {pdf_path}")
+
+    print("\n[5/5] Email draft...")
     draft = run_email_draft(lead, approval, asset, db_path=db_path)
     print(f"  Draft created: {draft.gmail_draft_id}")
     print(f"  Subject: {draft.subject}")

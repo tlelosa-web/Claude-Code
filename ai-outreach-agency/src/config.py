@@ -18,6 +18,7 @@ class Settings:
     SENDER_TITLE: str = "AI Automation Consultant"
     SENDER_EMAIL: str = "tlelosa@gmail.com"
     DEFAULT_ASSET_TYPE: str = "INSIGHT_DOC"
+    EXPORTS_DIR: str = "exports"
 
 
 def load_settings(env_path: str | Path | None = None) -> Settings:
@@ -33,4 +34,5 @@ def load_settings(env_path: str | Path | None = None) -> Settings:
         SENDER_TITLE=os.environ.get("SENDER_TITLE", "AI Automation Consultant"),
         SENDER_EMAIL=os.environ.get("SENDER_EMAIL", "tlelosa@gmail.com"),
         DEFAULT_ASSET_TYPE=os.environ.get("DEFAULT_ASSET_TYPE", "INSIGHT_DOC"),
+        EXPORTS_DIR=os.environ.get("EXPORTS_DIR", "exports"),
     )

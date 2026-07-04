@@ -153,6 +153,7 @@ class TestMainCLIRunCommand:
         db_path = tmp_path / "cli_test.db"
         monkeypatch.setenv("DB_PATH", str(db_path))
         monkeypatch.setenv("OFFLINE_MODE", "true")
+        monkeypatch.setenv("EXPORTS_DIR", str(tmp_path / "exports"))
         monkeypatch.setattr("sys.stdin", io.StringIO("a\n"))
 
         init_db(db_path).close()
@@ -170,6 +171,30 @@ class TestMainCLIRunCommand:
 
         assert final.status == "drafted"
 
+    def test_run_exports_pdf_for_approved_asset(
+        self, tmp_path, monkeypatch, sample_csv, capsys
+    ):
+        import io
+
+        db_path = tmp_path / "cli_test.db"
+        exports_dir = tmp_path / "exports"
+        monkeypatch.setenv("DB_PATH", str(db_path))
+        monkeypatch.setenv("OFFLINE_MODE", "true")
+        monkeypatch.setenv("EXPORTS_DIR", str(exports_dir))
+        monkeypatch.setattr("sys.stdin", io.StringIO("a\n"))
+
+        init_db(db_path).close()
+        main(["import", "--csv", str(sample_csv)])
+
+        conn = init_db(db_path)
+        lead_id = get_all_leads(conn)[0].id
+        conn.close()
+
+        main(["run", "--lead-id", str(lead_id)])
+
+        pdfs = list(exports_dir.glob("*.pdf"))
+        assert len(pdfs) == 1
+
     def test_run_asset_type_override_reaches_asset_gen(
         self, tmp_path, monkeypatch, sample_csv, capsys
     ):
@@ -178,6 +203,7 @@ class TestMainCLIRunCommand:
         db_path = tmp_path / "cli_test.db"
         monkeypatch.setenv("DB_PATH", str(db_path))
         monkeypatch.setenv("OFFLINE_MODE", "true")
+        monkeypatch.setenv("EXPORTS_DIR", str(tmp_path / "exports"))
         monkeypatch.setattr("sys.stdin", io.StringIO("a\n"))
 
         init_db(db_path).close()
@@ -198,6 +224,7 @@ class TestMainCLIRunCommand:
         db_path = tmp_path / "cli_test.db"
         monkeypatch.setenv("DB_PATH", str(db_path))
         monkeypatch.setenv("OFFLINE_MODE", "true")
+        monkeypatch.setenv("EXPORTS_DIR", str(tmp_path / "exports"))
         monkeypatch.setattr("sys.stdin", io.StringIO("a\na\n"))
 
         init_db(db_path).close()

@@ -42,6 +42,9 @@ def cmd_import(args, settings) -> None:
         sys.exit(1)
 
     leads = read_csv(csv_path)
+    if args.campaign:
+        for lead in leads:
+            lead.campaign = args.campaign
     conn = _get_db(settings)
 
     imported = 0
@@ -72,19 +75,26 @@ def cmd_list(args, settings) -> None:
 
     conn.close()
 
+    campaign = getattr(args, "campaign", None)
+    if campaign:
+        leads = [lead for lead in leads if lead.campaign == campaign]
+
     if not leads:
         print("No leads found.")
         return
 
-    print(f"{'ID':<6} {'Company':<30} {'Contact':<25} {'Status':<12}")
-    print("-" * 73)
+    print(f"{'ID':<6} {'Company':<30} {'Contact':<25} {'Status':<12} {'Campaign':<15}")
+    print("-" * 89)
     for lead in leads:
-        print(f"{lead.id:<6} {lead.company_name:<30} {lead.contact_name:<25} {lead.status:<12}")
+        print(
+            f"{lead.id:<6} {lead.company_name:<30} {lead.contact_name:<25} "
+            f"{lead.status:<12} {lead.campaign:<15}"
+        )
 
     print(f"\nTotal: {len(leads)} leads")
 
 
-def _run_single_lead(lead, settings) -> None:
+def _run_single_lead(lead, settings, asset_type_override: str | None = None) -> None:
     db_path = str(Path(settings.DB_PATH))
     print(f"\n=== Processing: {lead.company_name} (ID {lead.id}) ===")
 
@@ -92,7 +102,7 @@ def _run_single_lead(lead, settings) -> None:
     research = research_lead(lead, db_path=db_path)
     print(f"  Summary: {research.summary[:80]}...")
 
-    asset_type_str = settings.DEFAULT_ASSET_TYPE
+    asset_type_str = asset_type_override or settings.DEFAULT_ASSET_TYPE
     asset_type = AssetType[asset_type_str]
 
     print("\n[2/4] Asset generation...")
@@ -129,7 +139,7 @@ def cmd_run(args, settings) -> None:
         print(f"Error: no lead found with ID {args.lead_id}")
         sys.exit(1)
 
-    _run_single_lead(lead, settings)
+    _run_single_lead(lead, settings, asset_type_override=args.asset_type)
 
 
 def cmd_run_all(args, settings) -> None:
@@ -137,6 +147,9 @@ def cmd_run_all(args, settings) -> None:
     conn = _get_db(settings)
     leads = get_leads_by_status(conn, status)
     conn.close()
+
+    if args.campaign:
+        leads = [lead for lead in leads if lead.campaign == args.campaign]
 
     if not leads:
         print(f"No leads with status '{status}'.")
@@ -147,7 +160,7 @@ def cmd_run_all(args, settings) -> None:
 
     for lead in leads:
         try:
-            _run_single_lead(lead, settings)
+            _run_single_lead(lead, settings, asset_type_override=args.asset_type)
         except SystemExit:
             print("\nQuit requested. Stopping pipeline.")
             break
@@ -160,17 +173,32 @@ def build_parser() -> argparse.ArgumentParser:
     )
     subparsers = parser.add_subparsers(dest="command", required=True)
 
+    asset_type_choices = [t.name for t in AssetType]
+
     p_import = subparsers.add_parser("import", help="Import leads from CSV")
     p_import.add_argument("--csv", required=True, help="Path to CSV file")
+    p_import.add_argument(
+        "--campaign", default=None, help="Assign this campaign to every imported lead"
+    )
 
     p_list = subparsers.add_parser("list", help="List leads")
     p_list.add_argument("--status", default=None, help="Filter by status")
+    p_list.add_argument("--campaign", default=None, help="Filter by campaign")
 
     p_run = subparsers.add_parser("run", help="Run pipeline for a single lead")
     p_run.add_argument("--lead-id", type=int, required=True, help="Lead ID to process")
+    p_run.add_argument(
+        "--asset-type", default=None, choices=asset_type_choices,
+        help="Override the default asset type for this run",
+    )
 
     p_run_all = subparsers.add_parser("run-all", help="Run pipeline for all leads with status")
     p_run_all.add_argument("--status", default="new", help="Status to filter by (default: new)")
+    p_run_all.add_argument("--campaign", default=None, help="Filter by campaign")
+    p_run_all.add_argument(
+        "--asset-type", default=None, choices=asset_type_choices,
+        help="Override the default asset type for this run",
+    )
 
     return parser
 

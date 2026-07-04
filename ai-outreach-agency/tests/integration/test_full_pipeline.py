@@ -9,6 +9,7 @@ import sqlite3
 import pytest
 
 from src.lead_import.reader import read_csv
+from src.lead_import.schema import Lead
 from src.lead_import.db import (
     init_db,
     insert_lead,
@@ -168,6 +169,58 @@ class TestMainCLIRunCommand:
         conn.close()
 
         assert final.status == "drafted"
+
+    def test_run_asset_type_override_reaches_asset_gen(
+        self, tmp_path, monkeypatch, sample_csv, capsys
+    ):
+        import io
+
+        db_path = tmp_path / "cli_test.db"
+        monkeypatch.setenv("DB_PATH", str(db_path))
+        monkeypatch.setenv("OFFLINE_MODE", "true")
+        monkeypatch.setattr("sys.stdin", io.StringIO("a\n"))
+
+        init_db(db_path).close()
+        main(["import", "--csv", str(sample_csv)])
+
+        conn = init_db(db_path)
+        lead_id = get_all_leads(conn)[0].id
+        conn.close()
+
+        main(["run", "--lead-id", str(lead_id), "--asset-type", "PAIN_POINT_SUMMARY"])
+
+        output = capsys.readouterr().out
+        assert "pain_point_summary" in output
+
+    def test_run_all_filters_by_campaign(self, tmp_path, monkeypatch, sample_csv, capsys):
+        import io
+
+        db_path = tmp_path / "cli_test.db"
+        monkeypatch.setenv("DB_PATH", str(db_path))
+        monkeypatch.setenv("OFFLINE_MODE", "true")
+        monkeypatch.setattr("sys.stdin", io.StringIO("a\na\n"))
+
+        init_db(db_path).close()
+        main(["import", "--csv", str(sample_csv), "--campaign", "gauteng-q3"])
+
+        conn = init_db(db_path)
+        insert_lead(
+            conn,
+            Lead(
+                company_name="Other Co",
+                contact_name="Sam",
+                contact_title="Manager",
+                email="sam@other.co.za",
+                campaign="referral",
+            ),
+        )
+        conn.close()
+
+        main(["run-all", "--campaign", "gauteng-q3"])
+
+        output = capsys.readouterr().out
+        assert "Found 2 leads" in output
+        assert "Other Co" not in output
 
 
 class TestDuplicateImport:

@@ -71,18 +71,6 @@ Pipeline is now code-complete for all 6 stages; only remaining setup step for a 
 - Wired into all three external clients ahead of each real network call: `shared/openrouter_client.py` (60/min default), `research/apify_client.py` (30/min), `email_draft/gmail_client.py` (20/min). Each is overridable via `OPENROUTER_RATE_LIMIT_PER_MIN` / `APIFY_RATE_LIMIT_PER_MIN` / `GMAIL_RATE_LIMIT_PER_MIN`.
 - Added `tests/unit/test_rate_limiter.py` (3 tests, fake monotonic clock — no real sleeping). Full suite: 84 passed, including the existing 429-retry test that mocks the shared `time.sleep`.
 - Documented in `docs/api-patterns.md` under Common Patterns.
-- [2026-07-04 19:01 UTC] Imported 2 leads from leads.csv (0 duplicates skipped)
-- [2026-07-04 19:01 UTC] Imported 1 leads from leads.csv (0 duplicates skipped)
-- [2026-07-04 19:01 UTC] Imported 0 leads from leads.csv (1 duplicates skipped)
-- [2026-07-04 19:47 UTC] Imported 2 leads from leads.csv (0 duplicates skipped)
-- [2026-07-04 19:47 UTC] Imported 1 leads from leads.csv (0 duplicates skipped)
-- [2026-07-04 19:47 UTC] Imported 0 leads from leads.csv (1 duplicates skipped)
-- [2026-07-04 19:58 UTC] Imported 2 leads from leads.csv (0 duplicates skipped)
-- [2026-07-04 19:58 UTC] Lead 1 (Acme Engineering): pipeline complete, draft draft_1783195105
-- [2026-07-04 19:58 UTC] Imported 2 leads from leads.csv (0 duplicates skipped)
-- [2026-07-04 19:58 UTC] Imported 1 leads from leads.csv (0 duplicates skipped)
-- [2026-07-04 19:58 UTC] Imported 0 leads from leads.csv (1 duplicates skipped)
-- [2026-07-04 19:59 UTC] Imported 1 leads from leads.csv (0 duplicates skipped)
 
 ## 2026-07-04 — Live end-to-end pipeline test + bug fix
 
@@ -91,8 +79,9 @@ Pipeline is now code-complete for all 6 stages; only remaining setup step for a 
 - Ran a genuine live (non-`OFFLINE_MODE`) pipeline test: imported one lead (`Apify (Live Pipeline Smoke Test)`, a real crawl-friendly public site, contact email set to `tlelosa@gmail.com` so no real prospect was involved) → real Apify scrape → real OpenRouter summary + asset generation → human approval (genuinely reviewed by Tebello, not auto-approved) → real Gmail draft (`r2903087794821991922`) via the OAuth2 integration. Lead status progressed `new → researched → asset_ready → approved → drafted` correctly.
 - **Found along the way**: the OpenRouter account is out of credits for the default 4096-token request (only ~2659 tokens affordable) — returns HTTP 402. Worked around for this one test by lowering `max_tokens` to 500; not a code bug, but blocks any real batch run until credits are topped up at openrouter.ai/settings/credits.
 - Full suite: 85 passed.
-- [2026-07-04 20:45 UTC] Imported 2 leads from leads.csv (0 duplicates skipped)
-- [2026-07-04 20:45 UTC] Lead 1 (Acme Engineering): pipeline complete, draft draft_1783197938
-- [2026-07-04 20:45 UTC] Imported 2 leads from leads.csv (0 duplicates skipped)
-- [2026-07-04 20:45 UTC] Imported 1 leads from leads.csv (0 duplicates skipped)
-- [2026-07-04 20:45 UTC] Imported 0 leads from leads.csv (1 duplicates skipped)
+
+## 2026-07-04 — Lead deduplication logic
+
+- The existing dedup (SQLite `UNIQUE(company_name, email)` + `IntegrityError` catch in `cmd_import`) only caught byte-for-byte identical company names. Added `normalize_company_name()` in `lead_import/db.py` — lowercases, collapses whitespace, and strips a trailing legal suffix (Pty Ltd, (Pty) Ltd, CC, Inc, LLC, Corp) — so "Acme Engineering" and "ACME ENGINEERING (PTY) LTD" are recognized as the same company. `find_duplicate()` matches on email + normalized company name (both required, per the architecture doc's "company name + contact email" dedup spec) and is checked in `cmd_import` before every insert; the raw `UNIQUE` constraint stays as a backstop.
+- TDD: added 6 failing tests first (`TestDeduplication` in `test_lead_import.py`, one CLI-level case in `test_main.py`), confirmed RED, then implemented GREEN. Full suite: 91 passed.
+- **Bug found and fixed along the way**: `_log_session()` in `main.py` writes to the real `docs/session-log.md` unconditionally and was never mocked in tests, so every test run touching `cmd_import`/`_run_single_lead` appended "Imported N leads..." noise to this file (visible above as repeated entries with fake-looking timestamps — removed as cleanup). Added `tests/conftest.py` with an autouse fixture that mocks `src.main._log_session` for the whole suite.

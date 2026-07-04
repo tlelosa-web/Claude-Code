@@ -9,6 +9,7 @@ from src.lead_import.reader import read_csv
 from src.lead_import.db import (
     init_db,
     insert_lead,
+    find_duplicate,
     get_all_leads,
     get_leads_by_status,
     get_lead_by_id,
@@ -46,6 +47,9 @@ def cmd_import(args, settings) -> None:
     imported = 0
     skipped = 0
     for lead in leads:
+        if find_duplicate(conn, lead) is not None:
+            skipped += 1
+            continue
         try:
             insert_lead(conn, lead)
             imported += 1

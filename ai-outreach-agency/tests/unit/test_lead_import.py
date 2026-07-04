@@ -7,7 +7,14 @@ import pytest
 
 from src.lead_import.schema import Lead
 from src.lead_import.reader import read_csv
-from src.lead_import.db import init_db, insert_lead, get_all_leads, get_lead_by_id
+from src.lead_import.db import (
+    init_db,
+    insert_lead,
+    get_all_leads,
+    get_lead_by_id,
+    normalize_company_name,
+    find_duplicate,
+)
 
 
 # --- Schema tests ---
@@ -194,3 +201,33 @@ class TestDatabase:
         insert_lead(db_conn, lead)
         with pytest.raises(sqlite3.IntegrityError):
             insert_lead(db_conn, lead)
+
+
+class TestDeduplication:
+    def test_normalize_strips_case_and_whitespace(self):
+        assert normalize_company_name("  Acme   Engineering  ") == "acme engineering"
+
+    def test_normalize_strips_legal_suffix(self):
+        assert normalize_company_name("ACME ENGINEERING (PTY) LTD") == "acme engineering"
+        assert normalize_company_name("Beta Fabrication CC") == "beta fabrication"
+
+    def test_find_duplicate_detects_case_and_suffix_variant(self, db_conn):
+        insert_lead(db_conn, _make_lead(company_name="Acme Engineering"))
+        variant = _make_lead(company_name="ACME ENGINEERING (PTY) LTD")
+
+        duplicate = find_duplicate(db_conn, variant)
+
+        assert duplicate is not None
+        assert duplicate.company_name == "Acme Engineering"
+
+    def test_find_duplicate_returns_none_for_different_company(self, db_conn):
+        insert_lead(db_conn, _make_lead(company_name="Acme Engineering"))
+        other = _make_lead(company_name="Beta Fabrication", email="john@acme.co.za")
+
+        assert find_duplicate(db_conn, other) is None
+
+    def test_find_duplicate_returns_none_for_different_email(self, db_conn):
+        insert_lead(db_conn, _make_lead())
+        other = _make_lead(email="different@acme.co.za")
+
+        assert find_duplicate(db_conn, other) is None

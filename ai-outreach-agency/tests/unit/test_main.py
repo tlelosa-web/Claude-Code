@@ -100,6 +100,25 @@ class TestImportCommand:
         output = capsys.readouterr().out
         assert "1 skipped as duplicates" in output
 
+    def test_import_normalizes_duplicates_skipped(self, tmp_path, monkeypatch, capsys):
+        csv_file = tmp_path / "leads.csv"
+        _write_csv(
+            csv_file,
+            ["company_name", "contact_name", "contact_title", "email", "source"],
+            [
+                ["Acme Engineering", "John", "Manager", "john@acme.co.za", "apollo"],
+                ["ACME ENGINEERING (PTY) LTD", "John", "Manager", "john@acme.co.za", "apollo"],
+            ],
+        )
+        db_path = str(tmp_path / "test.db")
+        monkeypatch.setenv("DB_PATH", db_path)
+
+        main(["import", "--csv", str(csv_file)])
+
+        output = capsys.readouterr().out
+        assert "1 leads imported" in output
+        assert "1 skipped as duplicates" in output
+
 
 class TestListCommand:
     def test_list_shows_leads(self, tmp_path, monkeypatch, capsys):

@@ -1,3 +1,4 @@
+import re
 import sqlite3
 from pathlib import Path
 from typing import List, Optional
@@ -5,6 +6,27 @@ from typing import List, Optional
 from .schema import Lead
 
 DEFAULT_DB_PATH = Path(__file__).parent.parent.parent / "data" / "leads.db"
+
+_LEGAL_SUFFIXES = [
+    r"\(pty\)\s*ltd",
+    r"pty\.?\s*ltd",
+    r"proprietary\s+limited",
+    r"ltd",
+    r"inc",
+    r"llc",
+    r"cc",
+    r"corp",
+]
+_LEGAL_SUFFIX_RE = re.compile(
+    r"\s*,?\s*(?:" + "|".join(_LEGAL_SUFFIXES) + r")\.?\s*$", re.IGNORECASE
+)
+
+
+def normalize_company_name(name: str) -> str:
+    """Lowercase, collapse whitespace, and strip a trailing legal suffix
+    (Pty Ltd, CC, Inc, ...) so near-identical company names dedupe together."""
+    normalized = " ".join(name.strip().lower().split())
+    return _LEGAL_SUFFIX_RE.sub("", normalized).strip() or normalized
 
 
 def _lead_from_row(row: sqlite3.Row) -> Lead:
@@ -79,6 +101,19 @@ def insert_lead(conn: sqlite3.Connection, lead: Lead) -> int:
     )
     conn.commit()
     return cursor.lastrowid
+
+
+def find_duplicate(conn: sqlite3.Connection, lead: Lead) -> Optional[Lead]:
+    """Return an existing lead that matches on email + normalized company name, or None."""
+    target_name = normalize_company_name(lead.company_name)
+    rows = conn.execute(
+        "SELECT * FROM leads WHERE email = ?", (lead.email,)
+    ).fetchall()
+    for row in rows:
+        existing = _lead_from_row(row)
+        if normalize_company_name(existing.company_name) == target_name:
+            return existing
+    return None
 
 
 def get_all_leads(conn: sqlite3.Connection) -> List[Lead]:

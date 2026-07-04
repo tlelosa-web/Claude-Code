@@ -4,6 +4,7 @@ from src.lead_import.schema import Lead
 from src.asset_gen.schema import AssetResult, AssetType
 from src.approval.schema import ApprovalResult, Decision
 from src.email_draft.composer import compose_email
+from src.email_draft.gmail_client import GmailClient
 from src.email_draft.pipeline import run_email_draft
 from src.email_draft.schema import DraftResult
 
@@ -106,3 +107,21 @@ class TestEmailDraftPipeline:
 
         email = compose_email(lead, edited)
         assert "Revised content for the email." in email["body"]
+
+
+class TestGmailClient:
+    def test_offline_mode_returns_stub_draft_id(self):
+        client = GmailClient()
+        draft_id = client.create_draft("john@acme.co.za", "Subject", "Body")
+        assert draft_id.startswith("draft_")
+
+    def test_online_mode_without_credentials_raises(self, monkeypatch, tmp_path):
+        monkeypatch.setenv("OFFLINE_MODE", "false")
+        missing_creds = tmp_path / "no_such_credentials.json"
+        missing_token = tmp_path / "no_such_token.json"
+        client = GmailClient(
+            credentials_path=str(missing_creds), token_path=missing_token
+        )
+
+        with pytest.raises(FileNotFoundError, match="Gmail OAuth credentials not found"):
+            client.create_draft("john@acme.co.za", "Subject", "Body")

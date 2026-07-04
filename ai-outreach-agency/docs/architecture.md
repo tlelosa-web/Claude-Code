@@ -205,6 +205,17 @@ ai-outreach run-all [--status <status>] [--campaign <name>] [--asset-type <TYPE>
 
 ---
 
+## Reporting
+
+**Module:** `src/dashboard/`
+**Input:** `leads` and `approvals` tables (read-only)
+**Output:** Self-contained `dashboard.html`
+**Network:** None
+
+Not a pipeline stage — no status transitions, no writes. A read-only view over the lead store: summary cards, pipeline funnel (counts per status), a campaign × status matrix, and approval/rejection history (joined from `approvals`). Generated on demand via `ai-outreach dashboard [--output PATH] [--open]`; no server process, no new dependency (plain f-string HTML, inline CSS).
+
+---
+
 ## Security Constraints
 
 - All API keys in `.env` (gitignored, never committed)

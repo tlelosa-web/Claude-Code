@@ -27,6 +27,8 @@
 - [x] Add schema migration convention — `src/lead_import/migrations.py` tracks numbered migrations applied via `PRAGMA user_version` in `init_db()`. First migration adds a `campaign` column (default `'default'`) to `leads`.
 - [x] Add campaign management — `--campaign` on `import`/`list`/`run-all` (group/filter leads by campaign) and `--asset-type` on `run`/`run-all` (per-invocation override of the asset type used for that batch), instead of a persisted config file/table.
 - [x] PDF export for generated assets — `src/asset_gen/pdf_export.py` (fpdf2), wired into `_run_single_lead` right after the approval gate (uses `edited_asset_text` when the human edited, else the original `asset_text` — neither is otherwise persisted). Output dir configurable via `Settings.EXPORTS_DIR` (default `exports/`, gitignored).
+- [x] Fix `approvals` table never being written by the real pipeline — `run_approval_gate` (`src/approval/cli.py`) returned an `ApprovalResult` but never called `save_approval`/`init_approvals_table`, so the table only ever existed in tests. Added `_persist_approval()`, called from all three decision branches (approve/reject/edit). Found while building the dashboard's approval-history view, which would otherwise always render empty. New unit-conftest mock (`mock_persist_approval`) keeps existing isolated unit tests from writing to the real `data/leads.db` fallback path; two integration tests (`TestHappyPath`, `TestRejectionPath` in `test_full_pipeline.py`) now assert a real `approvals` row is written.
+- [x] Visual dashboard for lead store — `src/dashboard/` (`data.py` query functions + `generator.py` self-contained HTML renderer, no new dependency) and a new `ai-outreach dashboard [--output PATH] [--open]` CLI command. Shows summary cards, the pipeline funnel, a campaign × status matrix, and approval/rejection history. `Settings.DASHBOARD_PATH` (default `dashboard.html`, gitignored) controls the default output location. 16 new tests (129 passing total).
 
 ---
 
@@ -44,6 +46,6 @@ _(empty)_
 
 ## Future (not yet scheduled)
 
-- [ ] Visual dashboard for lead store (deferred per ADR-001 — DB Browser for SQLite works as a stopgap; consider a lightweight web UI once pipeline runs end-to-end)
+_(empty)_
 
-Everything else codeable without a live batch run or a dashboard is done. What's left: top up OpenRouter credits and run the pipeline for real leads, and build the dashboard above.
+Everything codeable is done. What's left: top up OpenRouter credits and run the pipeline for real leads.

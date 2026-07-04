@@ -1,6 +1,7 @@
 import argparse
 import sqlite3
 import sys
+import webbrowser
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -21,6 +22,7 @@ from src.asset_gen.pdf_export import export_asset_pdf
 from src.approval.cli import run_approval_gate
 from src.approval.schema import Decision
 from src.email_draft.pipeline import run_email_draft
+from src.dashboard.generator import generate_dashboard_html
 
 
 def _get_db(settings) -> sqlite3.Connection:
@@ -176,6 +178,18 @@ def cmd_run_all(args, settings) -> None:
             break
 
 
+def cmd_dashboard(args, settings) -> None:
+    conn = _get_db(settings)
+    output_path = args.output or settings.DASHBOARD_PATH
+    owner_name = settings.SENDER_NAME.split()[0] if settings.SENDER_NAME else None
+    path = generate_dashboard_html(conn, output_path, owner_name=owner_name)
+    conn.close()
+
+    print(f"Dashboard written to: {path}")
+    if args.open:
+        webbrowser.open(path.resolve().as_uri())
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="ai-outreach",
@@ -210,6 +224,10 @@ def build_parser() -> argparse.ArgumentParser:
         help="Override the default asset type for this run",
     )
 
+    p_dashboard = subparsers.add_parser("dashboard", help="Generate an HTML dashboard for the lead store")
+    p_dashboard.add_argument("--output", default=None, help="Output path (default: Settings.DASHBOARD_PATH)")
+    p_dashboard.add_argument("--open", action="store_true", help="Open the dashboard in the default browser")
+
     return parser
 
 
@@ -223,6 +241,7 @@ def main(argv=None) -> None:
         "list": cmd_list,
         "run": cmd_run,
         "run-all": cmd_run_all,
+        "dashboard": cmd_dashboard,
     }
 
     dispatch[args.command](args, settings)

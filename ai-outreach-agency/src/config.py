@@ -19,6 +19,7 @@ class Settings:
     SENDER_EMAIL: str = "tlelosa@gmail.com"
     DEFAULT_ASSET_TYPE: str = "INSIGHT_DOC"
     EXPORTS_DIR: str = "exports"
+    DASHBOARD_PATH: str = "dashboard.html"
 
 
 def load_settings(env_path: str | Path | None = None) -> Settings:
@@ -35,4 +36,5 @@ def load_settings(env_path: str | Path | None = None) -> Settings:
         SENDER_EMAIL=os.environ.get("SENDER_EMAIL", "tlelosa@gmail.com"),
         DEFAULT_ASSET_TYPE=os.environ.get("DEFAULT_ASSET_TYPE", "INSIGHT_DOC"),
         EXPORTS_DIR=os.environ.get("EXPORTS_DIR", "exports"),
+        DASHBOARD_PATH=os.environ.get("DASHBOARD_PATH", "dashboard.html"),
     )

@@ -237,3 +237,31 @@ class TestRunCommand:
 
         with pytest.raises(SystemExit):
             main(["run", "--lead-id", "999"])
+
+
+class TestDashboardCommand:
+    def test_dashboard_writes_html_file(self, tmp_path, monkeypatch, capsys):
+        db_path = tmp_path / "test.db"
+        output_path = tmp_path / "dashboard.html"
+        monkeypatch.setenv("DB_PATH", str(db_path))
+
+        conn = init_db(db_path)
+        insert_lead(conn, _make_lead())
+        conn.close()
+
+        main(["dashboard", "--output", str(output_path)])
+
+        assert output_path.exists()
+        output = capsys.readouterr().out
+        assert str(output_path) in output
+
+    def test_dashboard_defaults_to_settings_path(self, tmp_path, monkeypatch):
+        db_path = tmp_path / "test.db"
+        default_output = tmp_path / "dashboard.html"
+        monkeypatch.setenv("DB_PATH", str(db_path))
+        monkeypatch.setenv("DASHBOARD_PATH", str(default_output))
+        init_db(db_path).close()
+
+        main(["dashboard"])
+
+        assert default_output.exists()

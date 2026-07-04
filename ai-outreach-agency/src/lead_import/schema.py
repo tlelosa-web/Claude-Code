@@ -23,6 +23,7 @@ class Lead:
     source: str = "manual"
     import_date: str = field(default_factory=lambda: date.today().isoformat())
     status: str = "new"
+    campaign: str = "default"
 
     def __post_init__(self):
         for f in REQUIRED_FIELDS:

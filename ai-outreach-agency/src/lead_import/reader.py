@@ -22,6 +22,7 @@ COLUMN_MAP = {
     "employee_count": "employee_count",
     "employees": "employee_count",
     "source": "source",
+    "campaign": "campaign",
 }
 
 

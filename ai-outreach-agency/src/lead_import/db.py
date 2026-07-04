@@ -3,6 +3,7 @@ import sqlite3
 from pathlib import Path
 from typing import List, Optional
 
+from .migrations import apply_migrations
 from .schema import Lead
 
 DEFAULT_DB_PATH = Path(__file__).parent.parent.parent / "data" / "leads.db"
@@ -44,6 +45,7 @@ def _lead_from_row(row: sqlite3.Row) -> Lead:
         source=row["source"],
         import_date=row["import_date"],
         status=row["status"],
+        campaign=row["campaign"],
     )
 
 
@@ -73,6 +75,7 @@ def init_db(db_path: Optional[Path] = None) -> sqlite3.Connection:
         )
     """)
     conn.commit()
+    apply_migrations(conn)
     return conn
 
 
@@ -81,8 +84,8 @@ def insert_lead(conn: sqlite3.Connection, lead: Lead) -> int:
         """
         INSERT INTO leads
             (company_name, contact_name, contact_title, email, phone, website,
-             industry, region, employee_count, source, import_date, status)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             industry, region, employee_count, source, import_date, status, campaign)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
             lead.company_name,
@@ -97,6 +100,7 @@ def insert_lead(conn: sqlite3.Connection, lead: Lead) -> int:
             lead.source,
             lead.import_date,
             lead.status,
+            lead.campaign,
         ),
     )
     conn.commit()

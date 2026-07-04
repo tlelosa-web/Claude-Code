@@ -15,6 +15,7 @@ from src.lead_import.db import (
     normalize_company_name,
     find_duplicate,
 )
+from src.lead_import.migrations import MIGRATIONS, apply_migrations
 
 
 # --- Schema tests ---
@@ -100,6 +101,15 @@ class TestLeadSchema:
         )
         assert lead.employee_count == 150
 
+    def test_campaign_defaults_to_default(self):
+        lead = Lead(
+            company_name="Acme",
+            contact_name="John",
+            contact_title="Manager",
+            email="john@acme.co.za",
+        )
+        assert lead.campaign == "default"
+
 
 # --- CSV reader tests ---
 
@@ -152,6 +162,16 @@ class TestCSVReader:
         with pytest.raises(FileNotFoundError):
             read_csv("/nonexistent/leads.csv")
 
+    def test_campaign_column_mapped(self, tmp_path):
+        csv_file = tmp_path / "leads.csv"
+        _write_csv(
+            csv_file,
+            ["company_name", "contact_name", "contact_title", "email", "campaign"],
+            [["Acme", "John", "Manager", "john@acme.co.za", "gauteng-q3"]],
+        )
+        leads = read_csv(csv_file)
+        assert leads[0].campaign == "gauteng-q3"
+
 
 # --- Database tests ---
 
@@ -201,6 +221,36 @@ class TestDatabase:
         insert_lead(db_conn, lead)
         with pytest.raises(sqlite3.IntegrityError):
             insert_lead(db_conn, lead)
+
+    def test_campaign_persisted_and_retrieved(self, db_conn):
+        lead_id = insert_lead(db_conn, _make_lead(campaign="gauteng-q3"))
+        retrieved = get_lead_by_id(db_conn, lead_id)
+        assert retrieved.campaign == "gauteng-q3"
+
+    def test_campaign_defaults_when_not_specified(self, db_conn):
+        lead_id = insert_lead(db_conn, _make_lead())
+        retrieved = get_lead_by_id(db_conn, lead_id)
+        assert retrieved.campaign == "default"
+
+
+class TestMigrations:
+    def test_fresh_db_has_campaign_column_with_default(self, tmp_path):
+        conn = init_db(tmp_path / "fresh.db")
+        try:
+            columns = {row[1] for row in conn.execute("PRAGMA table_info(leads)")}
+            assert "campaign" in columns
+        finally:
+            conn.close()
+
+    def test_apply_migrations_is_idempotent(self, tmp_path):
+        conn = init_db(tmp_path / "fresh.db")
+        try:
+            apply_migrations(conn)
+            apply_migrations(conn)
+            version = conn.execute("PRAGMA user_version").fetchone()[0]
+            assert version == len(MIGRATIONS)
+        finally:
+            conn.close()
 
 
 class TestDeduplication:

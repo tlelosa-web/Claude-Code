@@ -2,11 +2,16 @@ import os
 
 import requests
 
+from src.shared.rate_limiter import RateLimiter
+
 APIFY_RUN_URL = (
     "https://api.apify.com/v2/acts/apify~website-content-crawler/run-sync-get-dataset-items"
 )
 TIMEOUT = 60
 MAX_TEXT_LENGTH = 2000
+
+RATE_LIMIT_PER_MIN = int(os.environ.get("APIFY_RATE_LIMIT_PER_MIN", "30"))
+_limiter = RateLimiter(rate=RATE_LIMIT_PER_MIN, period=60.0)
 
 FALLBACK = {"title": "", "description": "", "text_content": "No data found"}
 
@@ -41,6 +46,7 @@ class ApifyClient:
             "maxCrawlDepth": 1,
         }
 
+        _limiter.acquire()
         try:
             resp = requests.post(
                 APIFY_RUN_URL,

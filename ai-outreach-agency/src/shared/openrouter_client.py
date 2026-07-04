@@ -3,9 +3,14 @@ import time
 
 import requests
 
+from src.shared.rate_limiter import RateLimiter
+
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 DEFAULT_MODEL = "anthropic/claude-sonnet-4-6"
 TIMEOUT = 30
+
+RATE_LIMIT_PER_MIN = int(os.environ.get("OPENROUTER_RATE_LIMIT_PER_MIN", "60"))
+_limiter = RateLimiter(rate=RATE_LIMIT_PER_MIN, period=60.0)
 
 
 class OpenRouterError(Exception):
@@ -35,6 +40,7 @@ def call_openrouter(
 
     last_error = None
     for attempt in range(2):
+        _limiter.acquire()
         try:
             resp = requests.post(
                 OPENROUTER_URL,

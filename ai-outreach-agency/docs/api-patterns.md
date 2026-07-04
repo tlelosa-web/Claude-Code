@@ -58,3 +58,4 @@ Pattern: read rows from a named sheet, map columns to lead schema fields. Option
 - Exponential backoff on 429/5xx responses
 - Timeout: 30s default, 60s for asset generation
 - All responses logged at DEBUG level (no PII in logs)
+- **Proactive rate limiting**: each external client (`shared/openrouter_client.py`, `research/apify_client.py`, `email_draft/gmail_client.py`) holds a module-level `RateLimiter` (`src/shared/rate_limiter.py`, token bucket) and calls `.acquire()` before every real network request. Defaults: OpenRouter 60/min, Apify 30/min, Gmail 20/min — override via `OPENROUTER_RATE_LIMIT_PER_MIN`, `APIFY_RATE_LIMIT_PER_MIN`, `GMAIL_RATE_LIMIT_PER_MIN`. This throttles proactively, independent of the reactive 429 backoff above.

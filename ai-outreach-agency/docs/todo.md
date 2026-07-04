@@ -24,6 +24,9 @@
 - [x] Add lead deduplication logic — `normalize_company_name`/`find_duplicate` in `lead_import/db.py` catch near-duplicate company names (case, whitespace, legal suffixes like "Pty Ltd"/"CC"/"Inc") sharing the same email, not just exact-string matches. Wired into `cmd_import` ahead of the existing `UNIQUE(company_name, email)` DB constraint, which stays as a backstop. 6 new tests, 91 passing.
 - [x] **ADR-002**: Retire n8n from the stack — orchestration confirmed as in-process via the `ai-outreach` CLI (`run`/`run-all`), no external workflow engine. Resolves the "Confirm/retire this in an ADR" note that had been sitting in CLAUDE.md. `docs/architecture.md`'s n8n section replaced with a pointer to the ADR.
 - [x] Google Sheets sync — closed, not built. Superseded by ADR-001 (SQLite is source of truth; CSV is the only import path; a live Sheets integration was explicitly rejected there).
+- [x] Add schema migration convention — `src/lead_import/migrations.py` tracks numbered migrations applied via `PRAGMA user_version` in `init_db()`. First migration adds a `campaign` column (default `'default'`) to `leads`.
+- [x] Add campaign management — `--campaign` on `import`/`list`/`run-all` (group/filter leads by campaign) and `--asset-type` on `run`/`run-all` (per-invocation override of the asset type used for that batch), instead of a persisted config file/table.
+- [x] PDF export for generated assets — `src/asset_gen/pdf_export.py` (fpdf2), wired into `_run_single_lead` right after the approval gate (uses `edited_asset_text` when the human edited, else the original `asset_text` — neither is otherwise persisted). Output dir configurable via `Settings.EXPORTS_DIR` (default `exports/`, gitignored).
 
 ---
 
@@ -41,6 +44,6 @@ _(empty)_
 
 ## Future (not yet scheduled)
 
-- [ ] Add campaign management (group leads by campaign, configure asset type per campaign)
-- [ ] PDF export for generated assets
 - [ ] Visual dashboard for lead store (deferred per ADR-001 — DB Browser for SQLite works as a stopgap; consider a lightweight web UI once pipeline runs end-to-end)
+
+Everything else codeable without a live batch run or a dashboard is done. What's left: top up OpenRouter credits and run the pipeline for real leads, and build the dashboard above.

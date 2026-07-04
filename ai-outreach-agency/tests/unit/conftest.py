@@ -21,3 +21,12 @@ def mock_update_lead_status(monkeypatch):
     ):
         monkeypatch.setattr(f"{mod}.update_lead_status", noop, raising=False)
     return noop
+
+
+@pytest.fixture(autouse=True)
+def mock_persist_approval(monkeypatch):
+    """Prevent unit tests that don't pass an explicit db_path from writing
+    approvals into the real DEFAULT_DB_PATH file (data/leads.db)."""
+    noop = MagicMock()
+    monkeypatch.setattr("src.approval.cli._persist_approval", noop, raising=False)
+    return noop

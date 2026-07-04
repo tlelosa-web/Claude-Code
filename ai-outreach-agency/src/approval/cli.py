@@ -3,16 +3,29 @@
 # any email_draft function is called. No code path may bypass this gate.
 
 import os
+import sqlite3
 import subprocess
 import sys
 import tempfile
+from pathlib import Path
 
 from src.lead_import.db import update_lead_status
 from src.lead_import.schema import Lead
 from src.asset_gen.schema import AssetResult
+from .db import DEFAULT_DB_PATH, init_approvals_table, save_approval
 from .schema import ApprovalResult, Decision
 
 VALID_CHOICES = {"a", "r", "e", "q"}
+
+
+def _persist_approval(result: ApprovalResult, db_path: str | None) -> None:
+    db = Path(db_path) if db_path else DEFAULT_DB_PATH
+    conn = sqlite3.connect(str(db))
+    try:
+        init_approvals_table(conn)
+        save_approval(conn, result)
+    finally:
+        conn.close()
 
 
 def _print_review(lead: Lead, asset: AssetResult) -> None:
@@ -65,20 +78,26 @@ def run_approval_gate(
 
     if choice == "a":
         update_lead_status(lead.id, "approved", db_path)
-        return ApprovalResult(lead_id=lead.id, decision=Decision.APPROVED)
+        result = ApprovalResult(lead_id=lead.id, decision=Decision.APPROVED)
+        _persist_approval(result, db_path)
+        return result
 
     if choice == "r":
         update_lead_status(lead.id, "rejected", db_path)
-        return ApprovalResult(lead_id=lead.id, decision=Decision.REJECTED)
+        result = ApprovalResult(lead_id=lead.id, decision=Decision.REJECTED)
+        _persist_approval(result, db_path)
+        return result
 
     if choice == "e":
         edited_text = _edit_asset(asset.asset_text)
         update_lead_status(lead.id, "approved", db_path)
-        return ApprovalResult(
+        result = ApprovalResult(
             lead_id=lead.id,
             decision=Decision.EDITED,
             edited_asset_text=edited_text,
         )
+        _persist_approval(result, db_path)
+        return result
 
     if choice == "q":
         raise SystemExit(0)

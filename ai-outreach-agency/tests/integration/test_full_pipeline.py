@@ -122,6 +122,12 @@ class TestHappyPath:
             final = get_lead_by_id(conn, lead.id)
             assert final.status == "drafted"
 
+            approvals = conn.execute(
+                "SELECT decision FROM approvals WHERE lead_id = ?", (lead.id,)
+            ).fetchall()
+            assert len(approvals) == 1
+            assert approvals[0]["decision"] == "approved"
+
 
 class TestRejectionPath:
     def test_reject_creates_no_draft(self, db, sample_csv):
@@ -136,6 +142,12 @@ class TestRejectionPath:
 
         final = get_lead_by_id(conn, lead.id)
         assert final.status == "rejected"
+
+        approvals = conn.execute(
+            "SELECT decision FROM approvals WHERE lead_id = ?", (lead.id,)
+        ).fetchall()
+        assert len(approvals) == 1
+        assert approvals[0]["decision"] == "rejected"
 
 
 class TestMainCLIRunCommand:

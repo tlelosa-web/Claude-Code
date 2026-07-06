@@ -1,6 +1,7 @@
 from datetime import datetime
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
-from models import db, WorksOrder, BOMLine, Item, SalesOrder
+from models import db, WorksOrder, BOMLine, Item, SalesOrder, StockOrder
+from routes.sales_orders import can_close_sales_order
 from services.doc_generator import get_works_order_print_context
 from services.stock_service import issue
 
@@ -63,15 +64,11 @@ def mark_complete(order_id):
         wo.completed_at = datetime.now()
         db.session.flush()  # Flush to save before checking related WOs
         
-        # Check if all related Works Orders for this Sales Order are complete
+        # Check if the Sales Order can be closed — all WOs and STOs must be Complete/Cancelled
         if wo.sales_order:
-            all_wos = WorksOrder.query.filter_by(so_id=wo.sales_order.id).all()
-            all_complete = all(wo.status == 'Complete' or wo.status == 'Cancelled' for wo in all_wos)
-            has_any_complete = any(wo.status == 'Complete' for wo in all_wos)
-            
-            # Update Sales Order status if all WOs are complete/cancelled and at least one is complete
-            if all_complete and has_any_complete:
-                wo.sales_order.status = 'Complete'
+            can_close, _ = can_close_sales_order(wo.sales_order.id)
+            if can_close:
+                wo.sales_order.status = 'Closed'
                 db.session.flush()
         
         db.session.commit()
@@ -128,15 +125,11 @@ def confirm_pick(order_id):
         wo.completed_at = datetime.now()
         db.session.flush()  # Flush to save before checking related WOs
         
-        # Check if all related Works Orders for this Sales Order are complete
+        # Check if the Sales Order can be closed — all WOs and STOs must be Complete/Cancelled
         if wo.sales_order:
-            all_wos = WorksOrder.query.filter_by(so_id=wo.sales_order.id).all()
-            all_complete = all(wo.status == 'Complete' or wo.status == 'Cancelled' for wo in all_wos)
-            has_any_complete = any(wo.status == 'Complete' for wo in all_wos)
-            
-            # Update Sales Order status if all WOs are complete/cancelled and at least one is complete
-            if all_complete and has_any_complete:
-                wo.sales_order.status = 'Complete'
+            can_close, _ = can_close_sales_order(wo.sales_order.id)
+            if can_close:
+                wo.sales_order.status = 'Closed'
                 db.session.flush()
         
         db.session.commit()

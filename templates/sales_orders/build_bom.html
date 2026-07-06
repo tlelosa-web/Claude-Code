@@ -17,16 +17,18 @@
 
 <form method="POST" action="{{ url_for('sales_orders.build_bom', order_id=so.id) }}">
 
-<!-- Section 1b: FM / Job Number -->
+<!-- Section 1b: FM / Job Number (per-line) -->
 <div class="card animate-fade-in" style="margin-bottom: 24px;">
     <div class="card-header">
-        <h2 class="card-title">Job / FM Number</h2>
+        <h2 class="card-title">Job / FM Numbers</h2>
     </div>
     <div style="padding: 16px;">
-        <input type="text" name="job_numbers" id="job_numbers" value="{{ so.job_numbers or '' }}"
-               class="form-input" placeholder="FM4046 or FM4047-FM4055" style="width: 100%; max-width: 320px;">
-        <p style="margin-top: 6px; color: var(--text-muted); font-size: 0.85rem;">
-            Required when at least one line below is marked Fan / WO Subject.
+        <p style="margin-bottom: 12px; color: var(--text-muted); font-size: 0.85rem;">
+            Assign an FM/Job number to each line below. Lines marked as <strong>Fan / WO Subject</strong>
+            require an FM number. Lines marked as Stock Order or Ignore do not need one.
+        </p>
+        <p style="color: var(--text-muted); font-size: 0.85rem;">
+            Format: <code>FM4046</code> or <code>FM4047-FM4055</code>
         </p>
     </div>
 </div>
@@ -48,6 +50,7 @@
                     <th>Description</th>
                     <th>Qty</th>
                     <th>Role</th>
+                    <th>FM / Job Number</th>
                 </tr>
             </thead>
             <tbody>
@@ -61,19 +64,27 @@
                             <input type="radio" name="line_role_{{ line.id }}" value="fan"
                                    class="fan-role-radio" data-line-id="{{ line.id }}"
                                    data-desc="{{ line.description or '' }}"
-                                   onchange="refreshFanLineOptions()">
+                                   onchange="onFanRoleChange({{ line.id }})">
                             Fan / WO Subject
                         </label>
                         <label style="display: inline-flex; align-items: center; gap: 6px; margin-right: 12px;">
                             <input type="radio" name="line_role_{{ line.id }}" value="stock" checked
-                                   onchange="refreshFanLineOptions()">
+                                   onchange="onFanRoleChange({{ line.id }})">
                             Stock Order
                         </label>
                         <label style="display: inline-flex; align-items: center; gap: 6px;">
                             <input type="radio" name="line_role_{{ line.id }}" value="ignore"
-                                   onchange="refreshFanLineOptions()">
+                                   onchange="onFanRoleChange({{ line.id }})">
                             Ignore
                         </label>
+                    </td>
+                    <td>
+                        <input type="text" name="line_job_number_{{ line.id }}"
+                               value="{{ line.job_number or '' }}"
+                               class="form-input line-job-input"
+                               data-line-id="{{ line.id }}"
+                               placeholder="e.g. FM4046"
+                               style="width: 130px; padding: 6px 8px; font-size: 0.8rem;">
                     </td>
                 </tr>
                 {% endfor %}
@@ -153,6 +164,22 @@
 // Catalogue items as JSON
 const catalogueItems = {{ catalogue_json | tojson }};
 let selectedItemId = null;
+
+// Highlight or dim the FM input for a line based on its role selection
+function onFanRoleChange(lineId) {
+    const input = document.querySelector(`input.line-job-input[data-line-id="${lineId}"]`);
+    const fanRadio = document.querySelector(`input[name="line_role_${lineId}"][value="fan"]`);
+    if (input && fanRadio) {
+        if (fanRadio.checked) {
+            input.style.borderColor = 'var(--brand-primary, #4a9eff)';
+            input.style.background = 'rgba(74, 158, 255, 0.05)';
+        } else {
+            input.style.borderColor = '';
+            input.style.background = '';
+        }
+    }
+    refreshFanLineOptions();
+}
 
 // Rebuild the "For Fan line..." dropdown from whichever lines are currently
 // checked as Fan / WO Subject, so components get assigned to the right WO.

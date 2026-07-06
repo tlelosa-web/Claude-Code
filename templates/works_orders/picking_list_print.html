@@ -53,10 +53,16 @@
             <td>{{ so.customer_name if so else '-' }}</td>
         </tr>
         <tr>
-            <td>Reference:</td>
-            <td>{{ so.reference if so else '-' }}</td>
+            <td>Job Number(s):</td>
+            <td>{{ so.job_numbers if so and so.job_numbers else '-' }}</td>
             <td>Delivery:</td>
             <td>{{ so.delivery_address if so else '-' }}</td>
+        </tr>
+        <tr>
+            <td>Reference:</td>
+            <td>{{ so.reference if so else '-' }}</td>
+            <td></td>
+            <td></td>
         </tr>
         <tr>
             <td>Date Issued:</td>

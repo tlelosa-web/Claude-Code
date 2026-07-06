@@ -98,3 +98,15 @@ All items below must be green before delivery:
 - [x] Added `test_print_renders`/`test_print_404_for_missing` (test_stock_orders.py) and `test_build_bom_requires_job_number_for_assembly`/`test_build_bom_saves_job_number_on_assembly`/`test_build_bom_stock_only_does_not_require_job_number` (test_bom_builder.py); updated the two existing fan-line build_bom tests to supply `job_numbers` now that it's required.
 - [x] Full suite: 32 tests green.
 - Known pre-existing issue flagged (not fixed, out of scope): `templates/sales_orders/detail.html` line ~95 crashes with `TypeError` if any `SOLineItem.excl_price` is `None` (only reachable via lines created outside the normal PDF-parse path, e.g. directly via tests/DB).
+
+## Batch 11 — Per-Line Job Numbers + Sales Order Close (2026-07-06)
+- [x] Picked up in-progress uncommitted work from a prior unlogged session implementing `docs/specs/sales-order-job-numbers.md` (per-line FM/job numbers) plus a `can_close_sales_order()` helper and manual "Close Order" feature (scope expansion beyond the spec).
+- [x] `models.py`: `SOLineItem.job_number` column (migrated via `scripts/migrate_add_so_line_job_number.py`, confirmed already applied to `instance/sops.db`).
+- [x] `routes/sales_orders.py build_bom()`: per-line job number input/validation per Fan line; SO-level `job_numbers` summary rebuilt from collected per-line values. Removed dead `job_numbers_input` variable left over from the old single-field version.
+- [x] `routes/works_orders.py` (`mark_complete`, `confirm_pick`) and `routes/stock_orders.py` (`complete_order`): now call shared `can_close_sales_order()` and set SO status to `'Closed'` (was `'Complete'`) once all WOs/STOs for the SO are Complete/Cancelled.
+- [x] `routes/sales_orders.py`: added `POST /sales-orders/<id>/close` route + "Close Order" button on `templates/sales_orders/detail.html`.
+- [x] Gap found + fixed: `templates/works_orders/picking_list_print.html` was missing the Job Number(s) row (WO print and STO print already had it) — acceptance criterion "BOM/WO/PL pages and print documents show the combined job/SO reference" was not fully met.
+- [x] Gap found + fixed: no test coverage existed for `close_order`/`can_close_sales_order` or for the new auto-close-to-`'Closed'` behavior in `mark_complete`/`confirm_pick`/`complete_order`. Added `tests/test_sales_order_close.py` (7 tests: manual close blocked/succeeds/idempotent, auto-close from both WO and STO completion paths, non-close while the other order type is still open).
+- [x] Full suite: 39 tests green (was 32).
+- Note: the `'Complete'` → `'Closed'` SO status rename and the manual Close Order route were not in the original job-numbers spec — flagged to Tebello as a scope expansion; no other code references `SalesOrder.status == 'Complete'` so this is safe, but `scripts/fix_so_status.py` (pre-existing, uncommitted-work-unrelated) still writes the old `'Complete'` value if ever re-run — out of scope, not touched.
+- Next task: none queued — awaiting Tebello's review/commit confirmation.

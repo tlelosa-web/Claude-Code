@@ -60,6 +60,7 @@ class SOLineItem(db.Model):
     vat_pct = db.Column(db.Float)
     excl_total = db.Column(db.Float)
     incl_total = db.Column(db.Float)
+    job_number = db.Column(db.String(50))  # Per-line FM/Job number
 
 class WorksOrder(db.Model):
     __tablename__ = 'works_order'

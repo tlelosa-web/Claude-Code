@@ -18,9 +18,14 @@
                     Actions ▾
                 </button>
                 <ul class="dropdown-menu">
-                    {% if so.status != 'Cancelled' %}
+                    {% if so.status not in ('Closed', 'Cancelled') %}
                     <li><a href="{{ url_for('sales_orders.build_bom', order_id=so.id) }}">Build BOM / Works Pack</a></li>
                     <li><a href="{{ url_for('sales_orders.reupload_order', order_id=so.id) }}">Re-upload PDF</a></li>
+                    <li>
+                        <form method="POST" action="{{ url_for('sales_orders.close_order', order_id=so.id) }}" style="display: block;" onsubmit="return confirm('Close this Sales Order? This will finalize the order. All Works Orders and Stock Orders must be complete.')">
+                            <button type="submit" class="danger">Close Order</button>
+                        </form>
+                    </li>
                     <li>
                         <form method="POST" action="{{ url_for('sales_orders.cancel_order', order_id=so.id) }}" style="display: block;" onsubmit="return confirm('Cancel this Sales Order? This will also cancel any open Works Orders.')">
                             <button type="submit" class="danger">Cancel Order</button>
@@ -84,6 +89,7 @@
                     <th>VAT %</th>
                     <th>Excl. Total</th>
                     <th>Incl. Total</th>
+                    <th>Job Number</th>
                 </tr>
             </thead>
             <tbody>
@@ -96,6 +102,7 @@
                     <td>{{ item.vat_pct }}%</td>
                     <td>R {{ "%.2f"|format(item.excl_total) }}</td>
                     <td>R {{ "%.2f"|format(item.incl_total) }}</td>
+                    <td>{{ item.job_number or '-' }}</td>
                 </tr>
                 {% endfor %}
             </tbody>

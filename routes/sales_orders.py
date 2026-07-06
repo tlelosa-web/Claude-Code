@@ -177,7 +177,6 @@ def build_bom(order_id):
         try:
             # Parse form data
             line_items = SOLineItem.query.filter_by(so_id=order_id).all()
-            job_numbers_input = request.form.get('job_numbers', '').strip()
             fan_line_ids = []
             stock_line_ids = []
 
@@ -191,11 +190,28 @@ def build_bom(order_id):
                 elif role == 'stock':
                     stock_line_ids.append(line.id)
 
-            # An Assembly Works Order is meaningless without an FM/job number
-            # to reference on the printed document, so require it here even
-            # though it's optional at SO-upload time.
-            if fan_line_ids and not job_numbers_input:
-                flash("FM / Job number is required when building an Assembly Works Order.", "error")
+            # Per-line FM number validation — each fan line must have its
+            # own Job / FM number so the printed Works Order document can
+            # reference it.
+            collected_job_numbers = []
+            missing_job_number_lines = []
+            for line in line_items:
+                # Read per-line job number from form
+                line_job_number = request.form.get(f'line_job_number_{line.id}', '').strip()
+                if line.id in fan_line_ids:
+                    if not line_job_number:
+                        missing_job_number_lines.append(line.description or f'Line {line.id}')
+                    else:
+                        collected_job_numbers.append(line_job_number)
+                # Save job_number to the line item regardless of role
+                line.job_number = line_job_number or None
+
+            if missing_job_number_lines:
+                flash(
+                    f"FM / Job number is required for each Fan line. Missing for: "
+                    f"{', '.join(missing_job_number_lines)}",
+                    "error"
+                )
                 return redirect(url_for('sales_orders.build_bom', order_id=order_id))
 
             created_wos = []
@@ -372,8 +388,9 @@ def build_bom(order_id):
 
             # Update SO status to Open
             so.status = 'Open'
-            if job_numbers_input:
-                so.job_numbers = job_numbers_input
+            # Build SO-level summary from per-line job numbers
+            if collected_job_numbers:
+                so.job_numbers = ', '.join(collected_job_numbers)
 
             db.session.commit()
 
@@ -417,6 +434,59 @@ def build_bom(order_id):
                           line_items=line_items,
                           catalogue_items=catalogue_items,
                           catalogue_json=catalogue_json)
+
+def can_close_sales_order(so_id):
+    """Check if a Sales Order can be closed — all WOs and STOs must be Complete or Cancelled.
+    
+    Returns (can_close: bool, reasons: list[str])
+    """
+    reasons = []
+    
+    wos = WorksOrder.query.filter_by(so_id=so_id).all()
+    stos = StockOrder.query.filter_by(so_id=so_id).all()
+    
+    if not wos and not stos:
+        return False, ["No Works Orders or Stock Orders have been created for this Sales Order."]
+    
+    # Check Works Orders
+    if wos:
+        open_wos = [wo for wo in wos if wo.status not in ('Complete', 'Cancelled')]
+        if open_wos:
+            wo_list = ', '.join(wo.wo_number for wo in open_wos)
+            reasons.append(f"Works Order(s) still open: {wo_list}")
+    
+    # Check Stock Orders
+    if stos:
+        open_stos = [sto for sto in stos if sto.status not in ('Complete', 'Cancelled')]
+        if open_stos:
+            sto_list = ', '.join(sto.stock_order_number for sto in open_stos)
+            reasons.append(f"Stock Order(s) still open: {sto_list}")
+    
+    return len(reasons) == 0, reasons
+
+
+@sales_orders_bp.route('/sales-orders/<int:order_id>/close', methods=['POST'])
+def close_order(order_id):
+    """Close a Sales Order — requires all WOs and STOs to be Complete or Cancelled."""
+    so = SalesOrder.query.get_or_404(order_id)
+    
+    if so.status in ('Closed', 'Cancelled'):
+        flash(f"Sales Order {so.so_number} is already {so.status}.", "warning")
+        return redirect(url_for('sales_orders.view_order', order_id=order_id))
+    
+    can_close, reasons = can_close_sales_order(order_id)
+    
+    if not can_close:
+        for reason in reasons:
+            flash(reason, "error")
+        return redirect(url_for('sales_orders.view_order', order_id=order_id))
+    
+    so.status = 'Closed'
+    db.session.commit()
+    
+    flash(f"Sales Order {so.so_number} has been closed.", "success")
+    return redirect(url_for('sales_orders.view_order', order_id=order_id))
+
 
 @sales_orders_bp.route('/sales-orders/<int:order_id>/cancel', methods=['POST'])
 def cancel_order(order_id):

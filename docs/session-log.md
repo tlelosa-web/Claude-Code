@@ -166,3 +166,38 @@
   created outside the normal PDF-parse path, e.g. directly via tests/DB).
 - Next task: None queued — awaiting Tebello's next task.
 - Blockers: None.
+
+## 2026-07-06 — Batch 11: Finish/verify in-flight Job Numbers + SO Close work
+
+- Domain: Software/AI.
+- `/continue` surfaced 7 modified files + 1 untracked script left uncommitted from a prior
+  unlogged session: per-line job numbers (spec `docs/specs/sales-order-job-numbers.md`) plus
+  an unplanned `can_close_sales_order()` helper and manual Sales Order "Close Order" feature.
+- Verified against the spec's acceptance criteria one by one:
+  - Per-line Job/FM number input + validation on Build Works Pack: present (`build_bom.html`,
+    `build_bom()`).
+  - Saved Sales Orders retain the combined job numbers: present (`so.job_numbers`,
+    `so.job_reference` property, pre-existing).
+  - BOM/WO/PL pages and print documents show the job/SO reference: **gap found** — Works Order
+    print and Stock Order print already showed Job Number(s), but
+    `templates/works_orders/picking_list_print.html` did not. Fixed by adding a Job Number(s)
+    row to the picking list print info table.
+  - Tests pass: were passing (32/32) but with zero coverage of the new
+    `close_order`/`can_close_sales_order` route or the `'Complete'` → `'Closed'` SO auto-close
+    rename in `mark_complete`/`confirm_pick`/`complete_order`. Added
+    `tests/test_sales_order_close.py` (7 tests) covering manual close (blocked while WO/STO
+    open, succeeds once both Complete, idempotent when already Closed) and auto-close from
+    both the Works Order and Stock Order completion paths (closes only once the other order
+    type is also done).
+- Cleanup: removed a dead `job_numbers_input` variable in `build_bom()` left over from the old
+  single SO-level job number field, now superseded by per-line collection.
+- Ran `scripts/migrate_add_so_line_job_number.py` — confirmed `job_number` column already
+  present on `instance/sops.db` (migration had already been applied in the prior session).
+- Flagged to Tebello: the SO status rename (`'Complete'` → `'Closed'`) and the whole Close
+  Order feature are a scope expansion beyond the job-numbers spec. Confirmed no other code
+  path reads `SalesOrder.status == 'Complete'`, so the rename is safe as shipped.
+  `scripts/fix_so_status.py` (pre-existing, unrelated to this batch) still writes the old
+  `'Complete'` value if it were ever re-run — left untouched, out of scope.
+- Full suite: 39 tests green (was 32).
+- Next task: none queued — awaiting Tebello's review/commit confirmation.
+- Blockers: None.

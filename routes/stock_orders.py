@@ -1,5 +1,6 @@
 from flask import Blueprint, render_template, redirect, url_for, flash
 from models import db, StockOrder, StockOrderLine
+from routes.sales_orders import can_close_sales_order
 
 stock_orders_bp = Blueprint('stock_orders', __name__)
 
@@ -52,6 +53,16 @@ def complete_order(order_id):
         return redirect(url_for('stock_orders.view_order', order_id=order_id))
 
     stock_order.status = 'Complete'
+    db.session.flush()
+
+    # Check if the Sales Order can be closed — all WOs and STOs must be Complete/Cancelled
+    so = stock_order.sales_order
+    if so:
+        can_close, _ = can_close_sales_order(so.id)
+        if can_close:
+            so.status = 'Closed'
+            db.session.flush()
+
     db.session.commit()
 
     flash(f"Stock Order {stock_order.stock_order_number} marked as Complete.", "success")

@@ -166,8 +166,8 @@ class TestBOMBuilder:
         session.flush()
 
         resp = client.post(f"/sales-orders/{so.id}/build-bom", data={
-            "job_numbers": "FM0001",
             f"line_role_{fan_line.id}": "fan",
+            f"line_job_number_{fan_line.id}": "FM0001",
             "issued_by": "Tester",
             "component_item_id[]": [str(comp_b.id), str(comp_c.id)],
             "component_qty[]": ["4", "6"],
@@ -212,9 +212,10 @@ class TestBOMBuilder:
         session.flush()
 
         resp = client.post(f"/sales-orders/{so.id}/build-bom", data={
-            "job_numbers": "FM0002",
             f"line_role_{fan_line_1.id}": "fan",
             f"line_role_{fan_line_2.id}": "fan",
+            f"line_job_number_{fan_line_1.id}": "FM0002",
+            f"line_job_number_{fan_line_2.id}": "FM0003",
             "issued_by": "Tester",
             "component_item_id[]": [str(comp_b.id), str(comp_c.id)],
             "component_qty[]": ["4", "6"],
@@ -270,8 +271,8 @@ class TestBOMBuilder:
         session.flush()
 
         resp = client.post(f"/sales-orders/{so.id}/build-bom", data={
-            "job_numbers": "FM9999",
             f"line_role_{fan_line.id}": "fan",
+            f"line_job_number_{fan_line.id}": "FM9999",
             "issued_by": "Tester",
         })
         assert resp.status_code in (200, 302)

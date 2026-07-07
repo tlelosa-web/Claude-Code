@@ -201,3 +201,31 @@
 - Full suite: 39 tests green (was 32).
 - Next task: none queued — awaiting Tebello's review/commit confirmation.
 - Blockers: None.
+- Committed: `d59f99c`.
+
+## 2026-07-06 — Batch 12: Sort Sales/WO/STO lists by Delivery Date
+
+- Domain: Software/AI.
+- Tebello asked for Sales Orders, Works Orders, and Stock Orders lists to be sorted by
+  delivery date.
+- `routes/sales_orders.py`: changed `list_orders()` from `created_at.desc()` to
+  `nullslast(SalesOrder.delivery_date.asc())` — soonest delivery first, orders with no
+  delivery date sink to the bottom instead of floating to the top.
+- `WorksOrder` and `StockOrder` have no `delivery_date` column of their own (it lives on the
+  parent `SalesOrder`), so `routes/works_orders.py` and `routes/stock_orders.py`
+  `list_orders()` now outer-join to `SalesOrder` and sort on `SalesOrder.delivery_date` the
+  same way.
+- Added a "Delivery Date" column to `templates/works_orders/list.html` and
+  `templates/stock_orders/list.html` (Sales Orders list already displayed it) so the sort
+  key is visible on screen, not just implicit in row order.
+- Verification caught a real gotcha: the first live check against `instance/sops.db` via the
+  dev server still showed the old `created_at`-descending order. Root cause was a stale
+  Werkzeug debug-reloader child process (Flask's Windows reloader runs the actual server in
+  a child process separate from the one bound in `Get-NetTCPConnection`) that hadn't picked
+  up the route change. Killed both the parent and child process on port 5000, started a
+  clean instance, and confirmed all three list pages now render in ascending delivery-date
+  order against real production data.
+- Full suite: 39 tests green — no existing test asserted list ordering, so none needed
+  updating.
+- Next task: none queued — awaiting Tebello's review/commit confirmation.
+- Blockers: None.

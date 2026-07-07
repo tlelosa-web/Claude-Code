@@ -3,6 +3,7 @@ import json
 from datetime import datetime
 from flask import Blueprint, render_template, request, redirect, url_for, flash, current_app, jsonify
 from werkzeug.utils import secure_filename
+from sqlalchemy import nullslast
 from models import db, SalesOrder, SOLineItem, Item, WorksOrder, BOMLine, StockMovement, StockOrder, StockOrderLine
 from services.pdf_parser import parse_sales_order_pdf
 
@@ -10,7 +11,7 @@ sales_orders_bp = Blueprint('sales_orders', __name__)
 
 @sales_orders_bp.route('/sales-orders')
 def list_orders():
-    orders = SalesOrder.query.order_by(SalesOrder.created_at.desc()).all()
+    orders = SalesOrder.query.order_by(nullslast(SalesOrder.delivery_date.asc())).all()
     return render_template('sales_orders/list.html', orders=orders)
 
 def item_to_bom_json(item):

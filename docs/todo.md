@@ -109,4 +109,13 @@ All items below must be green before delivery:
 - [x] Gap found + fixed: no test coverage existed for `close_order`/`can_close_sales_order` or for the new auto-close-to-`'Closed'` behavior in `mark_complete`/`confirm_pick`/`complete_order`. Added `tests/test_sales_order_close.py` (7 tests: manual close blocked/succeeds/idempotent, auto-close from both WO and STO completion paths, non-close while the other order type is still open).
 - [x] Full suite: 39 tests green (was 32).
 - Note: the `'Complete'` → `'Closed'` SO status rename and the manual Close Order route were not in the original job-numbers spec — flagged to Tebello as a scope expansion; no other code references `SalesOrder.status == 'Complete'` so this is safe, but `scripts/fix_so_status.py` (pre-existing, uncommitted-work-unrelated) still writes the old `'Complete'` value if ever re-run — out of scope, not touched.
+- Committed: `d59f99c`.
+
+## Batch 12 — Sort Sales/WO/STO lists by Delivery Date (2026-07-06)
+- [x] `routes/sales_orders.py list_orders()`: sort by `SalesOrder.delivery_date` ascending (soonest due first), nulls last via `sqlalchemy.nullslast()`.
+- [x] `routes/works_orders.py list_orders()`: `WorksOrder` has no `delivery_date` of its own — outer-joined to `SalesOrder` and sorted by `SalesOrder.delivery_date` ascending, nulls last.
+- [x] `routes/stock_orders.py list_orders()`: same pattern — outer-joined to `SalesOrder`, sorted by delivery date ascending, nulls last.
+- [x] Added a "Delivery Date" column to `templates/works_orders/list.html` and `templates/stock_orders/list.html` (Sales Orders list already had one) so the new sort key is visible, not just implicit.
+- [x] Verified against the live `instance/sops.db` data by running the dev server and diffing rendered rows — first pass showed a stale Werkzeug reloader child process still serving the old `created_at.desc()` order; killed both server processes, restarted clean, and confirmed all three list pages now render in ascending delivery-date order.
+- [x] Full suite: 39 tests green (no test changes needed — no existing test asserted list ordering).
 - Next task: none queued — awaiting Tebello's review/commit confirmation.

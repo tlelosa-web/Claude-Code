@@ -16,6 +16,7 @@
                     <th>Stock Order No</th>
                     <th>SO Reference</th>
                     <th>Customer</th>
+                    <th>Delivery Date</th>
                     <th>Status</th>
                     <th>Created</th>
                     <th>Actions</th>
@@ -27,6 +28,7 @@
                     <td><a href="{{ url_for('stock_orders.view_order', order_id=order.id) }}" class="link-primary">{{ order.stock_order_number }}</a></td>
                     <td>{{ order.sales_order.so_number if order.sales_order else '-' }}</td>
                     <td>{{ order.sales_order.customer_name if order.sales_order else '-' }}</td>
+                    <td>{{ order.sales_order.delivery_date.strftime('%Y-%m-%d') if order.sales_order and order.sales_order.delivery_date else '-' }}</td>
                     <td><span class="badge badge-{{ order.status.lower() }}">{{ order.status }}</span></td>
                     <td>{{ order.created_at.strftime('%Y-%m-%d %H:%M') if order.created_at else '-' }}</td>
                     <td>

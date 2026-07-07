@@ -1,5 +1,6 @@
 from datetime import datetime
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
+from sqlalchemy import nullslast
 from models import db, WorksOrder, BOMLine, Item, SalesOrder, StockOrder
 from routes.sales_orders import can_close_sales_order
 from services.doc_generator import get_works_order_print_context
@@ -9,7 +10,10 @@ works_orders_bp = Blueprint('works_orders', __name__)
 
 @works_orders_bp.route('/works-orders')
 def list_orders():
-    orders = WorksOrder.query.order_by(WorksOrder.created_at.desc()).all()
+    orders = (WorksOrder.query
+              .join(SalesOrder, WorksOrder.so_id == SalesOrder.id, isouter=True)
+              .order_by(nullslast(SalesOrder.delivery_date.asc()))
+              .all())
     return render_template('works_orders/list.html', orders=orders)
 
 @works_orders_bp.route('/works-orders/<int:order_id>')

@@ -1,5 +1,6 @@
 from flask import Blueprint, render_template, redirect, url_for, flash
-from models import db, StockOrder, StockOrderLine
+from sqlalchemy import nullslast
+from models import db, StockOrder, StockOrderLine, SalesOrder
 from routes.sales_orders import can_close_sales_order
 
 stock_orders_bp = Blueprint('stock_orders', __name__)
@@ -7,7 +8,10 @@ stock_orders_bp = Blueprint('stock_orders', __name__)
 @stock_orders_bp.route('/stock-orders')
 def list_orders():
     """List all Stock Orders."""
-    orders = StockOrder.query.order_by(StockOrder.created_at.desc()).all()
+    orders = (StockOrder.query
+              .join(SalesOrder, StockOrder.so_id == SalesOrder.id, isouter=True)
+              .order_by(nullslast(SalesOrder.delivery_date.asc()))
+              .all())
     return render_template('stock_orders/list.html', orders=orders)
 
 @stock_orders_bp.route('/stock-orders/<int:order_id>')

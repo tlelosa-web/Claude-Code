@@ -135,3 +135,41 @@ class StockOrderLine(db.Model):
     description = db.Column(db.Text)
     qty = db.Column(db.Float)
     notes = db.Column(db.Text)
+
+
+class PurchaseOrder(db.Model):
+    __tablename__ = 'purchase_order'
+
+    id = db.Column(db.Integer, primary_key=True)
+    po_number = db.Column(db.String(100), unique=True, nullable=False)
+    reference = db.Column(db.String(100))  # FM job number(s), from filename/REFERENCE field
+    supplier_name = db.Column(db.String(255))
+    supplier_vat = db.Column(db.String(100))
+    po_date = db.Column(db.Date)
+    due_date = db.Column(db.Date)
+    overall_discount_pct = db.Column(db.Float, default=0.0)
+    status = db.Column(db.String(50), default='Draft')  # Draft / Open / Partially Received / Received / Cancelled
+    raw_pdf_text = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, default=datetime.now)
+
+    lines = db.relationship('POLine', backref='purchase_order', lazy=True,
+                             cascade='all, delete-orphan')
+
+
+class POLine(db.Model):
+    __tablename__ = 'po_line'
+
+    id = db.Column(db.Integer, primary_key=True)
+    po_id = db.Column(db.Integer, db.ForeignKey('purchase_order.id'), nullable=False)
+    item_id = db.Column(db.Integer, db.ForeignKey('item.id'), nullable=True)  # null until matched/linked
+    item_code_raw = db.Column(db.String(100))  # as extracted from PDF, even if unmatched
+    description = db.Column(db.Text)
+    qty_ordered = db.Column(db.Float)
+    qty_received = db.Column(db.Float, default=0.0)
+    excl_price = db.Column(db.Float)
+    disc_pct = db.Column(db.Float)
+    vat_pct = db.Column(db.Float)
+    excl_total = db.Column(db.Float)
+    incl_total = db.Column(db.Float)
+
+    item = db.relationship('Item')

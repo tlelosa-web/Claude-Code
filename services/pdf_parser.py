@@ -1,17 +1,20 @@
-import pdfplumber
 import re
 import os
-from collections import defaultdict
 from datetime import datetime
 
+import pdfplumber
+
+from services.pdf_common import build_merged_lines, parse_line_items_all_pages
+
+
 def clean_numerical_str(val):
-    if not val:
-        return 0.0
-    val_str = str(val).replace('R', '').replace('%', '').replace(',', '').replace(' ', '').strip()
-    try:
-        return float(val_str)
-    except ValueError:
-        return 0.0
+    """Kept here for backward compatibility with any external importers.
+
+    Canonical implementation now lives in services/pdf_common.py.
+    """
+    from services.pdf_common import clean_numerical_str as _clean
+    return _clean(val)
+
 
 def parse_sales_order_pdf(pdf_path):
     result = {
@@ -40,7 +43,7 @@ def parse_sales_order_pdf(pdf_path):
                 result['parse_errors'].append("PDF has no pages.")
                 return result
 
-            # ── Page 1: header fields + start of line items ───────────────────
+            # -- Page 1: header fields + start of line items --------------
             page1 = pdf.pages[0]
             raw_text_p1 = page1.extract_text() or ""
             result['raw_pdf_text'] = raw_text_p1
@@ -50,28 +53,6 @@ def parse_sales_order_pdf(pdf_path):
             for p in pdf.pages[1:]:
                 all_raw_text += "\n" + (p.extract_text() or "")
             result['raw_pdf_text'] = all_raw_text
-
-            def build_merged_lines(page):
-                """Return coordinate-merged word lines for a single page."""
-                words = page.extract_words()
-                grouped = defaultdict(list)
-                for w in words:
-                    grouped[round(w['top'])].append(w)
-                sorted_ys = sorted(grouped.keys())
-                merged = []
-                current = []
-                last_y = -100
-                for y in sorted_ys:
-                    if y - last_y <= 3:
-                        current.extend(grouped[y])
-                    else:
-                        if current:
-                            merged.append(current)
-                        current = list(grouped[y])
-                        last_y = y
-                if current:
-                    merged.append(current)
-                return merged
 
             merged_lines_p1 = build_merged_lines(page1)
 
@@ -150,104 +131,8 @@ def parse_sales_order_pdf(pdf_path):
             if delivery_address_lines:
                 result['delivery_address'] = ", ".join(delivery_address_lines).strip()
 
-            # 3. Parse Line Items — all pages
-            # Page 1: wait for "Description / Quantity" table header to start
-            # Pages 2+: table already in progress, start immediately
-
-            def parse_line_item_row(line):
-                """Split a word line into column buckets and return a line-item dict or None."""
-                desc_words, qty_words, price_words, disc_words, vat_words, excl_words, incl_words = [], [], [], [], [], [], []
-                for w in line:
-                    x = w['x0']
-                    if x < 200:
-                        desc_words.append(w)
-                    elif x < 240:
-                        qty_words.append(w)
-                    elif x < 300:
-                        price_words.append(w)
-                    elif x < 350:
-                        disc_words.append(w)
-                    elif x < 410:
-                        vat_words.append(w)
-                    elif x < 500:
-                        excl_words.append(w)
-                    else:
-                        incl_words.append(w)
-
-                def fw(wl):
-                    return " ".join([w['text'] for w in sorted(wl, key=lambda w: w['x0'])]).strip()
-
-                desc  = fw(desc_words)
-                qty   = fw(qty_words)
-                price = fw(price_words)
-                disc  = fw(disc_words)
-                vat   = fw(vat_words)
-                excl  = fw(excl_words)
-                incl  = fw(incl_words)
-
-                if not (qty or price or disc or vat or excl or incl):
-                    # Description-continuation row
-                    return {'continuation': True, 'desc': desc}
-
-                qty_val  = clean_numerical_str(qty)
-                excl_val = clean_numerical_str(price)
-                disc_val = clean_numerical_str(disc)
-                vat_val  = clean_numerical_str(vat)
-                excl_tot = clean_numerical_str(excl)
-                incl_tot = clean_numerical_str(incl)
-
-                if excl_tot == 0.0 and qty_val > 0 and excl_val > 0:
-                    excl_tot = qty_val * excl_val
-                if incl_tot == 0.0 and excl_tot > 0:
-                    incl_tot = excl_tot * (1 + (vat_val / 100.0))
-
-                return {
-                    'continuation': False,
-                    'description': desc,
-                    'qty': qty_val,
-                    'excl_price': excl_val,
-                    'disc_pct': disc_val,
-                    'vat_pct': vat_val,
-                    'excl_total': excl_tot,
-                    'incl_total': incl_tot
-                }
-
-            for page_idx, page in enumerate(pdf.pages):
-                merged = build_merged_lines(page) if page_idx > 0 else merged_lines_p1
-                # The full page header (title, FROM/TO blocks, column header)
-                # repeats on every page, so re-detect it before parsing rows.
-                table_started = False
-
-                for line in merged:
-                    line_str = " ".join([w['text'] for w in sorted(line, key=lambda w: w['x0'])])
-
-                    if not table_started:
-                        if "Description" in line_str and "Quantity" in line_str:
-                            table_started = True
-                        continue
-
-                    if "BANKING DETAILS" in line_str or "Total Discount:" in line_str:
-                        # This footer repeats on every page of the template, not
-                        # just the last one — stop scanning this page's lines but
-                        # let subsequent pages still be processed for line items.
-                        break
-
-                    parsed_row = parse_line_item_row(line)
-                    if parsed_row['continuation']:
-                        if result['line_items'] and parsed_row['desc']:
-                            result['line_items'][-1]['description'] = (
-                                result['line_items'][-1]['description'] + " " + parsed_row['desc']
-                            ).strip()
-                    else:
-                        result['line_items'].append({
-                            'description': parsed_row['description'],
-                            'qty': parsed_row['qty'],
-                            'excl_price': parsed_row['excl_price'],
-                            'disc_pct': parsed_row['disc_pct'],
-                            'vat_pct': parsed_row['vat_pct'],
-                            'excl_total': parsed_row['excl_total'],
-                            'incl_total': parsed_row['incl_total'],
-                        })
+            # 3. Parse Line Items -- all pages (shared geometry, see pdf_common)
+            result['line_items'] = parse_line_items_all_pages(pdf, merged_lines_p1)
 
     except Exception as e:
         result['parse_errors'].append(f"Unexpected error while parsing PDF: {str(e)}")

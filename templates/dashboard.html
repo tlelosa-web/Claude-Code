@@ -57,6 +57,13 @@
         <div class="stat-val">{{ low_stock_count }}</div>
         <div style="font-size: 0.85rem; color: var(--text-secondary);">Items with <= 10 units remaining</div>
     </div>
+
+    <!-- Below Reorder Point -->
+    <a href="{{ url_for('reports.stock') }}" class="card stat-card" style="--accent: var(--brand-secondary); text-decoration: none; color: inherit;">
+        <div class="stat-label">Below Reorder Point</div>
+        <div class="stat-val">{{ reorder_count }}</div>
+        <div style="font-size: 0.85rem; color: var(--text-secondary);">Items needing replenishment</div>
+    </a>
 </div>
 
 <!-- Recent Works Orders -->

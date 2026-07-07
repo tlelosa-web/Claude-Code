@@ -277,3 +277,62 @@ def cancel_order(order_id):
     db.session.commit()
     flash(f"Purchase Order {po.po_number} has been cancelled.", "success")
     return redirect(url_for('purchase_orders.view_order', order_id=order_id))
+
+
+@purchase_orders_bp.route('/purchase-orders/create-from-shortfall', methods=['POST'])
+def create_from_shortfall():
+    """Enhancement 2 - pre-fill a Draft Purchase Order with one line per
+    item currently below its reorder point, at reorder_qty. Supplier is
+    left blank for manual fill-in (no supplier master table yet - see
+    docs/specs/purchase-order-module-plan.md section 6)."""
+    items = Item.query.filter(
+        Item.reorder_point > 0,
+        Item.qty_on_hand <= Item.reorder_point,
+        Item.active == True
+    ).order_by(Item.category, Item.code).all()
+
+    eligible = [(item, item.reorder_qty or 0) for item in items if (item.reorder_qty or 0) > 0]
+
+    if not eligible:
+        flash("No items below their reorder point have a reorder quantity set.", "warning")
+        return redirect(url_for('reports.stock'))
+
+    last_draft = (PurchaseOrder.query
+                  .filter(PurchaseOrder.po_number.like('PO-DRAFT-%'))
+                  .order_by(PurchaseOrder.id.desc()).first())
+    try:
+        next_num = int(last_draft.po_number.replace('PO-DRAFT-', '')) + 1 if last_draft else 1
+    except ValueError:
+        next_num = 1
+    po_number = f"PO-DRAFT-{next_num:04d}"
+
+    po = PurchaseOrder(
+        po_number=po_number,
+        reference='Auto-generated from reorder shortfall',
+        status='Draft',
+        created_at=datetime.now()
+    )
+    db.session.add(po)
+    db.session.flush()  # get po.id
+
+    for item, qty in eligible:
+        unit_cost = item.last_cost or 0.0
+        line = POLine(
+            po_id=po.id,
+            item_id=item.id,
+            item_code_raw=item.code,
+            description=item.description,
+            qty_ordered=qty,
+            excl_price=unit_cost,
+            excl_total=qty * unit_cost,
+            incl_total=qty * unit_cost * 1.15,
+        )
+        db.session.add(line)
+
+    db.session.commit()
+    flash(
+        f"Draft Purchase Order {po.po_number} created with {len(eligible)} shortfall item(s). "
+        "Fill in the supplier and save.",
+        "success"
+    )
+    return redirect(url_for('purchase_orders.view_order', order_id=po.id))

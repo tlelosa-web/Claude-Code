@@ -22,6 +22,7 @@ def stock_data():
     category = request.args.get('category', '').strip()
     active_only = request.args.get('active_only', 'true').strip().lower()
     zero_stock = request.args.get('zero_stock', '').strip().lower()
+    below_reorder = request.args.get('below_reorder', '').strip().lower()
     
     if category:
         query = query.filter(Item.category == category)
@@ -32,6 +33,11 @@ def stock_data():
         query = query.filter(Item.qty_on_hand <= 0)
     elif zero_stock == 'hide':
         query = query.filter(Item.qty_on_hand > 0)
+    if below_reorder == 'show':
+        # Reorder signals (Enhancement 2) - only items with a reorder point
+        # actually set are eligible, otherwise every item defaults to 0.0
+        # and would falsely show as "below reorder".
+        query = query.filter(Item.reorder_point > 0, Item.qty_on_hand <= Item.reorder_point)
     
     items = query.order_by(Item.category, Item.description).all()
     
@@ -53,7 +59,10 @@ def stock_data():
             'avg_cost': round(item.avg_cost, 2),
             'stock_value': round(stock_value, 2),
             'last_movement_date': last_movement_date,
-            'active': 'Yes' if item.active else 'No'
+            'active': 'Yes' if item.active else 'No',
+            'reorder_point': item.reorder_point or 0,
+            'reorder_qty': item.reorder_qty or 0,
+            'below_reorder': bool(item.reorder_point and item.qty_on_hand <= item.reorder_point)
         })
     
     return jsonify({

@@ -219,3 +219,79 @@ class TestPurchaseOrderListDetailPrint:
         print_resp = client.get(f'/purchase-orders/{po.id}/print')
         assert print_resp.status_code == 200
         assert "PURCHASE ORDER" in print_resp.get_data(as_text=True)
+
+
+class TestPurchaseOrderFullLifecycleFromRealPDF:
+    """End-to-end: real PDF upload -> scrape the review form's hidden
+    lines_json exactly as a browser would submit it -> save -> receive.
+    Distinct from the synthetic-payload tests above, which don't exercise
+    the actual upload->save HTML round trip."""
+
+    def test_upload_save_receive_attenutec_po(self, app, db, session, client):
+        import re
+        import html
+        import json
+
+        # Reused across test methods in this file (same session-scoped
+        # in-memory DB) - get-or-create avoids a UNIQUE constraint clash
+        # with test_upload_matches_known_item_code, which needs the exact
+        # same real fixture code to test auto-matching.
+        item = Item.query.filter_by(code="800S1.5DP").first()
+        if not item:
+            item = Item(code="800S1.5DP", description="800 Diam Silencer 1.5D Podded",
+                        qty_on_hand=0.0, last_cost=0.0, active=True)
+            session.add(item)
+            session.commit()
+        else:
+            item.qty_on_hand = 0.0
+            item.last_cost = 0.0
+            session.commit()
+
+        pdf_path = os.path.join(FIXTURES_DIR, 'FM4171 - ATTENU-TEC - Supplier Purchase Order - PO4106.pdf')
+        with open(pdf_path, "rb") as pdf_file:
+            upload_resp = client.post(
+                "/purchase-orders/upload",
+                data={"pdf_file": (pdf_file, "PO4106.pdf")},
+                content_type="multipart/form-data",
+            )
+        body = upload_resp.get_data(as_text=True)
+        assert upload_resp.status_code == 200
+        assert 'value="PO4106"' in body  # po_number pre-filled from the parser
+
+        lines_match = re.search(r'name="lines_json" value=\'(.*?)\'', body, re.DOTALL)
+        assert lines_match, "lines_json hidden field not found in rendered review page"
+        lines_json_raw = html.unescape(lines_match.group(1))
+        parsed_lines = json.loads(lines_json_raw)
+        assert len(parsed_lines) == 1
+        assert parsed_lines[0]['matched_item_id'] == item.id
+
+        save_resp = client.post('/purchase-orders/save', data={
+            'po_number': 'PO4106',
+            'reference': 'FM4171',
+            'supplier_name': 'ATTENU-TEC',
+            'supplier_vat': '4690241338',
+            'po_date': '2026-07-06',
+            'due_date': '2026-07-20',
+            'overall_discount_pct': '0',
+            'raw_pdf_text': '',
+            'lines_json': lines_json_raw,
+        }, follow_redirects=True)
+        assert save_resp.status_code == 200
+        assert "Purchase Order PO4106 saved successfully" in save_resp.get_data(as_text=True)
+
+        po = PurchaseOrder.query.filter_by(po_number='PO4106').first()
+        assert po is not None
+        assert len(po.lines) == 1
+        line = po.lines[0]
+        assert line.item_id == item.id
+        assert line.qty_ordered == 4.0
+
+        receive_resp = client.post(f'/purchase-orders/{po.id}/receive',
+                                   data={f'receive_qty_{line.id}': '4'}, follow_redirects=True)
+        assert "receipt recorded" in receive_resp.get_data(as_text=True)
+
+        db.session.refresh(item)
+        db.session.refresh(po)
+        assert item.qty_on_hand == 4.0
+        assert item.last_cost == pytest.approx(4423.00)
+        assert po.status == 'Received'

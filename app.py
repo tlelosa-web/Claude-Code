@@ -16,6 +16,15 @@ def ensure_schema_columns():
         db.session.execute(text('ALTER TABLE sales_order ADD COLUMN job_numbers VARCHAR(255)'))
         db.session.commit()
 
+    if 'item' in inspector.get_table_names():
+        item_columns = {column['name'] for column in inspector.get_columns('item')}
+        if 'reorder_point' not in item_columns:
+            db.session.execute(text('ALTER TABLE item ADD COLUMN reorder_point FLOAT DEFAULT 0.0'))
+            db.session.commit()
+        if 'reorder_qty' not in item_columns:
+            db.session.execute(text('ALTER TABLE item ADD COLUMN reorder_qty FLOAT DEFAULT 0.0'))
+            db.session.commit()
+
 def create_app(config_class=Config):
     app = Flask(__name__)
     app.config.from_object(config_class)

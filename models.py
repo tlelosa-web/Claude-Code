@@ -17,6 +17,8 @@ class Item(db.Model):
     qty_on_hand = db.Column(db.Float, default=0.0)
     active = db.Column(db.Boolean, default=True)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    reorder_point = db.Column(db.Float, default=0.0)  # flag for replenishment when qty_on_hand <= this
+    reorder_qty = db.Column(db.Float, default=0.0)  # suggested qty for "Create PO from shortfall"
 
     # Relationships
     movements = db.relationship('StockMovement', backref='item', lazy=True)

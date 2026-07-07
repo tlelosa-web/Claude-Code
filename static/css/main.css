@@ -367,6 +367,8 @@ textarea.form-input {
 .badge-complete { background: var(--fm-green); color: #fff; }
 .badge-cancelled { background: #9CA3AF; color: #fff; }
 .badge-closed { background: #6B7280; color: #fff; }
+.badge-received { background: var(--fm-green); color: #fff; }
+.badge-partially-received { background: var(--fm-orange); color: #fff; }
 
 /* Row highlights */
 .row-amber {

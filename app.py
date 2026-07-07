@@ -35,6 +35,7 @@ def create_app(config_class=Config):
     from routes.works_orders import works_orders_bp
     from routes.reports import reports_bp
     from routes.stock_orders import stock_orders_bp
+    from routes.purchase_orders import purchase_orders_bp
     
     app.register_blueprint(dashboard_bp)
     app.register_blueprint(items_bp)
@@ -42,6 +43,7 @@ def create_app(config_class=Config):
     app.register_blueprint(works_orders_bp)
     app.register_blueprint(reports_bp)
     app.register_blueprint(stock_orders_bp)
+    app.register_blueprint(purchase_orders_bp)
     
     # Bootstrap database and seed data on first run
     with app.app_context():

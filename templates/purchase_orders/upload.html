@@ -1,0 +1,140 @@
+{% extends 'base.html' %}
+{% block title %}Upload Purchase Order - SOPS{% endblock %}
+{% block page_title %}Upload Purchase Order PDF{% endblock %}
+
+{% block content %}
+<div class="card animate-fade-in" style="margin-bottom: 24px;">
+    <div class="card-header">
+        <h2 class="card-title">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+            Step 1: Upload PDF
+        </h2>
+    </div>
+    <form method="POST" enctype="multipart/form-data" action="{{ url_for('purchase_orders.upload_order') }}">
+        <div class="form-group">
+            <label for="pdf_file">Select Supplier Purchase Order PDF</label>
+            <input type="file" name="pdf_file" id="pdf_file" accept=".pdf" required style="padding: 10px; border: 2px dashed var(--border-color); border-radius: 8px; width: 100%; background: var(--bg-secondary);">
+        </div>
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">Parse & Review</button>
+            <a href="{{ url_for('purchase_orders.list_orders') }}" class="btn btn-secondary">Cancel</a>
+        </div>
+    </form>
+</div>
+
+{% if parsed %}
+<div class="card animate-fade-in">
+    <div class="card-header">
+        <h2 class="card-title">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
+            Step 2: Review & Save
+        </h2>
+    </div>
+
+    {% if parsed.parse_errors %}
+    <div class="alert alert-warning">
+        <strong>Parsing Notes:</strong>
+        <ul style="margin: 8px 0 0 16px;">
+            {% for err in parsed.parse_errors %}
+            <li>{{ err }}</li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+
+    {% if existing_po %}
+    <div class="alert alert-warning" style="margin-bottom: 16px;">
+        <strong>Purchase Order {{ existing_po.po_number }} already exists.</strong>
+        Saving below will overwrite it (only allowed if no receipts have been recorded yet).
+    </div>
+    {% endif %}
+
+    <form method="POST" action="{{ url_for('purchase_orders.save_order') }}">
+        <input type="hidden" name="raw_pdf_text" value="{{ parsed.raw_pdf_text or '' }}">
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+            <div class="form-group">
+                <label for="po_number">PO Number *</label>
+                <input type="text" id="po_number" name="po_number" value="{{ parsed.po_number or '' }}" required class="form-input">
+            </div>
+            <div class="form-group">
+                <label for="reference">Reference (Job Number)</label>
+                <input type="text" id="reference" name="reference" value="{{ parsed.reference or '' }}" class="form-input">
+            </div>
+            <div class="form-group">
+                <label for="supplier_name">Supplier Name</label>
+                <input type="text" id="supplier_name" name="supplier_name" value="{{ parsed.supplier_name or '' }}" class="form-input">
+            </div>
+            <div class="form-group">
+                <label for="supplier_vat">Supplier VAT</label>
+                <input type="text" id="supplier_vat" name="supplier_vat" value="{{ parsed.supplier_vat or '' }}" class="form-input">
+            </div>
+            <div class="form-group">
+                <label for="po_date">PO Date</label>
+                <input type="date" id="po_date" name="po_date" value="{{ parsed.po_date.strftime('%Y-%m-%d') if parsed.po_date else '' }}" class="form-input">
+            </div>
+            <div class="form-group">
+                <label for="due_date">Due Date</label>
+                <input type="date" id="due_date" name="due_date" value="{{ parsed.due_date.strftime('%Y-%m-%d') if parsed.due_date else '' }}" class="form-input">
+            </div>
+            <div class="form-group">
+                <label for="overall_discount_pct">Overall Discount %</label>
+                <input type="number" step="0.01" id="overall_discount_pct" name="overall_discount_pct" value="{{ parsed.overall_discount_pct or 0 }}" class="form-input">
+            </div>
+        </div>
+
+        <h3 style="margin-top: 24px; margin-bottom: 12px; color: var(--text-primary);">Line Items</h3>
+        {% if matched_lines %}
+        <div style="overflow-x: auto;">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Item Code</th>
+                        <th>Match</th>
+                        <th>Description</th>
+                        <th>Qty</th>
+                        <th>Excl. Price</th>
+                        <th>Excl. Total</th>
+                        <th>Incl. Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for line in matched_lines %}
+                    <tr class="{{ 'row-amber' if not line.matched_item_id else '' }}">
+                        <td>{{ loop.index }}</td>
+                        <td>{{ line.item_code or '-' }}</td>
+                        <td>
+                            {% if line.matched_item_id %}
+                            <span class="badge badge-complete">Matched</span>
+                            {% else %}
+                            <span class="badge badge-cancelled">Unmatched</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ line.description or '' }}</td>
+                        <td>{{ line.qty }}</td>
+                        <td>R {{ "%.2f"|format(line.excl_price) }}</td>
+                        <td>R {{ "%.2f"|format(line.excl_total) }}</td>
+                        <td>R {{ "%.2f"|format(line.incl_total) }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <p style="color: var(--text-muted); margin-top: 8px;">
+            Unmatched lines are saved without a linked catalogue item — link them from the Purchase Order detail page before receiving.
+        </p>
+        {% else %}
+        <p style="color: var(--text-muted);">No line items were parsed.</p>
+        {% endif %}
+
+        <input type="hidden" name="lines_json" value='{{ matched_lines | tojson | safe if matched_lines else "[]" }}'>
+
+        <div class="form-actions" style="margin-top: 24px;">
+            <button type="submit" class="btn btn-primary">Save Purchase Order</button>
+            <a href="{{ url_for('purchase_orders.list_orders') }}" class="btn btn-secondary">Cancel</a>
+        </div>
+    </form>
+</div>
+{% endif %}
+{% endblock %}

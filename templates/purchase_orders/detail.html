@@ -1,0 +1,117 @@
+{% extends 'base.html' %}
+{% block title %}Purchase Order: {{ po.po_number }} - SOPS{% endblock %}
+{% block page_title %}Purchase Order: {{ po.po_number }}{% endblock %}
+
+{% block content %}
+<div class="card animate-fade-in" style="margin-bottom: 24px;">
+    <div class="card-header">
+        <h2 class="card-title">Purchase Order Details</h2>
+        <div style="display: flex; gap: 8px;">
+            <div class="dropdown">
+                <button type="button" class="dropdown-toggle btn-primary-dropdown" onclick="toggleDropdown(this)">
+                    Actions ▾
+                </button>
+                <ul class="dropdown-menu">
+                    <li><a href="{{ url_for('purchase_orders.print_order', order_id=po.id) }}" target="_blank">Print</a></li>
+                    {% if po.status not in ('Received', 'Cancelled') %}
+                    <li>
+                        <form method="POST" action="{{ url_for('purchase_orders.cancel_order', order_id=po.id) }}" style="display: block;" onsubmit="return confirm('Cancel this Purchase Order?')">
+                            <button type="submit" class="danger">Cancel Order</button>
+                        </form>
+                    </li>
+                    {% endif %}
+                    <li class="divider"></li>
+                    <li><a href="{{ url_for('purchase_orders.list_orders') }}">Back to Purchase Orders</a></li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 24px;">
+        <div>
+            <table class="detail-table">
+                <tr><td class="detail-label">PO Number</td><td class="detail-value">{{ po.po_number }}</td></tr>
+                <tr><td class="detail-label">Reference</td><td class="detail-value">{{ po.reference or '-' }}</td></tr>
+                <tr><td class="detail-label">Supplier</td><td class="detail-value">{{ po.supplier_name or '-' }}</td></tr>
+                <tr><td class="detail-label">Supplier VAT</td><td class="detail-value">{{ po.supplier_vat or '-' }}</td></tr>
+                <tr><td class="detail-label">Due Date</td><td class="detail-value">{{ po.due_date.strftime('%Y-%m-%d') if po.due_date else '-' }}</td></tr>
+            </table>
+        </div>
+        <div>
+            <table class="detail-table">
+                <tr><td class="detail-label">Status</td><td class="detail-value"><span class="badge badge-{{ po.status.lower().replace(' ', '-') }}">{{ po.status }}</span></td></tr>
+                <tr><td class="detail-label">PO Date</td><td class="detail-value">{{ po.po_date.strftime('%Y-%m-%d') if po.po_date else '-' }}</td></tr>
+                <tr><td class="detail-label">Created</td><td class="detail-value">{{ po.created_at.strftime('%Y-%m-%d %H:%M') if po.created_at else '-' }}</td></tr>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Line Items / Receiving -->
+<div class="card animate-fade-in">
+    <div class="card-header">
+        <h2 class="card-title">Line Items</h2>
+    </div>
+    {% if po.lines %}
+    <form method="POST" action="{{ url_for('purchase_orders.receive_order', order_id=po.id) }}">
+        <div style="overflow-x: auto;">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Item Code</th>
+                        <th>Description</th>
+                        <th>Qty Ordered</th>
+                        <th>Qty Received</th>
+                        <th>Remaining</th>
+                        {% if po.status not in ('Received', 'Cancelled') %}
+                        <th>Receive Now</th>
+                        {% endif %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for line in po.lines %}
+                    {% set remaining = (line.qty_ordered or 0) - (line.qty_received or 0) %}
+                    <tr class="{{ 'row-amber' if not line.item_id else '' }}">
+                        <td>{{ loop.index }}</td>
+                        <td>
+                            {% if line.item %}
+                                {{ line.item.code }}
+                            {% else %}
+                                <span class="badge badge-cancelled">Unmatched</span>
+                                <form method="POST" action="{{ url_for('purchase_orders.link_item', order_id=po.id) }}" style="display: inline-flex; gap: 4px; margin-top: 4px;">
+                                    <input type="hidden" name="line_id" value="{{ line.id }}">
+                                    <input type="text" name="item_code" placeholder="{{ line.item_code_raw or 'item code' }}" class="form-input" style="width: 140px; padding: 4px 8px; font-size: 0.8rem;">
+                                    <button type="submit" class="btn btn-secondary" style="padding: 4px 8px; font-size: 0.75rem;">Link</button>
+                                </form>
+                            {% endif %}
+                        </td>
+                        <td>{{ line.description or '' }}</td>
+                        <td>{{ line.qty_ordered }}</td>
+                        <td>{{ line.qty_received or 0 }}</td>
+                        <td>{{ remaining }}</td>
+                        {% if po.status not in ('Received', 'Cancelled') %}
+                        <td>
+                            {% if line.item_id and remaining > 0 %}
+                            <input type="number" step="0.01" min="0" max="{{ remaining }}" name="receive_qty_{{ line.id }}" placeholder="0" class="form-input" style="width: 90px; padding: 4px 8px;">
+                            {% else %}
+                            -
+                            {% endif %}
+                        </td>
+                        {% endif %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% if po.status not in ('Received', 'Cancelled') %}
+        <div class="form-actions" style="margin-top: 16px;">
+            <button type="submit" class="btn btn-primary" onclick="return confirm('Record this receipt? Stock quantities will be updated immediately.')">Receive</button>
+        </div>
+        {% endif %}
+    </form>
+    {% else %}
+    <p style="padding: 24px; color: var(--text-muted); text-align: center;">No line items.</p>
+    {% endif %}
+</div>
+{% endblock %}

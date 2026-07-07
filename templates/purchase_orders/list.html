@@ -1,0 +1,47 @@
+{% extends 'base.html' %}
+{% block title %}Purchase Orders - SOPS{% endblock %}
+{% block page_title %}Purchase Orders{% endblock %}
+
+{% block content %}
+<div class="card animate-fade-in">
+    <div class="card-header">
+        <h2 class="card-title">All Purchase Orders</h2>
+        <a href="{{ url_for('purchase_orders.upload_order') }}" class="btn btn-primary">Upload PO</a>
+    </div>
+
+    {% if orders %}
+    <div style="overflow-x: auto;">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>PO Number</th>
+                    <th>Reference</th>
+                    <th>Supplier</th>
+                    <th>Due Date</th>
+                    <th>Status</th>
+                    <th>Created</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for order in orders %}
+                <tr>
+                    <td><a href="{{ url_for('purchase_orders.view_order', order_id=order.id) }}" class="link-primary">{{ order.po_number }}</a></td>
+                    <td>{{ order.reference or '-' }}</td>
+                    <td>{{ order.supplier_name or '-' }}</td>
+                    <td>{{ order.due_date.strftime('%Y-%m-%d') if order.due_date else '-' }}</td>
+                    <td><span class="badge badge-{{ order.status.lower().replace(' ', '-') }}">{{ order.status }}</span></td>
+                    <td>{{ order.created_at.strftime('%Y-%m-%d %H:%M') if order.created_at else '-' }}</td>
+                    <td>
+                        <a href="{{ url_for('purchase_orders.view_order', order_id=order.id) }}" class="btn btn-secondary" style="padding: 4px 10px; font-size: 0.75rem;">View</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p style="padding: 24px; color: var(--text-muted); text-align: center;">No purchase orders found. <a href="{{ url_for('purchase_orders.upload_order') }}" class="link-primary">Upload one</a> to get started.</p>
+    {% endif %}
+</div>
+{% endblock %}

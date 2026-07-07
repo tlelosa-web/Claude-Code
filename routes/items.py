@@ -65,6 +65,26 @@ def adjust_stock(item_id):
         
     return redirect(url_for('items.detail', item_id=item_id))
 
+@items_bp.route('/items/<int:item_id>/reorder-settings', methods=['POST'])
+def update_reorder_settings(item_id):
+    """Set Item.reorder_point/reorder_qty (Enhancement 2 - reorder point
+    signals). Left at 0.0 by default, meaning 'not set' / never flagged."""
+    item = db.session.get(Item, item_id)
+    if not item:
+        flash("Item not found.", "error")
+        return redirect(url_for('items.catalogue'))
+
+    try:
+        item.reorder_point = float(request.form.get('reorder_point', 0) or 0)
+        item.reorder_qty = float(request.form.get('reorder_qty', 0) or 0)
+        db.session.commit()
+        flash(f"Reorder settings updated for {item.code}.", "success")
+    except ValueError:
+        flash("Reorder point and quantity must be numbers.", "error")
+
+    return redirect(url_for('items.detail', item_id=item_id))
+
+
 @items_bp.route('/items/import', methods=['GET', 'POST'])
 def import_csv():
     if request.method == 'POST':

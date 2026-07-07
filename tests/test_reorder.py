@@ -90,3 +90,36 @@ class TestDashboardReorderCard:
         response = client.get('/')
         assert response.status_code == 200
         assert "Below Reorder Point" in response.get_data(as_text=True)
+
+
+class TestItemReorderSettingsRoute:
+    _counter = 0
+
+    def _next_code(self):
+        TestItemReorderSettingsRoute._counter += 1
+        return f"REORDER-SETTINGS-TEST-{TestItemReorderSettingsRoute._counter:03d}"
+
+    def test_update_reorder_settings(self, app, db, session, client):
+        item = Item(code=self._next_code(), description="Settings test", qty_on_hand=5.0, active=True)
+        session.add(item)
+        session.commit()
+
+        response = client.post(f'/items/{item.id}/reorder-settings',
+                               data={'reorder_point': '8', 'reorder_qty': '25'},
+                               follow_redirects=True)
+        assert response.status_code == 200
+        assert "Reorder settings updated" in response.get_data(as_text=True)
+
+        db.session.refresh(item)
+        assert item.reorder_point == 8.0
+        assert item.reorder_qty == 25.0
+
+    def test_update_reorder_settings_rejects_non_numeric(self, app, db, session, client):
+        item = Item(code=self._next_code(), description="Bad input test", qty_on_hand=5.0, active=True)
+        session.add(item)
+        session.commit()
+
+        response = client.post(f'/items/{item.id}/reorder-settings',
+                               data={'reorder_point': 'abc', 'reorder_qty': '25'},
+                               follow_redirects=True)
+        assert "must be numbers" in response.get_data(as_text=True)

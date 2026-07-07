@@ -229,3 +229,65 @@
   updating.
 - Next task: none queued — awaiting Tebello's review/commit confirmation.
 - Blockers: None.
+
+## 2026-07-07 — Batch 13: Purchase Order Module + Reorder Point Signals (Enhancements 1 & 2)
+
+- Domain: Software/AI.
+- Tebello attached two real Sage-exported Supplier Purchase Order PDFs (PO4088 - LUFT,
+  PO4106 - ATTENU-TEC) and asked for the Purchase Order module (Enhancement 1) and reorder
+  point signals (Enhancement 2) to be built, per `docs/specs/purchase-order-module-plan.md`.
+- Confirmed both POs are the same Sage template family as Sales Orders — identical
+  line-item table column geometry, different header fields. Extracted the shared
+  geometry-dependent parsing (`clean_numerical_str`, `build_merged_lines`,
+  `parse_line_item_row`, multi-page line-item walking) out of `services/pdf_parser.py` into
+  new `services/pdf_common.py`, refactored the SO parser to use it — no behavior change,
+  verified against the existing 39-test baseline before building anything new on top.
+- New `services/po_parser.py`: `parse_purchase_order_pdf()` (header regex for
+  NUMBER/REFERENCE/DATE/DUE DATE/OVERALL DISCOUNT %/SUPPLIER VAT NO/supplier name, reuses
+  `pdf_common` for line items) + `split_item_code()` (splits `"<code> - <description>"` on
+  the *first* ` - ` only, since descriptions often contain further ` - ` segments like
+  degree suffixes). Verified against both real sample PDFs — all extracted item codes
+  matched existing `Item.code` rows in `data/ItemListingReport.csv` exactly.
+- New `PurchaseOrder`/`POLine` models (`models.py`) + migration script
+  (`scripts/migrate_add_purchase_order_tables.py`) — denormalized supplier fields on
+  `PurchaseOrder`, no separate `Supplier` master table yet (not needed until spend-by-
+  supplier reporting matters). `POLine.item_id` is nullable — unmatched lines stay
+  unlinked (`item_code_raw` preserved) until manually linked, never blocking a save.
+- New `routes/purchase_orders.py` + `templates/purchase_orders/` (upload/review two-step
+  form, list, detail with inline "Link Item" fixup, A4 print, receive with full/partial
+  quantity entry per line, cancel blocked once any receipt exists). Registered blueprint in
+  `app.py`, added sidebar nav entry. Receiving calls the *existing*
+  `services.stock_service.receipt()` (already present, unused until now) per line and
+  updates `Item.last_cost` from the PO line price.
+- Enhancement 2: `Item.reorder_point`/`reorder_qty` columns (both default 0.0 = "not set",
+  self-heals via `ensure_schema_columns()` in `app.py` same pattern as
+  `sales_order.job_numbers`, plus an explicit migration script per the hard rule). Stock
+  Report gained a "Below Reorder Point" filter + amber row highlight + Reorder Point column;
+  Dashboard gained a stat card; new `purchase_orders.create_from_shortfall()` route builds a
+  Draft PO (`PO-DRAFT-####` numbering, kept separate from real supplier PO#s) with one line
+  per shortfall item at `reorder_qty`/`last_cost`.
+- Gap caught during implementation: reorder_point/reorder_qty had no UI to actually set them
+  per item (only reachable via direct DB access) — added a small "Reorder Settings" form +
+  `items.update_reorder_settings()` route on the Item detail page so the feature is usable
+  end-to-end, not just plumbed.
+- Checked `black`/`ruff` against the new files only — clean. Did *not* run project-wide
+  `black .`/`ruff check .` fixes: the existing codebase already fails `black --check` at
+  baseline (pre-existing, confirmed before touching anything), so a full reformat would
+  create a large unrelated diff. Flagging this to Tebello as a separate future decision
+  rather than folding it into this batch.
+- Verification: in addition to per-route unit tests, added one true end-to-end test
+  (`test_upload_save_receive_attenutec_po`) that uploads the real PO4106 fixture, scrapes
+  the `lines_json` hidden field out of the rendered review HTML exactly as a browser would
+  submit it, saves, and receives — confirmed stock movement + `last_cost` update against
+  real data (4x 800S1.5DP @ R4,423).
+- Offline-first constraint re-verified: `grep -r "cdn\."` / `fonts.googleapis` across all new
+  templates returns empty.
+- Full suite: 62 tests green (was 39). 8 atomic commits, one per logical unit (pdf_common
+  refactor, po_parser, models+migration, PO routes, reorder columns, reorder UI/reports,
+  reorder-settings form, e2e test).
+- Next task: none queued — awaiting Tebello's review/commit confirmation. Enhancement 3
+  (demand-netted shortfall calc, per `docs/research/erp-mrp-benchmark-2026-07-07.md`) is the
+  next item on the roadmap once 1 & 2 are reviewed.
+- Blockers: None.
+- Commits: `65f8443`, `15a265e`, `6f0dc53`, `b4bfdc4`, `c06a9f5`, `0b08b7c`, `fc63598`,
+  `c0a5ceb`.

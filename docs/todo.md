@@ -119,3 +119,23 @@ All items below must be green before delivery:
 - [x] Verified against the live `instance/sops.db` data by running the dev server and diffing rendered rows — first pass showed a stale Werkzeug reloader child process still serving the old `created_at.desc()` order; killed both server processes, restarted clean, and confirmed all three list pages now render in ascending delivery-date order.
 - [x] Full suite: 39 tests green (no test changes needed — no existing test asserted list ordering).
 - Next task: none queued — awaiting Tebello's review/commit confirmation.
+
+## Research — ERP/MRP Benchmark (2026-07-07)
+- [x] Research pattern: benchmarked SOPS against world-class ERP/MRP standards (SAP B1, NetSuite, Odoo MRP) — see `docs/research/erp-mrp-benchmark-2026-07-07.md`.
+- Gaps identified: no Purchase Order/supplier module, no reorder-point signals, shortfall calc is point-in-time (no demand netting against on-order/committed stock).
+- Spec written: `docs/specs/purchase-order-module-plan.md` — revised after Tebello attached 2 real Sage PO PDFs, covering Enhancement 1 (PO upload/parse/receive) and Enhancement 2 (reorder points) in detail.
+
+## Batch 13 — Purchase Order Module + Reorder Point Signals (2026-07-07)
+- [x] `services/pdf_common.py`: extracted shared Sage-PDF table geometry parsing out of `services/pdf_parser.py` (no behavior change, verified against the 39-test baseline first).
+- [x] `services/po_parser.py`: `parse_purchase_order_pdf()` + `split_item_code()`. Verified against both attached sample POs (PO4088 - LUFT, 5 lines; PO4106 - ATTENU-TEC, 1 line) — all item codes matched existing `Item.code` catalogue rows exactly.
+- [x] `PurchaseOrder`/`POLine` models + `scripts/migrate_add_purchase_order_tables.py`. `POLine.item_id` nullable — unmatched lines never block a save.
+- [x] `routes/purchase_orders.py` + `templates/purchase_orders/`: upload/review, list, detail (inline item-link fixup), print, receive (full/partial, calls existing `stock_service.receipt()`), cancel (blocked once received). Registered blueprint, added nav entry.
+- [x] Enhancement 2: `Item.reorder_point`/`reorder_qty` columns + migration (self-heals via `ensure_schema_columns()`). Stock Report "Below Reorder Point" filter, Dashboard stat card, `create_from_shortfall()` Draft-PO generator.
+- [x] Gap caught + fixed: reorder_point/reorder_qty had no UI — added Reorder Settings form on Item detail page (`items.update_reorder_settings()`).
+- [x] End-to-end test added: real PDF upload -> scrape rendered `lines_json` -> save -> receive -> verified stock movement + `last_cost` against real PO4106 data.
+- [x] Offline-first re-verified (no cdn./fonts.googleapis in new templates).
+- [x] Full suite: 62 tests green (was 39). 8 atomic commits.
+- Flagged to Tebello: existing codebase already fails `black --check` at baseline (pre-existing, not introduced by this batch) — did not run a project-wide reformat, since that would create unrelated diff noise. Separate decision for later if wanted.
+- Next task: Enhancement 3 (demand-netted shortfall calc, `docs/research/erp-mrp-benchmark-2026-07-07.md`) once Tebello reviews 1 & 2.
+- Blockers: None.
+- Committed: `65f8443`, `15a265e`, `6f0dc53`, `b4bfdc4`, `c06a9f5`, `0b08b7c`, `fc63598`, `c0a5ceb`.

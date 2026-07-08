@@ -5,16 +5,19 @@ from models import db, WorksOrder, BOMLine, Item, SalesOrder, StockOrder
 from routes.sales_orders import can_close_sales_order
 from services.doc_generator import get_works_order_print_context
 from services.stock_service import issue
+from services.order_filters import WO_ACTIVE
 
 works_orders_bp = Blueprint('works_orders', __name__)
 
 @works_orders_bp.route('/works-orders')
 def list_orders():
-    orders = (WorksOrder.query
-              .join(SalesOrder, WorksOrder.so_id == SalesOrder.id, isouter=True)
-              .order_by(nullslast(SalesOrder.delivery_date.asc()))
-              .all())
-    return render_template('works_orders/list.html', orders=orders)
+    view = request.args.get('view', 'all')
+    query = (WorksOrder.query
+             .join(SalesOrder, WorksOrder.so_id == SalesOrder.id, isouter=True))
+    if view == 'open':
+        query = query.filter(WorksOrder.status.in_(WO_ACTIVE))
+    orders = query.order_by(nullslast(SalesOrder.delivery_date.asc())).all()
+    return render_template('works_orders/list.html', orders=orders, view=view)
 
 @works_orders_bp.route('/works-orders/<int:order_id>')
 def view_order(order_id):

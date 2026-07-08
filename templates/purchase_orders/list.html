@@ -5,8 +5,14 @@
 {% block content %}
 <div class="card animate-fade-in">
     <div class="card-header">
-        <h2 class="card-title">All Purchase Orders</h2>
-        <a href="{{ url_for('purchase_orders.upload_order') }}" class="btn btn-primary">Upload PO</a>
+        <h2 class="card-title">{{ 'Open Purchase Orders' if view == 'open' else 'All Purchase Orders' }}</h2>
+        <div style="display: flex; gap: 8px; align-items: center;">
+            <div style="display: flex; gap: 4px;">
+                <a href="{{ url_for('purchase_orders.list_orders') }}" class="btn {{ 'btn-primary' if view != 'open' else 'btn-secondary' }}" style="padding: 6px 12px; font-size: 0.8rem;">All</a>
+                <a href="{{ url_for('purchase_orders.list_orders', view='open') }}" class="btn {{ 'btn-primary' if view == 'open' else 'btn-secondary' }}" style="padding: 6px 12px; font-size: 0.8rem;">Open only</a>
+            </div>
+            <a href="{{ url_for('purchase_orders.upload_order') }}" class="btn btn-primary">Upload PO</a>
+        </div>
     </div>
 
     {% if orders %}

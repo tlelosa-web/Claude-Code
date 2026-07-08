@@ -1,18 +1,21 @@
-from flask import Blueprint, render_template, redirect, url_for, flash
+from flask import Blueprint, render_template, redirect, url_for, flash, request
 from sqlalchemy import nullslast
 from models import db, StockOrder, StockOrderLine, SalesOrder
 from routes.sales_orders import can_close_sales_order
+from services.order_filters import STO_ACTIVE
 
 stock_orders_bp = Blueprint('stock_orders', __name__)
 
 @stock_orders_bp.route('/stock-orders')
 def list_orders():
     """List all Stock Orders."""
-    orders = (StockOrder.query
-              .join(SalesOrder, StockOrder.so_id == SalesOrder.id, isouter=True)
-              .order_by(nullslast(SalesOrder.delivery_date.asc()))
-              .all())
-    return render_template('stock_orders/list.html', orders=orders)
+    view = request.args.get('view', 'all')
+    query = (StockOrder.query
+             .join(SalesOrder, StockOrder.so_id == SalesOrder.id, isouter=True))
+    if view == 'open':
+        query = query.filter(StockOrder.status.in_(STO_ACTIVE))
+    orders = query.order_by(nullslast(SalesOrder.delivery_date.asc())).all()
+    return render_template('stock_orders/list.html', orders=orders, view=view)
 
 @stock_orders_bp.route('/stock-orders/<int:order_id>')
 def view_order(order_id):

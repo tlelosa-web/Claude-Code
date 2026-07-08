@@ -6,13 +6,18 @@ from werkzeug.utils import secure_filename
 from sqlalchemy import nullslast
 from models import db, SalesOrder, SOLineItem, Item, WorksOrder, BOMLine, StockMovement, StockOrder, StockOrderLine
 from services.pdf_parser import parse_sales_order_pdf
+from services.order_filters import SO_ACTIVE
 
 sales_orders_bp = Blueprint('sales_orders', __name__)
 
 @sales_orders_bp.route('/sales-orders')
 def list_orders():
-    orders = SalesOrder.query.order_by(nullslast(SalesOrder.delivery_date.asc())).all()
-    return render_template('sales_orders/list.html', orders=orders)
+    view = request.args.get('view', 'all')
+    query = SalesOrder.query
+    if view == 'open':
+        query = query.filter(SalesOrder.status.in_(SO_ACTIVE))
+    orders = query.order_by(nullslast(SalesOrder.delivery_date.asc())).all()
+    return render_template('sales_orders/list.html', orders=orders, view=view)
 
 def item_to_bom_json(item):
     """Return the plain JSON shape consumed by the BOM builder UI."""

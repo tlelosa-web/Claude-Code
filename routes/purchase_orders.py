@@ -7,14 +7,19 @@ from sqlalchemy import nullslast
 from models import db, PurchaseOrder, POLine, Item
 from services.po_parser import parse_purchase_order_pdf, split_item_code
 from services.stock_service import receipt as stock_receipt
+from services.order_filters import PO_ACTIVE
 
 purchase_orders_bp = Blueprint('purchase_orders', __name__)
 
 
 @purchase_orders_bp.route('/purchase-orders')
 def list_orders():
-    orders = PurchaseOrder.query.order_by(nullslast(PurchaseOrder.due_date.asc())).all()
-    return render_template('purchase_orders/list.html', orders=orders)
+    view = request.args.get('view', 'all')
+    query = PurchaseOrder.query
+    if view == 'open':
+        query = query.filter(PurchaseOrder.status.in_(PO_ACTIVE))
+    orders = query.order_by(nullslast(PurchaseOrder.due_date.asc())).all()
+    return render_template('purchase_orders/list.html', orders=orders, view=view)
 
 
 def _match_lines_to_items(line_items):

@@ -1,14 +1,24 @@
+from sqlalchemy import nullslast
 from flask import Blueprint, render_template
 from models import Item, SalesOrder, WorksOrder
+from services.order_filters import SO_ACTIVE, WO_ACTIVE
 
 dashboard_bp = Blueprint('dashboard', __name__)
 
 @dashboard_bp.route('/')
 def index():
     # Gather statistics
-    open_wos = WorksOrder.query.filter(WorksOrder.status.in_(['Open', 'In Progress'])).count()
+    open_wos = WorksOrder.query.filter(WorksOrder.status.in_(WO_ACTIVE)).count()
     completed_wos = WorksOrder.query.filter_by(status='Complete').count()
     pending_sos = SalesOrder.query.filter_by(status='Draft').count()
+
+    # Open Sales Orders (Draft + Open, excludes Closed) - shown as a
+    # dedicated dashboard table so open work is visible at a glance.
+    open_sales_orders = (SalesOrder.query
+                          .filter(SalesOrder.status.in_(SO_ACTIVE))
+                          .order_by(nullslast(SalesOrder.delivery_date.asc()))
+                          .limit(10)
+                          .all())
     
     # Low stock items: items with qty_on_hand <= 10
     low_stock_count = Item.query.filter(Item.qty_on_hand <= 10.0, Item.active == True).count()
@@ -31,5 +41,6 @@ def index():
         pending_sos=pending_sos,
         low_stock_count=low_stock_count,
         reorder_count=reorder_count,
-        recent_wos=recent_wos
+        recent_wos=recent_wos,
+        open_sales_orders=open_sales_orders
     )

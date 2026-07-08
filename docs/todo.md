@@ -139,3 +139,15 @@ All items below must be green before delivery:
 - Next task: Enhancement 3 (demand-netted shortfall calc, `docs/research/erp-mrp-benchmark-2026-07-07.md`) once Tebello reviews 1 & 2.
 - Blockers: None.
 - Committed: `65f8443`, `15a265e`, `6f0dc53`, `b4bfdc4`, `c06a9f5`, `0b08b7c`, `fc63598`, `c0a5ceb`.
+
+## Batch 14 — Open/Active Filter (Dashboard + SO/WO/STO/PO Lists) (2026-07-08)
+- [x] Spec: `docs/specs/dashboard-open-filter.md` — active-status definitions confirmed with Tebello (SO: Draft+Open; WO: Open+In Progress; STO: Open; PO: Draft+Open+Partially Received).
+- [x] New `services/order_filters.py` — single source of truth for the 4 active-status tuples (avoids duplicating status strings across route files).
+- [x] `routes/{sales_orders,works_orders,stock_orders,purchase_orders}.py` `list_orders()`: added `?view=open|all` query param (default `all`, unchanged behavior — opt-in filter per Tebello's decision), filters by the matching active-status tuple.
+- [x] 4 list templates: added an "All / Open only" toggle in the card header, driven by the URL param (no JS/localStorage, offline-first).
+- [x] `routes/dashboard.py` + `templates/dashboard.html`: new "Open Sales Orders" table (Draft+Open SOs, top 10 by soonest delivery date) — directly answers the ask that the dashboard surface open Sales Orders.
+- [x] Confirmed with Tebello: existing "Recent Works Orders Activity" table on the dashboard stays an unfiltered activity feed (not a queue) — no change.
+- [x] Tests: new `tests/test_order_list_filters.py` (7 tests) — `view=open` excludes the correct terminal statuses per type, default `view=all` unchanged; dashboard shows open/draft SOs and hides Closed ones.
+- [x] Full suite: 69 tests green (was 62). `ruff check` clean on all new/changed files (pre-existing baseline lint/black issues in untouched code, flagged in Batch 13, left alone — no unrelated diff noise).
+- Ops note: mid-task, `.git/index` got corrupted and `.git/index.lock` got stuck — root cause was OneDrive's Desktop-backup feature silently syncing this repo's `.git` internals (lock/index files) even though the folder looks like a normal local Desktop path. Tebello cleared the stuck lock from Windows directly (`Remove-Item .git\index.lock`); index rebuilt clean via a plain `git status`/`git reset`, no data lost — working tree was never touched. Flagged as a standing risk: recommend excluding this repo from OneDrive Desktop backup (or relocating off Desktop) to prevent recurrence.
+- Blockers: None (resolved).

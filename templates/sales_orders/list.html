@@ -5,11 +5,17 @@
 {% block content %}
 <div class="card animate-fade-in">
     <div class="card-header">
-        <h2 class="card-title">All Sales Orders</h2>
-        <a href="{{ url_for('sales_orders.upload_order') }}" class="btn btn-primary">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
-            Upload New SO
-        </a>
+        <h2 class="card-title">{{ 'Open Sales Orders' if view == 'open' else 'All Sales Orders' }}</h2>
+        <div style="display: flex; gap: 8px; align-items: center;">
+            <div style="display: flex; gap: 4px;">
+                <a href="{{ url_for('sales_orders.list_orders') }}" class="btn {{ 'btn-primary' if view != 'open' else 'btn-secondary' }}" style="padding: 6px 12px; font-size: 0.8rem;">All</a>
+                <a href="{{ url_for('sales_orders.list_orders', view='open') }}" class="btn {{ 'btn-primary' if view == 'open' else 'btn-secondary' }}" style="padding: 6px 12px; font-size: 0.8rem;">Open only</a>
+            </div>
+            <a href="{{ url_for('sales_orders.upload_order') }}" class="btn btn-primary">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                Upload New SO
+            </a>
+        </div>
     </div>
 
     {% if orders %}

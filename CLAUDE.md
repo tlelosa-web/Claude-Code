@@ -2,7 +2,7 @@
 
 # Architecture: DCOE (Domain → Context → Orchestrate → Execute)
 
-# Version: 3.1 | Owner: Tebello Lelosa | Stack: see PROJECT OVERVIEW
+# Version: 3.2 | Owner: Tebello Lelosa | Stack: see PROJECT OVERVIEW
 
 > Loaded at the start of every Claude Code session.
 > Single source of truth for how this project operates.
@@ -13,11 +13,11 @@
 ## 📁 PROJECT OVERVIEW
 
 ```
-Project:     SOPS (Works Order & Stock Control)
-Type:        Web App
-Stack:       Flask · SQLite · Jinja2 · Vanilla JS
-Deployment:  Local Windows desktop
-Runtime:     Python 3.11
+Project:     [YOUR PROJECT NAME]   e.g. SOPS / Fan Nameplate Generator / AI Agency Engine
+Type:        [Web App / CLI / API / Automation / Desktop Offline]
+Stack:       [e.g. Flask · SQLite · Jinja2 · Vanilla JS / FastAPI · React · ReportLab]
+Deployment:  [e.g. Local Windows desktop / Vercel / Docker]
+Runtime:     [e.g. Python 3.11 / Node 20]
 Inference:   OpenRouter  →  claude-sonnet-5 (default, medium effort) | claude-opus-4-8 (evidence-based escalation only)
 Owner:       Tebello Lelosa
 ```
@@ -38,6 +38,12 @@ python -m pytest               # Run all tests
 python -m pytest tests/unit    # Unit tests only
 black . && ruff check .        # Format + lint
 
+# Node / React projects (Vite)
+npm install
+npm run dev                    # Dev server (localhost:5173)
+npm run build
+npm run typecheck && npm run lint
+
 # SQLite DB tasks (SOPS pattern)
 flask db upgrade               # Run pending migrations
 flask db seed                  # Seed dev/test data
@@ -45,6 +51,7 @@ sqlite3 sops.db ".tables"      # Quick schema check
 
 # Before every commit:
 # Python →  black . && ruff check . && python -m pytest
+# Node   →  npm run typecheck && npm run lint && npm test
 ```
 
 -----
@@ -108,19 +115,28 @@ Each complex task is routed through four stages. Never collapse them.
 
 ## 🤖 SUB-AGENT ROSTER
 
-Agents live in `.claude/agents/`. Invoke by name or let Claude delegate.
+**Default location: `~/.claude/agents/` (user-level).** The full roster below
+is deployed once at the user level and is available automatically in every
+project — SOPS, ai-outreach-agency, CrateTracker, Fan Nameplate Generator,
+and any future project. No per-project copying required.
 
-|Agent       |File                  |When to Use                            |
-|------------|----------------------|---------------------------------------|
-|`domain`    |`agents/domain.md`    |Session start, scope confirmation      |
-|`planner`   |`agents/planner.md`   |Break features into spec + tasks       |
-|`architect` |`agents/architect.md` |System design, ADRs, DB schema         |
-|`executor`  |`agents/executor.md`  |Implement a single well-defined task   |
-|`tester`    |`agents/tester.md`    |Write tests, TDD loops                 |
-|`reviewer`  |`agents/reviewer.md`  |Code review, security, quality gate    |
-|`doc-writer`|`agents/doc-writer.md`|Update docs, README, changelogs        |
-|`debugger`  |`agents/debugger.md`  |Systematic bug investigation           |
-|`data-agent`|`agents/data-agent.md`|Excel/CSV transforms, report processing|
+Project-level `.claude/agents/` is reserved for **overrides only** — e.g. a
+`data-agent` variant tuned to a specific project's export format. A
+same-named file in a project's own `.claude/agents/` wins over the
+user-level default for that project. Run `/agents` at session start to
+confirm the active roster, and `/doctor` if a name conflict is suspected.
+
+|Agent       |Default file                  |When to Use                            |
+|------------|-------------------------------|----------------------------------------|
+|`domain`    |`~/.claude/agents/domain.md`    |Session start, scope confirmation      |
+|`planner`   |`~/.claude/agents/planner.md`   |Break features into spec + tasks       |
+|`architect` |`~/.claude/agents/architect.md` |System design, ADRs, DB schema         |
+|`executor`  |`~/.claude/agents/executor.md`  |Implement a single well-defined task   |
+|`tester`    |`~/.claude/agents/tester.md`    |Write tests, TDD loops                 |
+|`reviewer`  |`~/.claude/agents/reviewer.md`  |Code review, security, quality gate    |
+|`doc-writer`|`~/.claude/agents/doc-writer.md`|Update docs, README, changelogs        |
+|`debugger`  |`~/.claude/agents/debugger.md`  |Systematic bug investigation           |
+|`data-agent`|`~/.claude/agents/data-agent.md`|Excel/CSV transforms, report processing|
 
 ### Model routing (via OpenRouter)
 
@@ -143,9 +159,9 @@ Agents live in `.claude/agents/`. Invoke by name or let Claude delegate.
 
 Set per-agent in frontmatter: `model: claude-haiku-4-5`
 
-**Effort tiers** map onto the existing Thinking Levels table below — low effort pairs with *(none)*/`think`, medium with `think hard`, high with `think harder`/`ultrathink`.
+**Effort tiers** map onto the Thinking Levels table below — low effort pairs with *(none)*/`think`, medium with `think hard`, high with `think harder`/`ultrathink`.
 
-**Bulk batch jobs** (large multi-file refactors, SOPS-wide sweeps, mass research runs) should be scheduled **before 31 August 2026** — introductory pricing on current models ends after that date.
+**Bulk batch jobs** (large multi-file refactors, project-wide sweeps, mass research runs) should be scheduled **before 31 August 2026** — introductory pricing on current models ends after that date.
 
 -----
 
@@ -163,7 +179,7 @@ git worktree add ../worktree-bugfix-bom   -b bugfix/bom-lookup
 git worktree remove ../worktree-feature-auth
 
 # Orchestrator cherry-picks or merges:
-git cherry-pick <commit-hash>
+git cherry-pick <​commit-hash>
 ```
 
 **Rules:**
@@ -172,6 +188,9 @@ git cherry-pick <commit-hash>
 - Each Executor commits its own work atomically before stopping.
 - Orchestrator reviews and integrates; never commits unreviewed code.
 - Clean up worktrees after merge.
+- Executors run in a shared session by default — confirm the executor agent's
+  first action `cd`s into its assigned worktree path before it touches files,
+  rather than assuming worktree isolation is automatic.
 
 -----
 
@@ -180,9 +199,9 @@ git cherry-pick <commit-hash>
 ### Pattern 1 — New Feature
 
 ```
-1. /plan → Domain confirms scope → Planner writes spec to docs/specs/<feature>.md
+1. /plan → Domain confirms scope → Planner writes spec to docs/specs/<​feature>.md
 2. Review spec → approve or iterate
-3. /build docs/specs/<feature>.md → Orchestrator spawns Executors in worktrees
+3. /build docs/specs/<​feature>.md → Orchestrator spawns Executors in worktrees
 4. Each Executor: implement → test → commit → done
 5. Reviewer agent audits → merge to main
 ```
@@ -191,7 +210,7 @@ git cherry-pick <commit-hash>
 
 ```
 1. Describe bug → Debugger agent investigates
-2. Debugger writes root-cause to docs/bugs/<slug>.md
+2. Debugger writes root-cause to docs/bugs/<​slug>.md
 3. Executor implements fix + regression test → atomic commit
 4. Reviewer audits → merge
 ```
@@ -210,7 +229,7 @@ git cherry-pick <commit-hash>
 
 ```
 1. Data-agent reads source file (Excel / CSV / SQLite query)
-2. Applies transform rules from docs/specs/<report>.md
+2. Applies transform rules from docs/specs/<​report>.md
 3. Outputs to designated path (print template / export file)
 4. No UI changes without Executor. No DB writes without schema check first.
 ```
@@ -219,7 +238,7 @@ git cherry-pick <commit-hash>
 
 ```
 1. Explore subagent: parallel read-only investigation
-2. Report synthesised to docs/research/<slug>.md
+2. Report synthesised to docs/research/<​slug>.md
 3. Architect reviews → proceed to Pattern 1 or 3
 ```
 
@@ -360,16 +379,12 @@ project-root/
 │   ├── research/                ← Investigation notes
 │   └── specs/                   ← Feature specs (pre-build)
 ├── .claude/
-│   ├── agents/                  ← Sub-agent definitions
-│   │   ├── domain.md
-│   │   ├── planner.md
-│   │   ├── architect.md
-│   │   ├── executor.md
-│   │   ├── tester.md
-│   │   ├── reviewer.md
-│   │   ├── doc-writer.md
-│   │   ├── debugger.md
-│   │   └── data-agent.md
+│   ├── agents/                  ← PROJECT-LEVEL OVERRIDES ONLY.
+│   │                                Default 9-agent roster lives in
+│   │                                ~/.claude/agents/ (user-level) and
+│   │                                applies to this project automatically.
+│   │                                Only add a file here to override a
+│   │                                specific agent for this project.
 │   ├── hooks/                   ← Lifecycle hooks
 │   ├── commands/                ← Custom slash commands
 │   ├── settings.json            ← Allow/deny permission rules
@@ -384,6 +399,17 @@ project-root/
 │   ├── unit/
 │   └── integration/
 └── [project-specific files]
+
+~/.claude/agents/                ← USER-LEVEL DEFAULT ROSTER (all projects)
+├── domain.md
+├── planner.md
+├── architect.md
+├── executor.md
+├── tester.md
+├── reviewer.md
+├── doc-writer.md
+├── debugger.md
+└── data-agent.md
 ```
 
 -----
@@ -416,6 +442,7 @@ At the start of every session, Claude must:
 1. **Offline-first always** — no feature may depend on internet connectivity.
 1. **No schema changes without a migration file.** Ever.
 1. **Opus is earned, not assigned** — default to Sonnet 5 at medium effort; escalate only on evidence (failed attempts, architecture, security).
+1. **Agent roster lives at user level** (`~/.claude/agents/`) — do not fork a full copy into a project's `.claude/agents/`; add project files there only as single-agent overrides.
 
 -----
 
@@ -437,5 +464,9 @@ At the start of every session, Claude must:
 - *Stack or tooling changes*
 - *New agents or workflow patterns are added*
 - *Hard lessons emerge from real sessions*
+
+*v3.2 change: sub-agent roster deployment moved from project-level
+`.claude/agents/` to user-level `~/.claude/agents/`, shared across all
+projects. Project-level now reserved for per-project overrides only.*
 
 *Last review: July 2026 — Tebello Lelosa*

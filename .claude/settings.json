@@ -1,0 +1,25 @@
+﻿{
+  "permissions": {
+    "allow": [
+      "Bash(python -m pytest*)",
+      "Bash(pytest*)",
+      "Bash(black .)",
+      "Bash(ruff check .)",
+      "Bash(git status)",
+      "Bash(git diff*)",
+      "Bash(git add*)",
+      "Bash(git commit*)",
+      "Bash(git log*)",
+      "Bash(flask run*)",
+      "Bash(npm run *)",
+      "Bash(npm install*)",
+      "Bash(sqlite3 *.db \".tables\")"
+    ],
+    "deny": [
+      "Bash(rm -rf*)",
+      "Bash(git push --force*)",
+      "Bash(DROP TABLE*)",
+      "Bash(git reset --hard*)"
+    ]
+  }
+}

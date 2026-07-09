@@ -85,15 +85,12 @@ sops/
 │   ├── ItemListingReport.csv
 │   ├── ItemMovementReport.csv
 │   └── FM4087 - ARCTIC AIR - Sales Order - SO4603.pdf
-├── logs/                     ← Application logs and run outputs
-│   ├── startup.log
-│   └── startup.err.log
+├── logs/                     ← Application logs and run outputs (gitignored, not tracked)
 ├── scripts/                  ← Helper and utility scripts
 │   ├── download_vendor.sh
 │   ├── fast_import.py
 │   ├── fix_so_status.py
 │   ├── migrate_add_related_wo.py
-│   ├── quick_update_items.py
 │   └── test_import.py
 ├── routes/                   ← Route handlers
 │   ├── dashboard.py
@@ -114,6 +111,7 @@ sops/
 │   ├── todo.md
 │   └── specs/
 ├── .Codex/                   ← Codex executor manifests, hooks, commands, worktrees
+├── archive/                  ← Superseded/orphaned files kept for reference (see archive/README.md)
 ├── trading/                  ← Trading domain workspace
 ├── engineering/              ← Engineering domain workspace
 └── tools/                    ← Software / AI tooling workspace

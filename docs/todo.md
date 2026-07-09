@@ -151,3 +151,16 @@ All items below must be green before delivery:
 - [x] Full suite: 69 tests green (was 62). `ruff check` clean on all new/changed files (pre-existing baseline lint/black issues in untouched code, flagged in Batch 13, left alone — no unrelated diff noise).
 - Ops note: mid-task, `.git/index` got corrupted and `.git/index.lock` got stuck — root cause was OneDrive's Desktop-backup feature silently syncing this repo's `.git` internals (lock/index files) even though the folder looks like a normal local Desktop path. Tebello cleared the stuck lock from Windows directly (`Remove-Item .git\index.lock`); index rebuilt clean via a plain `git status`/`git reset`, no data lost — working tree was never touched. Flagged as a standing risk: recommend excluding this repo from OneDrive Desktop backup (or relocating off Desktop) to prevent recurrence.
 - Blockers: None (resolved).
+
+## Batch 15 — CLAUDE.md v3.2 + Repo Folder Cleanup (2026-07-09)
+- [x] Landed CLAUDE.md v3.1 → v3.2 (user-level `~/.claude/agents/` roster, project-level reserved for overrides only) — commit `804738a`.
+- [x] Removed `AGENT_build_bom_works_pack.md` (superseded v1.0 spec) — confirmed its learnings are fully captured in `docs/specs/multi-fan-build-bom.md` and `docs/specs/sales-order-job-numbers.md` before deleting.
+- [x] Repo folder cleanup — archived (not deleted) genuinely orphaned material into new `archive/` (see `archive/README.md`):
+  - `sops/` package (`app.py`/`config.py`/`models.py`/`__init__.py`) — pre-`docs/decisions/0001-keep-flask-app-at-root.md` scaffold, unreferenced by the live app, plus its orphaned `sops/instance/sops.db` (53KB test-run artifact, not the real DB).
+  - Six 2026-06-17 ad-hoc debug scripts (`check_db_state.py`, `check_so_lines.py`, `find_item.py`, `fix_bom_line.py`, `test_render.py`, `scripts/quick_update_items.py`) — siblings of scripts already cleaned in commit `f54d4e9` but missed at the time.
+  - Eight tracked `logs/*.log`/`*.txt` run-output captures (2026-05 to 2026-07) — `logs/` is now gitignored (`logs/*` + `!logs/.gitkeep`) so run output stops landing in git going forward.
+- [x] Deleted (confirmed pure junk, not archived): root `sops.db` (0-byte stub, already flagged stale in `docs/bugs/health-screen-2026-06-24.md`), root `startup_test.log` (0 bytes), root `FM4087 - ARCTIC AIR - Sales Order - SO4603.pdf` (byte-identical duplicate of the `data/` copy).
+- [x] Updated `README.md` project structure tree (removed refs to archived/deleted files, noted `logs/` is now gitignored, added `archive/` entry).
+- [x] Full suite re-verified after cleanup: 69 tests green, no regressions from removing the dead `sops/` package.
+- Next task: none queued — awaiting Tebello's review/commit confirmation. Enhancement 3 (demand-netted shortfall calc) remains the next roadmap item once picked up.
+- Blockers: None.

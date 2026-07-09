@@ -291,3 +291,63 @@
 - Blockers: None.
 - Commits: `65f8443`, `15a265e`, `6f0dc53`, `b4bfdc4`, `c06a9f5`, `0b08b7c`, `fc63598`,
   `c0a5ceb`.
+
+## 2026-07-09 — Batch 15: CLAUDE.md v3.2 + Repo Folder Cleanup
+
+- Domain: Software/AI.
+- `/continue` surfaced uncommitted, unlogged CLAUDE.md v3.1 → v3.2 work already sitting in the
+  working tree (user-level `~/.claude/agents/` roster, project-level `.claude/agents/` reserved
+  for overrides only). Deleted the leftover `CLAUDE.md.v3.1.bak`, staged the CLAUDE.md diff plus
+  the now-redundant `.claude/agents/executor.md` deletion, committed as `804738a`.
+- Tebello opened `AGENT_build_bom_works_pack.md` (the v1.0 Build BOM/Works Pack spec from
+  2026-06-12) and asked if it was still relevant. It wasn't: its core assumption ("only one line
+  can be marked as Fan") was overturned by the multi-fan-line work in Batch 9, it has no concept
+  of the per-line job numbers added in Batch 11, and it documents a `sops/routes/`/`sops/models.py`
+  package layout that was never the real repo structure.
+- Confirmed the doc's real learnings are already captured elsewhere before deleting it: multi-fan
+  behavior in `docs/specs/multi-fan-build-bom.md` + the 2026-07-01 session-log entry; job numbers
+  in `docs/specs/sales-order-job-numbers.md` + the 2026-07-06 (Batch 11) entry. No new spec content
+  needed writing — just removal.
+- Asked to remove the file and do a broader folder cleanup. Surveyed all git-tracked files outside
+  the main app dirs (`git ls-files`) and found more orphaned material than just the one doc:
+  - A full **duplicate `sops/` package** (`sops/app.py`, `sops/config.py`, `sops/models.py`,
+    `sops/__init__.py`) — dated 2026-06-12, the same day as the stale spec doc. Traced it to
+    predate `docs/decisions/0001-keep-flask-app-at-root.md`, which explicitly decided to keep the
+    Flask app flat at the repo root and treat any future `sops/` package move as a separate,
+    never-taken task. Confirmed via `git grep` that nothing in the live app imports from `sops.*`
+    (only the dead debug scripts and the doc being removed did). The package also had untracked
+    runtime artifacts next to it — `sops/instance/sops.db` (53KB, a real but orphaned test-run DB,
+    disconnected from the actual `instance/sops.db`) and empty `sops/uploads/`, `sops/__pycache__/`.
+  - **Six 2026-06-17 ad-hoc debug scripts** at the repo root and in `scripts/`
+    (`check_db_state.py`, `check_so_lines.py`, `find_item.py`, `fix_bom_line.py`, `test_render.py`,
+    `scripts/quick_update_items.py`) — the same "Works Pack Debug Session" that commit `f54d4e9`
+    (2026-06-24) already partially cleaned up (`test_build_bom_post.py`,
+    `test_build_bom_with_correct_ids.py`); these six siblings were missed at the time.
+    `quick_update_items.py` also imported from the dead `sops` package above, so it was silently
+    broken as well as stale.
+  - **Eight tracked `logs/*.log`/`*.txt` files** (2026-05 through 2026-07) — historical
+    `python app.py` stdout/stderr captures that had been committed instead of gitignored. One
+    (`startup.err.log`) contained a traceback referencing the project's pre-rename folder name
+    (`3. Works Order & B.O.M`) — harmless (just log text) but confirmed via `git grep` to be the
+    *only* stale-path reference anywhere in tracked files; all real source/config paths were
+    already clean.
+  - Three pure-junk files not worth archiving: root `sops.db` (0-byte stub, already flagged twice
+    in `docs/bugs/health-screen-2026-06-24.md` and `docs/session-log.md` but never removed), root
+    `startup_test.log` (0 bytes), and a root-level `FM4087 - ARCTIC AIR - Sales Order - SO4603.pdf`
+    confirmed byte-identical to the canonical `data/` copy via `diff`.
+- Decision: archive (don't delete) anything non-trivial, since "archive" was the explicit
+  instruction and git-tracked moves are cheap to reconsider. New `archive/` at repo root with
+  `archive/README.md` explaining what's in each subfolder and why, plus pointers back to the ADR
+  and specs that made each piece obsolete. Preserved the orphaned `sops/instance/sops.db` inside
+  `archive/pre-adr-sops-package/instance/` rather than deleting it outright, even though it was
+  untracked, since it's real (non-empty) data of unclear origin.
+- Added `logs/*` + `!logs/.gitkeep` to `.gitignore` so run-output logs stop accumulating in git —
+  addresses the root cause of the stale-path log rather than just moving today's copies aside.
+- Updated `README.md` project structure tree to drop references to now-archived/deleted files and
+  note the `logs/` gitignore change and new `archive/` folder.
+- Verification: `git grep` confirmed nothing references `quick_update_items.py` outside the README
+  tree diagram (fixed) before archiving it; full suite re-run after removing the dead `sops/`
+  package — 69 tests green, no regressions.
+- Next task: none queued — awaiting Tebello's review/commit confirmation. Enhancement 3
+  (demand-netted shortfall calc) remains the next roadmap item once picked up.
+- Blockers: None.

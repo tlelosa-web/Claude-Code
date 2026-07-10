@@ -177,3 +177,13 @@ All items below must be green before delivery:
 - [x] Full suite: 86 tests green (was 69). Offline-first re-verified (`grep -rn "cdn\."/"fonts.googleapis"` on templates/static — empty). Manually verified via live dev server: SO/WO/STO list pages 200 + new columns present, SO detail payment-status dropdown renders all 5 options.
 - Known gap, not fixed (documented in spec as accepted): pre-existing WOs/STOs created before this migration have no Job Number — no reliable backfill source (multi-fan SOs have no stored per-WO mapping in old data).
 - Blockers: None.
+
+## Ops — Pre-08:00 Test Data Purge (2026-07-10)
+- [x] Tebello requested deleting all Sales Orders (+ linked Works/Stock Orders) created before 2026-07-10 08:00 to get a clean slate for the new Job Number field, treating the pre-cutoff records as reloadable test data.
+- [x] Before deleting, surfaced that a non-destructive backfill was actually possible for every one of the 12 pre-cutoff SOs (each had ≤ 1 WO and `so.job_numbers` already populated — the "can't backfill" caveat from Batch 16 only applies to multi-fan SOs). Tebello confirmed via AskUserQuestion: delete anyway, records are being used as test data and can be reloaded.
+- [x] Backed up `instance/sops.db` → `instance/sops.db.pre-cleanup-backup-20260710_150329` before deleting (not committed — DB files are gitignored).
+- [x] Deleted 12 Sales Orders (SO4641, SO4653, SO4659, SO4652, SO4678, SO4683, SO4684, SO4693, SO4704, SO4676, SO4706, SO4708), 8 Works Orders (all were `Complete`), 7 Stock Orders (3 `Complete`, 4 `Cancelled`) via a one-off ORM script (explicit `session.delete()` per WO/STO then per SO — the model relationships don't cascade SO→WO/STO automatically, only WO→BOMLine and STO→StockOrderLine do). Left `StockMovement` audit-trail rows untouched (out of the requested scope; they're independent ledger rows, no FK to WO/STO).
+- [x] Gap found + fixed (unrelated to the purge, surfaced by it): `archive/2026-06-debug-scripts/test_render.py` — an archived ad-hoc debug script matching pytest's `test_*.py` discovery pattern — ran top-level code against the *live* DB at import time (hardcoded `get_works_order_print_context(9)`), and started failing collection once WO id 9 was deleted. Added `pytest.ini` (`testpaths = tests`) so pytest only ever collects the real suite; this class of landmine (archived scripts accidentally shaped like tests) can't recur.
+- [x] Full suite re-verified: 86 tests green. Live dev server spot-check: SO/WO/STO list pages and Dashboard all 200 with the reduced dataset (WO/STO lists correctly empty).
+- 15 Sales Orders remain (all created 2026-07-10 after 08:00); 0 Works Orders, 0 Stock Orders remain — all prior WO/STO records belonged to the purged pre-cutoff SOs.
+- Blockers: None.

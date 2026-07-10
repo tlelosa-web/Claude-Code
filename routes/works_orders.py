@@ -11,7 +11,7 @@ works_orders_bp = Blueprint('works_orders', __name__)
 
 @works_orders_bp.route('/works-orders')
 def list_orders():
-    view = request.args.get('view', 'all')
+    view = request.args.get('view', 'open')
     query = (WorksOrder.query
              .join(SalesOrder, WorksOrder.so_id == SalesOrder.id, isouter=True))
     if view == 'open':

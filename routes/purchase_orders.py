@@ -14,7 +14,7 @@ purchase_orders_bp = Blueprint('purchase_orders', __name__)
 
 @purchase_orders_bp.route('/purchase-orders')
 def list_orders():
-    view = request.args.get('view', 'all')
+    view = request.args.get('view', 'open')
     query = PurchaseOrder.query
     if view == 'open':
         query = query.filter(PurchaseOrder.status.in_(PO_ACTIVE))

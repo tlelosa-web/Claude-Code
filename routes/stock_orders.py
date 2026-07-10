@@ -9,7 +9,7 @@ stock_orders_bp = Blueprint('stock_orders', __name__)
 @stock_orders_bp.route('/stock-orders')
 def list_orders():
     """List all Stock Orders."""
-    view = request.args.get('view', 'all')
+    view = request.args.get('view', 'open')
     query = (StockOrder.query
              .join(SalesOrder, StockOrder.so_id == SalesOrder.id, isouter=True))
     if view == 'open':

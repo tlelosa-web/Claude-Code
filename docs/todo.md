@@ -164,3 +164,16 @@ All items below must be green before delivery:
 - [x] Full suite re-verified after cleanup: 69 tests green, no regressions from removing the dead `sops/` package.
 - Next task: none queued — awaiting Tebello's review/commit confirmation. Enhancement 3 (demand-netted shortfall calc) remains the next roadmap item once picked up.
 - Blockers: None.
+
+## Batch 16 — FM Numbers on WO/STO + Default-Open Lists + SO Report Parity (2026-07-10)
+- [x] Spec: `docs/specs/fm-numbers-default-open-so-report.md` — 2 scope decisions confirmed with Tebello via AskUserQuestion (track FM number properly on WO+STO with schema changes; Payment Status as a fixed dropdown, not free text).
+- [x] `models.py`: `WorksOrder.job_number`, `StockOrderLine.job_number`, `SalesOrder.payment_status` (+ `PAYMENT_STATUS_OPTIONS` constant) columns; `StockOrder.job_numbers` and `SalesOrder.total_incl` computed `@property`s (no new columns for these — derived from existing line data, same pattern as `job_reference`).
+- [x] `scripts/migrate_add_fm_number_and_payment_status.py` + matching `ensure_schema_columns()` entries in `app.py`.
+- [x] `routes/sales_orders.py build_bom()`: each `WorksOrder` now gets `job_number` from its originating Fan line; `StockOrderLine.job_number` captured from the already-existing (previously Fan-only-enforced) per-line job number input — no template change needed, the input already renders for every line regardless of role.
+- [x] `templates/works_orders/list.html`, `templates/stock_orders/list.html` (+ both detail templates): added a Job Number column/row alongside (not replacing) the internal WO/STO number.
+- [x] Default `?view=open|all` flipped: bare `/sales-orders`, `/works-orders`, `/stock-orders`, `/purchase-orders` now default to Open (was `all`, Batch 14's original opt-in decision — explicit reversal per Tebello). `?view=all` still works as opt-in.
+- [x] SO report parity: `templates/sales_orders/list.html` — added Sales Rep, Total, Payment Status columns, relabeled "Reference" → "Customer Ref."; `templates/sales_orders/detail.html` — added Total row + Payment Status row with an inline dropdown (`POST /sales-orders/<id>/payment-status`, new route in `routes/sales_orders.py`).
+- [x] Tests: updated `tests/test_order_list_filters.py` (renamed `test_default_view_shows_all_statuses` → `test_default_view_hides_*`, added `test_all_view_shows_all_statuses` for all 4 modules); extended `tests/test_bom_builder.py` (2 new tests: per-fan-line `WorksOrder.job_number`, optional stock-line job number → `StockOrderLine.job_number` + `StockOrder.job_numbers` rollup); new `tests/test_so_report_fields.py` (`total_incl`, `payment_status` route incl. invalid-value rejection, `StockOrder.job_numbers` rollup with duplicates/blank).
+- [x] Full suite: 86 tests green (was 69). Offline-first re-verified (`grep -rn "cdn\."/"fonts.googleapis"` on templates/static — empty). Manually verified via live dev server: SO/WO/STO list pages 200 + new columns present, SO detail payment-status dropdown renders all 5 options.
+- Known gap, not fixed (documented in spec as accepted): pre-existing WOs/STOs created before this migration have no Job Number — no reliable backfill source (multi-fan SOs have no stored per-WO mapping in old data).
+- Blockers: None.

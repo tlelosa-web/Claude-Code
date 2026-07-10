@@ -15,6 +15,21 @@ def ensure_schema_columns():
     if 'job_numbers' not in columns:
         db.session.execute(text('ALTER TABLE sales_order ADD COLUMN job_numbers VARCHAR(255)'))
         db.session.commit()
+    if 'payment_status' not in columns:
+        db.session.execute(text("ALTER TABLE sales_order ADD COLUMN payment_status VARCHAR(50) DEFAULT 'Pending'"))
+        db.session.commit()
+
+    if 'works_order' in inspector.get_table_names():
+        wo_columns = {column['name'] for column in inspector.get_columns('works_order')}
+        if 'job_number' not in wo_columns:
+            db.session.execute(text('ALTER TABLE works_order ADD COLUMN job_number VARCHAR(50)'))
+            db.session.commit()
+
+    if 'stock_order_line' in inspector.get_table_names():
+        sto_line_columns = {column['name'] for column in inspector.get_columns('stock_order_line')}
+        if 'job_number' not in sto_line_columns:
+            db.session.execute(text('ALTER TABLE stock_order_line ADD COLUMN job_number VARCHAR(50)'))
+            db.session.commit()
 
     if 'item' in inspector.get_table_names():
         item_columns = {column['name'] for column in inspector.get_columns('item')}

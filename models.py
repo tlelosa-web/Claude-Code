@@ -24,6 +24,8 @@ class Item(db.Model):
     movements = db.relationship('StockMovement', backref='item', lazy=True)
     bom_lines = db.relationship('BOMLine', backref='item', lazy=True)
 
+PAYMENT_STATUS_OPTIONS = ('Pending', 'Paid', 'Unpaid', 'Account - Up to Date', 'On Hold')
+
 class SalesOrder(db.Model):
     __tablename__ = 'sales_order'
     
@@ -39,6 +41,7 @@ class SalesOrder(db.Model):
     sales_rep = db.Column(db.String(255))
     raw_pdf_text = db.Column(db.Text)
     status = db.Column(db.String(50), default='Draft')  # Draft / Open / Closed
+    payment_status = db.Column(db.String(50), default='Pending')  # Pending / Paid / Unpaid / Account - Up to Date / On Hold
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     # Relationships
@@ -50,6 +53,10 @@ class SalesOrder(db.Model):
         if self.job_numbers:
             return f"{self.job_numbers} - {self.so_number}"
         return self.so_number
+
+    @property
+    def total_incl(self):
+        return sum(li.incl_total or 0 for li in self.line_items)
 
 class SOLineItem(db.Model):
     __tablename__ = 'so_line_item'
@@ -73,6 +80,7 @@ class WorksOrder(db.Model):
     order_type = db.Column(db.String(50))  # 'ASSEMBLY' or 'STOCK'
     status = db.Column(db.String(50), default='Open')  # Open / In Progress / Complete / Cancelled
     issued_by = db.Column(db.String(255))
+    job_number = db.Column(db.String(50))  # FM/Job number of the originating Fan line
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     completed_at = db.Column(db.DateTime)
     
@@ -127,6 +135,15 @@ class StockOrder(db.Model):
                             cascade='all, delete-orphan')
     sales_order = db.relationship('SalesOrder', backref='stock_orders')
 
+    @property
+    def job_numbers(self):
+        """Distinct FM/Job numbers carried by this order's lines, comma-separated."""
+        seen = []
+        for line in self.lines:
+            if line.job_number and line.job_number not in seen:
+                seen.append(line.job_number)
+        return ', '.join(seen)
+
 
 class StockOrderLine(db.Model):
     __tablename__ = 'stock_order_line'
@@ -137,6 +154,7 @@ class StockOrderLine(db.Model):
     description = db.Column(db.Text)
     qty = db.Column(db.Float)
     notes = db.Column(db.Text)
+    job_number = db.Column(db.String(50))  # Per-line FM/Job number (optional)
 
 
 class PurchaseOrder(db.Model):

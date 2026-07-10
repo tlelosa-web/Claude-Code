@@ -281,6 +281,62 @@ class TestBOMBuilder:
         updated_so = db.session.get(SalesOrder, so.id)
         assert updated_so.job_numbers == "FM9999"
 
+    def test_build_bom_sets_works_order_job_number_per_fan_line(self, client, db, session, setup_data):
+        """Each WorksOrder created from a multi-fan build carries the FM number
+        of the specific Fan line it originated from, not the other fan's."""
+        data = setup_data
+        so = data['so']
+        comp_a = data['items']['comp_a']
+
+        fan_2_item = Item(code=f"BOM-FAN2-JN-{so.id}", description="Second Fan Model",
+                           category="Fans", qty_on_hand=10.0, avg_cost=200.0, last_cost=180.0, active=True)
+        session.add(fan_2_item)
+        session.flush()
+
+        fan_line_1 = SOLineItem(so_id=so.id, description=f"{comp_a.code} - Fan Assembly 1", qty=2.0)
+        fan_line_2 = SOLineItem(so_id=so.id, description=f"{fan_2_item.code} - Fan Assembly 2", qty=3.0)
+        session.add_all([fan_line_1, fan_line_2])
+        session.flush()
+
+        resp = client.post(f"/sales-orders/{so.id}/build-bom", data={
+            f"line_role_{fan_line_1.id}": "fan",
+            f"line_role_{fan_line_2.id}": "fan",
+            f"line_job_number_{fan_line_1.id}": "FM1001",
+            f"line_job_number_{fan_line_2.id}": "FM1002",
+            "issued_by": "Tester",
+        })
+        assert resp.status_code in (200, 302)
+
+        wos = WorksOrder.query.filter_by(so_id=so.id).order_by(WorksOrder.id).all()
+        assert len(wos) == 2
+        assert wos[0].job_number == "FM1001"
+        assert wos[1].job_number == "FM1002"
+
+    def test_build_bom_saves_optional_job_number_on_stock_lines(self, client, db, session, setup_data):
+        """Stock lines can optionally carry an FM number, persisted onto the
+        StockOrderLine (not required, unlike Fan lines)."""
+        from models import StockOrder, StockOrderLine
+
+        data = setup_data
+        so = data['so']
+        comp_a = data['items']['comp_a']
+
+        stock_line = SOLineItem(so_id=so.id, description=f"{comp_a.code} - Spare Part", qty=1.0)
+        session.add(stock_line)
+        session.flush()
+
+        resp = client.post(f"/sales-orders/{so.id}/build-bom", data={
+            f"line_role_{stock_line.id}": "stock",
+            f"line_job_number_{stock_line.id}": "FM2002",
+        })
+        assert resp.status_code == 302
+
+        sto = StockOrder.query.filter_by(so_id=so.id).first()
+        assert sto is not None
+        line = StockOrderLine.query.filter_by(stock_order_id=sto.id).first()
+        assert line.job_number == "FM2002"
+        assert sto.job_numbers == "FM2002"
+
     def test_build_bom_stock_only_does_not_require_job_number(self, client, db, session, setup_data):
         """Stock-only builds (no Fan lines) must not be blocked by a missing FM number."""
         from models import StockOrder

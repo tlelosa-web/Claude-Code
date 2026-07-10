@@ -1,12 +1,17 @@
-"""Tests for the '?view=open' filter added to the 4 list_orders() routes
+"""Tests for the '?view=open|all' filter on the 4 list_orders() routes
 (Sales Orders, Works Orders, Stock Orders, Purchase Orders) and for the
-Dashboard's new Open Sales Orders table.
+Dashboard's Open Sales Orders table.
 
 See docs/specs/dashboard-open-filter.md for the active-status decisions:
   SO:  Draft, Open        (excludes Closed)
   WO:  Open, In Progress  (excludes Complete, Cancelled)
   STO: Open               (excludes Complete, Cancelled)
   PO:  Draft, Open, Partially Received (excludes Received, Cancelled)
+
+Default view is 'open' (flipped from 'all' in
+docs/specs/fm-numbers-default-open-so-report.md, 2026-07-10) — the bare
+list URL now shows only active/open records; '?view=all' is the explicit
+opt-in to see everything.
 
 Uses distinct 'FILT-*' number prefixes to avoid colliding with
 auto-generated numbers from other test modules sharing the same
@@ -33,10 +38,18 @@ class TestSalesOrderListFilter:
         session.commit()
         return so
 
-    def test_default_view_shows_all_statuses(self, client, session):
+    def test_default_view_hides_closed(self, client, session):
         open_so = self._mk(session, "Open")
         closed_so = self._mk(session, "Closed")
         resp = client.get("/sales-orders")
+        assert resp.status_code == 200
+        assert open_so.so_number.encode() in resp.data
+        assert closed_so.so_number.encode() not in resp.data
+
+    def test_all_view_shows_all_statuses(self, client, session):
+        open_so = self._mk(session, "Open")
+        closed_so = self._mk(session, "Closed")
+        resp = client.get("/sales-orders?view=all")
         assert resp.status_code == 200
         assert open_so.so_number.encode() in resp.data
         assert closed_so.so_number.encode() in resp.data
@@ -68,10 +81,18 @@ class TestWorksOrderListFilter:
         session.commit()
         return wo
 
-    def test_default_view_shows_all_statuses(self, client, session):
+    def test_default_view_hides_complete(self, client, session):
         open_wo = self._mk(session, "Open")
         complete_wo = self._mk(session, "Complete")
         resp = client.get("/works-orders")
+        assert resp.status_code == 200
+        assert open_wo.wo_number.encode() in resp.data
+        assert complete_wo.wo_number.encode() not in resp.data
+
+    def test_all_view_shows_all_statuses(self, client, session):
+        open_wo = self._mk(session, "Open")
+        complete_wo = self._mk(session, "Complete")
+        resp = client.get("/works-orders?view=all")
         assert resp.status_code == 200
         assert open_wo.wo_number.encode() in resp.data
         assert complete_wo.wo_number.encode() in resp.data
@@ -105,6 +126,22 @@ class TestStockOrderListFilter:
         session.commit()
         return sto
 
+    def test_default_view_hides_complete_and_cancelled(self, client, session):
+        open_sto = self._mk(session, "Open")
+        complete_sto = self._mk(session, "Complete")
+        resp = client.get("/stock-orders")
+        assert resp.status_code == 200
+        assert open_sto.stock_order_number.encode() in resp.data
+        assert complete_sto.stock_order_number.encode() not in resp.data
+
+    def test_all_view_shows_all_statuses(self, client, session):
+        open_sto = self._mk(session, "Open")
+        complete_sto = self._mk(session, "Complete")
+        resp = client.get("/stock-orders?view=all")
+        assert resp.status_code == 200
+        assert open_sto.stock_order_number.encode() in resp.data
+        assert complete_sto.stock_order_number.encode() in resp.data
+
     def test_open_view_hides_complete_and_cancelled(self, client, session):
         open_sto = self._mk(session, "Open")
         complete_sto = self._mk(session, "Complete")
@@ -127,6 +164,22 @@ class TestPurchaseOrderListFilter:
         session.add(po)
         session.commit()
         return po
+
+    def test_default_view_hides_received_and_cancelled(self, client, session):
+        open_po = self._mk(session, "Open")
+        received_po = self._mk(session, "Received")
+        resp = client.get("/purchase-orders")
+        assert resp.status_code == 200
+        assert open_po.po_number.encode() in resp.data
+        assert received_po.po_number.encode() not in resp.data
+
+    def test_all_view_shows_all_statuses(self, client, session):
+        open_po = self._mk(session, "Open")
+        received_po = self._mk(session, "Received")
+        resp = client.get("/purchase-orders?view=all")
+        assert resp.status_code == 200
+        assert open_po.po_number.encode() in resp.data
+        assert received_po.po_number.encode() in resp.data
 
     def test_open_view_hides_received_and_cancelled(self, client, session):
         draft_po = self._mk(session, "Draft")

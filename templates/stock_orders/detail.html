@@ -38,6 +38,7 @@
     <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 24px;">
         <div>
             <table class="detail-table">
+                <tr><td class="detail-label">Job Number</td><td class="detail-value">{{ stock_order.job_numbers or '-' }}</td></tr>
                 <tr><td class="detail-label">Stock Order No</td><td class="detail-value">{{ stock_order.stock_order_number }}</td></tr>
                 <tr><td class="detail-label">SO Reference</td><td class="detail-value">
                     {% if stock_order.sales_order %}

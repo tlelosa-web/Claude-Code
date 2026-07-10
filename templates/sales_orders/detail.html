@@ -65,7 +65,17 @@
             <table class="detail-table">
                 <tr><td class="detail-label">Date</td><td class="detail-value">{{ so.so_date.strftime('%Y-%m-%d') if so.so_date else '-' }}</td></tr>
                 <tr><td class="detail-label">Delivery Date</td><td class="detail-value">{{ so.delivery_date.strftime('%Y-%m-%d') if so.delivery_date else '-' }}</td></tr>
+                <tr><td class="detail-label">Total</td><td class="detail-value">R {{ '%.2f'|format(so.total_incl) }}</td></tr>
                 <tr><td class="detail-label">Status</td><td class="detail-value"><span class="badge badge-{{ so.status.lower() }}">{{ so.status }}</span></td></tr>
+                <tr><td class="detail-label">Payment Status</td><td class="detail-value">
+                    <form method="POST" action="{{ url_for('sales_orders.update_payment_status', order_id=so.id) }}" style="display: flex; gap: 8px; align-items: center;">
+                        <select name="payment_status" class="form-input" style="width: auto; padding: 4px 8px; font-size: 0.85rem;" onchange="this.form.submit()">
+                            {% for option in payment_status_options %}
+                            <option value="{{ option }}" {{ 'selected' if so.payment_status == option else '' }}>{{ option }}</option>
+                            {% endfor %}
+                        </select>
+                    </form>
+                </td></tr>
                 <tr><td class="detail-label">Created</td><td class="detail-value">{{ so.created_at.strftime('%Y-%m-%d %H:%M') if so.created_at else '-' }}</td></tr>
             </table>
         </div>

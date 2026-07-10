@@ -17,6 +17,7 @@
         <table class="data-table">
             <thead>
                 <tr>
+                    <th>Job Number</th>
                     <th>Stock Order No</th>
                     <th>SO Reference</th>
                     <th>Customer</th>
@@ -29,6 +30,7 @@
             <tbody>
                 {% for order in orders %}
                 <tr>
+                    <td>{{ order.job_numbers or '-' }}</td>
                     <td><a href="{{ url_for('stock_orders.view_order', order_id=order.id) }}" class="link-primary">{{ order.stock_order_number }}</a></td>
                     <td>{{ order.sales_order.so_number if order.sales_order else '-' }}</td>
                     <td>{{ order.sales_order.customer_name if order.sales_order else '-' }}</td>

@@ -17,6 +17,7 @@
         <table class="data-table" id="orders-table">
             <thead>
                 <tr>
+                    <th>Job Number</th>
                     <th>WO/PL Number</th>
                     <th>Type</th>
                     <th>Sales Order</th>
@@ -31,6 +32,7 @@
             <tbody>
                 {% for wo in orders %}
                 <tr>
+                    <td>{{ wo.job_number or '-' }}</td>
                     <td><a href="{{ url_for('works_orders.view_order', order_id=wo.id) }}" class="link-primary">{{ wo.wo_number }}</a></td>
                     <td>
                         <span class="badge" style="background: {% if wo.order_type == 'ASSEMBLY' %}var(--brand-primary){% else %}var(--brand-secondary){% endif %};">

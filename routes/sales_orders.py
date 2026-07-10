@@ -4,7 +4,7 @@ from datetime import datetime
 from flask import Blueprint, render_template, request, redirect, url_for, flash, current_app, jsonify
 from werkzeug.utils import secure_filename
 from sqlalchemy import nullslast
-from models import db, SalesOrder, SOLineItem, Item, WorksOrder, BOMLine, StockMovement, StockOrder, StockOrderLine
+from models import db, SalesOrder, SOLineItem, Item, WorksOrder, BOMLine, StockMovement, StockOrder, StockOrderLine, PAYMENT_STATUS_OPTIONS
 from services.pdf_parser import parse_sales_order_pdf
 from services.order_filters import SO_ACTIVE
 
@@ -12,7 +12,7 @@ sales_orders_bp = Blueprint('sales_orders', __name__)
 
 @sales_orders_bp.route('/sales-orders')
 def list_orders():
-    view = request.args.get('view', 'all')
+    view = request.args.get('view', 'open')
     query = SalesOrder.query
     if view == 'open':
         query = query.filter(SalesOrder.status.in_(SO_ACTIVE))
@@ -167,7 +167,8 @@ def view_order(order_id):
     from models import StockOrder
     wos = WorksOrder.query.filter_by(so_id=order_id).all()
     stock_orders = StockOrder.query.filter_by(so_id=order_id).all()
-    return render_template('sales_orders/detail.html', so=so, wos=wos, stock_orders=stock_orders)
+    return render_template('sales_orders/detail.html', so=so, wos=wos, stock_orders=stock_orders,
+                           payment_status_options=PAYMENT_STATUS_OPTIONS)
 
 @sales_orders_bp.route('/sales-orders/<int:order_id>/build-bom', methods=['GET', 'POST'])
 def build_bom(order_id):
@@ -287,12 +288,15 @@ def build_bom(order_id):
                     wo_number = f"WO{next_num:04d}"
                     next_num += 1
 
+                    fan_line = db.session.get(SOLineItem, fan_line_id)
+
                     works_order = WorksOrder(
                         wo_number=wo_number,
                         so_id=order_id,
                         order_type='ASSEMBLY',
                         status='Open',
-                        issued_by=issued_by
+                        issued_by=issued_by,
+                        job_number=fan_line.job_number if fan_line else None
                     )
                     db.session.add(works_order)
                     db.session.flush()  # Get wo.id
@@ -302,7 +306,6 @@ def build_bom(order_id):
                     # components nested beneath. Uses the existing
                     # line_type/parent_line_id columns (no schema change).
                     parent_line_id = None
-                    fan_line = db.session.get(SOLineItem, fan_line_id)
                     fan_item = None
                     if fan_line and fan_line.description:
                         fan_code = fan_line.description.split(' - ', 1)[0].strip()
@@ -381,7 +384,8 @@ def build_bom(order_id):
                         stock_order_id=stock_order.id,
                         item_code=item_code,
                         description=line.description,
-                        qty=line.qty
+                        qty=line.qty,
+                        job_number=line.job_number
                     )
                     db.session.add(stock_line)
                 
@@ -491,6 +495,23 @@ def close_order(order_id):
     db.session.commit()
     
     flash(f"Sales Order {so.so_number} has been closed.", "success")
+    return redirect(url_for('sales_orders.view_order', order_id=order_id))
+
+
+@sales_orders_bp.route('/sales-orders/<int:order_id>/payment-status', methods=['POST'])
+def update_payment_status(order_id):
+    """Set the manually-tracked Payment Status (sourced from Sage/accounting, not the SO PDF)."""
+    so = SalesOrder.query.get_or_404(order_id)
+    new_status = request.form.get('payment_status', '').strip()
+
+    if new_status not in PAYMENT_STATUS_OPTIONS:
+        flash(f"Invalid payment status: {new_status}", "error")
+        return redirect(url_for('sales_orders.view_order', order_id=order_id))
+
+    so.payment_status = new_status
+    db.session.commit()
+
+    flash(f"Payment status for {so.so_number} set to {new_status}.", "success")
     return redirect(url_for('sales_orders.view_order', order_id=order_id))
 
 

@@ -617,3 +617,41 @@
 - Blockers: None.
 - Commit: `2965367`. (Plus `ced588c` for the carried-over reviewer memory, committed at session
   start before this batch's work began.)
+
+## 2026-07-14 — Batch 20: Build Works Pack Shortfall Display
+
+- Domain: Software/AI.
+- Continuation of the same session as Batch 19. Tebello asked to close the `build_bom.html`
+  shortfall-display gap flagged at the end of Batch 18 — wrote `docs/specs/build-bom-shortfall-display.md`
+  first (route + template + test = 3 files, plan-first rule), gave a duration estimate (~10-15 min
+  dispatch-to-done, referencing the ~3.7 min Batch 19 executor run as a comparable data point), then
+  dispatched a single `executor` agent on Tebello's "dispatch" confirmation.
+- Executor delivered commit `782514a`: `build_bom()` (GET render and the POST error-path re-render,
+  both — the error path had its own separate thin `catalogue_json` that would otherwise have gone
+  stale) now bulk-fetches the three `services/demand.py` aggregate functions and maps through the
+  existing `item_to_bom_json()`, exactly mirroring Batch 18's edit-page wiring (`03109bf`). The
+  template gained an availability hint on search results, an availability readout on the
+  selected-item panel, and a shortfall-vs-`available_qty` check on `addComponent()` reusing the
+  `row-amber` CSS class and `(short N)` wording already established in `bom_builder.js`. New test
+  asserts the served JSON payload carries all 5 demand-netting fields; the executor explicitly
+  flagged (rather than silently skipped) that it did not add a POST error-path payload test, judging
+  the fixture cost of forcing an artificial exception to be disproportionate to this task's scope.
+- Orchestrator-side verification: re-ran the full suite (149 passed, was 148), read the actual diff
+  in `routes/sales_orders.py` and `build_bom.html` line-by-line rather than trusting the executor's
+  summary, and independently confirmed `.row-amber` is a real class already defined in
+  `static/css/main.css:383` (not an invented/dead class name) before accepting the styling claim.
+- Live smoke check (executor had skipped this, citing a non-interactive environment): started the
+  dev server against real `instance/sops.db` and hit SO25's Build Works Pack page — first response
+  still showed the old bare 3-field `catalogueItems` payload. Diagnosed via `Get-NetTCPConnection
+  -LocalPort 5000`: a Werkzeug dev-server process from *before this session* (started 00:38, over 20
+  minutes before the 01:00 commit) was still bound to port 5000 and silently serving stale code —
+  the same class of problem Batch 12 hit and documented. Killed it, a fresh process took over
+  cleanly, and the re-fetched page confirmed the full 5-field payload
+  (`available_qty`/`qty_on_order`/`qty_committed`/`next_po_due`/`qty_on_hand`) and all new JS
+  hint/shortfall rendering code present in the served HTML. Stopped the server afterward.
+- Committed the spec file separately (`ca30d89`) after the implementation, since it was correctly
+  outside the executor's stated file scope and left untracked by design.
+- This closes the last open item from the Enhancement 3 / demand-netting effort (Batches 13/18/20).
+  No further roadmap item currently queued.
+- Blockers: None.
+- Commits: `782514a`, `ca30d89`.

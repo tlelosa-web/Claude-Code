@@ -232,3 +232,16 @@ All items below must be green before delivery:
 - [x] Committed: `2965367`.
 - Next task: none queued — awaiting Tebello's review/commit confirmation. `build_bom.html` shortfall-display gap (see Batch 18 note above) remains the next roadmap candidate; a scoped plan for it was presented and is ready to spec/build on request.
 - Blockers: None.
+
+## Batch 20 — Build Works Pack Shortfall Display (2026-07-14)
+- [x] Closed the last remaining gap from Batch 18: `build_bom()` / `templates/sales_orders/build_bom.html` — the primary "Build Works Pack" page — now carries the same demand-netted availability data the WO/STO edit page got in Batch 18 (commit `03109bf`).
+- [x] Spec: `docs/specs/build-bom-shortfall-display.md`, written before dispatch (5 files >2 → plan-first rule).
+- [x] `routes/sales_orders.py` `build_bom()`: both the GET render and the POST error-path re-render now bulk-fetch `get_qty_on_order_bulk()`/`get_qty_committed_bulk()`/`get_next_po_due_bulk()` (no `exclude_wo_id`/`exclude_sto_id` — no WO/STO exists yet at this point) and map through the existing `item_to_bom_json()`, replacing two bare `{id, code, description}` dicts.
+- [x] `templates/sales_orders/build_bom.html`: search results show `(available: N)` and an `(on order, due <date>)` hint; selected-item panel surfaces `available_qty`; `addComponent()` computes shortfall against `available_qty` and applies the same `row-amber` class / `(short N)` styling `bom_builder.js` already uses (verified `.row-amber` is a real defined class in `static/css/main.css:383`, not invented).
+- [x] `tests/test_bom_builder.py`: new test asserts the GET-served `catalogue_json` carries all 5 demand-netting fields. POST error-path payload test explicitly skipped (would need artificial-failure fixture machinery beyond scope) — noted rather than silently dropped.
+- [x] Full suite: 149 tests green (was 148).
+- [x] Orchestrator-side live verification (dev server against real `instance/sops.db`, SO25's build-bom page): first attempt hit a **stale dev-server process left running from before this session** (started 00:38, before the 01:00 commit) serving the old 3-field payload — same class of issue documented in Batch 12. Killed it, confirmed a fresh process serves the new 5-field payload (`available_qty`, `qty_on_order`, `qty_committed`, `next_po_due`, `qty_on_hand`) and all new JS hint/shortfall code renders. Stopped the server afterward.
+- [x] Committed: `782514a` (implementation), `ca30d89` (spec, committed after since it was outside the executor's file scope).
+- Next task: none queued — awaiting Tebello's review/commit confirmation. This closes the last known gap from the Enhancement 3 demand-netting effort; no further roadmap item currently queued.
+- Blockers: None.
+- Ops note: recurring risk — a stale Werkzeug dev-server process from an earlier session can keep serving old code on port 5000 indefinitely (2nd occurrence, see Batch 12). Worth checking `Get-NetTCPConnection -LocalPort 5000` before trusting a "live" verification if a dev server wasn't freshly started this session.

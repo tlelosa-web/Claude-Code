@@ -19,8 +19,17 @@ def list_orders():
     orders = query.order_by(nullslast(SalesOrder.delivery_date.asc())).all()
     return render_template('sales_orders/list.html', orders=orders, view=view)
 
-def item_to_bom_json(item):
-    """Return the plain JSON shape consumed by the BOM builder UI."""
+def item_to_bom_json(item, qty_on_order=0.0, qty_committed=0.0, next_po_due=None):
+    """Return the plain JSON shape consumed by the BOM builder UI.
+
+    qty_on_order / qty_committed / next_po_due are demand-netting figures
+    (see services/demand.py). Callers rendering many items should bulk-fetch
+    these once via get_qty_on_order_bulk() / get_qty_committed_bulk() /
+    get_next_po_due_bulk() and pass the per-item values in here, rather than
+    querying per item in a loop. Defaults keep this safe for any caller that
+    doesn't need demand-netting (available_qty then just equals qty_on_hand).
+    """
+    qty_on_hand = item.qty_on_hand or 0.0
     return {
         'id': item.id,
         'code': item.code,
@@ -30,7 +39,11 @@ def item_to_bom_json(item):
         'avg_cost': item.avg_cost or 0.0,
         'excl_price': item.excl_price or 0.0,
         'incl_price': item.incl_price or 0.0,
-        'qty_on_hand': item.qty_on_hand or 0.0,
+        'qty_on_hand': qty_on_hand,
+        'qty_on_order': qty_on_order,
+        'qty_committed': qty_committed,
+        'available_qty': qty_on_hand + qty_on_order - qty_committed,
+        'next_po_due': next_po_due.isoformat() if next_po_due else None,
     }
 
 @sales_orders_bp.route('/sales-orders/upload', methods=['GET', 'POST'])

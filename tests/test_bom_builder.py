@@ -1,7 +1,12 @@
 """Tests for bom_builder module."""
+import json
+import re
 import pytest
-from datetime import datetime, timezone
-from models import db, Item, SalesOrder, WorksOrder, BOMLine, SOLineItem
+from datetime import datetime, timezone, date
+from models import (
+    db, Item, SalesOrder, WorksOrder, BOMLine, SOLineItem,
+    PurchaseOrder, POLine,
+)
 
 class TestBOMBuilder:
     _so_counter = 0
@@ -358,3 +363,132 @@ class TestBOMBuilder:
         assert "/build-bom" not in resp.headers.get("Location", "")
 
         assert StockOrder.query.filter_by(so_id=so.id).first() is not None
+
+
+class TestBOMBuilderDemandNettedAvailability:
+    """Enhancement 3 (demand-netted shortfall) — BOM Builder catalogue JSON.
+
+    item_to_bom_json() is served to the browser via the Works Order "edit"
+    page (routes/works_orders.py edit_order), which bulk-fetches
+    qty_on_order / qty_committed / next_po_due once for the whole catalogue
+    and passes them through. These tests hit that route and inspect the
+    served `items` JSON payload for the demand-netting fields.
+    """
+    _c = 0
+
+    def _next_code(self, prefix):
+        TestBOMBuilderDemandNettedAvailability._c += 1
+        return f"{prefix}-{TestBOMBuilderDemandNettedAvailability._c:04d}"
+
+    def _make_so(self, session):
+        so = SalesOrder(
+            so_number=self._next_code("SO-NET"),
+            customer_name="Test Customer",
+            status="Open",
+            created_at=datetime.now(timezone.utc),
+        )
+        session.add(so)
+        session.flush()
+        return so
+
+    def _make_open_wo(self, session, so):
+        wo = WorksOrder(
+            wo_number=self._next_code("WO-NET"),
+            so_id=so.id,
+            order_type="ASSEMBLY",
+            status="Open",
+            issued_by="Tester",
+            created_at=datetime.now(timezone.utc),
+        )
+        session.add(wo)
+        session.flush()
+        return wo
+
+    def _get_catalogue_items(self, client, wo_id):
+        """GET the Works Order edit page and pull the `items` JSON payload
+        out of the embedded window.SOPS_EDIT config."""
+        resp = client.get(f"/works-orders/{wo_id}/edit")
+        assert resp.status_code == 200
+        body = resp.get_data(as_text=True)
+
+        match = re.search(r"items:\s*(\[.*?\]),\s*\n\s*woId", body, re.DOTALL)
+        assert match is not None, "Could not find items JSON in edit page"
+        return json.loads(match.group(1))
+
+    def _find_item(self, catalogue_items, code):
+        for entry in catalogue_items:
+            if entry['code'] == code:
+                return entry
+        raise AssertionError(f"Item {code} not found in served catalogue JSON")
+
+    def test_shortfall_on_hand_covered_by_open_po(self, app, db, session, client):
+        """Item is short on qty_on_hand alone, but an open PO covers it —
+        available_qty in the served JSON reflects the inbound stock."""
+        item = Item(code=self._next_code("NET-PO"), description="PO Covered Item",
+                    category="Hardware", qty_on_hand=2.0, active=True)
+        session.add(item)
+        session.flush()
+
+        po = PurchaseOrder(po_number=self._next_code("PO-NET"), supplier_name="Test Supplier",
+                           status="Open", due_date=date(2026, 8, 1),
+                           created_at=datetime.now(timezone.utc))
+        session.add(po)
+        session.flush()
+        session.add(POLine(po_id=po.id, item_id=item.id, qty_ordered=20.0, qty_received=0.0))
+
+        so = self._make_so(session)
+        wo = self._make_open_wo(session, so)
+        session.commit()
+
+        catalogue = self._get_catalogue_items(client, wo.id)
+        served = self._find_item(catalogue, item.code)
+
+        assert served['qty_on_hand'] == 2.0
+        assert served['qty_on_order'] == 20.0
+        assert served['qty_committed'] == 0.0
+        assert served['available_qty'] == 22.0  # 2 + 20 - 0, covers a 10-unit requirement
+        assert served['next_po_due'] == '2026-08-01'
+
+    def test_available_qty_reduced_by_other_open_order_commitment(self, app, db, session, client):
+        """Item has plenty on hand but is fully committed to a different
+        open Works Order — available_qty in the served JSON is reduced."""
+        item = Item(code=self._next_code("NET-CM"), description="Committed Item",
+                    category="Hardware", qty_on_hand=100.0, active=True)
+        session.add(item)
+        session.flush()
+
+        # Demand from an unrelated open Works Order (not the one being edited).
+        other_so = self._make_so(session)
+        other_wo = self._make_open_wo(session, other_so)
+        session.add(BOMLine(wo_id=other_wo.id, item_id=item.id, qty_required=90.0,
+                            qty_issued=0.0, line_type="COMPONENT"))
+
+        so = self._make_so(session)
+        wo = self._make_open_wo(session, so)
+        session.commit()
+
+        catalogue = self._get_catalogue_items(client, wo.id)
+        served = self._find_item(catalogue, item.code)
+
+        assert served['qty_on_hand'] == 100.0
+        assert served['qty_on_order'] == 0.0
+        assert served['qty_committed'] == 90.0
+        assert served['available_qty'] == 10.0  # 100 - 90
+
+    def test_next_po_due_absent_when_no_open_po(self, app, db, session, client):
+        """Item with no open/partial PO lines has next_po_due == null in the
+        served JSON (not a truthy placeholder)."""
+        item = Item(code=self._next_code("NET-NOPO"), description="No PO Item",
+                    category="Hardware", qty_on_hand=10.0, active=True)
+        session.add(item)
+        session.flush()
+
+        so = self._make_so(session)
+        wo = self._make_open_wo(session, so)
+        session.commit()
+
+        catalogue = self._get_catalogue_items(client, wo.id)
+        served = self._find_item(catalogue, item.code)
+
+        assert served['next_po_due'] is None
+        assert served['available_qty'] == 10.0

@@ -290,14 +290,15 @@
             if (!item) return;
 
             const totalCost = entry.qty_required * entry.unit_cost;
-            const shortfall = Math.max(0, entry.qty_required - item.qty_on_hand);
+            const shortfall = Math.max(0, entry.qty_required - item.available_qty);
 
             html += '<tr class="' + (shortfall > 0 ? 'row-amber' : '') + '">' +
                 '<td><strong>' + escHtml(item.code) + '</strong></td>' +
                 '<td>' + escHtml(item.description) + '</td>' +
                 '<td style="' + (shortfall > 0 ? 'color: var(--brand-amber); font-weight: 600;' : '') + '">' +
-                    item.qty_on_hand + 
+                    item.qty_on_hand +
                     (shortfall > 0 ? ' <span style="color: var(--brand-danger); font-size: 0.75rem;">(short ' + shortfall + ')</span>' : '') +
+                    (item.qty_on_order > 0 ? ' <span style="color: var(--brand-blue, #2563eb); font-size: 0.75rem;">(on order' + (item.next_po_due ? ', due ' + item.next_po_due : '') + ')</span>' : '') +
                 '</td>' +
                 '<td><input type="number" class="qty-input form-input" data-id="' + id + '" value="' + entry.qty_required + '" min="0" step="0.01" style="width: 80px; padding: 4px 6px; font-size: 0.85rem;"></td>' +
                 '<td>' +
@@ -343,7 +344,7 @@
             if (!item) return;
 
             totalCost += entry.qty_required * entry.unit_cost;
-            if (entry.qty_required > item.qty_on_hand) {
+            if (entry.qty_required > item.available_qty) {
                 shortfallCount++;
             }
         });

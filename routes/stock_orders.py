@@ -169,8 +169,21 @@ def edit_order(order_id):
     if request.method == 'GET':
         from models import Item
         from routes.sales_orders import item_to_bom_json
+        from services.demand import get_qty_on_order_bulk, get_qty_committed_bulk, get_next_po_due_bulk
         items = Item.query.filter_by(active=True).order_by(Item.category, Item.code).all()
-        item_payload = [item_to_bom_json(item) for item in items]
+        item_ids = [item.id for item in items]
+        qty_on_order_map = get_qty_on_order_bulk(item_ids=item_ids)
+        qty_committed_map = get_qty_committed_bulk(item_ids=item_ids)
+        next_po_due_map = get_next_po_due_bulk(item_ids=item_ids)
+        item_payload = [
+            item_to_bom_json(
+                item,
+                qty_on_order=qty_on_order_map.get(item.id, 0.0),
+                qty_committed=qty_committed_map.get(item.id, 0.0),
+                next_po_due=next_po_due_map.get(item.id),
+            )
+            for item in items
+        ]
         categories = db.session.query(Item.category).filter(
             Item.active == True, Item.category != None
         ).distinct().order_by(Item.category).all()

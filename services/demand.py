@@ -29,6 +29,11 @@ from models import (
 # PurchaseOrder statuses that no longer represent inbound stock.
 _PO_STATUSES_EXCLUDED_FROM_ON_ORDER = ('Received', 'Cancelled')
 
+# PurchaseOrder statuses that still represent an open/inbound order, used
+# for the "next PO due" hint (narrower than the on-order exclusion above —
+# a Draft PO isn't a committed due date yet).
+_PO_STATUSES_OPEN_OR_PARTIAL = ('Open', 'Partially Received')
+
 # WorksOrder statuses that still represent outstanding demand.
 _WO_STATUSES_OPEN = ('Open', 'In Progress')
 
@@ -69,6 +74,36 @@ def get_qty_on_order(item_id):
     (e.g. a catalogue page) to avoid N+1 queries.
     """
     return get_qty_on_order_bulk(item_ids=[item_id]).get(item_id, 0.0)
+
+
+def get_next_po_due_bulk(item_ids=None):
+    """Return {item_id: date} of the earliest due_date among that item's
+    open/partially-received Purchase Order lines.
+
+    Backs the "on order, due <date>" hint. Items with no open/partial PO
+    lines, or whose matching PurchaseOrder.due_date is unset, are absent
+    from the returned dict (treat as no known due date).
+
+    If `item_ids` is given, restricts the query to those items.
+    """
+    query = (
+        db.session.query(
+            POLine.item_id,
+            func.min(PurchaseOrder.due_date),
+        )
+        .join(PurchaseOrder, POLine.po_id == PurchaseOrder.id)
+        .filter(POLine.item_id.isnot(None))
+        .filter(PurchaseOrder.status.in_(_PO_STATUSES_OPEN_OR_PARTIAL))
+    )
+    if item_ids is not None:
+        query = query.filter(POLine.item_id.in_(item_ids))
+    query = query.group_by(POLine.item_id)
+
+    return {
+        item_id: due_date
+        for item_id, due_date in query.all()
+        if due_date is not None
+    }
 
 
 def get_qty_committed_bulk(item_ids=None):

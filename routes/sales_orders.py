@@ -16,6 +16,8 @@ def list_orders():
     query = SalesOrder.query
     if view == 'open':
         query = query.filter(SalesOrder.status.in_(SO_ACTIVE))
+    elif view == 'closed':
+        query = query.filter(~SalesOrder.status.in_(SO_ACTIVE))
     orders = query.order_by(nullslast(SalesOrder.delivery_date.asc())).all()
     return render_template('sales_orders/list.html', orders=orders, view=view)
 

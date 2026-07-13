@@ -64,6 +64,16 @@ class TestSalesOrderListFilter:
         assert draft_so.so_number.encode() in resp.data
         assert closed_so.so_number.encode() not in resp.data
 
+    def test_closed_view_shows_only_closed(self, client, session):
+        open_so = self._mk(session, "Open")
+        draft_so = self._mk(session, "Draft")
+        closed_so = self._mk(session, "Closed")
+        resp = client.get("/sales-orders?view=closed")
+        assert resp.status_code == 200
+        assert open_so.so_number.encode() not in resp.data
+        assert draft_so.so_number.encode() not in resp.data
+        assert closed_so.so_number.encode() in resp.data
+
 
 class TestWorksOrderListFilter:
     _c = 0
@@ -109,6 +119,18 @@ class TestWorksOrderListFilter:
         assert complete_wo.wo_number.encode() not in resp.data
         assert cancelled_wo.wo_number.encode() not in resp.data
 
+    def test_closed_view_shows_complete_and_cancelled(self, client, session):
+        open_wo = self._mk(session, "Open")
+        in_progress_wo = self._mk(session, "In Progress")
+        complete_wo = self._mk(session, "Complete")
+        cancelled_wo = self._mk(session, "Cancelled")
+        resp = client.get("/works-orders?view=closed")
+        assert resp.status_code == 200
+        assert open_wo.wo_number.encode() not in resp.data
+        assert in_progress_wo.wo_number.encode() not in resp.data
+        assert complete_wo.wo_number.encode() in resp.data
+        assert cancelled_wo.wo_number.encode() in resp.data
+
 
 class TestStockOrderListFilter:
     _c = 0
@@ -151,6 +173,16 @@ class TestStockOrderListFilter:
         assert open_sto.stock_order_number.encode() in resp.data
         assert complete_sto.stock_order_number.encode() not in resp.data
         assert cancelled_sto.stock_order_number.encode() not in resp.data
+
+    def test_closed_view_shows_complete_and_cancelled(self, client, session):
+        open_sto = self._mk(session, "Open")
+        complete_sto = self._mk(session, "Complete")
+        cancelled_sto = self._mk(session, "Cancelled")
+        resp = client.get("/stock-orders?view=closed")
+        assert resp.status_code == 200
+        assert open_sto.stock_order_number.encode() not in resp.data
+        assert complete_sto.stock_order_number.encode() in resp.data
+        assert cancelled_sto.stock_order_number.encode() in resp.data
 
 
 class TestPurchaseOrderListFilter:

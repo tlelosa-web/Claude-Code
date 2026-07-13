@@ -16,7 +16,12 @@ from models import (
     PurchaseOrder,
     POLine,
 )
-from services.demand import get_qty_on_order, get_qty_committed, get_available_qty
+from services.demand import (
+    get_qty_on_order,
+    get_qty_committed,
+    get_qty_committed_bulk,
+    get_available_qty,
+)
 
 
 class TestQtyOnOrder:
@@ -278,6 +283,58 @@ class TestQtyCommitted:
         session.commit()
 
         assert get_qty_committed(item.id) == 15.0
+
+    def test_exclude_wo_id_omits_that_wos_own_demand(self, app, db, session):
+        """exclude_wo_id excludes only that WO's own BOMLine demand — a
+        different open WO's demand for the same item still counts."""
+        item = self._make_item(session)
+        so = self._make_so(session)
+
+        own_wo = self._make_wo(session, so, status='Open')
+        session.add(BOMLine(
+            wo_id=own_wo.id, item_id=item.id, qty_required=10.0, qty_issued=0.0,
+            line_type="COMPONENT",
+        ))
+
+        other_wo = self._make_wo(session, so, status='Open')
+        session.add(BOMLine(
+            wo_id=other_wo.id, item_id=item.id, qty_required=6.0, qty_issued=0.0,
+            line_type="COMPONENT",
+        ))
+        session.commit()
+
+        # Without exclusion, both lines count.
+        assert get_qty_committed_bulk(item_ids=[item.id]).get(item.id, 0.0) == 16.0
+
+        # With exclusion, only the other WO's demand counts.
+        result = get_qty_committed_bulk(item_ids=[item.id], exclude_wo_id=own_wo.id)
+        assert result.get(item.id, 0.0) == 6.0
+
+    def test_exclude_sto_id_omits_that_stos_own_demand(self, app, db, session):
+        """exclude_sto_id excludes only that STO's own line demand — a
+        different open STO's demand for the same item still counts."""
+        item = self._make_item(session)
+        so = self._make_so(session)
+
+        own_sto = self._make_sto(session, so, status='Open')
+        session.add(StockOrderLine(
+            stock_order_id=own_sto.id, item_code=item.code, description=item.description,
+            qty=20.0, qty_issued=0.0,
+        ))
+
+        other_sto = self._make_sto(session, so, status='Open')
+        session.add(StockOrderLine(
+            stock_order_id=other_sto.id, item_code=item.code, description=item.description,
+            qty=5.0, qty_issued=0.0,
+        ))
+        session.commit()
+
+        # Without exclusion, both lines count.
+        assert get_qty_committed_bulk(item_ids=[item.id]).get(item.id, 0.0) == 25.0
+
+        # With exclusion, only the other STO's demand counts.
+        result = get_qty_committed_bulk(item_ids=[item.id], exclude_sto_id=own_sto.id)
+        assert result.get(item.id, 0.0) == 5.0
 
 
 class TestAvailableQty:

@@ -492,3 +492,26 @@ class TestBOMBuilderDemandNettedAvailability:
 
         assert served['next_po_due'] is None
         assert served['available_qty'] == 10.0
+
+    def test_available_qty_not_reduced_by_own_wo_demand(self, app, db, session, client):
+        """Editing a WO that already has a line for item X, where
+        qty_on_hand exactly covers that WO's own requirement and nothing
+        else in the system wants item X, must NOT show a false shortfall
+        by self-counting that WO's own outstanding demand as committed."""
+        item = Item(code=self._next_code("NET-SELF"), description="Self-Demand Item",
+                    category="Hardware", qty_on_hand=10.0, active=True)
+        session.add(item)
+        session.flush()
+
+        so = self._make_so(session)
+        wo = self._make_open_wo(session, so)
+        session.add(BOMLine(wo_id=wo.id, item_id=item.id, qty_required=10.0,
+                            qty_issued=0.0, line_type="COMPONENT"))
+        session.commit()
+
+        catalogue = self._get_catalogue_items(client, wo.id)
+        served = self._find_item(catalogue, item.code)
+
+        assert served['qty_on_hand'] == 10.0
+        assert served['qty_committed'] == 0.0  # this WO's own line excluded
+        assert served['available_qty'] == 10.0  # 10 + 0 - 0, not false-reduced to 0

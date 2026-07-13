@@ -219,3 +219,55 @@ class TestWOPrintContextShortfall:
         assert component['qty_committed'] == 9.0
         assert component['available_qty'] == 1.0
         assert component['shortfall'] == 7.0
+
+    def test_own_line_outstanding_demand_not_self_counted(self, app, db, session):
+        """Regression test for the self-counting bug: this WO's own line has
+        OUTSTANDING demand (qty_issued < qty_required, unlike the other
+        tests above which dodged the bug by fully issuing the own line).
+        qty_on_hand exactly covers this WO's own requirement and nothing
+        else in the system wants the item -> shortfall must be 0, not a
+        false shortfall equal to the line's own remaining requirement.
+        """
+        item = self._make_item(session, qty_on_hand=10.0)
+        so = self._make_so(session)
+        wo = self._make_wo(session, so)
+        session.add(BOMLine(
+            wo_id=wo.id, item_id=item.id, qty_required=10.0, qty_issued=0.0,
+            line_type="COMPONENT",
+        ))
+        session.commit()
+
+        context = get_works_order_print_context(wo.id)
+        line = context['flat_lines'][0]
+
+        # 10 on hand + 0 on order - 0 committed (own line excluded) = 10 available.
+        assert line['qty_committed'] == 0.0
+        assert line['available_qty'] == 10.0
+        assert line['shortfall'] == 0.0
+
+    def test_own_line_outstanding_demand_and_other_wo_both_reflected(self, app, db, session):
+        """This WO's own outstanding demand is excluded from qty_committed,
+        but a different open WO's demand for the same item still counts."""
+        item = self._make_item(session, qty_on_hand=10.0)
+        so = self._make_so(session)
+        wo = self._make_wo(session, so)
+        session.add(BOMLine(
+            wo_id=wo.id, item_id=item.id, qty_required=8.0, qty_issued=0.0,
+            line_type="COMPONENT",
+        ))
+
+        other_so = self._make_so(session)
+        other_wo = self._make_wo(session, other_so)
+        session.add(BOMLine(
+            wo_id=other_wo.id, item_id=item.id, qty_required=4.0, qty_issued=0.0,
+            line_type="COMPONENT",
+        ))
+        session.commit()
+
+        context = get_works_order_print_context(wo.id)
+        line = context['flat_lines'][0]
+
+        # 10 on hand + 0 on order - 4 committed elsewhere (own line excluded) = 6 available.
+        assert line['qty_committed'] == 4.0
+        assert line['available_qty'] == 6.0
+        assert line['shortfall'] == 2.0  # 8 required - 6 available

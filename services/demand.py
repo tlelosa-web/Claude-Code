@@ -12,6 +12,12 @@ per aggregate and return a `{item_id: qty}` dict, so a caller rendering a
 full catalogue page (BOM Builder, Stock Report) can compute this for every
 item without N+1 per-item queries. The single-item convenience functions
 are built on top of the bulk variants for callers that only need one item.
+
+`get_qty_committed_bulk()` / `get_qty_committed()` accept optional
+`exclude_wo_id` / `exclude_sto_id` params so a single order's own
+outstanding demand doesn't get counted as "committed" against itself when
+computing that same order's shortfall (BOM Builder edit page, WO
+print/detail). Catalogue-wide views (Stock Report) leave these unset.
 """
 from sqlalchemy import func
 
@@ -106,7 +112,7 @@ def get_next_po_due_bulk(item_ids=None):
     }
 
 
-def get_qty_committed_bulk(item_ids=None):
+def get_qty_committed_bulk(item_ids=None, exclude_wo_id=None, exclude_sto_id=None):
     """Return {item_id: qty_committed} across open Works/Stock Order demand.
 
     Sums two sources per item:
@@ -119,6 +125,15 @@ def get_qty_committed_bulk(item_ids=None):
 
     If `item_ids` is given, restricts both queries to those items. Items
     with no open demand are absent from the returned dict (treat as 0).
+
+    `exclude_wo_id` / `exclude_sto_id` omit that specific Works Order's /
+    Stock Order's own lines from the sums. Pass these when computing
+    committed demand for a SINGLE order's own shortfall (e.g. the BOM
+    Builder edit page for that order, or that order's print/detail view) —
+    otherwise an order's own outstanding demand for an item gets counted
+    as "committed" against itself, producing a false shortfall. Leave both
+    None (the default) for catalogue-wide views with no single "current
+    order" to exclude (e.g. the Stock Report).
     """
     committed = {}
 
@@ -133,6 +148,8 @@ def get_qty_committed_bulk(item_ids=None):
     )
     if item_ids is not None:
         wo_query = wo_query.filter(BOMLine.item_id.in_(item_ids))
+    if exclude_wo_id is not None:
+        wo_query = wo_query.filter(BOMLine.wo_id != exclude_wo_id)
     wo_query = wo_query.group_by(BOMLine.item_id)
 
     for item_id, qty in wo_query.all():
@@ -150,6 +167,8 @@ def get_qty_committed_bulk(item_ids=None):
     )
     if item_ids is not None:
         sto_query = sto_query.filter(Item.id.in_(item_ids))
+    if exclude_sto_id is not None:
+        sto_query = sto_query.filter(StockOrderLine.stock_order_id != exclude_sto_id)
     sto_query = sto_query.group_by(Item.id)
 
     for item_id, qty in sto_query.all():
@@ -158,13 +177,20 @@ def get_qty_committed_bulk(item_ids=None):
     return committed
 
 
-def get_qty_committed(item_id):
+def get_qty_committed(item_id, exclude_wo_id=None, exclude_sto_id=None):
     """Single-item convenience wrapper around get_qty_committed_bulk().
 
     Prefer get_qty_committed_bulk() when computing this for many items
     (e.g. a catalogue page) to avoid N+1 queries.
+
+    See get_qty_committed_bulk() for when to pass exclude_wo_id /
+    exclude_sto_id (single-order shortfall contexts).
     """
-    return get_qty_committed_bulk(item_ids=[item_id]).get(item_id, 0.0)
+    return get_qty_committed_bulk(
+        item_ids=[item_id],
+        exclude_wo_id=exclude_wo_id,
+        exclude_sto_id=exclude_sto_id,
+    ).get(item_id, 0.0)
 
 
 def get_available_qty(item_id):

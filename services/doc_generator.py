@@ -33,7 +33,7 @@ def get_works_order_print_context(wo_id):
         item_ids.update(child.item_id for child in children)
 
     qty_on_order = get_qty_on_order_bulk(item_ids=item_ids)
-    qty_committed = get_qty_committed_bulk(item_ids=item_ids)
+    qty_committed = get_qty_committed_bulk(item_ids=item_ids, exclude_wo_id=wo_id)
 
     assembly_items = []
     flat_lines = []

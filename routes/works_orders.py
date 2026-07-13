@@ -230,7 +230,7 @@ def edit_order(order_id):
     from services.demand import get_qty_on_order_bulk, get_qty_committed_bulk, get_next_po_due_bulk
     item_ids = [item.id for item in items]
     qty_on_order_map = get_qty_on_order_bulk(item_ids=item_ids)
-    qty_committed_map = get_qty_committed_bulk(item_ids=item_ids)
+    qty_committed_map = get_qty_committed_bulk(item_ids=item_ids, exclude_wo_id=order_id)
     next_po_due_map = get_next_po_due_bulk(item_ids=item_ids)
     item_payload = [
         item_to_bom_json(

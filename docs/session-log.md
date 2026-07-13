@@ -508,3 +508,61 @@
 - Blockers: None.
 - Commits: `868f56f`, `3dc14f2`, `ddd91b2`, `0a8070f`, `b03185f`, `ac61985`, `c7ce7f9`, `c9b48e0`,
   `c224459`.
+
+## 2026-07-14 — Batch 18: Enhancement 3 (Demand-Netted Shortfall Calc)
+
+- Domain: Software/AI.
+- Session opened with `/continue`. `docs/todo.md` and `df71f17` (2026-07-13, spec commit) showed
+  Enhancement 3's spec (`docs/specs/demand-netted-shortfall.md`) written and awaiting review —
+  Tebello reviewed it via a 3-example walkthrough, then confirmed to proceed with implementation.
+- Routed through the DCOE Executor pattern: 6 sequential atomic commits, each dispatched as a
+  fresh-context `executor` agent with the relevant model fields/file locations pre-verified by the
+  orchestrator, followed by a `reviewer` (Opus) pass per the project's standing policy for changes
+  driving purchasing/stock decisions.
+- Commit `3e4c0ed`: new `services/demand.py` — `get_qty_on_order_bulk()`, `get_qty_committed_bulk()`,
+  `get_next_po_due_bulk()` plus single-item wrappers, all batched (`{item_id: qty}` dicts) to avoid
+  N+1 on catalogue-page callers. 17 new unit tests covering the spec's full PO/WO/STO status matrix.
+- Commit `03109bf`: wired `item_to_bom_json()` (`routes/sales_orders.py`) and `static/js/bom_builder.js`
+  to the netted `available_qty`, added the "(on order, due `<date>`)" hint. Mid-task discovery,
+  confirmed by reading the actual templates rather than trusting the spec's description:
+  `bom_builder.js` is only reachable from the WO/STO **edit** pages, not from `build_bom.html` (the
+  page most order creation actually goes through), which shows no shortfall/qty info at all;
+  `templates/sales_orders/bom_builder.html` is orphaned (no route renders it). Surfaced to Tebello
+  rather than silently patching the wrong file — decision: fix exactly what the spec named now,
+  leave `build_bom.html`'s missing shortfall display as a separate, declined-for-now feature gap.
+- Commit `638b70d`: `/reports/stock/data` + `/export-csv` switched their "Below Reorder Point" filter
+  and display to netted `available_qty`, `qty_on_hand` kept visible as ground truth, new
+  `available_qty` Tabulator column.
+- Commit `ea3e032`: found a 3rd, separate un-netted shortfall calc the spec never mentioned —
+  `services/doc_generator.py::get_works_order_print_context()`, feeding both the WO detail screen
+  and the print document. Tebello confirmed (AskUserQuestion) to fix it in the same batch rather
+  than defer it. Netted it identically; left `works_order_print.html` untouched since it doesn't
+  actually render `qty_on_hand`/shortfall (only defines an unused CSS class).
+- Commit `46d0724`: bug fix, found by the commit-4 executor and escalated rather than worked around
+  — `get_qty_committed_bulk()` had no way to exclude an order's own lines from its own demand count,
+  so checking a WO's own BOM against itself falsely counted that WO's outstanding requirement as
+  "committed elsewhere," producing a false shortfall equal to the order's own full requirement in
+  the worst case (e.g. exactly-sufficient on-hand stock with zero real competing demand). Tebello
+  confirmed fixing immediately rather than deferring. Added `exclude_wo_id`/`exclude_sto_id` params,
+  wired into the WO/STO edit pages and WO print context; Stock Report deliberately excludes nothing
+  (no single "current order" context there).
+- Reviewer (Opus) pass on all 5 commits: **Approved with nits**, no blockers. Confirmed the
+  exclusion fix correct/complete, N+1 avoided everywhere, STO `item_code` join degrades safely on
+  unmatched codes, full spec test-plan covered. Flagged: Dashboard reorder stat card still un-netted
+  (disagreeing with the Stock Report on the same signal), possible negative `qty_committed` from an
+  over-issued line, 4 sites missing `qty_on_hand or 0.0` null-guards, `get_available_qty()` missing
+  exclusion-param parity, and a >50-line duplication in `doc_generator.py` (deferred, non-blocking).
+- Commit `f4fce5d`: Tebello confirmed (AskUserQuestion) netting the Dashboard card too, so it stops
+  disagreeing with the Stock Report on the same purchasing signal (`low_stock_count` deliberately
+  left as a raw physical-stock measure, unchanged). Also floored negative per-line committed demand
+  at 0 (summed in Python rather than risk a SQLite `func.max` aggregate-vs-scalar ambiguity in SQL),
+  added the 4 missing null-guards, added exclusion-param parity to `get_available_qty()`.
+- Full suite: 111 → 147 tests green across the 6 commits, verified after every commit, no
+  regressions. Each feature commit was also spot-checked against the real dev server
+  (`/reports/stock`, `/reports/stock/export-csv`, `/` dashboard) before landing.
+- Known gap, explicitly declined for this batch (Tebello's call): `build_bom.html`, the actual
+  "Build Works Pack" page, still shows no stock-availability/shortfall info of any kind when first
+  creating a Works Pack — the netting fix only reaches the *edit* path for an already-created
+  WO/STO. Logged in `docs/todo.md` as the next candidate item if picked up later.
+- Blockers: None.
+- Commits: `3e4c0ed`, `03109bf`, `638b70d`, `ea3e032`, `46d0724`, `f4fce5d`.

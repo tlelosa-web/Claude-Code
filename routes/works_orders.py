@@ -157,7 +157,11 @@ def confirm_pick(order_id):
     if wo.status == 'Complete':
         flash(f"Picking List {wo.wo_number} is already completed.", "warning")
         return redirect(url_for('works_orders.view_order', order_id=order_id))
-    
+
+    if wo.status == 'Cancelled':
+        flash(f"Picking List {wo.wo_number} is cancelled and cannot be picked.", "error")
+        return redirect(url_for('works_orders.view_order', order_id=order_id))
+
     try:
         for bom_line in wo.bom_lines:
             qty_to_pick = bom_line.qty_required - bom_line.qty_issued

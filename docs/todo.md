@@ -245,3 +245,23 @@ All items below must be green before delivery:
 - Next task: none queued — awaiting Tebello's review/commit confirmation. This closes the last known gap from the Enhancement 3 demand-netting effort; no further roadmap item currently queued.
 - Blockers: None.
 - Ops note: recurring risk — a stale Werkzeug dev-server process from an earlier session can keep serving old code on port 5000 indefinitely (2nd occurrence, see Batch 12). Worth checking `Get-NetTCPConnection -LocalPort 5000` before trusting a "live" verification if a dev server wasn't freshly started this session.
+
+## Ops — Repo Health Check + Stale Spec Status Cleanup (2026-07-14)
+- [x] Tebello requested a general repo health check after noticing `docs/specs/dashboard-open-filter.md` was stuck showing "Pending approval" despite being shipped.
+- [x] Checked for stale dev-server process on port 5000 — none found (prior session's had already exited cleanly).
+- [x] Found and fixed real git corruption: `.git/refs/heads/` had two leftover files (`master.lock.bak.1`, `master.lock.bak.30564`) from the OneDrive lock-corruption incident documented in Batch 14 — these were breaking `git branch -a`/`git log --all` (`fatal: bad object`). Verified `master.lock.bak.1` pointed to an already-merged ancestor commit (`520f955`, no data loss) before deleting both; `git fsck` clean afterward (only harmless dangling objects).
+- [x] Verified: 149/149 tests green, Flask app factory imports cleanly, offline-first constraint intact (no `cdn.`/`fonts.googleapis` in served templates/static).
+- [x] Found the "Pending approval" status wasn't isolated — 5 specs had stale pre-build status lines despite being shipped weeks earlier. Updated all 5 to `Shipped` with batch/commit refs: `dashboard-open-filter.md`, `purchase-order-module-plan.md`, `demand-netted-shortfall.md`, `csv-import-quantity-safety.md`, `build-bom-shortfall-display.md`. Committed `3aae9fb`.
+- Blockers: None.
+
+## Batch 21 — Fix broken "All" toggle + add "Closed" view (SO/WO/STO) (2026-07-14)
+- [x] Tebello reported SO4731 (a Closed SO) wasn't visible even after clicking "All" on the Sales Orders list — investigated live via DB lookup (`SalesOrder.query.filter_by(so_number='SO4731')`), confirmed it exists (id 38, status Closed).
+- [x] Root cause found: `routes/{sales_orders,works_orders,stock_orders,purchase_orders}.py` `list_orders()` default to `view='open'` (since Batch 16's default flip), but the "All" link in all 4 list templates linked to the bare list URL with no `view` param — silently falling through to the same `'open'` default. The "All" button had been non-functional since Batch 16.
+- [x] Tebello's fix request: rename "Open only" → "Open", add a "Closed" button (negates the existing ACTIVE-status tuple, no new status list), apply to SO/WO/STO only. Purchase Orders confirmed to have the identical link bug — fixed the link only there (no Closed button, out of requested scope).
+- [x] Spec written first (7 files >2 → plan-first rule): `docs/specs/open-closed-all-toggle-fix.md`.
+- [x] Dispatched a single `executor` agent — commit `5c6e8ae`: `routes/sales_orders.py`/`works_orders.py`/`stock_orders.py` gain a `elif view == 'closed'` branch negating `SO_ACTIVE`/`WO_ACTIVE`/`STO_ACTIVE`; SO/WO/STO list templates get a 3-button All/Open/Closed toggle with every link passing an explicit `view=` param; `purchase_orders/list.html` gets the same explicit `view='all'` link fix only. 3 new tests in `tests/test_order_list_filters.py` covering the `closed` view per module.
+- [x] Orchestrator-side verification: read the full diff line-by-line (not just the executor's summary), re-ran the full suite independently (152 passed, was 149). Live-verified against the real `instance/sops.db` via the already-running dev server (Flask's reloader picked up the change automatically) — confirmed SO4731 now appears under Closed/All and correctly stays hidden under Open.
+- [x] Full suite: 152 tests green (was 149).
+- Next task: none queued — awaiting Tebello's review/commit confirmation for the spec file.
+- Blockers: None.
+- Commits: `5c6e8ae` (implementation). Spec (`open-closed-all-toggle-fix.md`) to be committed separately per convention.

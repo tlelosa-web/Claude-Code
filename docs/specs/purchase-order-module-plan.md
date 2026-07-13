@@ -1,5 +1,5 @@
 # Spec — Purchase Order Module (Enhancement 1) + Reorder Signals (Enhancement 2)
-**Revision:** 2 (adapted for Sage PO PDF upload) · **Date:** 2026-07-07 · **Status:** Draft for Tebello review
+**Revision:** 2 (adapted for Sage PO PDF upload) · **Date:** 2026-07-07 · **Status:** Shipped — Batch 13 (2026-07-07), commits `65f8443`, `15a265e`, `6f0dc53`, `b4bfdc4`, `c06a9f5`, `0b08b7c`, `fc63598`, `c0a5ceb`
 
 ## Why this revision
 

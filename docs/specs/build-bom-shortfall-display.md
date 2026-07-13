@@ -1,6 +1,6 @@
 # Spec: Shortfall/Availability Display on Build Works Pack (`build_bom.html`)
 
-**Status:** Draft — awaiting Tebello's confirmation before build.
+**Status:** Shipped — Batch 20 (2026-07-14), commits `782514a` (implementation), `ca30d89` (this spec).
 **Depends on:** Enhancement 3 / `services/demand.py` (shipped Batch 18) — no new logic, wiring only.
 **Origin:** Known gap flagged at the end of Batch 18 (`docs/todo.md`), scoped in chat 2026-07-14.
 

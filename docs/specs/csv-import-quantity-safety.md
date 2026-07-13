@@ -1,6 +1,6 @@
 # Spec: CSV Item Import — Remove Quantity-Overwrite Path
 
-**Status:** Confirmed — Tebello approved 2026-07-14, proceed to build.
+**Status:** Shipped — Batch 19 (2026-07-14), commit `2965367`.
 **Origin:** Raised during CSV-upload/Stock-Report impact review (docs/session-log.md, 2026-07-14). No prior research doc — small, self-contained decision.
 
 ## Problem

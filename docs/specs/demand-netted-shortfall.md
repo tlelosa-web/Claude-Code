@@ -1,6 +1,6 @@
 # Spec: Demand-Netted Shortfall Calculation (Enhancement 3)
 
-**Status:** Draft — awaiting Tebello's review before build.
+**Status:** Shipped — Batch 18 (2026-07-14), commits `3e4c0ed`, `03109bf`, `638b70d`, `ea3e032`, `46d0724`, `f4fce5d`. Follow-on gap (build_bom.html display) closed separately by Batch 20 (`docs/specs/build-bom-shortfall-display.md`).
 **Depends on:** Enhancement 1 (Purchase Orders, shipped Batch 13) — no new tables needed.
 **Origin:** `docs/research/erp-mrp-benchmark-2026-07-07.md` §4, Enhancement 3. Scope decisions below confirmed with Tebello via AskUserQuestion on 2026-07-13.
 

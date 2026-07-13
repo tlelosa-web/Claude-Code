@@ -1,6 +1,6 @@
 # Spec: Open/Active Filter — Dashboard + SO/WO/STO/PO Lists
 
-Owner: Tebello Lelosa | Written: 2026-07-07 | Status: Pending approval
+Owner: Tebello Lelosa | Written: 2026-07-07 | Status: Shipped — Batch 14 (2026-07-08), commit `bd25fcf`
 
 ## Goal
 Dashboard surfaces open Sales Orders; List pages for SO/WO/STO/PO gain an

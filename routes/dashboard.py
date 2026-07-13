@@ -2,6 +2,7 @@ from sqlalchemy import nullslast
 from flask import Blueprint, render_template
 from models import Item, SalesOrder, WorksOrder
 from services.order_filters import SO_ACTIVE, WO_ACTIVE
+from services.demand import get_qty_on_order_bulk, get_qty_committed_bulk
 
 dashboard_bp = Blueprint('dashboard', __name__)
 
@@ -24,12 +25,27 @@ def index():
     low_stock_count = Item.query.filter(Item.qty_on_hand <= 10.0, Item.active == True).count()
 
     # Items below their reorder point (Enhancement 2 - reorder point
-    # signals). reorder_point defaults to 0.0, meaning "not set" - only
-    # items with an explicit reorder_point > 0 are counted, otherwise
-    # every unconfigured item would falsely show as below reorder.
-    reorder_count = Item.query.filter(
-        Item.reorder_point > 0, Item.qty_on_hand <= Item.reorder_point, Item.active == True
-    ).count()
+    # signals), netted against qty_on_order / qty_committed (Enhancement 3)
+    # so this stat agrees with the Stock Report's below_reorder flag rather
+    # than comparing raw qty_on_hand. reorder_point defaults to 0.0,
+    # meaning "not set" - only items with an explicit reorder_point > 0 are
+    # counted, otherwise every unconfigured item would falsely show as
+    # below reorder. The reorder_point > 0 filter stays SQL-side as a cheap
+    # pre-filter; netting happens in Python for just the narrowed-down set.
+    reorder_candidates = Item.query.filter(
+        Item.reorder_point > 0, Item.active == True
+    ).all()
+    candidate_ids = [item.id for item in reorder_candidates]
+    qty_on_order_map = get_qty_on_order_bulk(item_ids=candidate_ids)
+    qty_committed_map = get_qty_committed_bulk(item_ids=candidate_ids)
+    reorder_count = sum(
+        1
+        for item in reorder_candidates
+        if (item.qty_on_hand or 0.0)
+        + qty_on_order_map.get(item.id, 0.0)
+        - qty_committed_map.get(item.id, 0.0)
+        <= item.reorder_point
+    )
 
     # Recent works orders
     recent_wos = WorksOrder.query.order_by(WorksOrder.created_at.desc()).limit(5).all()

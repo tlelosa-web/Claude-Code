@@ -137,10 +137,15 @@ def get_qty_committed_bulk(item_ids=None, exclude_wo_id=None, exclude_sto_id=Non
     """
     committed = {}
 
+    # Each line's contribution is floored at 0 before summing (Python-side,
+    # not func.sum() on the raw arithmetic) so a hand-edited or
+    # partial-reversal row where qty_issued exceeds qty_required/qty can't
+    # contribute negative outstanding demand and inflate available_qty.
     wo_query = (
         db.session.query(
             BOMLine.item_id,
-            func.sum(BOMLine.qty_required - BOMLine.qty_issued),
+            BOMLine.qty_required,
+            BOMLine.qty_issued,
         )
         .join(WorksOrder, BOMLine.wo_id == WorksOrder.id)
         .filter(BOMLine.line_type != 'ASSEMBLY_ITEM')
@@ -150,15 +155,16 @@ def get_qty_committed_bulk(item_ids=None, exclude_wo_id=None, exclude_sto_id=Non
         wo_query = wo_query.filter(BOMLine.item_id.in_(item_ids))
     if exclude_wo_id is not None:
         wo_query = wo_query.filter(BOMLine.wo_id != exclude_wo_id)
-    wo_query = wo_query.group_by(BOMLine.item_id)
 
-    for item_id, qty in wo_query.all():
-        committed[item_id] = committed.get(item_id, 0.0) + float(qty or 0.0)
+    for item_id, qty_required, qty_issued in wo_query.all():
+        line_qty = max(0.0, (qty_required or 0.0) - (qty_issued or 0.0))
+        committed[item_id] = committed.get(item_id, 0.0) + line_qty
 
     sto_query = (
         db.session.query(
             Item.id,
-            func.sum(StockOrderLine.qty - StockOrderLine.qty_issued),
+            StockOrderLine.qty,
+            StockOrderLine.qty_issued,
         )
         .select_from(StockOrderLine)
         .join(StockOrder, StockOrderLine.stock_order_id == StockOrder.id)
@@ -169,10 +175,10 @@ def get_qty_committed_bulk(item_ids=None, exclude_wo_id=None, exclude_sto_id=Non
         sto_query = sto_query.filter(Item.id.in_(item_ids))
     if exclude_sto_id is not None:
         sto_query = sto_query.filter(StockOrderLine.stock_order_id != exclude_sto_id)
-    sto_query = sto_query.group_by(Item.id)
 
-    for item_id, qty in sto_query.all():
-        committed[item_id] = committed.get(item_id, 0.0) + float(qty or 0.0)
+    for item_id, qty, qty_issued in sto_query.all():
+        line_qty = max(0.0, (qty or 0.0) - (qty_issued or 0.0))
+        committed[item_id] = committed.get(item_id, 0.0) + line_qty
 
     return committed
 
@@ -193,10 +199,15 @@ def get_qty_committed(item_id, exclude_wo_id=None, exclude_sto_id=None):
     ).get(item_id, 0.0)
 
 
-def get_available_qty(item_id):
+def get_available_qty(item_id, exclude_wo_id=None, exclude_sto_id=None):
     """qty_on_hand + qty_on_order - qty_committed for a single item.
 
     Raises ValueError if the item does not exist.
+
+    `exclude_wo_id` / `exclude_sto_id` are passed straight through to
+    get_qty_committed() — see get_qty_committed_bulk() for when to use
+    them (single-order shortfall contexts, so an order's own outstanding
+    demand isn't counted as committed against itself).
     """
     item = db.session.get(Item, item_id)
     if not item:
@@ -205,5 +216,7 @@ def get_available_qty(item_id):
     return (
         (item.qty_on_hand or 0.0)
         + get_qty_on_order(item_id)
-        - get_qty_committed(item_id)
+        - get_qty_committed(
+            item_id, exclude_wo_id=exclude_wo_id, exclude_sto_id=exclude_sto_id
+        )
     )

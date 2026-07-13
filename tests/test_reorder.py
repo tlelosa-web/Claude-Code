@@ -1,6 +1,9 @@
 """Tests for Enhancement 2 - reorder point / min-max replenishment signals."""
+import re
+from datetime import datetime, timezone
+
 import pytest
-from models import db, Item, PurchaseOrder
+from models import db, Item, PurchaseOrder, POLine
 
 
 class TestReorderPointStockReport:
@@ -86,10 +89,52 @@ class TestCreateFromShortfall:
 
 
 class TestDashboardReorderCard:
+    _counter = 0
+
+    def _next_code(self):
+        TestDashboardReorderCard._counter += 1
+        return f"DASH-REORDER-{TestDashboardReorderCard._counter:03d}"
+
     def test_dashboard_shows_reorder_count(self, client):
         response = client.get('/')
         assert response.status_code == 200
         assert "Below Reorder Point" in response.get_data(as_text=True)
+
+    def _reorder_stat_value(self, client):
+        body = client.get('/').get_data(as_text=True)
+        match = re.search(r'Below Reorder Point.*?stat-val">(\d+)<', body, re.DOTALL)
+        assert match, "Could not find 'Below Reorder Point' stat on dashboard"
+        return int(match.group(1))
+
+    def test_reorder_count_nets_qty_on_order(self, app, db, session, client):
+        """An item below raw qty_on_hand but covered by inbound qty_on_order
+        (Enhancement 3 netting) must not inflate the dashboard's below-reorder
+        stat - it should agree with the Stock Report's below_reorder calc."""
+        before = self._reorder_stat_value(client)
+
+        item = Item(code=self._next_code(), description="Below raw qty, covered by PO",
+                    qty_on_hand=2.0, reorder_point=5.0, reorder_qty=20.0, active=True)
+        session.add(item)
+        session.flush()
+
+        po = PurchaseOrder(po_number=f"PO-{item.code}", supplier_name="Test Supplier",
+                           status="Open", created_at=datetime.now(timezone.utc))
+        session.add(po)
+        session.flush()
+        session.add(POLine(po_id=po.id, item_id=item.id, qty_ordered=10.0, qty_received=0.0))
+        session.commit()
+
+        # available_qty = 2 (on hand) + 10 (on order) - 0 (committed) = 12,
+        # above the reorder_point of 5 - so despite raw qty_on_hand (2)
+        # being below it, this item must not push the stat up.
+        after = self._reorder_stat_value(client)
+        assert after == before
+
+        # Cross-check against the Stock Report, which shares the same
+        # netting logic and is easier to assert against per-item.
+        report = client.get('/reports/stock/data?active_only=false')
+        row = next(i for i in report.get_json()['items'] if i['code'] == item.code)
+        assert row['below_reorder'] is False
 
 
 class TestItemReorderSettingsRoute:

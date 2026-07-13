@@ -52,7 +52,7 @@ def stock_data():
     for item in items:
         qty_on_order = qty_on_order_map.get(item.id, 0.0)
         qty_committed = qty_committed_map.get(item.id, 0.0)
-        available_qty = item.qty_on_hand + qty_on_order - qty_committed
+        available_qty = (item.qty_on_hand or 0.0) + qty_on_order - qty_committed
         is_below_reorder = bool(item.reorder_point and available_qty <= item.reorder_point)
 
         if below_reorder == 'show' and not is_below_reorder:
@@ -112,7 +112,7 @@ def stock_export_csv():
 
         qty_on_order = qty_on_order_map.get(item.id, 0.0)
         qty_committed = qty_committed_map.get(item.id, 0.0)
-        available_qty = item.qty_on_hand + qty_on_order - qty_committed
+        available_qty = (item.qty_on_hand or 0.0) + qty_on_order - qty_committed
 
         last_movement = StockMovement.query.filter_by(item_id=item.id).order_by(StockMovement.created_at.desc()).first()
         last_movement_date = last_movement.created_at.strftime('%Y-%m-%d') if last_movement else ''

@@ -41,7 +41,7 @@ def get_works_order_print_context(wo_id):
     for line in top_lines:
         item = line.item
         available_qty = (
-            item.qty_on_hand
+            (item.qty_on_hand or 0.0)
             + qty_on_order.get(item.id, 0.0)
             - qty_committed.get(item.id, 0.0)
         )
@@ -69,7 +69,7 @@ def get_works_order_print_context(wo_id):
             for child in children:
                 child_item = child.item
                 child_available_qty = (
-                    child_item.qty_on_hand
+                    (child_item.qty_on_hand or 0.0)
                     + qty_on_order.get(child_item.id, 0.0)
                     - qty_committed.get(child_item.id, 0.0)
                 )

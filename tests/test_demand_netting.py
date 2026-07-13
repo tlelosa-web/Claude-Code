@@ -310,6 +310,35 @@ class TestQtyCommitted:
         result = get_qty_committed_bulk(item_ids=[item.id], exclude_wo_id=own_wo.id)
         assert result.get(item.id, 0.0) == 6.0
 
+    def test_wo_line_over_issued_floors_at_zero_not_negative(self, app, db, session):
+        """An Open WO line where qty_issued > qty_required (hand-edited row
+        or partial-reversal edge case) must contribute 0, not negative,
+        outstanding demand - a negative contribution would reduce total
+        committed and inflate available_qty in the wrong direction."""
+        item = self._make_item(session)
+        so = self._make_so(session)
+        wo = self._make_wo(session, so, status='Open')
+        session.add(BOMLine(
+            wo_id=wo.id, item_id=item.id, qty_required=5.0, qty_issued=8.0,
+            line_type="COMPONENT",
+        ))
+        session.commit()
+
+        assert get_qty_committed(item.id) == 0.0
+
+    def test_sto_line_over_issued_floors_at_zero_not_negative(self, app, db, session):
+        """Same over-issued edge case on the Stock Order side."""
+        item = self._make_item(session)
+        so = self._make_so(session)
+        sto = self._make_sto(session, so, status='Open')
+        session.add(StockOrderLine(
+            stock_order_id=sto.id, item_code=item.code, description=item.description,
+            qty=5.0, qty_issued=9.0,
+        ))
+        session.commit()
+
+        assert get_qty_committed(item.id) == 0.0
+
     def test_exclude_sto_id_omits_that_stos_own_demand(self, app, db, session):
         """exclude_sto_id excludes only that STO's own line demand — a
         different open STO's demand for the same item still counts."""

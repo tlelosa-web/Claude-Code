@@ -56,34 +56,61 @@ class TestItemImporter:
         assert movement.qty_change == 50.0
     
     def test_import_updates_existing(self, app, db, session, tmp_path):
-        """Test that import updates existing items (matched by code)."""
+        """Test that import updates existing items (matched by code), but
+        never touches qty_on_hand — SOPS owns the stock lifecycle, not CSV."""
         from services.item_importer import import_items_from_csv
-        
+
         # Pre-insert an item
         existing = Item(code='EXIST-001', description='Old Description', category='Old',
                        qty_on_hand=10.0, last_cost=50.0, avg_cost=45.0, active=True)
         session.add(existing)
         session.commit()
-        
+
         rows = [
             {'Code': 'EXIST-001', 'Description': 'Updated Description', 'Category': 'Updated',
              'Last Cost': 'R 75.00', 'Avg. Cost': 'R 70.00', 'Excl. Price': 'R 120.00',
              'Incl. Price': 'R 138.00', 'Qty on Hand': '20', 'Active': 'Yes'},
         ]
-        
+
         filepath = self._create_test_csv(tmp_path, rows)
         updated, inserted, skipped = import_items_from_csv(filepath)
-        
+
         assert inserted == 0
         assert updated == 1
         assert skipped == 0
-        
-        # Verify item was updated
+
+        # Verify item's metadata was updated but qty_on_hand was preserved
         item = Item.query.filter_by(code='EXIST-001').first()
         assert item.description == 'Updated Description'
         assert item.category == 'Updated'
-        assert item.qty_on_hand == 20.0
+        assert item.qty_on_hand == 10.0
         assert item.last_cost == 75.0
+
+    def test_import_preserves_qty_on_hand_when_csv_differs(self, app, db, session, tmp_path):
+        """Regression test: an existing item's qty_on_hand must remain
+        unchanged after import, even when the CSV row shows a different
+        quantity for that code."""
+        from services.item_importer import import_items_from_csv
+
+        existing = Item(code='PRESERVE-001', description='Widget', category='Test',
+                       qty_on_hand=42.0, last_cost=10.0, avg_cost=9.0, active=True)
+        session.add(existing)
+        session.commit()
+
+        rows = [
+            {'Code': 'PRESERVE-001', 'Description': 'Widget', 'Category': 'Test',
+             'Last Cost': 'R 10.00', 'Avg. Cost': 'R 9.00', 'Excl. Price': 'R 15.00',
+             'Incl. Price': 'R 17.25', 'Qty on Hand': '999', 'Active': 'Yes'},
+        ]
+
+        filepath = self._create_test_csv(tmp_path, rows)
+        updated, inserted, skipped = import_items_from_csv(filepath)
+
+        assert updated == 1
+        assert inserted == 0
+
+        item = Item.query.filter_by(code='PRESERVE-001').first()
+        assert item.qty_on_hand == 42.0
     
     def test_import_skips_inactive(self, app, db, session, tmp_path):
         """Test that inactive items (Active != 'Yes') are skipped."""

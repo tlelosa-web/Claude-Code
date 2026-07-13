@@ -18,17 +18,10 @@
                     <label for="csv_file">Select CSV File</label>
                     <input type="file" name="csv_file" id="csv_file" accept=".csv" style="padding: 10px; border: 2px dashed var(--border-color); border-radius: 8px; width: 100%; background: var(--bg-secondary);">
                 </div>
-                <div class="form-group" style="margin-top: 16px;">
-                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 12px; background: var(--bg-secondary); border-radius: 8px; border: 1px solid var(--border-color);">
-                        <input type="checkbox" name="preserve_quantities" value="1" id="preserve_qty_upload" style="width: 18px; height: 18px; cursor: pointer;">
-                        <div>
-                            <strong style="color: var(--text-primary);">Preserve Stock Quantities</strong>
-                            <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 2px;">
-                                Update item details (description, prices, costs) but keep existing stock quantities unchanged
-                            </div>
-                        </div>
-                    </label>
-                </div>
+                <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 16px;">
+                    This only updates item details — description, category, cost, price, active status.
+                    Stock quantities are managed inside SOPS and are never changed by import.
+                </p>
                 <div class="form-actions">
                     <button type="submit" class="btn btn-primary">Import File</button>
                     <a href="{{ url_for('items.catalogue') }}" class="btn btn-secondary">Cancel</a>
@@ -41,20 +34,12 @@
                 If you have the standard <code>ItemListingReport.csv</code> file in the project root directory, 
                 you can seed the database directly.
             </p>
-            <div class="form-group" style="margin-bottom: 16px;">
-                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 12px; background: var(--bg-secondary); border-radius: 8px; border: 1px solid var(--border-color);">
-                    <input type="checkbox" name="preserve_quantities" value="1" id="preserve_qty_seed" style="width: 18px; height: 18px; cursor: pointer;">
-                    <div>
-                        <strong style="color: var(--text-primary);">Preserve Stock Quantities</strong>
-                        <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 2px;">
-                            Update item details but keep existing stock quantities unchanged
-                        </div>
-                    </div>
-                </label>
-            </div>
+            <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 16px;">
+                This only updates item details — description, category, cost, price, active status.
+                Stock quantities are managed inside SOPS and are never changed by import.
+            </p>
             <form method="POST" action="{{ url_for('items.import_csv') }}">
                 <input type="hidden" name="seed_default" value="1">
-                <input type="hidden" name="preserve_quantities" id="preserve_qty_seed_hidden" value="0">
                 <button type="submit" class="btn btn-secondary" onclick="return confirm('Import from default ItemListingReport.csv?')">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
                     Seed from ItemListingReport.csv
@@ -87,18 +72,4 @@
         </p>
     </div>
 </div>
-
-<script>
-    // Sync the preserve quantities checkbox with the hidden input for seed form
-    document.addEventListener('DOMContentLoaded', function() {
-        const preserveCheckbox = document.getElementById('preserve_qty_seed');
-        const preserveHidden = document.getElementById('preserve_qty_seed_hidden');
-        
-        if (preserveCheckbox && preserveHidden) {
-            preserveCheckbox.addEventListener('change', function() {
-                preserveHidden.value = this.checked ? '1' : '0';
-            });
-        }
-    });
-</script>
 {% endblock %}

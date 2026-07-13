@@ -351,3 +351,85 @@
 - Next task: none queued — awaiting Tebello's review/commit confirmation. Enhancement 3
   (demand-netted shortfall calc) remains the next roadmap item once picked up.
 - Blockers: None.
+
+## 2026-07-10 — Batch 16: FM Numbers on WO/STO + Default-Open Lists + SO Report Parity
+
+- Domain: Software/AI.
+- Spec: `docs/specs/fm-numbers-default-open-so-report.md` (commit `7af3283`) — two scope
+  decisions confirmed with Tebello via AskUserQuestion before building: track FM number
+  properly on both WO and STO (schema columns, not a display-only approximation), and make
+  Payment Status a fixed dropdown rather than free text.
+- `models.py`: added `WorksOrder.job_number`, `StockOrderLine.job_number`, and
+  `SalesOrder.payment_status` (+ `PAYMENT_STATUS_OPTIONS` constant) columns; `StockOrder.job_numbers`
+  and `SalesOrder.total_incl` added as computed `@property`s rather than stored columns — both
+  derive from existing line data using the same pattern as the pre-existing `job_reference`
+  property, so no extra column (and no drift risk) was needed for either. Migration script +
+  matching `ensure_schema_columns()` self-heal entries added per the hard rule. Committed as
+  `dfbb763`.
+- `routes/sales_orders.py build_bom()`: each per-fan-line `WorksOrder` now gets `job_number` set
+  from its originating Fan line; `StockOrderLine.job_number` captured from the already-existing
+  (previously Fan-only-enforced) per-line job number input — no template change was needed there,
+  since the input already rendered for every line regardless of role. Job Number column/row added
+  to the WO/STO list and detail templates. SO report parity: added Sales Rep, Total, and Payment
+  Status columns to the Sales Orders list, relabeled "Reference" to "Customer Ref.", and added a
+  Total row + inline Payment Status dropdown (new `POST /sales-orders/<id>/payment-status` route)
+  to the SO detail page. Committed as `cace063`.
+- Default `?view=open|all` flipped so bare `/sales-orders`, `/works-orders`, `/stock-orders`,
+  `/purchase-orders` now default to Open (was `all` — Batch 14's original opt-in decision,
+  explicitly reversed this time per Tebello). `?view=all` still works as opt-in. Four one-line
+  route changes, no template changes needed since the All/Open toggle already read the `view`
+  variable. Committed as `3c8e873`.
+- Tests: updated `tests/test_order_list_filters.py` (renamed the "default shows all" tests to
+  "default hides inactive statuses", added new "all view still shows everything" tests for all 4
+  modules); extended `tests/test_bom_builder.py` with 2 new tests (per-fan-line `WorksOrder.job_number`,
+  optional stock-line job number rolling up into `StockOrder.job_numbers`); added
+  `tests/test_so_report_fields.py` covering `total_incl`, the `payment_status` route (including
+  rejecting an invalid value), and the `StockOrder.job_numbers` rollup with duplicate/blank inputs.
+  Committed as `04b8045`.
+- Full suite: 86 tests green (was 69). Offline-first re-verified (`grep -rn "cdn\."`/`fonts.googleapis`
+  on templates/static — empty). Manually verified via live dev server: SO/WO/STO list pages 200
+  with the new columns present, SO detail payment-status dropdown renders all 5 options correctly.
+- Known gap, accepted rather than fixed: pre-existing WOs/STOs created before this migration have
+  no Job Number and no reliable backfill source — multi-fan Sales Orders have no stored per-WO
+  mapping in the old data, so guessing would be worse than a blank field.
+- Next task: none queued at the time — Enhancement 3 (demand-netted shortfall calc) remained the
+  next roadmap item.
+- Blockers: None.
+- Commits: `7af3283`, `dfbb763`, `cace063`, `3c8e873`, `04b8045`, `f470500` (docs: log Batch 16
+  in `docs/todo.md` — this session-log entry itself was missed at the time and is being backfilled
+  on 2026-07-13).
+
+## 2026-07-10 — Ops: Pre-08:00 Test Data Purge
+
+- Domain: Software/AI.
+- Tebello requested deleting all Sales Orders (and their linked Works/Stock Orders) created before
+  2026-07-10 08:00, to get a clean slate for exercising the new Job Number field — treating the
+  pre-cutoff records as reloadable test data rather than anything worth preserving.
+- Before deleting anything, checked whether a non-destructive backfill was actually possible instead
+  (per the hard rule to ask before deleting in production data paths) — found that all 12 pre-cutoff
+  Sales Orders could in fact have been backfilled (each had at most 1 WO and `so.job_numbers` was
+  already populated; Batch 16's "can't backfill" caveat only applies to multi-fan Sales Orders with
+  several WOs and no stored per-WO mapping). Surfaced this to Tebello via AskUserQuestion before
+  proceeding; confirmed: delete anyway, the records are being used as test data and can be reloaded.
+- Backed up `instance/sops.db` to `instance/sops.db.pre-cleanup-backup-20260710_150329` before
+  deleting anything (not committed — DB files are gitignored, this was purely a local safety copy).
+- Deleted 12 Sales Orders (SO4641, SO4653, SO4659, SO4652, SO4678, SO4683, SO4684, SO4693, SO4704,
+  SO4676, SO4706, SO4708), 8 Works Orders (all already `Complete`), and 7 Stock Orders (3 `Complete`,
+  4 `Cancelled`) via a one-off ORM script — explicit `session.delete()` per WO/STO then per SO, since
+  the model relationships don't cascade SO→WO/STO automatically (only WO→BOMLine and
+  STO→StockOrderLine do). Left `StockMovement` audit-trail rows untouched — out of the requested
+  scope, they're independent ledger rows with no FK back to WO/STO.
+- Gap found and fixed, unrelated to the purge itself but surfaced by it: an archived ad-hoc debug
+  script (`archive/2026-06-debug-scripts/test_render.py`) matched pytest's `test_*.py` discovery
+  pattern and ran top-level code against the *live* DB at import time (a hardcoded
+  `get_works_order_print_context(9)`), so it started failing collection the moment WO id 9 was
+  deleted. Added `pytest.ini` (`testpaths = tests`) so pytest only ever collects the real suite —
+  this closes off the whole class of landmine (an archived script accidentally shaped like a test)
+  rather than just patching this one instance. Committed as `3ff1aa0`.
+- Full suite re-verified: 86 tests green. Live dev server spot-check confirmed SO/WO/STO list pages
+  and Dashboard all render 200 with the reduced dataset (WO/STO lists correctly empty).
+- Result: 15 Sales Orders remain (all created 2026-07-10 after 08:00); 0 Works Orders and 0 Stock
+  Orders remain — every prior WO/STO record belonged to one of the purged pre-cutoff Sales Orders.
+- Blockers: None.
+- Commits: `3ff1aa0`, `f4b6eb5` (docs: log the purge in `docs/todo.md` — this session-log entry
+  itself was missed at the time and is being backfilled on 2026-07-13).

@@ -8,6 +8,7 @@ from models import db, PurchaseOrder, POLine, Item
 from services.po_parser import parse_purchase_order_pdf, split_item_code
 from services.stock_service import receipt as stock_receipt
 from services.order_filters import PO_ACTIVE
+from services.demand import get_qty_on_order_bulk, get_qty_committed_bulk
 
 purchase_orders_bp = Blueprint('purchase_orders', __name__)
 
@@ -289,12 +290,31 @@ def create_from_shortfall():
     """Enhancement 2 - pre-fill a Draft Purchase Order with one line per
     item currently below its reorder point, at reorder_qty. Supplier is
     left blank for manual fill-in (no supplier master table yet - see
-    docs/specs/purchase-order-module-plan.md section 6)."""
-    items = Item.query.filter(
+    docs/specs/purchase-order-module-plan.md section 6).
+
+    "Below reorder point" is judged on demand-netted available_qty (same
+    formula as the Stock Report / Dashboard reorder stat card, per
+    services/demand.py), not raw qty_on_hand, so this button never
+    disagrees with the "below reorder" flag the user saw on the page that
+    launched it."""
+    candidates = Item.query.filter(
         Item.reorder_point > 0,
-        Item.qty_on_hand <= Item.reorder_point,
         Item.active == True
     ).order_by(Item.category, Item.code).all()
+
+    # Bulk-fetch on-order/committed once for exactly the candidate items,
+    # not per-item in the loop below.
+    item_ids = [item.id for item in candidates]
+    qty_on_order_map = get_qty_on_order_bulk(item_ids=item_ids)
+    qty_committed_map = get_qty_committed_bulk(item_ids=item_ids)
+
+    items = []
+    for item in candidates:
+        qty_on_order = qty_on_order_map.get(item.id, 0.0)
+        qty_committed = qty_committed_map.get(item.id, 0.0)
+        available_qty = (item.qty_on_hand or 0.0) + qty_on_order - qty_committed
+        if available_qty <= item.reorder_point:
+            items.append(item)
 
     eligible = [(item, item.reorder_qty or 0) for item in items if (item.reorder_qty or 0) > 0]
 

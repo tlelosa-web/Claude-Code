@@ -3,7 +3,7 @@ import re
 from datetime import datetime, timezone
 
 import pytest
-from models import db, Item, PurchaseOrder, POLine
+from models import db, Item, PurchaseOrder, POLine, SalesOrder, WorksOrder, BOMLine
 
 
 class TestReorderPointStockReport:
@@ -86,6 +86,65 @@ class TestCreateFromShortfall:
         # route never errors, regardless of what else is below reorder.
         response = client.post('/purchase-orders/create-from-shortfall', follow_redirects=True)
         assert response.status_code == 200
+
+    def test_item_covered_by_qty_on_order_excluded(self, app, db, session, client):
+        # Raw qty_on_hand (2) is at/below reorder_point (5), but a large
+        # inbound Purchase Order pushes netted available_qty back above
+        # reorder_point - must not be added to the new draft PO (agreeing
+        # with the Stock Report's below_reorder flag, which this button is
+        # launched from).
+        item = Item(code=self._next_code(), description="Covered by inbound PO", qty_on_hand=2.0,
+                    reorder_point=5.0, reorder_qty=20.0, last_cost=10.0, active=True)
+        session.add(item)
+        session.flush()
+
+        po = PurchaseOrder(po_number=f"PO-{item.code}", supplier_name="Test Supplier",
+                           status="Open", created_at=datetime.now(timezone.utc))
+        session.add(po)
+        session.flush()
+        session.add(POLine(po_id=po.id, item_id=item.id, qty_ordered=10.0, qty_received=0.0))
+        session.commit()
+
+        response = client.post('/purchase-orders/create-from-shortfall', follow_redirects=True)
+        assert response.status_code == 200
+
+        draft_po = PurchaseOrder.query.filter(PurchaseOrder.po_number.like('PO-DRAFT-%')).order_by(
+            PurchaseOrder.id.desc()).first()
+        if draft_po is not None:
+            matching_lines = [l for l in draft_po.lines if l.item_id == item.id]
+            assert len(matching_lines) == 0
+
+    def test_item_pushed_below_reorder_by_qty_committed_included(self, app, db, session, client):
+        # Raw qty_on_hand (20) sits above reorder_point (5), but the item is
+        # fully committed to an open Works Order, so netted available_qty
+        # falls at/below reorder_point - must be added to the new draft PO.
+        item = Item(code=self._next_code(), description="Pushed below reorder by demand",
+                    qty_on_hand=20.0, reorder_point=5.0, reorder_qty=25.0, last_cost=8.0, active=True)
+        session.add(item)
+        session.flush()
+
+        so = SalesOrder(so_number=f"SO-{item.code}", customer_name="Test Customer",
+                        status="Open", created_at=datetime.now(timezone.utc))
+        session.add(so)
+        session.flush()
+
+        wo = WorksOrder(wo_number=f"WO-{item.code}", so_id=so.id, order_type="ASSEMBLY",
+                        status="Open", issued_by="Tester", created_at=datetime.now(timezone.utc))
+        session.add(wo)
+        session.flush()
+        session.add(BOMLine(wo_id=wo.id, item_id=item.id, qty_required=20.0, qty_issued=0.0,
+                            line_type="COMPONENT"))
+        session.commit()
+
+        response = client.post('/purchase-orders/create-from-shortfall', follow_redirects=True)
+        assert response.status_code == 200
+
+        draft_po = PurchaseOrder.query.filter(PurchaseOrder.po_number.like('PO-DRAFT-%')).order_by(
+            PurchaseOrder.id.desc()).first()
+        assert draft_po is not None
+        matching_lines = [l for l in draft_po.lines if l.item_id == item.id]
+        assert len(matching_lines) == 1
+        assert matching_lines[0].qty_ordered == 25.0
 
 
 class TestDashboardReorderCard:

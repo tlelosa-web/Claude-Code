@@ -681,6 +681,7 @@ def reupload_order(order_id):
                                    parsed=parsed,
                                    existing_so=so,
                                    json_parsed=json.dumps(parsed, default=str),
+                                   payment_status_options=PAYMENT_STATUS_OPTIONS,
                                    reupload_mode=True)
             
         except Exception as e:

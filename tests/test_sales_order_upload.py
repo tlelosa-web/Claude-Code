@@ -65,3 +65,27 @@ def test_save_order_defaults_payment_status_to_pending_when_omitted(client):
 
     so = SalesOrder.query.filter_by(so_number="TEST-PAY-SAVE-002").first()
     assert so.payment_status == "Pending"
+
+
+def test_reupload_pdf_for_existing_so_renders_review(client, session):
+    """Reupload POST branch must render 200 with payment status options, not 500
+    (missing payment_status_options previously crashed Jinja's unconditional loop)."""
+    so = SalesOrder(so_number="TEST-REUPLOAD-001", customer_name="Test Co", status="Draft")
+    session.add(so)
+    session.commit()
+
+    pdf_path = os.path.join(
+        os.path.dirname(__file__), 'fixtures', 'FM4087 - ARCTIC AIR - Sales Order - SO4603.pdf'
+    )
+
+    with open(pdf_path, "rb") as pdf_file:
+        response = client.post(
+            f"/sales-orders/{so.id}/reupload",
+            data={"pdf_file": (pdf_file, "SO4603.pdf")},
+            content_type="multipart/form-data",
+        )
+
+    body = response.get_data(as_text=True)
+    assert response.status_code == 200
+    assert 'name="payment_status"' in body
+    assert "Partially Paid" in body

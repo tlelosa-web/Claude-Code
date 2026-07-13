@@ -1,0 +1,148 @@
+"""Demand-netting service.
+
+Computes `qty_on_order` (inbound from open Purchase Orders) and
+`qty_committed` (outstanding demand from open Works/Stock Orders) so
+callers can net these against `Item.qty_on_hand` to get a true
+`available_qty` for shortfall checks.
+
+See docs/specs/demand-netted-shortfall.md for the formula and rationale.
+
+Bulk (`*_bulk`) variants are the primary API — they run one grouped query
+per aggregate and return a `{item_id: qty}` dict, so a caller rendering a
+full catalogue page (BOM Builder, Stock Report) can compute this for every
+item without N+1 per-item queries. The single-item convenience functions
+are built on top of the bulk variants for callers that only need one item.
+"""
+from sqlalchemy import func
+
+from models import (
+    db,
+    Item,
+    PurchaseOrder,
+    POLine,
+    WorksOrder,
+    BOMLine,
+    StockOrder,
+    StockOrderLine,
+)
+
+# PurchaseOrder statuses that no longer represent inbound stock.
+_PO_STATUSES_EXCLUDED_FROM_ON_ORDER = ('Received', 'Cancelled')
+
+# WorksOrder statuses that still represent outstanding demand.
+_WO_STATUSES_OPEN = ('Open', 'In Progress')
+
+# StockOrder status that still represents outstanding demand.
+_STO_STATUS_OPEN = 'Open'
+
+
+def get_qty_on_order_bulk(item_ids=None):
+    """Return {item_id: qty_on_order} across open Purchase Order lines.
+
+    qty_on_order per line = qty_ordered - qty_received, summed per item,
+    for PO lines linked to a catalogue item (POLine.item_id is not null)
+    whose parent PurchaseOrder is not Received/Cancelled.
+
+    If `item_ids` is given, restricts the query to those items. Items with
+    no open PO lines are simply absent from the returned dict (treat as 0).
+    """
+    query = (
+        db.session.query(
+            POLine.item_id,
+            func.sum(POLine.qty_ordered - POLine.qty_received),
+        )
+        .join(PurchaseOrder, POLine.po_id == PurchaseOrder.id)
+        .filter(POLine.item_id.isnot(None))
+        .filter(PurchaseOrder.status.notin_(_PO_STATUSES_EXCLUDED_FROM_ON_ORDER))
+    )
+    if item_ids is not None:
+        query = query.filter(POLine.item_id.in_(item_ids))
+    query = query.group_by(POLine.item_id)
+
+    return {item_id: float(qty or 0.0) for item_id, qty in query.all()}
+
+
+def get_qty_on_order(item_id):
+    """Single-item convenience wrapper around get_qty_on_order_bulk().
+
+    Prefer get_qty_on_order_bulk() when computing this for many items
+    (e.g. a catalogue page) to avoid N+1 queries.
+    """
+    return get_qty_on_order_bulk(item_ids=[item_id]).get(item_id, 0.0)
+
+
+def get_qty_committed_bulk(item_ids=None):
+    """Return {item_id: qty_committed} across open Works/Stock Order demand.
+
+    Sums two sources per item:
+      - Open/In Progress Works Order BOM lines (excluding ASSEMBLY_ITEM
+        rows, which are the parent line, not a component demand):
+        qty_required - qty_issued.
+      - Open Stock Order lines, resolved from item_code to item_id (STO
+        lines key by code, matching the lookup pattern used in
+        routes/stock_orders.py complete_order()): qty - qty_issued.
+
+    If `item_ids` is given, restricts both queries to those items. Items
+    with no open demand are absent from the returned dict (treat as 0).
+    """
+    committed = {}
+
+    wo_query = (
+        db.session.query(
+            BOMLine.item_id,
+            func.sum(BOMLine.qty_required - BOMLine.qty_issued),
+        )
+        .join(WorksOrder, BOMLine.wo_id == WorksOrder.id)
+        .filter(BOMLine.line_type != 'ASSEMBLY_ITEM')
+        .filter(WorksOrder.status.in_(_WO_STATUSES_OPEN))
+    )
+    if item_ids is not None:
+        wo_query = wo_query.filter(BOMLine.item_id.in_(item_ids))
+    wo_query = wo_query.group_by(BOMLine.item_id)
+
+    for item_id, qty in wo_query.all():
+        committed[item_id] = committed.get(item_id, 0.0) + float(qty or 0.0)
+
+    sto_query = (
+        db.session.query(
+            Item.id,
+            func.sum(StockOrderLine.qty - StockOrderLine.qty_issued),
+        )
+        .select_from(StockOrderLine)
+        .join(StockOrder, StockOrderLine.stock_order_id == StockOrder.id)
+        .join(Item, Item.code == StockOrderLine.item_code)
+        .filter(StockOrder.status == _STO_STATUS_OPEN)
+    )
+    if item_ids is not None:
+        sto_query = sto_query.filter(Item.id.in_(item_ids))
+    sto_query = sto_query.group_by(Item.id)
+
+    for item_id, qty in sto_query.all():
+        committed[item_id] = committed.get(item_id, 0.0) + float(qty or 0.0)
+
+    return committed
+
+
+def get_qty_committed(item_id):
+    """Single-item convenience wrapper around get_qty_committed_bulk().
+
+    Prefer get_qty_committed_bulk() when computing this for many items
+    (e.g. a catalogue page) to avoid N+1 queries.
+    """
+    return get_qty_committed_bulk(item_ids=[item_id]).get(item_id, 0.0)
+
+
+def get_available_qty(item_id):
+    """qty_on_hand + qty_on_order - qty_committed for a single item.
+
+    Raises ValueError if the item does not exist.
+    """
+    item = db.session.get(Item, item_id)
+    if not item:
+        raise ValueError(f"Item with id {item_id} not found.")
+
+    return (
+        (item.qty_on_hand or 0.0)
+        + get_qty_on_order(item_id)
+        - get_qty_committed(item_id)
+    )

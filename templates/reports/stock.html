@@ -80,6 +80,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         { title: 'Description', field: 'description', widthGrow: 2 },
                         { title: 'Category', field: 'category' },
                         { title: 'Qty on Hand', field: 'qty_on_hand', formatter: 'number', bottomCalc: 'sum' },
+                        { title: 'Available Qty', field: 'available_qty', formatter: 'number', bottomCalc: 'sum' },
                         { title: 'Avg Cost (R)', field: 'avg_cost', formatter: 'money', formatterParams: { decimal: '.', thousand: ',', symbol: 'R ' } },
                         { title: 'Stock Value (R)', field: 'stock_value', formatter: 'money', formatterParams: { decimal: '.', thousand: ',', symbol: 'R ' }, bottomCalc: 'sum' },
                         { title: 'Reorder Point', field: 'reorder_point' },

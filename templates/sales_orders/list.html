@@ -43,8 +43,8 @@
                     <td>{{ so.job_numbers or '-' }}</td>
                     <td>{{ so.reference or '-' }}</td>
                     <td>{{ so.customer_name or '-' }}</td>
-                    <td>{{ so.so_date.strftime('%Y-%m-%d') if so.so_date else '-' }}</td>
-                    <td>{{ so.delivery_date.strftime('%Y-%m-%d') if so.delivery_date else '-' }}</td>
+                    <td>{{ so.so_date | dmy or '-' }}</td>
+                    <td>{{ so.delivery_date | dmy or '-' }}</td>
                     <td>{{ so.sales_rep or '-' }}</td>
                     <td>R {{ '%.2f'|format(so.total_incl) }}</td>
                     <td><span class="badge badge-{{ so.status.lower() }}">{{ so.status }}</span></td>

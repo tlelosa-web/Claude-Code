@@ -47,7 +47,7 @@
                         {% endif %}
                     </td>
                     <td>{{ wo.sales_order.customer_name if wo.sales_order else '-' }}</td>
-                    <td>{{ wo.sales_order.delivery_date.strftime('%Y-%m-%d') if wo.sales_order and wo.sales_order.delivery_date else '-' }}</td>
+                    <td>{{ (wo.sales_order.delivery_date | dmy or '-') if wo.sales_order else '-' }}</td>
                     <td><span class="badge badge-{{ wo.status.lower().replace(' ', '') }}">{{ wo.status }}</span></td>
                     <td>{{ wo.issued_by or '-' }}</td>
                     <td>{{ wo.created_at.strftime('%Y-%m-%d %H:%M') }}</td>

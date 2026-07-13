@@ -50,7 +50,7 @@
                     {% endif %}
                 </td></tr>
                 <tr><td class="detail-label">Customer</td><td class="detail-value">{{ stock_order.sales_order.customer_name if stock_order.sales_order else '-' }}</td></tr>
-                <tr><td class="detail-label">Delivery Date</td><td class="detail-value">{{ stock_order.sales_order.delivery_date.strftime('%Y-%m-%d') if stock_order.sales_order and stock_order.sales_order.delivery_date else '-' }}</td></tr>
+                <tr><td class="detail-label">Delivery Date</td><td class="detail-value">{{ (stock_order.sales_order.delivery_date | dmy or '-') if stock_order.sales_order else '-' }}</td></tr>
             </table>
         </div>
         <div>

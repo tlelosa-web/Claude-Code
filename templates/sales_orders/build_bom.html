@@ -10,7 +10,7 @@
     <table class="detail-table">
         <tr><td class="detail-label">SO Number</td><td class="detail-value">{{ so.so_number }}</td></tr>
         <tr><td class="detail-label">Customer</td><td class="detail-value">{{ so.customer_name or '-' }}</td></tr>
-        <tr><td class="detail-label">Delivery Date</td><td class="detail-value">{{ so.delivery_date.strftime('%Y-%m-%d') if so.delivery_date else '-' }}</td></tr>
+        <tr><td class="detail-label">Delivery Date</td><td class="detail-value">{{ so.delivery_date | dmy or '-' }}</td></tr>
         <tr><td class="detail-label">Sales Rep</td><td class="detail-value">{{ so.sales_rep or '-' }}</td></tr>
     </table>
 </div>

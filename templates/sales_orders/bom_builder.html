@@ -74,7 +74,7 @@
             Build BOM for {{ so.customer_name or so.so_number }}
         </h2>
         <div class="alert alert-info" style="font-size: 0.85rem; margin: 0; padding: 8px 16px;">
-            Job/SO: {{ so.job_reference }} | Reference: {{ so.reference or '-' }} | Delivery: {{ so.delivery_date.strftime('%Y-%m-%d') if so.delivery_date else '-' }}
+            Job/SO: {{ so.job_reference }} | Reference: {{ so.reference or '-' }} | Delivery: {{ so.delivery_date | dmy or '-' }}
         </div>
     </div>
 </div>

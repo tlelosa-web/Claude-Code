@@ -517,6 +517,29 @@ def update_payment_status(order_id):
     return redirect(url_for('sales_orders.view_order', order_id=order_id))
 
 
+@sales_orders_bp.route('/sales-orders/<int:order_id>/delivery-date', methods=['POST'])
+def update_delivery_date(order_id):
+    """Set Delivery Date after save — it was previously fixed at initial parse time."""
+    so = SalesOrder.query.get_or_404(order_id)
+    new_date_str = request.form.get('delivery_date', '').strip()
+
+    if not new_date_str:
+        flash("Delivery Date cannot be blank.", "error")
+        return redirect(url_for('sales_orders.view_order', order_id=order_id))
+
+    try:
+        new_date = datetime.strptime(new_date_str, '%Y-%m-%d').date()
+    except ValueError:
+        flash(f"Invalid Delivery Date: {new_date_str}", "error")
+        return redirect(url_for('sales_orders.view_order', order_id=order_id))
+
+    so.delivery_date = new_date
+    db.session.commit()
+
+    flash(f"Delivery Date for {so.so_number} updated to {new_date.strftime('%d/%m/%Y')}.", "success")
+    return redirect(url_for('sales_orders.view_order', order_id=order_id))
+
+
 @sales_orders_bp.route('/sales-orders/<int:order_id>/cancel', methods=['POST'])
 def cancel_order(order_id):
     """Cancel a Sales Order."""

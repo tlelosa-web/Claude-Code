@@ -68,7 +68,11 @@ def create_app(config_class=Config):
     app.register_blueprint(reports_bp)
     app.register_blueprint(stock_orders_bp)
     app.register_blueprint(purchase_orders_bp)
-    
+
+    # Display filter: dates render as DD/MM/YYYY everywhere except HTML5 date
+    # inputs, which require the ISO value format regardless of display locale.
+    app.jinja_env.filters['dmy'] = lambda d: d.strftime('%d/%m/%Y') if d else ''
+
     # Bootstrap database and seed data on first run
     with app.app_context():
         from models import Item

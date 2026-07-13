@@ -70,13 +70,14 @@ def upload_order():
             return render_template('sales_orders/upload.html',
                                    parsed=parsed,
                                    existing_so=existing_so,
-                                   json_parsed=json.dumps(parsed, default=str))
-            
+                                   json_parsed=json.dumps(parsed, default=str),
+                                   payment_status_options=PAYMENT_STATUS_OPTIONS)
+
         except Exception as e:
             flash(f"Error processing PDF: {str(e)}", "error")
             return redirect(url_for('sales_orders.upload_order'))
-    
-    return render_template('sales_orders/upload.html')
+
+    return render_template('sales_orders/upload.html', payment_status_options=PAYMENT_STATUS_OPTIONS)
 
 @sales_orders_bp.route('/sales-orders/save', methods=['POST'])
 def save_order():
@@ -128,6 +129,7 @@ def save_order():
             sales_rep=request.form.get('sales_rep', '').strip(),
             raw_pdf_text=request.form.get('raw_pdf_text', ''),
             status='Draft',
+            payment_status=request.form.get('payment_status', 'Pending').strip() or 'Pending',
             created_at=datetime.now()
         )
         db.session.add(so)

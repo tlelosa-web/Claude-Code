@@ -24,7 +24,7 @@ class Item(db.Model):
     movements = db.relationship('StockMovement', backref='item', lazy=True)
     bom_lines = db.relationship('BOMLine', backref='item', lazy=True)
 
-PAYMENT_STATUS_OPTIONS = ('Pending', 'Paid', 'Unpaid', 'Account - Up to Date', 'On Hold')
+PAYMENT_STATUS_OPTIONS = ('Pending', 'Paid', 'Partially Paid', 'Unpaid', 'Account - Up to Date', 'On Hold')
 
 class SalesOrder(db.Model):
     __tablename__ = 'sales_order'

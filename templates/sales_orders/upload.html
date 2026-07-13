@@ -74,6 +74,14 @@
                 <input type="date" id="delivery_date" name="delivery_date" value="{{ parsed.delivery_date.strftime('%Y-%m-%d') if parsed.delivery_date else '' }}" class="form-input">
             </div>
             <div class="form-group">
+                <label for="payment_status">Payment Status</label>
+                <select id="payment_status" name="payment_status" class="form-input">
+                    {% for option in payment_status_options %}
+                    <option value="{{ option }}" {% if option == 'Pending' %}selected{% endif %}>{{ option }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
                 <label for="customer_name">Customer Name</label>
                 <input type="text" id="customer_name" name="customer_name" value="{{ parsed.customer_name or '' }}" class="form-input">
             </div>

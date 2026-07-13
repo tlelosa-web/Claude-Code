@@ -202,3 +202,9 @@ All items below must be green before delivery:
 - [x] Session-log backfilled for Batch 16 + the Ops test-data purge (both landed 2026-07-10 but were missed at the time) — commit `868f56f`.
 - Next task: none queued — awaiting Tebello's review/commit confirmation. Enhancement 3 (demand-netted shortfall calc) recommendation prepared separately, not yet started.
 - Blockers: None.
+
+## Enhancement 3 — Demand-Netted Shortfall Calc (2026-07-13)
+- [x] Recommendation prepared and scope confirmed with Tebello via AskUserQuestion: `qty_committed` nets against all open WOs/STOs system-wide (not just the current SO); the netted `available_qty` replaces raw `qty_on_hand` in both BOM Builder and the Stock Report (not BOM-Builder-only).
+- [x] Spec written: `docs/specs/demand-netted-shortfall.md`. No schema change — logic + display only, depends on Enhancement 1 (shipped Batch 13).
+- Next task: awaiting Tebello's review of the spec before dispatching implementation.
+- Blockers: None.

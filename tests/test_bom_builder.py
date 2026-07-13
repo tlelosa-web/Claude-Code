@@ -153,6 +153,33 @@ class TestBOMBuilder:
         assert setup_data['items']['comp_a'].code in body
         assert "Save Works Pack" in body
 
+    def test_build_bom_page_catalogue_json_carries_demand_netted_fields(self, client, session, setup_data):
+        """Build Works Pack (build_bom()) GET catalogue_json must carry the
+        same demand-netting fields the WO/STO edit page already serves
+        (Batch 18 wiring), not the bare {id, code, description} shape."""
+        so = setup_data['so']
+        comp_a = setup_data['items']['comp_a']
+
+        response = client.get(f"/sales-orders/{so.id}/build-bom")
+        body = response.get_data(as_text=True)
+        assert response.status_code == 200
+
+        match = re.search(r"const catalogueItems = (\[.*?\]);", body, re.DOTALL)
+        assert match is not None, "Could not find catalogueItems JSON in build-bom page"
+        catalogue = json.loads(match.group(1))
+
+        served = next((i for i in catalogue if i['code'] == comp_a.code), None)
+        assert served is not None, f"Item {comp_a.code} not found in served catalogue JSON"
+
+        for key in ('qty_on_hand', 'qty_on_order', 'qty_committed', 'available_qty', 'next_po_due'):
+            assert key in served, f"Missing '{key}' in build-bom catalogue_json payload"
+
+        assert served['qty_on_hand'] == comp_a.qty_on_hand
+        assert served['qty_on_order'] == 0.0
+        assert served['qty_committed'] == 0.0
+        assert served['available_qty'] == comp_a.qty_on_hand
+        assert served['next_po_due'] is None
+
     def test_build_bom_persists_fan_as_assembly_parent(self, client, db, session, setup_data):
         """Fan line selected in build-bom is saved as an ASSEMBLY_ITEM parent with
         its components nested beneath, so the print context renders a header row."""

@@ -125,6 +125,7 @@
         </div>
         <div id="selected-item-display" style="margin-top: 8px; font-size: 0.85rem; color: var(--text-muted); display: none;">
             Selected: <span id="selected-item-code" style="color: var(--brand-accent);"></span> — <span id="selected-item-desc"></span>
+            (available: <span id="selected-item-available"></span>)
         </div>
     </div>
     
@@ -210,6 +211,7 @@ const searchResults = document.getElementById('search-results');
 const selectedDisplay = document.getElementById('selected-item-display');
 const selectedCode = document.getElementById('selected-item-code');
 const selectedDesc = document.getElementById('selected-item-desc');
+const selectedAvailable = document.getElementById('selected-item-available');
 
 searchInput.addEventListener('input', function() {
     const query = this.value.toLowerCase().trim();
@@ -235,12 +237,14 @@ searchInput.addEventListener('input', function() {
     searchResults.innerHTML = matches.map(item => `
         <div class="search-result-item" data-id="${item.id}" data-code="${item.code}" data-desc="${item.description}"
              style="padding: 10px 12px; cursor: pointer; border-bottom: 1px solid rgba(255,255,255,0.05); transition: background 0.2s;"
-             onmouseover="this.style.background='rgba(255,255,255,0.05)'" 
+             onmouseover="this.style.background='rgba(255,255,255,0.05)'"
              onmouseout="this.style.background='transparent'">
             <strong>${item.code}</strong> — ${item.description}
+            <span style="color: var(--text-muted); font-size: 0.8rem;"> (available: ${item.available_qty})</span>
+            ${item.qty_on_order > 0 ? '<span style="color: var(--brand-blue, #2563eb); font-size: 0.75rem;"> (on order' + (item.next_po_due ? ', due ' + item.next_po_due : '') + ')</span>' : ''}
         </div>
     `).join('');
-    
+
     // Add click handlers
     searchResults.querySelectorAll('.search-result-item').forEach(el => {
         el.addEventListener('click', function() {
@@ -262,10 +266,12 @@ function selectItem(id, code, desc) {
     selectedItemId = id;
     searchInput.value = `${code} — ${desc}`;
     searchResults.style.display = 'none';
-    
+
     // Show selected item display
     selectedCode.textContent = code;
     selectedDesc.textContent = desc;
+    const item = catalogueItems.find(i => i.id == id);
+    selectedAvailable.textContent = item ? item.available_qty : '?';
     selectedDisplay.style.display = 'block';
 }
 
@@ -308,12 +314,14 @@ function addComponent() {
     document.getElementById('noComponentsMsg').style.display = 'none';
 
     // Add row
+    const shortfall = Math.max(0, qty - item.available_qty);
     const tbody = document.getElementById('componentsBody');
     const row = document.createElement('tr');
+    row.className = shortfall > 0 ? 'row-amber' : '';
     row.innerHTML = `
         <td>${item.code}</td>
         <td>${item.description}</td>
-        <td>${qty}</td>
+        <td>${qty}${shortfall > 0 ? ' <span style="color: var(--brand-danger); font-size: 0.75rem;">(short ' + shortfall + ')</span>' : ''}</td>
         <td>${fanLineDesc}</td>
         <td><button type="button" onclick="removeComponent(this)" style="background: none; border: none; color: var(--brand-danger); cursor: pointer;">✕</button></td>
     `;

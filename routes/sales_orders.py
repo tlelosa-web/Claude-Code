@@ -435,26 +435,46 @@ def build_bom(order_id):
             flash(f"Error creating Works Pack: {str(e)}", "error")
             # Re-render with current data
             catalogue_items = Item.query.filter_by(active=True).order_by(Item.category, Item.code).all()
+            from services.demand import get_qty_on_order_bulk, get_qty_committed_bulk, get_next_po_due_bulk
+            item_ids = [i.id for i in catalogue_items]
+            qty_on_order_map = get_qty_on_order_bulk(item_ids=item_ids)
+            qty_committed_map = get_qty_committed_bulk(item_ids=item_ids)
+            next_po_due_map = get_next_po_due_bulk(item_ids=item_ids)
             catalogue_json = [
-                {'id': i.id or 0, 'code': i.code or '', 'description': i.description or ''}
+                item_to_bom_json(
+                    i,
+                    qty_on_order=qty_on_order_map.get(i.id, 0.0),
+                    qty_committed=qty_committed_map.get(i.id, 0.0),
+                    next_po_due=next_po_due_map.get(i.id),
+                )
                 for i in catalogue_items
             ]
-            return render_template('sales_orders/build_bom.html', 
-                                  so=so, 
+            return render_template('sales_orders/build_bom.html',
+                                  so=so,
                                   line_items=line_items,
                                   catalogue_json=catalogue_json)
-    
+
     # GET: Show build BOM form
     line_items = SOLineItem.query.filter_by(so_id=order_id).all()
     catalogue_items = Item.query.filter_by(active=True).order_by(Item.category, Item.code).all()
-    
+
     # Prepare JSON for JavaScript
+    from services.demand import get_qty_on_order_bulk, get_qty_committed_bulk, get_next_po_due_bulk
+    item_ids = [i.id for i in catalogue_items]
+    qty_on_order_map = get_qty_on_order_bulk(item_ids=item_ids)
+    qty_committed_map = get_qty_committed_bulk(item_ids=item_ids)
+    next_po_due_map = get_next_po_due_bulk(item_ids=item_ids)
     catalogue_json = [
-        {'id': i.id or 0, 'code': i.code or '', 'description': i.description or ''}
+        item_to_bom_json(
+            i,
+            qty_on_order=qty_on_order_map.get(i.id, 0.0),
+            qty_committed=qty_committed_map.get(i.id, 0.0),
+            next_po_due=next_po_due_map.get(i.id),
+        )
         for i in catalogue_items
     ]
-    
-    return render_template('sales_orders/build_bom.html', 
+
+    return render_template('sales_orders/build_bom.html',
                           so=so, 
                           line_items=line_items,
                           catalogue_items=catalogue_items,

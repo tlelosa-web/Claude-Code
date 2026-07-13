@@ -33,6 +33,13 @@
                         </li>
                         {% endif %}
                     {% endif %}
+                    {% if wo.status in ['Complete', 'Cancelled'] %}
+                    <li>
+                        <form method="POST" action="{{ url_for('works_orders.reopen_order', order_id=wo.id) }}" style="display: block;" onsubmit="return confirm('Reopen {{ wo.wo_number }}? Any issued stock will be reversed.')">
+                            <button type="submit">Reopen</button>
+                        </form>
+                    </li>
+                    {% endif %}
                     {% if wo.status in ['Open', 'In Progress'] %}
                     <li>
                         <form method="POST" action="{{ url_for('works_orders.delete_order', order_id=wo.id) }}" style="display: block;" onsubmit="return confirm('Are you sure you want to delete {{ wo.wo_number }}? This cannot be undone.')">

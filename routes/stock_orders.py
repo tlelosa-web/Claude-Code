@@ -103,6 +103,58 @@ def complete_order(order_id):
     return redirect(url_for('stock_orders.view_order', order_id=order_id))
 
 
+@stock_orders_bp.route('/stock-orders/<int:order_id>/reopen', methods=['POST'])
+def reopen_order(order_id):
+    """Reopen a Complete or Cancelled Stock Order, reversing any issued stock."""
+    stock_order = StockOrder.query.get_or_404(order_id)
+
+    if stock_order.status not in ('Complete', 'Cancelled'):
+        flash(
+            f"Stock Order {stock_order.stock_order_number} is not Complete or Cancelled — nothing to reopen.",
+            "error"
+        )
+        return redirect(url_for('stock_orders.view_order', order_id=order_id))
+
+    reopened_by = request.form.get('reopened_by', 'System').strip() or 'System'
+    unmatched = []
+
+    if stock_order.status == 'Complete':
+        for line in stock_order.lines:
+            if not line.qty_issued:
+                continue
+            item = Item.query.filter_by(code=line.item_code).first()
+            if not item:
+                unmatched.append(line.item_code or '(blank)')
+                continue
+            reverse_issue(
+                item_id=item.id,
+                qty=line.qty_issued,
+                reference=stock_order.stock_order_number,
+                notes=f"Reversed on reopen of {stock_order.stock_order_number}",
+                created_by=reopened_by
+            )
+            line.qty_issued = 0.0
+
+    if unmatched:
+        flash(
+            f"No catalogue match for item code(s) {', '.join(unmatched)} — "
+            "stock was not reversed for those lines.",
+            "warning"
+        )
+
+    stock_order.status = 'Open'
+    db.session.flush()
+
+    # Cascade: if the parent SO was auto-closed because this STO completed, reopen it too.
+    if stock_order.sales_order and stock_order.sales_order.status == 'Closed':
+        stock_order.sales_order.status = 'Open'
+        db.session.flush()
+
+    db.session.commit()
+    flash(f"Stock Order {stock_order.stock_order_number} has been reopened.", "success")
+    return redirect(url_for('stock_orders.view_order', order_id=order_id))
+
+
 @stock_orders_bp.route('/stock-orders/<int:order_id>/edit', methods=['GET', 'POST'])
 def edit_order(order_id):
     """Edit line items on an Open Stock Order."""

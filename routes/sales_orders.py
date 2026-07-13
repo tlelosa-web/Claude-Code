@@ -495,8 +495,26 @@ def close_order(order_id):
     
     so.status = 'Closed'
     db.session.commit()
-    
+
     flash(f"Sales Order {so.so_number} has been closed.", "success")
+    return redirect(url_for('sales_orders.view_order', order_id=order_id))
+
+
+@sales_orders_bp.route('/sales-orders/<int:order_id>/reopen', methods=['POST'])
+def reopen_order(order_id):
+    """Reopen a Closed Sales Order. Does not cascade down to its WOs/STOs —
+    they may be Complete for good reason; reopening the SO itself just allows
+    editing it again (e.g. adding a note or a line)."""
+    so = SalesOrder.query.get_or_404(order_id)
+
+    if so.status != 'Closed':
+        flash(f"Sales Order {so.so_number} is not Closed — nothing to reopen.", "error")
+        return redirect(url_for('sales_orders.view_order', order_id=order_id))
+
+    so.status = 'Open'
+    db.session.commit()
+
+    flash(f"Sales Order {so.so_number} has been reopened.", "success")
     return redirect(url_for('sales_orders.view_order', order_id=order_id))
 
 

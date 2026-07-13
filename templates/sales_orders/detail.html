@@ -32,6 +32,13 @@
                         </form>
                     </li>
                     {% endif %}
+                    {% if so.status == 'Closed' %}
+                    <li>
+                        <form method="POST" action="{{ url_for('sales_orders.reopen_order', order_id=so.id) }}" style="display: block;" onsubmit="return confirm('Reopen this Sales Order? Linked Works Orders and Stock Orders are not affected.')">
+                            <button type="submit">Reopen Order</button>
+                        </form>
+                    </li>
+                    {% endif %}
                     {% if wos %}
                     <li><a class="disabled" title="Delete all linked Works Orders first.">Delete Order</a></li>
                     {% else %}

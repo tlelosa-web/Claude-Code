@@ -28,6 +28,13 @@
                     {% else %}
                     <li><a class="disabled" title="Only Open Stock Orders can be edited, completed, or cancelled.">Edit</a></li>
                     {% endif %}
+                    {% if stock_order.status in ['Complete', 'Cancelled'] %}
+                    <li>
+                        <form method="POST" action="{{ url_for('stock_orders.reopen_order', order_id=stock_order.id) }}" style="display: block;" onsubmit="return confirm('Reopen {{ stock_order.stock_order_number }}? Any issued stock will be reversed.')">
+                            <button type="submit">Reopen</button>
+                        </form>
+                    </li>
+                    {% endif %}
                     <li class="divider"></li>
                     <li><a href="{{ url_for('sales_orders.view_order', order_id=stock_order.so_id) }}">Back to SO</a></li>
                 </ul>

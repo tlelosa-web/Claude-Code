@@ -4,7 +4,7 @@ from sqlalchemy import nullslast
 from models import db, WorksOrder, BOMLine, Item, SalesOrder, StockOrder
 from routes.sales_orders import can_close_sales_order
 from services.doc_generator import get_works_order_print_context
-from services.stock_service import issue
+from services.stock_service import issue, reverse_issue
 from services.order_filters import WO_ACTIVE
 
 works_orders_bp = Blueprint('works_orders', __name__)
@@ -100,6 +100,47 @@ def cancel_order(order_id):
     db.session.commit()
     
     flash(f"Works Order {wo.wo_number} has been cancelled.", "success")
+    return redirect(url_for('works_orders.view_order', order_id=order_id))
+
+@works_orders_bp.route('/works-orders/<int:order_id>/reopen', methods=['POST'])
+def reopen_order(order_id):
+    """Reopen a Complete or Cancelled Works Order, reversing any issued stock."""
+    wo = WorksOrder.query.get_or_404(order_id)
+
+    if wo.status not in ('Complete', 'Cancelled'):
+        flash(f"Works Order {wo.wo_number} is not Complete or Cancelled — nothing to reopen.", "error")
+        return redirect(url_for('works_orders.view_order', order_id=order_id))
+
+    try:
+        if wo.status == 'Complete':
+            for bom_line in wo.bom_lines:
+                if bom_line.line_type == 'ASSEMBLY_ITEM':
+                    continue
+                if bom_line.qty_issued > 0:
+                    reverse_issue(
+                        item_id=bom_line.item_id,
+                        qty=bom_line.qty_issued,
+                        reference=wo.wo_number,
+                        notes=f"Reversed on reopen of {wo.wo_number}",
+                        created_by=request.form.get('reopened_by', 'System').strip() or 'System'
+                    )
+                    bom_line.qty_issued = 0.0
+
+        wo.status = 'Open'
+        wo.completed_at = None
+        db.session.flush()
+
+        # Cascade: if the parent SO was auto-closed because this WO completed, reopen it too.
+        if wo.sales_order and wo.sales_order.status == 'Closed':
+            wo.sales_order.status = 'Open'
+            db.session.flush()
+
+        db.session.commit()
+        flash(f"Works Order {wo.wo_number} has been reopened.", "success")
+    except Exception as e:
+        db.session.rollback()
+        flash(f"Error reopening Works Order: {str(e)}", "error")
+
     return redirect(url_for('works_orders.view_order', order_id=order_id))
 
 @works_orders_bp.route('/works-orders/<int:order_id>/confirm-pick', methods=['POST'])

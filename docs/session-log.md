@@ -433,3 +433,78 @@
 - Blockers: None.
 - Commits: `3ff1aa0`, `f4b6eb5` (docs: log the purge in `docs/todo.md` — this session-log entry
   itself was missed at the time and is being backfilled on 2026-07-13).
+
+## 2026-07-13 — Batch 17: Payment Status at Intake, Editable Delivery Date, Reopen SO/WO/STO, Resizable Columns
+
+- Domain: Software/AI.
+- Session opened with `/continue`; found `docs/session-log.md` was two batches behind
+  `docs/todo.md` (Batch 16 and the Ops test-data purge, both 2026-07-10, had never been written
+  up here) and backfilled both entries first, per Tebello's instruction — commit `868f56f`.
+- Tebello asked to prepare five items for implementation: Payment Status settable at PDF
+  review/save (plus a Partially Paid option), an editable Delivery Date in DD/MM/YYYY, a Reopen
+  option for SO/WO/STO that reverses any issued stock, a check on whether the system already did
+  any of this, and column-resize + no-wrap dates on the order list pages. Ran a factual audit
+  (via a read-only Explore pass) before proposing anything, rather than assuming — found Payment
+  Status and Delivery Date were both write-once-at-parse only; Reopen didn't exist anywhere
+  (confirmed via `grep -rn "reopen"` across routes/templates/services — zero matches); and, more
+  seriously, that `StockOrder.complete_order()` never called `stock_service` at all — Stock Order
+  completion had been silently not deducting stock since the feature was built, despite the
+  README claiming otherwise. Wrote the audit + a full spec to
+  `docs/specs/payment-status-delivery-date-reopen-columns.md` before touching any code, then
+  confirmed with Tebello via AskUserQuestion that resized column widths should persist (via
+  `localStorage`) rather than reset on reload.
+- Part A: added `Partially Paid` to `PAYMENT_STATUS_OPTIONS` (models.py), added the field to the
+  upload/review form, and read it in `save_order()` (defaults to Pending when omitted so existing
+  callers/tests are unaffected). Commit `ddd91b2`.
+- Part B: new `POST /sales-orders/<id>/delivery-date` route + inline edit form on the SO detail
+  page (Delivery Date was previously fixed at initial PDF parse with no way to change it after).
+  Added a `dmy` Jinja filter in `app.py` and swept every place delivery_date/so_date rendered as
+  text (list/detail/dashboard/bom templates) to use it, replacing a previously inconsistent mix of
+  raw ISO and DD/MM/YYYY formatting — print templates already used DD/MM/YYYY and were left as-is.
+  The editable `<input type="date">` keeps its ISO value attribute, which HTML5 requires
+  regardless of display format. Commit `0a8070f`.
+- Part C0 (the real gap found during the audit): `StockOrderLine.qty_issued` column + migration
+  (`scripts/migrate_add_stock_order_line_qty_issued.py`) + `ensure_schema_columns()` self-heal
+  entry, mirroring the existing `BOMLine.qty_issued`. Fixed `stock_orders.complete_order()` to
+  actually resolve each line's `item_code` against the Item catalogue and call
+  `stock_service.issue()` for the outstanding qty — lines with no catalogue match are flagged via
+  flash and skipped rather than blocking the rest of the order. Commits `b03185f`, `ac61985`.
+- Part C1: `services/stock_service.reverse_issue()` — adds stock back and logs a movement with a
+  new `REVERSAL` type, deliberately kept distinct from `RECEIPT` so a reopened order's stock
+  return can never be mistaken for a real supplier receipt in the audit trail. Commit `b03185f`.
+- Part C2–C4 (the actual Reopen feature): `POST /works-orders/<id>/reopen`,
+  `/stock-orders/<id>/reopen`, `/sales-orders/<id>/reopen`. Reopening a Complete WO/STO reverses
+  its issued stock per line via `reverse_issue()` and resets `qty_issued` to 0 so a later
+  re-completion issues correctly again; reopening a Cancelled WO/STO just flips status back since
+  nothing was ever issued. Either path cascades the parent Sales Order back to Open if it had been
+  auto-closed by that WO/STO completing. SO Reopen (Closed → Open) deliberately does **not**
+  cascade down to its WOs/STOs — they may be Complete for a legitimate reason, and reopening the SO
+  itself is meant to just allow editing it again (e.g. a note or a line), not undo child work.
+  Commit `c7ce7f9`.
+- Surfaced the new `REVERSAL` movement type in the Movement Report type filter and gave it its own
+  badge color on the Item detail movement history (it was previously falling through to the
+  generic grey "other" styling since it didn't exist as a type before this batch). Commit `c9b48e0`.
+- Part D: new `static/js/resizable_columns.js` — no dependency, no CDN, drag handle on the right
+  edge of each `<th>` on the four order list pages, `table-layout: fixed` while resizing, widths
+  persisted per-table in `localStorage` (confirmed with Tebello, see above) and re-applied on next
+  load. Added a `col-date` CSS class (`white-space: nowrap`) to every date column on those same
+  four pages so dates stop wrapping onto two lines. Commit `c224459`.
+- Tests added/extended per part: `test_sales_order_upload.py` (+3 for Payment Status capture),
+  `test_delivery_date.py` (new, 5), `test_stock_service.py` (+1 for `reverse_issue`),
+  `test_stock_orders.py` (+2 for the STO stock-deduction fix), `test_reopen.py` (new, 10 covering
+  WO/STO/SO reopen, stock reversal, and the upward-only cascade), `test_resizable_columns.py` (new,
+  4 wiring checks — table id + script tag present per page, since drag interaction itself isn't
+  exercisable without a browser in this suite). Full suite: 111 tests green (was 86).
+- Verification: ran the real dev server against `instance/sops.db` (not just the in-memory test
+  DB) and curl-checked all 4 list pages (200, dates render DD/MM/YYYY, `col-date` class present,
+  resizable-columns script served and wired), the SO detail page (Delivery Date/Payment Status
+  inline forms present), and the Movement Report (REVERSAL filter option present). Offline-first
+  re-verified (`grep -rn "cdn\."/"fonts.googleapis"` on templates/static — empty). Stopped the dev
+  server afterward.
+- Next task: none queued — awaiting Tebello's review/commit confirmation. Separately prepared a
+  recommendation for Enhancement 3 (demand-netted shortfall calc, the long-standing next roadmap
+  item per Batches 13/15/16) since Tebello asked for that alongside this batch — not started, spec
+  not yet written.
+- Blockers: None.
+- Commits: `868f56f`, `3dc14f2`, `ddd91b2`, `0a8070f`, `b03185f`, `ac61985`, `c7ce7f9`, `c9b48e0`,
+  `c224459`.

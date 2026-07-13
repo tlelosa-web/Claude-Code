@@ -329,6 +329,15 @@ textarea.form-input {
 .data-table tbody tr:hover {
     background: rgba(248, 245, 239, 0.5);
 }
+.data-table td.col-date,
+.data-table th.col-date {
+    white-space: nowrap;
+}
+.col-resize-handle:hover,
+.col-resize-handle:active {
+    background: var(--brand-primary);
+    opacity: 0.4;
+}
 
 .detail-table {
     width: 100%;

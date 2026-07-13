@@ -1,8 +1,9 @@
 from flask import Blueprint, render_template, redirect, url_for, flash, request
 from sqlalchemy import nullslast
-from models import db, StockOrder, StockOrderLine, SalesOrder
+from models import db, StockOrder, StockOrderLine, SalesOrder, Item
 from routes.sales_orders import can_close_sales_order
 from services.order_filters import STO_ACTIVE
+from services.stock_service import issue, reverse_issue
 
 stock_orders_bp = Blueprint('stock_orders', __name__)
 
@@ -58,6 +59,32 @@ def complete_order(order_id):
     if stock_order.status == 'Complete':
         flash(f"Stock Order {stock_order.stock_order_number} is already complete.", "warning")
         return redirect(url_for('stock_orders.view_order', order_id=order_id))
+
+    completed_by = request.form.get('completed_by', 'System').strip() or 'System'
+    unmatched = []
+    for line in stock_order.lines:
+        qty_to_issue = (line.qty or 0.0) - (line.qty_issued or 0.0)
+        if qty_to_issue <= 0:
+            continue
+        item = Item.query.filter_by(code=line.item_code).first()
+        if not item:
+            unmatched.append(line.item_code or '(blank)')
+            continue
+        issue(
+            item_id=item.id,
+            qty=qty_to_issue,
+            reference=stock_order.stock_order_number,
+            notes=f"Issued for {stock_order.stock_order_number}",
+            created_by=completed_by
+        )
+        line.qty_issued = line.qty
+
+    if unmatched:
+        flash(
+            f"No catalogue match for item code(s) {', '.join(unmatched)} — "
+            "stock was not deducted for those lines.",
+            "warning"
+        )
 
     stock_order.status = 'Complete'
     db.session.flush()

@@ -1,7 +1,7 @@
 """Tests for the stock_orders blueprint (list, detail, cancel, complete)."""
 import pytest
 from datetime import datetime, timezone
-from models import db, SalesOrder, StockOrder, StockOrderLine
+from models import db, SalesOrder, StockOrder, StockOrderLine, Item, StockMovement
 
 
 class TestStockOrders:
@@ -163,6 +163,39 @@ class TestStockOrders:
 
         resp = client.post(f"/stock-orders/{sto.id}/complete", follow_redirects=True)
         assert resp.status_code == 200
+
+        with app.app_context():
+            updated = db.session.get(StockOrder, sto.id)
+            assert updated.status == "Complete"
+
+    def test_complete_deducts_stock_for_matching_items(self, client, app, db, session, setup_data):
+        """POST /complete issues stock per line when the item_code matches the catalogue."""
+        sto = setup_data["sto"]
+        item = Item(code="FAN-001", description="Fan Unit 600mm", qty_on_hand=10.0, active=True)
+        session.add(item)
+        session.commit()
+
+        resp = client.post(f"/stock-orders/{sto.id}/complete", follow_redirects=True)
+        assert resp.status_code == 200
+
+        with app.app_context():
+            updated_item = Item.query.filter_by(code="FAN-001").first()
+            assert updated_item.qty_on_hand == 8.0  # 10 - qty(2.0) from line1
+
+            line1 = StockOrderLine.query.filter_by(stock_order_id=sto.id, item_code="FAN-001").first()
+            assert line1.qty_issued == 2.0
+
+            movement = StockMovement.query.filter_by(item_id=updated_item.id, movement_type='ISSUE').first()
+            assert movement is not None
+            assert movement.reference == sto.stock_order_number
+
+    def test_complete_flags_unmatched_item_codes_without_blocking(self, client, app, setup_data):
+        """POST /complete flashes a warning for lines with no catalogue match, but still completes."""
+        sto = setup_data["sto"]
+        # No Item rows exist for FAN-001/BRG-007 in this test — both lines are unmatched.
+        resp = client.post(f"/stock-orders/{sto.id}/complete", follow_redirects=True)
+        assert resp.status_code == 200
+        assert b"No catalogue match" in resp.data
 
         with app.app_context():
             updated = db.session.get(StockOrder, sto.id)

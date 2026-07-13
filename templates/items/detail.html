@@ -120,6 +120,7 @@
                             {% if m.movement_type == 'ISSUE' %}var(--brand-danger);
                             {% elif m.movement_type == 'RECEIPT' %}var(--brand-success);
                             {% elif m.movement_type == 'ADJUSTMENT' %}var(--brand-amber);
+                            {% elif m.movement_type == 'REVERSAL' %}var(--brand-secondary);
                             {% else %}var(--text-muted);{% endif %}">
                             {{ m.movement_type }}
                         </span>

@@ -566,3 +566,54 @@
   WO/STO. Logged in `docs/todo.md` as the next candidate item if picked up later.
 - Blockers: None.
 - Commits: `3e4c0ed`, `03109bf`, `638b70d`, `ea3e032`, `46d0724`, `f4fce5d`.
+
+## 2026-07-14 — Batch 19: CSV Import Quantity-Overwrite Removal
+
+- Domain: Software/AI.
+- Session opened with `/continue`. `git status` showed one untracked item left over from Batch 18:
+  the Opus reviewer agent's persistent memory (3 pattern notes + index) from its review pass, never
+  committed. Committed it as-is (`ced588c`) since it's legitimate cross-session project memory and
+  nothing else was outstanding.
+- Tebello asked for a plan to close the known `build_bom.html` shortfall-display gap (flagged at the
+  end of Batch 18) and a review of how re-uploading `data/ItemListingReport.csv` affects the Stock
+  Report. Read `routes/sales_orders.py`, `templates/sales_orders/build_bom.html`, and
+  `services/demand.py` to scope the first; read `services/item_importer.py` and `routes/items.py`
+  for the second. Presented both as findings/plan in chat (no code touched) — the `build_bom.html`
+  plan remains queued, not yet built.
+- The CSV review surfaced a standing risk: `/items/import`'s "Preserve Stock Quantities" checkbox
+  defaulted to **unchecked**, meaning the default action overwrote `Item.qty_on_hand` for every
+  existing item straight from the CSV with no diff/preview. Now that SOPS owns the full stock
+  lifecycle (WO/STO issue, PO receipt, manual adjust, reversals — all through `stock_service` with
+  an audit trail), this could silently revert live stock movements back to a stale Sage snapshot on
+  one missed click.
+- Tebello reviewed the finding and confirmed via chat: remove the toggle entirely rather than flip
+  the default — quantity-preservation becomes the only import behavior, permanently, not an
+  opt-in/opt-out choice. Wrote `docs/specs/csv-import-quantity-safety.md` capturing the decision and
+  exact file/line scope before dispatching build work, per the plan-first rule (5 files touched).
+- Routed the implementation through a single `executor` agent (one cohesive rename + call-site
+  update + template edit + test rewrite, not a multi-stage feature — one atomic commit was the right
+  shape, not several). Commit `2965367`:
+  - `services/item_importer.py`: deleted the overwriting `import_items_from_csv()`; renamed
+    `import_items_from_csv_skip_quantities()` → `import_items_from_csv()` (new-item quantity
+    seeding on first-time import is unchanged; an existing item's `qty_on_hand` is never modified
+    by import again).
+  - `routes/items.py`: removed the `preserve_quantities`/`import_func` branch, single call site.
+  - `templates/items/import.html`: removed both checkboxes, the hidden sync input, and the sync
+    `<script>`; replaced with a static note that quantities are managed inside SOPS.
+  - `tests/test_item_importer.py`: the existing-item test previously asserted *overwrite* behavior
+    — left as-is it would now assert something false, so it was rewritten to assert preservation;
+    added an explicit regression test for a CSV row carrying a different quantity than the DB's
+    current value for that code.
+- Orchestrator-side verification after the executor's commit: re-ran `tests/test_item_importer.py`
+  (5 passed) and the full suite (148 passed, was 147, no regressions). Confirmed via `git grep` that
+  `preserve_quantities` and `import_items_from_csv_skip_quantities` are gone from all live code —
+  one stale reference remains in `archive/2026-06-debug-scripts/quick_update_items.py`, an
+  already-documented dead script (imports from the defunct `sops.*` package, not run by the live
+  app per `archive/README.md`); correctly left untouched by the executor as out of scope rather than
+  silently expanding into the archive.
+- `app.py`'s first-run bootstrap needed no code change — its local `from services.item_importer
+  import import_items_from_csv` already resolves to the renamed function, and first-run behavior is
+  identical (every item is new, so quantity-seeding still happens).
+- Blockers: None.
+- Commit: `2965367`. (Plus `ced588c` for the carried-over reviewer memory, committed at session
+  start before this batch's work began.)

@@ -219,3 +219,16 @@ All items below must be green before delivery:
 - [x] Full suite: 111 → 147 tests green across the 6 commits (`3e4c0ed` +17, `03109bf` +3, `638b70d` +4, `ea3e032` +4, `46d0724` +5, `f4fce5d` +3).
 - Known gap, confirmed out of scope for now (Tebello's call during the session): `build_bom.html`, the primary "Build Works Pack" page, still shows **no** stock-availability/shortfall information at all when first creating a Works Pack from a Sales Order — the netting fix only reaches the *edit* path for an already-created WO/STO. Adding shortfall display there would be a new feature (new UI + data wiring), not a netting fix, and was declined for this batch. Next candidate item if picked up later.
 - Blockers: None.
+
+## Batch 19 — CSV Import Quantity-Overwrite Removal (2026-07-14)
+- [x] Session opened with `/continue`. Committed Batch 18's stray untracked reviewer-agent memory (`ced588c`), then reviewed `data/ItemListingReport.csv` upload's effect on Stock Report at Tebello's request.
+- [x] Review surfaced a risk: `/items/import`'s default (unchecked) "Preserve Stock Quantities" checkbox overwrote `Item.qty_on_hand` for existing items straight from the CSV, with no diff/preview — since SOPS now owns the full stock lifecycle via `stock_service` (WO/STO issue, PO receipt, adjust, reversals, all audited), this could silently revert live stock movements back to a stale Sage export on a missed click.
+- [x] Tebello confirmed (after review): remove the toggle entirely, make quantity-preservation the only import behavior. Spec: `docs/specs/csv-import-quantity-safety.md`.
+- [x] `services/item_importer.py`: deleted the overwriting `import_items_from_csv()`; renamed `import_items_from_csv_skip_quantities()` → `import_items_from_csv()` (new-item quantity seeding unchanged, existing-item `qty_on_hand` never touched again).
+- [x] `routes/items.py`: dropped `preserve_quantities`/`import_func` branching, single call site, collapsed flash messages.
+- [x] `templates/items/import.html`: removed both checkboxes + hidden input + sync script; replaced with a static note that quantities are managed inside SOPS, not by import.
+- [x] `tests/test_item_importer.py`: rewrote the existing-item test to assert preservation (was asserting overwrite — would now be testing a false claim if left as-is), added an explicit regression test for a CSV row with a different quantity than the DB's current value.
+- [x] Full suite: 148 tests green (was 147). `git grep` confirmed `preserve_quantities` and `import_items_from_csv_skip_quantities` both gone from all live code — one stale reference remains in `archive/2026-06-debug-scripts/quick_update_items.py` (already-documented dead script per `archive/README.md`, out of scope, left untouched).
+- [x] Committed: `2965367`.
+- Next task: none queued — awaiting Tebello's review/commit confirmation. `build_bom.html` shortfall-display gap (see Batch 18 note above) remains the next roadmap candidate; a scoped plan for it was presented and is ready to spec/build on request.
+- Blockers: None.

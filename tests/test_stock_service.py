@@ -68,6 +68,26 @@ class TestStockService:
         assert movement.notes == "Cycle count correction"
         assert movement.created_by == "Stock Clerk"
     
+    def test_reverse_issue_adds_qty_back(self, app, db, session):
+        """Test that reverse_issue() adds qty back and logs a REVERSAL movement."""
+        from services.stock_service import reverse_issue
+
+        item = Item(code="TEST005", description="Test Item 5", qty_on_hand=50.0, active=True)
+        session.add(item)
+        session.flush()
+
+        reverse_issue(item.id, 15, "WO-TEST-005", "Reversed on reopen", "Tester")
+        session.commit()
+
+        item = db.session.get(Item, item.id)
+        assert item.qty_on_hand == 65.0
+
+        movement = StockMovement.query.filter_by(item_id=item.id, movement_type='REVERSAL').first()
+        assert movement is not None
+        assert movement.qty_change == 15.0
+        assert movement.qty_after == 65.0
+        assert movement.reference == "WO-TEST-005"
+
     def test_qty_after_snapshot(self, app, db, session):
         """Test that qty_after correctly reflects state after movement."""
         from services.stock_service import issue, receipt

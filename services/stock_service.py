@@ -48,6 +48,32 @@ def receipt(item_id, qty, reference, notes="", created_by="System"):
     db.session.add(movement)
     return item
 
+def reverse_issue(item_id, qty, reference, notes="", created_by="System"):
+    """
+    Adds back stock that was previously issued (e.g. a reopened Works/Stock
+    Order) and records a REVERSAL stock movement — kept distinct from RECEIPT
+    so the audit trail can tell a real supplier receipt apart from a
+    reopened-order stock return.
+    """
+    item = db.session.get(Item, item_id)
+    if not item:
+        raise ValueError(f"Item with id {item_id} not found.")
+
+    item.qty_on_hand += qty
+
+    movement = StockMovement(
+        item_id=item_id,
+        movement_type='REVERSAL',
+        reference=reference,
+        qty_change=float(qty),
+        qty_after=float(item.qty_on_hand),
+        notes=notes,
+        created_by=created_by,
+        created_at=datetime.now(timezone.utc)
+    )
+    db.session.add(movement)
+    return item
+
 def adjust(item_id, new_qty, reason, adjusted_by="System"):
     """
     Adjusts stock directly to a new quantity and records an ADJUSTMENT stock movement.

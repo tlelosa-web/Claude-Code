@@ -40,6 +40,12 @@ def ensure_schema_columns():
             db.session.execute(text('ALTER TABLE item ADD COLUMN reorder_qty FLOAT DEFAULT 0.0'))
             db.session.commit()
 
+    if 'stock_order_line' in inspector.get_table_names():
+        sto_line_columns = {column['name'] for column in inspector.get_columns('stock_order_line')}
+        if 'qty_issued' not in sto_line_columns:
+            db.session.execute(text('ALTER TABLE stock_order_line ADD COLUMN qty_issued FLOAT DEFAULT 0.0'))
+            db.session.commit()
+
 def create_app(config_class=Config):
     app = Flask(__name__)
     app.config.from_object(config_class)

@@ -153,6 +153,7 @@ class StockOrderLine(db.Model):
     item_code = db.Column(db.String(100))
     description = db.Column(db.Text)
     qty = db.Column(db.Float)
+    qty_issued = db.Column(db.Float, default=0.0)  # mirrors BOMLine.qty_issued
     notes = db.Column(db.Text)
     job_number = db.Column(db.String(50))  # Per-line FM/Job number (optional)
 

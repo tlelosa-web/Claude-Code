@@ -127,6 +127,9 @@
                     {% endif %}
                     <td style="{% if assembly.shortfall > 0 %}color: var(--brand-amber); font-weight: 600;{% endif %}">
                         {{ assembly.qty_on_hand }}
+                        {% if assembly.qty_on_order > 0 %}
+                        <span style="color: var(--brand-blue, #2563eb); font-size: 0.75rem;">(on order {{ assembly.qty_on_order }})</span>
+                        {% endif %}
                         {% if assembly.shortfall > 0 %}
                         <span style="color: var(--brand-danger);">(shortfall: {{ assembly.shortfall }})</span>
                         {% endif %}
@@ -148,6 +151,9 @@
                     {% endif %}
                     <td style="{% if comp.shortfall > 0 %}color: var(--brand-amber); font-weight: 600;{% endif %}">
                         {{ comp.qty_on_hand }}
+                        {% if comp.qty_on_order > 0 %}
+                        <span style="color: var(--brand-blue, #2563eb); font-size: 0.75rem;">(on order {{ comp.qty_on_order }})</span>
+                        {% endif %}
                         {% if comp.shortfall > 0 %}
                         <span style="color: var(--brand-danger);">(shortfall: {{ comp.shortfall }})</span>
                         {% endif %}
@@ -173,6 +179,9 @@
                     {% endif %}
                     <td style="{% if line.shortfall > 0 %}color: var(--brand-amber); font-weight: 600;{% endif %}">
                         {{ line.qty_on_hand }}
+                        {% if line.qty_on_order > 0 %}
+                        <span style="color: var(--brand-blue, #2563eb); font-size: 0.75rem;">(on order {{ line.qty_on_order }})</span>
+                        {% endif %}
                         {% if line.shortfall > 0 %}
                         <span style="color: var(--brand-danger);">(shortfall: {{ line.shortfall }})</span>
                         {% endif %}

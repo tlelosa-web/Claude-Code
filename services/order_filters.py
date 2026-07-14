@@ -15,8 +15,8 @@ SO_ACTIVE = ('Draft', 'Open')
 # WorksOrder.status: Open / In Progress / Complete / Cancelled
 WO_ACTIVE = ('Open', 'In Progress')
 
-# StockOrder.status: Open / Complete / Cancelled
-STO_ACTIVE = ('Open',)
+# StockOrder.status: Open / Picking / Complete / Cancelled
+STO_ACTIVE = ('Open', 'Picking')
 
 # PurchaseOrder.status: Draft / Open / Partially Received / Received / Cancelled
 PO_ACTIVE = ('Draft', 'Open', 'Partially Received')

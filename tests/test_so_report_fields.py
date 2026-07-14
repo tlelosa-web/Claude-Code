@@ -6,6 +6,7 @@ See docs/specs/fm-numbers-default-open-so-report.md.
 import pytest
 from datetime import datetime, timezone
 from models import db, SalesOrder, SOLineItem, StockOrder, StockOrderLine, PAYMENT_STATUS_OPTIONS
+from scripts.migrate_payment_status_values import migrate_payment_status_values
 
 
 class TestSalesOrderTotalIncl:
@@ -83,6 +84,56 @@ class TestPaymentStatus:
             updated = db.session.get(SalesOrder, so.id)
             assert updated.payment_status == option
 
+    def test_options_list_is_exactly_the_seven_new_values_in_order(self):
+        assert PAYMENT_STATUS_OPTIONS == (
+            'Cash Sale - Unpaid', 'Cash Sale - Paid', 'Cash Sale - Partial',
+            'Account - Pending', 'Account - Up to Date', 'Account - On Hold', 'Account - Overdue',
+        )
+
+    def test_old_bare_option_values_are_not_present(self):
+        # 'Account - Up to Date' is intentionally excluded here -- it is a
+        # direct match, unchanged, between the old and new lists.
+        old_bare_values = {'Pending', 'Paid', 'Partially Paid', 'Unpaid', 'On Hold'}
+        assert not (old_bare_values & set(PAYMENT_STATUS_OPTIONS))
+
+    def test_update_payment_status_cash_sale_partial_persists_amount_paid(self, client, session):
+        so = self._mk_so(session)
+        resp = client.post(f"/sales-orders/{so.id}/payment-status",
+                           data={"payment_status": "Cash Sale - Partial", "amount_paid": "250.50"})
+        assert resp.status_code == 302
+
+        updated = db.session.get(SalesOrder, so.id)
+        assert updated.payment_status == "Cash Sale - Partial"
+        assert updated.amount_paid == 250.50
+
+    def test_update_payment_status_rejects_non_numeric_amount_paid(self, client, session):
+        so = self._mk_so(session)
+        so.payment_status = "Account - Pending"
+        so.amount_paid = 10.0
+        session.commit()
+
+        resp = client.post(f"/sales-orders/{so.id}/payment-status",
+                           data={"payment_status": "Cash Sale - Partial", "amount_paid": "not-a-number"},
+                           follow_redirects=True)
+        assert resp.status_code == 200
+
+        updated = db.session.get(SalesOrder, so.id)
+        assert updated.payment_status == "Account - Pending"
+        assert updated.amount_paid == 10.0
+
+    def test_update_payment_status_non_partial_ignores_submitted_amount_paid(self, client, session):
+        so = self._mk_so(session)
+        so.amount_paid = 42.0
+        session.commit()
+
+        resp = client.post(f"/sales-orders/{so.id}/payment-status",
+                           data={"payment_status": "Account - Up to Date", "amount_paid": "999"})
+        assert resp.status_code == 302
+
+        updated = db.session.get(SalesOrder, so.id)
+        assert updated.payment_status == "Account - Up to Date"
+        assert updated.amount_paid == 42.0
+
 
 class TestStockOrderJobNumbers:
     _c = 0
@@ -122,3 +173,87 @@ class TestStockOrderJobNumbers:
         session.commit()
 
         assert sto.job_numbers == ""
+
+
+class TestBalanceDue:
+    _c = 0
+
+    def _mk_so(self, session, amount_paid=0.0):
+        TestBalanceDue._c += 1
+        n = TestBalanceDue._c
+        so = SalesOrder(so_number=f"REPORT-BAL-{n:03d}", customer_name="Report Test Co",
+                        status="Draft", payment_status="Cash Sale - Partial",
+                        amount_paid=amount_paid, created_at=datetime.now(timezone.utc))
+        session.add(so)
+        session.flush()
+        return so
+
+    def test_balance_due_computes_total_minus_amount_paid(self, session):
+        so = self._mk_so(session, amount_paid=300.0)
+        session.add(SOLineItem(so_id=so.id, description="Line 1", qty=1.0, incl_total=1000.0))
+        session.commit()
+
+        assert so.balance_due == 700.0
+
+    def test_balance_due_equals_total_incl_when_amount_paid_is_default(self, session):
+        so = self._mk_so(session)  # amount_paid left at the 0.0 default
+        session.add(SOLineItem(so_id=so.id, description="Line 1", qty=1.0, incl_total=500.0))
+        session.commit()
+
+        assert so.amount_paid == 0.0
+        assert so.balance_due == so.total_incl == 500.0
+
+
+class TestPaymentStatusDataMigration:
+    """Exercises scripts/migrate_payment_status_values.py against the
+    shared in-memory fixture DB -- never instance/sops.db."""
+    _c = 0
+
+    def _mk_so(self, session, payment_status):
+        TestPaymentStatusDataMigration._c += 1
+        n = TestPaymentStatusDataMigration._c
+        so = SalesOrder(so_number=f"REPORT-MIG-{n:03d}", customer_name="Report Test Co",
+                        status="Draft", payment_status=payment_status,
+                        created_at=datetime.now(timezone.utc))
+        session.add(so)
+        session.commit()
+        return so
+
+    def test_direct_match_rows_map_exactly_as_specified(self, session):
+        so_uptodate = self._mk_so(session, "Account - Up to Date")
+        so_onhold = self._mk_so(session, "On Hold")
+        so_partial = self._mk_so(session, "Partially Paid")
+
+        migrate_payment_status_values(session)
+
+        assert db.session.get(SalesOrder, so_uptodate.id).payment_status == "Account - Up to Date"
+        assert db.session.get(SalesOrder, so_onhold.id).payment_status == "Account - On Hold"
+        assert db.session.get(SalesOrder, so_partial.id).payment_status == "Cash Sale - Partial"
+
+    def test_ambiguous_rows_map_to_documented_guess_and_are_flagged(self, session):
+        so_pending = self._mk_so(session, "Pending")
+        so_paid = self._mk_so(session, "Paid")
+        so_unpaid = self._mk_so(session, "Unpaid")
+
+        result = migrate_payment_status_values(session)
+
+        assert db.session.get(SalesOrder, so_pending.id).payment_status == "Account - Pending"
+        assert db.session.get(SalesOrder, so_paid.id).payment_status == "Cash Sale - Paid"
+        assert db.session.get(SalesOrder, so_unpaid.id).payment_status == "Cash Sale - Unpaid"
+
+        guessed_numbers = {so_number for so_number, _, _ in result['guessed']}
+        assert so_pending.so_number in guessed_numbers
+        assert so_paid.so_number in guessed_numbers
+        assert so_unpaid.so_number in guessed_numbers
+
+    def test_row_already_on_new_value_is_untouched_on_second_run(self, session):
+        so = self._mk_so(session, "Pending")  # old-style value
+
+        migrate_payment_status_values(session)
+        assert db.session.get(SalesOrder, so.id).payment_status == "Account - Pending"
+
+        # Second run: the row is now already on a new-list value, so it must
+        # be skipped/left untouched, not re-flagged as a fresh guess.
+        result2 = migrate_payment_status_values(session)
+        assert db.session.get(SalesOrder, so.id).payment_status == "Account - Pending"
+        assert so.so_number not in {so_number for so_number, _, _ in result2['guessed']}

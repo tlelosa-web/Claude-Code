@@ -724,3 +724,48 @@
 - Blockers: None.
 - Commits this session: `3aae9fb`, `5c6e8ae`, `04f1b12`, `22f6daa`, `1ed8d6e`, `cba8171`,
   `1bd56c4`, `18948d4`.
+
+## 2026-07-14 — Batch 23 + 24: Stock Order Picking Step, Payment Status Restructure
+
+- Domain: Software/AI. Continuation of the same session as the Batch 21/22 health-check + bug sweep.
+- Tebello asked to see the current STO workflow before changing it — rendered a diagram of the
+  existing `Open → Complete/Cancelled → Reopen` flow and flagged in passing that there was no
+  picking/verification checkpoint before stock got deducted, unlike the (dead) WO picking-list path.
+  Tebello confirmed via several rounds of AskUserQuestion: add a real `Picking` step, per-line,
+  stock deducted immediately at pick time, Complete gated on full pick, Cancel reverses partial
+  picks. Wrote `docs/specs/stock-order-picking-step.md` before dispatching.
+- Batch 23 — dispatched a single `executor` agent, 8 commits (`6c70850`..`10bad4b`): new
+  `POST /stock-orders/<id>/pick` route, `complete_order()` full-pick gate, `cancel_order()` partial
+  reversal, `STO_ACTIVE` gains `Picking`, detail-page pick form + gated Complete button, `.badge-picking`
+  CSS. Orchestrator-side verification: independently re-ran the suite (168 passed, was 159), read every
+  diff against the spec — all matched. Executor surfaced a real edge case on review: an STO line whose
+  `item_code` never matches the catalogue can now permanently block Complete (previously tolerated with
+  a warning) — flagged to Tebello, left unfixed pending a decision, logged in `docs/todo.md`.
+- Separately, Tebello asked for three more Payment Status changes: an "amount window" for partially
+  paid orders, a `Cash Sale` / `Account` prefix structure, and a new `Account - Overdue` option.
+  Clarified via AskUserQuestion (amount = single Amount Paid field with computed Balance Due, Cash
+  Sale/Partial only, SO detail page only) then asked Tebello to dictate the exact final option list
+  directly rather than guessing business terminology — got `Cash Sale - Unpaid/Paid/Partial` +
+  `Account - On Hold/Up to Date/Pending` (+ confirmed `Account - Overdue` should still be added, since
+  it was dropped from Tebello's first list). Also confirmed how to handle the 6→7 value migration for
+  existing production Sales Orders (best-guess auto-map, ambiguous ones flagged for manual review) before
+  writing `docs/specs/payment-status-cash-account-amount-paid.md`.
+- Batch 24 — dispatched a single `executor` agent, 6 commits (`24c583b`..`515f840`): new
+  `PAYMENT_STATUS_OPTIONS`, `SalesOrder.amount_paid` column + `balance_due` property, schema migration
+  + `ensure_schema_columns()` self-heal, a separate one-off data-migration script (written and unit
+  tested, deliberately **not** run against the real `instance/sops.db`), `update_payment_status()`
+  amount validation, detail-page Balance Due row + Amount Paid input. Executor caught and fixed two
+  hardcoded `'Pending'` literals the spec's "no change" note had missed (upload form default, save
+  fallback) that would have silently pointed at a now-invalid value. Orchestrator-side verification:
+  independently re-ran the suite (178 passed, was 168), read every diff, confirmed `instance/sops.db`
+  untouched (data migration intentionally deferred to Tebello's deliberate go-ahead).
+- Both specs written before dispatch (6 and 5 files respectively — plan-first rule). Neither spec file
+  nor `docs/todo.md`/this entry committed yet as of writing — to be committed together per convention
+  once Tebello has reviewed.
+- Full suite at end of session: 178 tests green (was 159 at the start of this pair of batches, 149 at
+  the very start of today's session).
+- Next task: Tebello to (1) decide on the STO unmatched-item-code Complete-gate edge case, (2) run the
+  two payment-status migration scripts against the real DB when ready and review the GUESS-flagged SOs.
+- Blockers: None — two open decisions flagged above, neither blocking.
+- Commits this pair of batches: `6c70850`, `c7491d8`, `4ccfb13`, `1350b31`, `62c4ab7`, `9b6b079`,
+  `8ca3603`, `10bad4b`, `24c583b`, `0e1b0c7`, `76a5021`, `b5a0d03`, `80bd14d`, `515f840`.

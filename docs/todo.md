@@ -285,3 +285,37 @@ All items below must be green before delivery:
 - Next task: none queued — awaiting Tebello's review/commit confirmation for the spec file.
 - Blockers: None.
 - Commits: `22f6daa`, `1ed8d6e`, `cba8171`, `1bd56c4`. Spec (`bug-sweep-2026-07-14.md`) to be committed separately per convention.
+
+## Batch 23 — Stock Order Picking Step (2026-07-14)
+- [x] Spec written first (6 files touched >2 → plan-first rule), confirmed with Tebello via 3 rounds of AskUserQuestion: `docs/specs/stock-order-picking-step.md`. New `StockOrder.status` value `Picking` sits between `Open` and `Complete`; picking deducts stock immediately per line (not deferred); Complete is blocked until every line is fully picked; Cancel reverses any partially-picked stock; scoped to Stock Orders only (not Works Orders).
+- [x] Dispatched a single `executor` agent for the full 7-step sequence, working directly on `master` in the existing OneDrive checkout (no git worktree, per this repo's documented corruption history with concurrent/unusual git ops):
+  - `6c70850` — `STO_ACTIVE` gains `'Picking'`.
+  - `c7491d8` — new `POST /stock-orders/<id>/pick` route: per-line pick qty, clamped to remaining outstanding, calls `stock_service.issue()` immediately, flips `Open → Picking` on first pick.
+  - `4ccfb13` — `complete_order()` gate: blocked with a flash error until every line's `qty_issued >= qty`.
+  - `1350b31` — `cancel_order()`: reverses any partially-issued lines via `stock_service.reverse_issue()` before setting `Cancelled`.
+  - `62c4ab7` — `templates/stock_orders/detail.html`: per-line Pick Qty inputs + Picked column, gated Mark Complete action, updated Cancel confirm text.
+  - `9b6b079` — `.badge-picking` CSS.
+  - `8ca3603` — `view=open`/`view=closed` list-filter tests for the new status.
+  - `10bad4b` — updated `StockOrder.status` inline model comment.
+- [x] Orchestrator-side verification: independently re-ran the full suite (168 passed, was 159), read every diff against the spec line-by-line (route logic, template conditionals, CSS) — all matched exactly.
+- [x] Real finding surfaced by the executor, confirmed on review: a `StockOrderLine` whose `item_code` never resolves to a catalogue `Item` can now never satisfy the Complete gate (`qty_issued` can never reach `qty` for that line via `/pick`, since unmatched lines are skipped there too) — so an STO with even one bad/unrecognized item code can become permanently stuck at `Picking`, unable to Complete or auto-close its parent SO. Previously, `complete_order()` tolerated unmatched lines (skip + warn, still completed). **Flagged to Tebello, not yet fixed — pending decision** on whether unmatched lines should count as "resolved" for the Complete gate, or whether this stricter behavior is actually desired now that picking is a real checkpoint.
+- [x] Full suite: 168 tests green (was 159). Offline-first re-verified. `ruff` clean on all touched files (pre-existing unrelated findings untouched).
+- Next task: Batch 24 (Payment Status restructure, same session) — see below. STO picking's flagged unmatched-item edge case remains open.
+- Blockers: None (one open decision flagged above, not blocking).
+- Commits: `6c70850`, `c7491d8`, `4ccfb13`, `1350b31`, `62c4ab7`, `9b6b079`, `8ca3603`, `10bad4b`. Spec (`stock-order-picking-step.md`) to be committed separately per convention.
+
+## Batch 24 — Payment Status: Cash Sale/Account restructure + Amount Paid (2026-07-14)
+- [x] Spec written first (5 files touched >2 → plan-first rule), confirmed with Tebello via 3 rounds of AskUserQuestion: `docs/specs/payment-status-cash-account-amount-paid.md`. New 7-value `PAYMENT_STATUS_OPTIONS` (`Cash Sale - Unpaid/Paid/Partial`, `Account - Pending/Up to Date/On Hold/Overdue`, exact list dictated by Tebello); new `SalesOrder.amount_paid` column + computed `balance_due` property, scoped to `Cash Sale - Partial` only; existing-data migration via a documented best-guess mapping table, ambiguous rows flagged for manual review, not auto-trusted.
+- [x] Dispatched a single `executor` agent for the full 6-step sequence, working directly on `master` (same session as Batch 23, sequential not parallel — non-overlapping files but this repo's OneDrive git-lock history made sequential the safer call):
+  - `24c583b` — `models.py`: new option list, default → `'Account - Pending'`, `amount_paid` column, `balance_due` property.
+  - `0e1b0c7` — `scripts/migrate_add_payment_status_amount_paid.py` (schema) + `ensure_schema_columns()` self-heal entry.
+  - `76a5021` — `scripts/migrate_payment_status_values.py` (one-off data migration, written + unit-tested but **deliberately not run** against `instance/sops.db` — that's a live-data operation held for Tebello's deliberate go-ahead).
+  - `b5a0d03` — `update_payment_status()` reads/validates `amount_paid` for `Cash Sale - Partial`.
+  - `80bd14d` — `templates/sales_orders/detail.html`: Balance Due row + Amount Paid input + Update button.
+  - `515f840` — 10 new tests (`tests/test_so_report_fields.py`).
+- [x] Executor found and fixed two hardcoded `'Pending'` literals the spec didn't call out (`save_order()`'s fallback default, `upload.html`'s default-selected option) — both would have silently pointed at a now-invalid legacy value. Corrected to `'Account - Pending'`. Flagged for review, judged correct on inspection — not a scope change, just closing a gap the spec's "no change" note didn't anticipate.
+- [x] Orchestrator-side verification: independently re-ran the full suite (178 passed, was 168), read every diff against the spec (models, route, both templates, both migration scripts) — all matched. Confirmed `instance/sops.db` untouched (still 4 old-style values, no `amount_paid` column) — data migration intentionally not yet run.
+- [x] Full suite: 178 tests green (was 168). Offline-first re-verified. `ruff` clean on all new files; pre-existing unrelated findings on touched-but-not-rewritten files left alone.
+- Next task: Tebello to run `python scripts/migrate_add_payment_status_amount_paid.py` then `python scripts/migrate_payment_status_values.py` against the real `instance/sops.db` when ready, and review the printed list of "GUESS" SO mappings (old `Pending`/`Paid`/`Unpaid` → new value) for correctness.
+- Blockers: None. Two specs (`stock-order-picking-step.md`, `payment-status-cash-account-amount-paid.md`) to be committed separately per convention.
+- Commits: `24c583b`, `0e1b0c7`, `76a5021`, `b5a0d03`, `80bd14d`, `515f840`.

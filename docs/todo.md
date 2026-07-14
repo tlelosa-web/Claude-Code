@@ -265,3 +265,23 @@ All items below must be green before delivery:
 - Next task: none queued — awaiting Tebello's review/commit confirmation for the spec file.
 - Blockers: None.
 - Commits: `5c6e8ae` (implementation). Spec (`open-closed-all-toggle-fix.md`) to be committed separately per convention.
+
+## Batch 22 — Bug Sweep (2026-07-14)
+- [x] Tebello asked to "check for other bugs" after Batch 21. Dispatched a `reviewer` agent (permanent Opus per standing policy) for a broad correctness sweep of routes/services/models.py; independently re-verified every finding by reading the live code myself before accepting any of them — one finding needed correcting in the process (see below).
+- [x] 5 confirmed findings, all approved by Tebello for immediate fix:
+  1. **BLOCKER-severity as reported, corrected on verification**: `routes/sales_orders.py` `reupload_order()` POST branch omitted `payment_status_options` (its sibling `upload_order()` always passes it) — the shared template unconditionally loops over it once `parsed` is set. Initially reported as a 500 crash; empirically tested Jinja's default `Undefined.__iter__` (`python -c` repro) and found it does NOT raise — the real symptom is a silently empty Payment Status dropdown on the reupload review page, not a hard crash. Corrected severity before reporting to Tebello.
+  2. `routes/purchase_orders.py` `create_from_shortfall()` filtered on raw `qty_on_hand` while the Stock Report button that launches it flags items on demand-netted `available_qty` — could add unnecessary PO lines or skip genuinely short items.
+  3. `routes/works_orders.py` `confirm_pick()` was missing the `Cancelled` status guard its sibling `mark_complete()` already has — not reachable via current UI, but a direct POST could un-cancel a WO and re-issue stock.
+  4. Unguarded `qty_on_hand * avg_cost` / cost-field formatting in `routes/reports.py` (`stock_data`, `stock_export_csv`) and `routes/items.py` (catalogue AJAX JSON) — a single legacy item row with a NULL cost/qty field could 500 the Stock Report or Items catalogue.
+  5. Unguarded `BOMLine.qty_required` arithmetic in `services/doc_generator.py` and `routes/works_orders.py` — latent, no current creation path leaves it NULL, defensive hardening only.
+- [x] Spec written first (7 files touched >2 → plan-first rule): `docs/specs/bug-sweep-2026-07-14.md`.
+- [x] Dispatched a single `executor` agent for 4 atomic commits (Fix 4+5 share a commit — same guard-pattern, same review pass):
+  - `22f6daa` — Fix 1: added missing `payment_status_options` kwarg + regression test.
+  - `1ed8d6e` — Fix 2: `create_from_shortfall()` now bulk-fetches `get_qty_on_order_bulk()`/`get_qty_committed_bulk()` once for the candidate set and filters on netted `available_qty`, matching `reports.py:55` exactly (no N+1). 2 new tests (covered-by-on-order excluded; pushed-below-by-committed included).
+  - `cba8171` — Fix 3: added the same `Cancelled` guard to `confirm_pick()`. 1 new regression test.
+  - `1bd56c4` — Fix 4+5: `or 0.0`/`or 0` guards added at all cited sites; executor found 2 additional unguarded `round(item.avg_cost, 2)` call sites in `reports.py` the spec's suggested diff had missed and fixed those too (needed to actually satisfy the 200-response acceptance criterion). 3 new tests using Core-level `Item.__table__.insert()` to force a real NULL past the ORM's `default=0.0`, which otherwise silently overrides an explicit `avg_cost=None` in the constructor.
+- [x] Orchestrator-side verification: read all 4 diffs in full, independently re-ran the full suite (159 passed, was 152) rather than trusting the executor's reported count.
+- [x] Full suite: 159 tests green (was 152).
+- Next task: none queued — awaiting Tebello's review/commit confirmation for the spec file.
+- Blockers: None.
+- Commits: `22f6daa`, `1ed8d6e`, `cba8171`, `1bd56c4`. Spec (`bug-sweep-2026-07-14.md`) to be committed separately per convention.

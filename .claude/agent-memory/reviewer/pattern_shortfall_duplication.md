@@ -12,8 +12,9 @@ The `available = qty_on_hand + qty_on_order - qty_committed` / `shortfall = max(
 - `routes/reports.py` Stock Report `/data` and `/export-csv` — inline, separately
 - `routes/sales_orders.py::item_to_bom_json()` (BOM builder payload) — inline
 - `static/js/bom_builder.js` — inline in JS
-- `routes/dashboard.py` reorder_count stat card — still RAW `qty_on_hand` (NOT netted as of Enhancement 3)
+- `routes/dashboard.py` reorder_count stat card — NOW netted (fixed since Enhancement 3; matches Stock Report)
+- `routes/purchase_orders.py::create_from_shortfall()` (~line 293) — STILL RAW `qty_on_hand <= reorder_point` in the SQL filter. This is the "Create PO from shortfall" button ON the Stock Report page (templates/reports/stock.html:36), yet it selects a DIFFERENT item set than the report's demand-netted "below reorder" flag. Confirmed divergence 2026-07-14.
 
-**Why:** During Enhancement 3 (demand-netted shortfall, 2026-07) the author found and fixed THREE separate un-netted copies mid-session (BOM edit pages, Stock Report, then doc_generator). The dashboard reorder card was left un-netted, creating a divergence with the Stock Report's "Below Reorder Point" filter.
+**Why:** During Enhancement 3 (demand-netted shortfall, 2026-07) the author found and fixed THREE separate un-netted copies mid-session (BOM edit pages, Stock Report, then doc_generator). The dashboard reorder card was later netted too. `create_from_shortfall` is the last-standing raw copy and diverges from the very report it launches from.
 
 **How to apply:** When any shortfall/availability change lands, grep `available_qty|qty_on_hand|shortfall|reorder` across routes/, services/, static/js/, templates/ and confirm every decision-driving site uses the same definition. Flag any new un-netted copy. Recommend consolidation toward `services/demand.py` when touched.

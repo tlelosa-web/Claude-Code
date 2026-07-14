@@ -58,7 +58,7 @@ def mark_complete(order_id):
             # component, so they must never be issued from stores.
             if bom_line.line_type == 'ASSEMBLY_ITEM':
                 continue
-            qty_to_issue = bom_line.qty_required - bom_line.qty_issued
+            qty_to_issue = (bom_line.qty_required or 0.0) - bom_line.qty_issued
             if qty_to_issue > 0:
                 issue(
                     item_id=bom_line.item_id,
@@ -164,7 +164,7 @@ def confirm_pick(order_id):
 
     try:
         for bom_line in wo.bom_lines:
-            qty_to_pick = bom_line.qty_required - bom_line.qty_issued
+            qty_to_pick = (bom_line.qty_required or 0.0) - bom_line.qty_issued
             if qty_to_pick > 0:
                 issue(
                     item_id=bom_line.item_id,

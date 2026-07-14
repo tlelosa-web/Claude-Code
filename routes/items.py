@@ -18,10 +18,10 @@ def catalogue():
             'description': item.description,
             'category': item.category,
             'qty_on_hand': item.qty_on_hand,
-            'last_cost': f"R {item.last_cost:,.2f}",
-            'avg_cost': f"R {item.avg_cost:,.2f}",
-            'excl_price': f"R {item.excl_price:,.2f}",
-            'incl_price': f"R {item.incl_price:,.2f}",
+            'last_cost': f"R {item.last_cost or 0:,.2f}",
+            'avg_cost': f"R {item.avg_cost or 0:,.2f}",
+            'excl_price': f"R {item.excl_price or 0:,.2f}",
+            'incl_price': f"R {item.incl_price or 0:,.2f}",
             'active': 'Yes' if item.active else 'No'
         } for item in items])
         

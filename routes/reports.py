@@ -58,7 +58,7 @@ def stock_data():
         if below_reorder == 'show' and not is_below_reorder:
             continue
 
-        stock_value = item.qty_on_hand * item.avg_cost
+        stock_value = (item.qty_on_hand or 0.0) * (item.avg_cost or 0.0)
         grand_total += stock_value
 
         # Get last movement date
@@ -73,7 +73,7 @@ def stock_data():
             'qty_on_order': round(qty_on_order, 2),
             'qty_committed': round(qty_committed, 2),
             'available_qty': round(available_qty, 2),
-            'avg_cost': round(item.avg_cost, 2),
+            'avg_cost': round(item.avg_cost or 0.0, 2),
             'stock_value': round(stock_value, 2),
             'last_movement_date': last_movement_date,
             'active': 'Yes' if item.active else 'No',
@@ -107,7 +107,7 @@ def stock_export_csv():
 
     grand_total = 0.0
     for item in items:
-        stock_value = item.qty_on_hand * item.avg_cost
+        stock_value = (item.qty_on_hand or 0.0) * (item.avg_cost or 0.0)
         grand_total += stock_value
 
         qty_on_order = qty_on_order_map.get(item.id, 0.0)
@@ -119,7 +119,7 @@ def stock_export_csv():
 
         writer.writerow([item.code, item.description, item.category or '',
                         item.qty_on_hand, round(qty_on_order, 2), round(qty_committed, 2),
-                        round(available_qty, 2), round(item.avg_cost, 2),
+                        round(available_qty, 2), round(item.avg_cost or 0.0, 2),
                         round(stock_value, 2), last_movement_date])
 
     writer.writerow([])

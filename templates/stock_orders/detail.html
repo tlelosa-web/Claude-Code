@@ -3,6 +3,12 @@
 {% block page_title %}Stock Order: {{ stock_order.stock_order_number }}{% endblock %}
 
 {% block content %}
+{% set ns = namespace(all_picked=true) %}
+{% for line in stock_order.lines %}
+    {% if (line.qty_issued or 0) < (line.qty or 0) %}
+        {% set ns.all_picked = false %}
+    {% endif %}
+{% endfor %}
 <div class="card animate-fade-in" style="margin-bottom: 24px;">
     <div class="card-header">
         <h2 class="card-title">Stock Order Details</h2>
@@ -15,13 +21,19 @@
                     <li><a href="{{ url_for('stock_orders.print_order', order_id=stock_order.id) }}" target="_blank">Print</a></li>
                     {% if stock_order.status == 'Open' %}
                     <li><a href="{{ url_for('stock_orders.edit_order', order_id=stock_order.id) }}">Edit</a></li>
+                    {% endif %}
+                    {% if stock_order.status in ['Open', 'Picking'] %}
                     <li>
+                        {% if ns.all_picked %}
                         <form method="POST" action="{{ url_for('stock_orders.complete_order', order_id=stock_order.id) }}" style="display: block;" onsubmit="return confirm('Mark this Stock Order as Complete?')">
                             <button type="submit">Mark Complete</button>
                         </form>
+                        {% else %}
+                        <a class="disabled" title="All lines must be picked first.">Mark Complete</a>
+                        {% endif %}
                     </li>
                     <li>
-                        <form method="POST" action="{{ url_for('stock_orders.cancel_order', order_id=stock_order.id) }}" style="display: block;" onsubmit="return confirm('Cancel this Stock Order?')">
+                        <form method="POST" action="{{ url_for('stock_orders.cancel_order', order_id=stock_order.id) }}" style="display: block;" onsubmit="return confirm('Cancel this Stock Order? Any already-picked stock will be reversed.')">
                             <button type="submit" class="danger">Cancel Order</button>
                         </form>
                     </li>
@@ -75,6 +87,9 @@
         <h2 class="card-title">Line Items</h2>
     </div>
     {% if stock_order.lines %}
+    {% if stock_order.status in ['Open', 'Picking'] %}
+    <form method="POST" action="{{ url_for('stock_orders.pick_lines', order_id=stock_order.id) }}">
+    {% endif %}
     <div style="overflow-x: auto;">
         <table class="data-table">
             <thead>
@@ -83,22 +98,44 @@
                     <th>Item Code</th>
                     <th>Description</th>
                     <th>Qty</th>
+                    {% if stock_order.status in ['Open', 'Picking'] %}
+                    <th>Picked</th>
+                    <th>Pick Qty</th>
+                    {% endif %}
                     <th>Notes</th>
                 </tr>
             </thead>
             <tbody>
                 {% for line in stock_order.lines %}
+                {% set outstanding = (line.qty or 0) - (line.qty_issued or 0) %}
                 <tr>
                     <td>{{ loop.index }}</td>
                     <td>{{ line.item_code or '-' }}</td>
                     <td>{{ line.description or '' }}</td>
                     <td>{{ line.qty }}</td>
+                    {% if stock_order.status in ['Open', 'Picking'] %}
+                    <td>{{ line.qty_issued or 0 }}</td>
+                    <td>
+                        <input type="number" class="form-input" name="pick_qty_{{ line.id }}"
+                               value="{{ outstanding if outstanding > 0 else 0 }}" min="0" step="0.1"
+                               style="width: 90px; padding: 4px 6px; font-size: 0.85rem;"
+                               {% if outstanding <= 0 %}disabled{% endif %}>
+                    </td>
+                    {% endif %}
                     <td>{{ line.notes or '-' }}</td>
                 </tr>
                 {% endfor %}
             </tbody>
         </table>
     </div>
+    {% if stock_order.status in ['Open', 'Picking'] %}
+    <div style="display: flex; align-items: center; gap: 12px; padding: 16px; flex-wrap: wrap;">
+        <label for="picked_by" style="font-size: 0.85rem; color: var(--text-muted);">Picked By</label>
+        <input type="text" id="picked_by" name="picked_by" class="form-input" placeholder="Your name" style="width: 200px;">
+        <button type="submit" class="btn btn-primary">Confirm Picks</button>
+    </div>
+    </form>
+    {% endif %}
     {% else %}
     <p style="padding: 24px; color: var(--text-muted); text-align: center;">No line items.</p>
     {% endif %}

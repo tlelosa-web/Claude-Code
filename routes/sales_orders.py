@@ -144,7 +144,7 @@ def save_order():
             sales_rep=request.form.get('sales_rep', '').strip(),
             raw_pdf_text=request.form.get('raw_pdf_text', ''),
             status='Draft',
-            payment_status=request.form.get('payment_status', 'Pending').strip() or 'Pending',
+            payment_status=request.form.get('payment_status', 'Account - Pending').strip() or 'Account - Pending',
             created_at=datetime.now()
         )
         db.session.add(so)

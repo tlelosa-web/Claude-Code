@@ -54,17 +54,17 @@ class TestPaymentStatus:
         session.commit()
         return so
 
-    def test_default_payment_status_is_pending(self, session):
+    def test_default_payment_status_is_account_pending(self, session):
         so = self._mk_so(session)
-        assert so.payment_status == "Pending"
+        assert so.payment_status == "Account - Pending"
 
     def test_update_payment_status_valid(self, client, session):
         so = self._mk_so(session)
-        resp = client.post(f"/sales-orders/{so.id}/payment-status", data={"payment_status": "Paid"})
+        resp = client.post(f"/sales-orders/{so.id}/payment-status", data={"payment_status": "Cash Sale - Paid"})
         assert resp.status_code == 302
 
         updated = db.session.get(SalesOrder, so.id)
-        assert updated.payment_status == "Paid"
+        assert updated.payment_status == "Cash Sale - Paid"
 
     def test_update_payment_status_rejects_invalid_value(self, client, session):
         so = self._mk_so(session)
@@ -73,7 +73,7 @@ class TestPaymentStatus:
         assert resp.status_code == 200
 
         updated = db.session.get(SalesOrder, so.id)
-        assert updated.payment_status == "Pending"
+        assert updated.payment_status == "Account - Pending"
 
     def test_all_options_are_settable(self, client, session):
         so = self._mk_so(session)

@@ -41,22 +41,22 @@ def test_upload_review_form_includes_payment_status_field(client):
     body = response.get_data(as_text=True)
     assert response.status_code == 200
     assert 'name="payment_status"' in body
-    assert "Partially Paid" in body
+    assert "Cash Sale - Partial" in body
 
 
 def test_save_order_captures_payment_status(client):
     resp = client.post("/sales-orders/save", data={
         "so_number": "TEST-PAY-SAVE-001",
         "customer_name": "Test Co",
-        "payment_status": "Partially Paid",
+        "payment_status": "Cash Sale - Partial",
     })
     assert resp.status_code == 302
 
     so = SalesOrder.query.filter_by(so_number="TEST-PAY-SAVE-001").first()
-    assert so.payment_status == "Partially Paid"
+    assert so.payment_status == "Cash Sale - Partial"
 
 
-def test_save_order_defaults_payment_status_to_pending_when_omitted(client):
+def test_save_order_defaults_payment_status_to_account_pending_when_omitted(client):
     resp = client.post("/sales-orders/save", data={
         "so_number": "TEST-PAY-SAVE-002",
         "customer_name": "Test Co",
@@ -64,7 +64,7 @@ def test_save_order_defaults_payment_status_to_pending_when_omitted(client):
     assert resp.status_code == 302
 
     so = SalesOrder.query.filter_by(so_number="TEST-PAY-SAVE-002").first()
-    assert so.payment_status == "Pending"
+    assert so.payment_status == "Account - Pending"
 
 
 def test_reupload_pdf_for_existing_so_renders_review(client, session):
@@ -88,4 +88,4 @@ def test_reupload_pdf_for_existing_so_renders_review(client, session):
     body = response.get_data(as_text=True)
     assert response.status_code == 200
     assert 'name="payment_status"' in body
-    assert "Partially Paid" in body
+    assert "Cash Sale - Partial" in body

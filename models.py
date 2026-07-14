@@ -24,7 +24,10 @@ class Item(db.Model):
     movements = db.relationship('StockMovement', backref='item', lazy=True)
     bom_lines = db.relationship('BOMLine', backref='item', lazy=True)
 
-PAYMENT_STATUS_OPTIONS = ('Pending', 'Paid', 'Partially Paid', 'Unpaid', 'Account - Up to Date', 'On Hold')
+PAYMENT_STATUS_OPTIONS = (
+    'Cash Sale - Unpaid', 'Cash Sale - Paid', 'Cash Sale - Partial',
+    'Account - Pending', 'Account - Up to Date', 'Account - On Hold', 'Account - Overdue',
+)
 
 class SalesOrder(db.Model):
     __tablename__ = 'sales_order'
@@ -41,7 +44,8 @@ class SalesOrder(db.Model):
     sales_rep = db.Column(db.String(255))
     raw_pdf_text = db.Column(db.Text)
     status = db.Column(db.String(50), default='Draft')  # Draft / Open / Closed
-    payment_status = db.Column(db.String(50), default='Pending')  # Pending / Paid / Unpaid / Account - Up to Date / On Hold
+    payment_status = db.Column(db.String(50), default='Account - Pending')  # Cash Sale - Unpaid/Paid/Partial / Account - Pending/Up to Date/On Hold/Overdue
+    amount_paid = db.Column(db.Float, default=0.0)  # only read/written/displayed when payment_status == 'Cash Sale - Partial'
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     # Relationships
@@ -57,6 +61,10 @@ class SalesOrder(db.Model):
     @property
     def total_incl(self):
         return sum(li.incl_total or 0 for li in self.line_items)
+
+    @property
+    def balance_due(self):
+        return self.total_incl - (self.amount_paid or 0.0)
 
 class SOLineItem(db.Model):
     __tablename__ = 'so_line_item'

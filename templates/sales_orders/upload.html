@@ -77,7 +77,7 @@
                 <label for="payment_status">Payment Status</label>
                 <select id="payment_status" name="payment_status" class="form-input">
                     {% for option in payment_status_options %}
-                    <option value="{{ option }}" {% if option == 'Pending' %}selected{% endif %}>{{ option }}</option>
+                    <option value="{{ option }}" {% if option == 'Account - Pending' %}selected{% endif %}>{{ option }}</option>
                     {% endfor %}
                 </select>
             </div>

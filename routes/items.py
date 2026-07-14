@@ -1,6 +1,7 @@
 import os
 from flask import Blueprint, render_template, request, redirect, url_for, flash, current_app, jsonify
 from werkzeug.utils import secure_filename
+from sqlalchemy.exc import IntegrityError
 from models import db, Item, StockMovement
 from services.item_importer import import_items_from_csv
 from services.stock_service import adjust
@@ -67,8 +68,11 @@ def adjust_stock(item_id):
 
 @items_bp.route('/items/<int:item_id>/reorder-settings', methods=['POST'])
 def update_reorder_settings(item_id):
-    """Set Item.reorder_point/reorder_qty (Enhancement 2 - reorder point
-    signals). Left at 0.0 by default, meaning 'not set' / never flagged."""
+    """Set Item.reorder_point/reorder_qty/max_level (Enhancement 2 - reorder
+    point signals). Left at 0.0 by default, meaning 'not set' / never
+    flagged. reorder_qty is auto-filled client-side from max_level minus
+    reorder_point as a convenience only - the server saves whatever three
+    numbers it's given, with no recomputation."""
     item = db.session.get(Item, item_id)
     if not item:
         flash("Item not found.", "error")
@@ -77,10 +81,68 @@ def update_reorder_settings(item_id):
     try:
         item.reorder_point = float(request.form.get('reorder_point', 0) or 0)
         item.reorder_qty = float(request.form.get('reorder_qty', 0) or 0)
+        item.max_level = float(request.form.get('max_level', 0) or 0)
         db.session.commit()
         flash(f"Reorder settings updated for {item.code}.", "success")
     except ValueError:
         flash("Reorder point and quantity must be numbers.", "error")
+
+    return redirect(url_for('items.detail', item_id=item_id))
+
+
+@items_bp.route('/items/<int:item_id>/edit', methods=['POST'])
+def update_item(item_id):
+    """Edit an item's identity/pricing fields only (code, description,
+    category, active, last_cost, avg_cost, excl_price, incl_price).
+    Qty on Hand is deliberately excluded - it must keep going through the
+    audited stock_service.adjust() path via adjust_stock(), never a
+    free-text field here."""
+    item = db.session.get(Item, item_id)
+    if not item:
+        flash("Item not found.", "error")
+        return redirect(url_for('items.catalogue'))
+
+    code = request.form.get('code', '').strip()
+    description = request.form.get('description', '').strip()
+    category = request.form.get('category', '').strip()
+    active = request.form.get('active') == 'on'
+
+    if not code:
+        flash("Item code cannot be blank.", "error")
+        return redirect(url_for('items.detail', item_id=item_id))
+
+    duplicate = Item.query.filter(Item.code == code, Item.id != item_id).first()
+    if duplicate:
+        flash(f"Item code '{code}' is already in use by another item.", "error")
+        return redirect(url_for('items.detail', item_id=item_id))
+
+    try:
+        last_cost = float(request.form.get('last_cost', 0) or 0)
+        avg_cost = float(request.form.get('avg_cost', 0) or 0)
+        excl_price = float(request.form.get('excl_price', 0) or 0)
+        incl_price = float(request.form.get('incl_price', 0) or 0)
+    except ValueError:
+        flash("Last Cost, Avg Cost, Excl. Price and Incl. Price must be numbers.", "error")
+        return redirect(url_for('items.detail', item_id=item_id))
+
+    item.code = code
+    item.description = description
+    item.category = category
+    item.active = active
+    item.last_cost = last_cost
+    item.avg_cost = avg_cost
+    item.excl_price = excl_price
+    item.incl_price = incl_price
+
+    try:
+        db.session.commit()
+        flash(f"Item {item.code} updated.", "success")
+    except IntegrityError:
+        # Belt-and-suspenders against the code's unique=True DB constraint -
+        # the pre-check above should already catch this, but never let a
+        # duplicate code 500 the request.
+        db.session.rollback()
+        flash(f"Item code '{code}' is already in use by another item.", "error")
 
     return redirect(url_for('items.detail', item_id=item_id))
 

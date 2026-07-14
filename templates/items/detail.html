@@ -2,13 +2,44 @@
 {% block title %}{{ item.code }} - Items - SOPS{% endblock %}
 {% block page_title %}Item: {{ item.code }}{% endblock %}
 
+{% block extra_head %}
+<style>
+    [x-cloak] { display: none !important; }
+    .modal-overlay {
+        position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+        background: rgba(17, 24, 39, 0.5);
+        display: flex; align-items: center; justify-content: center;
+        z-index: 1000;
+    }
+    .modal-box {
+        background: #fff; border-radius: var(--radius); box-shadow: var(--shadow);
+        width: 100%; max-width: 560px; max-height: 90vh; overflow-y: auto;
+        padding: 20px;
+    }
+    .modal-header {
+        display: flex; align-items: center; justify-content: space-between;
+        margin-bottom: 16px;
+    }
+    .modal-header h3 { margin: 0; font-size: 1.1rem; }
+    .modal-close {
+        background: none; border: none; cursor: pointer; font-size: 1.4rem;
+        line-height: 1; color: var(--text-muted); padding: 0 4px;
+    }
+    .modal-divider { border: none; border-top: 1px solid var(--border-color); margin: 20px 0; }
+</style>
+{% endblock %}
+
 {% block content %}
+<div x-data="{ editOpen: false, stockOpen: false, reorderQtyDirty: false }" @keydown.escape.window="editOpen = false; stockOpen = false">
 <div class="card animate-fade-in" style="margin-bottom: 24px;">
     <div class="card-header">
         <h2 class="card-title">Item Details</h2>
-        <a href="{{ url_for('items.catalogue') }}" class="btn btn-secondary">Back to Catalogue</a>
+        <div style="display: flex; gap: 8px;">
+            <button type="button" class="btn btn-secondary" @click="editOpen = true">Edit Item</button>
+            <a href="{{ url_for('items.catalogue') }}" class="btn btn-secondary">Back to Catalogue</a>
+        </div>
     </div>
-    
+
     <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 24px;">
         <div>
             <table class="detail-table">
@@ -31,20 +62,78 @@
                 <tr><td class="detail-label">Incl. Price</td><td class="detail-value">R {{ "%.2f"|format(item.incl_price) }}</td></tr>
                 <tr><td class="detail-label">Stock Value</td><td class="detail-value">R {{ "%.2f"|format(item.qty_on_hand * item.avg_cost) }}</td></tr>
             </table>
+            <div style="text-align: right; margin-top: 8px;">
+                <button type="button" class="btn btn-primary" @click="stockOpen = true; reorderQtyDirty = false">Adjust Stock &amp; Levels</button>
+            </div>
         </div>
     </div>
 </div>
 
-<!-- Quantity Adjustment Form -->
-<div class="card animate-fade-in" style="margin-bottom: 24px;">
-    <div class="card-header">
-        <h2 class="card-title">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-            Manual Stock Adjustment
-        </h2>
+<!-- Edit Item Modal -->
+<div class="modal-overlay" x-show="editOpen" x-cloak @click.self="editOpen = false">
+    <div class="modal-box">
+        <div class="modal-header">
+            <h3>Edit Item</h3>
+            <button type="button" class="modal-close" @click="editOpen = false" aria-label="Close">&times;</button>
+        </div>
+        <form method="POST" action="{{ url_for('items.update_item', item_id=item.id) }}">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0 16px;">
+                <div class="form-group">
+                    <label for="code">Code</label>
+                    <input type="text" id="code" name="code" value="{{ item.code }}" required class="form-input">
+                </div>
+                <div class="form-group">
+                    <label for="category">Category</label>
+                    <input type="text" id="category" name="category" value="{{ item.category or '' }}" class="form-input">
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="description">Description</label>
+                <input type="text" id="description" name="description" value="{{ item.description }}" class="form-input">
+            </div>
+            <div class="form-group">
+                <label style="display: flex; align-items: center; gap: 8px;">
+                    <input type="checkbox" id="active" name="active" {% if item.active %}checked{% endif %}>
+                    Active
+                </label>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0 16px;">
+                <div class="form-group">
+                    <label for="last_cost">Last Cost</label>
+                    <input type="number" id="last_cost" name="last_cost" value="{{ item.last_cost or 0 }}" step="0.01" class="form-input">
+                </div>
+                <div class="form-group">
+                    <label for="avg_cost">Avg. Cost</label>
+                    <input type="number" id="avg_cost" name="avg_cost" value="{{ item.avg_cost or 0 }}" step="0.01" class="form-input">
+                </div>
+                <div class="form-group">
+                    <label for="excl_price">Excl. Price</label>
+                    <input type="number" id="excl_price" name="excl_price" value="{{ item.excl_price or 0 }}" step="0.01" class="form-input">
+                </div>
+                <div class="form-group">
+                    <label for="incl_price">Incl. Price</label>
+                    <input type="number" id="incl_price" name="incl_price" value="{{ item.incl_price or 0 }}" step="0.01" class="form-input">
+                </div>
+            </div>
+            <div class="form-actions">
+                <button type="button" class="btn btn-secondary" @click="editOpen = false">Cancel</button>
+                <button type="submit" class="btn btn-primary">Save Changes</button>
+            </div>
+        </form>
     </div>
-    <form method="POST" action="{{ url_for('items.adjust_stock', item_id=item.id) }}">
-        <div style="display: grid; grid-template-columns: 1fr 1fr 2fr; gap: 16px; align-items: end;">
+</div>
+
+<!-- Adjust Stock & Levels Modal -->
+<div class="modal-overlay" x-show="stockOpen" x-cloak @click.self="stockOpen = false">
+    <div class="modal-box">
+        <div class="modal-header">
+            <h3>Adjust Stock &amp; Levels</h3>
+            <button type="button" class="modal-close" @click="stockOpen = false" aria-label="Close">&times;</button>
+        </div>
+
+        <!-- Quantity Adjustment Form -->
+        <h4 style="margin: 0 0 8px 0; font-size: 0.9rem; color: var(--text-secondary);">Manual Stock Adjustment</h4>
+        <form method="POST" action="{{ url_for('items.adjust_stock', item_id=item.id) }}">
             <div class="form-group">
                 <label for="new_qty">New Qty on Hand</label>
                 <input type="number" id="new_qty" name="new_qty" value="{{ item.qty_on_hand }}" step="0.01" required class="form-input">
@@ -57,39 +146,41 @@
                 <label for="reason">Reason *</label>
                 <input type="text" id="reason" name="reason" required class="form-input" placeholder="e.g. Cycle count correction, damaged stock">
             </div>
-        </div>
-        <div class="form-actions" style="margin-top: 12px;">
-            <button type="submit" class="btn btn-primary" onclick="return confirm('Adjust stock for {{ item.code }}? This will create a StockMovement record.')">Apply Adjustment</button>
-        </div>
-    </form>
-</div>
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary" onclick="return confirm('Adjust stock for {{ item.code }}? This will create a StockMovement record.')">Apply Adjustment</button>
+            </div>
+        </form>
 
-<!-- Reorder Settings (Enhancement 2) -->
-<div class="card animate-fade-in" style="margin-bottom: 24px;">
-    <div class="card-header">
-        <h2 class="card-title">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
-            Reorder Settings
-        </h2>
-    </div>
-    <form method="POST" action="{{ url_for('items.update_reorder_settings', item_id=item.id) }}">
-        <div style="display: grid; grid-template-columns: 1fr 1fr 2fr; gap: 16px; align-items: end;">
-            <div class="form-group">
-                <label for="reorder_point">Reorder Point</label>
-                <input type="number" id="reorder_point" name="reorder_point" value="{{ item.reorder_point or 0 }}" step="0.01" min="0" class="form-input">
+        <hr class="modal-divider">
+
+        <!-- Reorder Settings (Enhancement 2) -->
+        <h4 style="margin: 0 0 8px 0; font-size: 0.9rem; color: var(--text-secondary);">Reorder Settings</h4>
+        <form method="POST" action="{{ url_for('items.update_reorder_settings', item_id=item.id) }}">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0 16px;">
+                <div class="form-group">
+                    <label for="reorder_point">Reorder Point</label>
+                    <input type="number" id="reorder_point" name="reorder_point" value="{{ item.reorder_point or 0 }}" step="0.01" min="0" class="form-input" x-ref="reorderPoint"
+                        @input="if (!reorderQtyDirty) $refs.reorderQty.value = Math.max(0, (parseFloat($refs.maxLevel.value)||0) - (parseFloat($event.target.value)||0))">
+                </div>
+                <div class="form-group">
+                    <label for="max_level">Max Level</label>
+                    <input type="number" id="max_level" name="max_level" value="{{ item.max_level or 0 }}" step="0.01" min="0" class="form-input" x-ref="maxLevel"
+                        @input="if (!reorderQtyDirty) $refs.reorderQty.value = Math.max(0, (parseFloat($event.target.value)||0) - (parseFloat($refs.reorderPoint.value)||0))">
+                </div>
             </div>
             <div class="form-group">
                 <label for="reorder_qty">Reorder Qty</label>
-                <input type="number" id="reorder_qty" name="reorder_qty" value="{{ item.reorder_qty or 0 }}" step="0.01" min="0" class="form-input">
+                <input type="number" id="reorder_qty" name="reorder_qty" value="{{ item.reorder_qty or 0 }}" step="0.01" min="0" class="form-input" x-ref="reorderQty"
+                    @input="reorderQtyDirty = true">
             </div>
-            <div style="color: var(--text-muted); font-size: 0.85rem; padding-bottom: 10px;">
-                Set Reorder Point to 0 to disable replenishment flagging for this item. When Qty on Hand falls to or below the Reorder Point, this item appears in the Stock Report's "Below Reorder Point" filter and can be added to a draft Purchase Order via "Create PO from Shortfall".
+            <div style="color: var(--text-muted); font-size: 0.85rem;">
+                Set Reorder Point to 0 to disable replenishment flagging for this item. When Qty on Hand falls to or below the Reorder Point, this item appears in the Stock Report's "Below Reorder Point" filter and can be added to a draft Purchase Order via "Create PO from Shortfall". Reorder Qty auto-fills to Max Level minus Reorder Point but can be overridden.
             </div>
-        </div>
-        <div class="form-actions" style="margin-top: 12px;">
-            <button type="submit" class="btn btn-primary">Save Reorder Settings</button>
-        </div>
-    </form>
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">Save Reorder Settings</button>
+            </div>
+        </form>
+    </div>
 </div>
 
 <!-- Movement History -->
@@ -140,6 +231,7 @@
     {% else %}
     <p style="padding: 24px; color: var(--text-muted); text-align: center;">No stock movements recorded for this item.</p>
     {% endif %}
+</div>
 </div>
 {% endblock %}
 

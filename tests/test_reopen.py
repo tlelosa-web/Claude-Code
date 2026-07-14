@@ -129,8 +129,13 @@ class TestReopenStockOrder:
         return {"so": so, "sto": sto, "item": item, "line": line}
 
     def test_reopen_complete_sto_reverses_stock(self, client, app, db, session, setup_data):
-        so, sto, item = setup_data["so"], setup_data["sto"], setup_data["item"]
+        so, sto, item, line = setup_data["so"], setup_data["sto"], setup_data["item"], setup_data["line"]
 
+        client.post(
+            f"/stock-orders/{sto.id}/pick",
+            data={f"pick_qty_{line.id}": "5.0", "picked_by": "Sam"},
+            follow_redirects=True,
+        )
         client.post(f"/stock-orders/{sto.id}/complete", follow_redirects=True)
         with app.app_context():
             assert db.session.get(Item, item.id).qty_on_hand == 45.0
@@ -147,8 +152,13 @@ class TestReopenStockOrder:
             assert line.qty_issued == 0.0
 
     def test_reopen_cascades_parent_so_back_to_open(self, client, app, db, session, setup_data):
-        so, sto = setup_data["so"], setup_data["sto"]
+        so, sto, line = setup_data["so"], setup_data["sto"], setup_data["line"]
 
+        client.post(
+            f"/stock-orders/{sto.id}/pick",
+            data={f"pick_qty_{line.id}": "5.0", "picked_by": "Sam"},
+            follow_redirects=True,
+        )
         client.post(f"/stock-orders/{sto.id}/complete", follow_redirects=True)
         with app.app_context():
             assert db.session.get(SalesOrder, so.id).status == "Closed"

@@ -127,6 +127,10 @@ def complete_order(order_id):
         flash(f"Stock Order {stock_order.stock_order_number} is already complete.", "warning")
         return redirect(url_for('stock_orders.view_order', order_id=order_id))
 
+    if any((line.qty or 0.0) - (line.qty_issued or 0.0) > 0 for line in stock_order.lines):
+        flash("All lines must be picked before this Stock Order can be completed.", "error")
+        return redirect(url_for('stock_orders.view_order', order_id=order_id))
+
     completed_by = request.form.get('completed_by', 'System').strip() or 'System'
     unmatched = []
     for line in stock_order.lines:

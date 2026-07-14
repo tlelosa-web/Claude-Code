@@ -39,11 +39,12 @@ class TestSalesOrderClose:
                          created_at=datetime.now(timezone.utc))
         session.add(sto)
         session.flush()
-        session.add(StockOrderLine(stock_order_id=sto.id, item_code=item.code,
-                                   description=item.description, qty=1.0))
+        sto_line = StockOrderLine(stock_order_id=sto.id, item_code=item.code,
+                                   description=item.description, qty=1.0)
+        session.add(sto_line)
         session.commit()
 
-        return {"so": so, "wo": wo, "sto": sto}
+        return {"so": so, "wo": wo, "sto": sto, "sto_line": sto_line}
 
     # ------------------------------------------------------------------
     # Manual close route
@@ -115,10 +116,15 @@ class TestSalesOrderClose:
 
     def test_stock_order_complete_autocloses_so_when_wo_already_complete(self, client, app, db, session, setup_data):
         """Completing the last open STO auto-closes the SO once the WO is also Complete."""
-        so, wo, sto = setup_data["so"], setup_data["wo"], setup_data["sto"]
+        so, wo, sto, sto_line = setup_data["so"], setup_data["wo"], setup_data["sto"], setup_data["sto_line"]
         wo.status = "Complete"
         session.commit()
 
+        client.post(
+            f"/stock-orders/{sto.id}/pick",
+            data={f"pick_qty_{sto_line.id}": "1.0", "picked_by": "Sam"},
+            follow_redirects=True,
+        )
         resp = client.post(f"/stock-orders/{sto.id}/complete", follow_redirects=True)
         assert resp.status_code == 200
 
@@ -127,8 +133,13 @@ class TestSalesOrderClose:
 
     def test_stock_order_complete_does_not_autoclose_while_wo_open(self, client, app, db, session, setup_data):
         """Completing the STO does not close the SO while the WO is still Open."""
-        so, sto = setup_data["so"], setup_data["sto"]
+        so, sto, sto_line = setup_data["so"], setup_data["sto"], setup_data["sto_line"]
 
+        client.post(
+            f"/stock-orders/{sto.id}/pick",
+            data={f"pick_qty_{sto_line.id}": "1.0", "picked_by": "Sam"},
+            follow_redirects=True,
+        )
         resp = client.post(f"/stock-orders/{sto.id}/complete", follow_redirects=True)
         assert resp.status_code == 200
 

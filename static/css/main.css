@@ -373,6 +373,7 @@ textarea.form-input {
 }
 .badge-draft, .badge-open { background: var(--fm-blue); color: #fff; }
 .badge-inprogress { background: var(--fm-orange); color: #fff; }
+.badge-picking { background: var(--fm-orange); color: #fff; }
 .badge-complete { background: var(--fm-green); color: #fff; }
 .badge-cancelled { background: #9CA3AF; color: #fff; }
 .badge-closed { background: #6B7280; color: #fff; }

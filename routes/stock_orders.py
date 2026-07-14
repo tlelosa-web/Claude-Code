@@ -33,6 +33,71 @@ def print_order(order_id):
     so = stock_order.sales_order
     return render_template('stock_orders/print.html', stock_order=stock_order, so=so)
 
+@stock_orders_bp.route('/stock-orders/<int:order_id>/pick', methods=['POST'])
+def pick_lines(order_id):
+    """Confirm picks on individual Stock Order lines, deducting stock immediately per line."""
+    stock_order = StockOrder.query.get_or_404(order_id)
+
+    if stock_order.status not in ('Open', 'Picking'):
+        flash(f"Cannot pick lines on a {stock_order.status} Stock Order.", "error")
+        return redirect(url_for('stock_orders.view_order', order_id=order_id))
+
+    try:
+        picked_by = request.form.get('picked_by', 'System').strip() or 'System'
+        unmatched = []
+        any_picked = False
+
+        for line in stock_order.lines:
+            raw_qty = request.form.get(f'pick_qty_{line.id}', '0')
+            try:
+                entered_qty = float(raw_qty)
+            except (TypeError, ValueError):
+                entered_qty = 0.0
+
+            outstanding = (line.qty or 0.0) - (line.qty_issued or 0.0)
+            clamped_qty = max(0, min(entered_qty, outstanding))
+
+            if clamped_qty == 0:
+                continue
+
+            item = Item.query.filter_by(code=line.item_code).first()
+            if not item:
+                unmatched.append(line.item_code or '(blank)')
+                continue
+
+            issue(
+                item_id=item.id,
+                qty=clamped_qty,
+                reference=stock_order.stock_order_number,
+                notes=f"Picked for {stock_order.stock_order_number}",
+                created_by=picked_by
+            )
+            line.qty_issued = (line.qty_issued or 0.0) + clamped_qty
+            any_picked = True
+
+        if unmatched:
+            flash(
+                f"No catalogue match for item code(s) {', '.join(unmatched)} — "
+                "stock was not deducted for those lines.",
+                "warning"
+            )
+
+        if not any_picked:
+            flash("No pick quantities were entered.", "warning")
+            return redirect(url_for('stock_orders.view_order', order_id=order_id))
+
+        if stock_order.status == 'Open':
+            stock_order.status = 'Picking'
+
+        db.session.commit()
+        flash(f"Picks confirmed for Stock Order {stock_order.stock_order_number}.", "success")
+        return redirect(url_for('stock_orders.view_order', order_id=order_id))
+
+    except Exception as e:
+        db.session.rollback()
+        flash(f"Error confirming picks: {str(e)}", "error")
+        return redirect(url_for('stock_orders.view_order', order_id=order_id))
+
 @stock_orders_bp.route('/stock-orders/<int:order_id>/cancel', methods=['POST'])
 def cancel_order(order_id):
     """Cancel a Stock Order."""

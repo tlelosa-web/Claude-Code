@@ -1,4 +1,4 @@
-"""Tests for the stock_orders blueprint (list, detail, cancel, complete)."""
+"""Tests for the stock_orders blueprint (list, detail, pick, cancel, complete)."""
 import pytest
 from datetime import datetime, timezone
 from models import db, SalesOrder, StockOrder, StockOrderLine, Item, StockMovement
@@ -35,22 +35,26 @@ class TestStockOrders:
         session.add(sto)
         session.flush()
 
+        # Item codes are suffixed with the counter to stay unique across the
+        # shared session-scoped in-memory DB — tests that create a matching
+        # catalogue Item would otherwise collide with each other on a fixed
+        # code (Item.code has a UNIQUE constraint).
         line1 = StockOrderLine(
             stock_order_id=sto.id,
-            item_code="FAN-001",
+            item_code=f"FAN-001-{c:03d}",
             description="FAN-001 - Fan Unit 600mm",
             qty=2.0,
         )
         line2 = StockOrderLine(
             stock_order_id=sto.id,
-            item_code="BRG-007",
+            item_code=f"BRG-007-{c:03d}",
             description="BRG-007 - Bearing Set",
             qty=4.0,
         )
         session.add_all([line1, line2])
         session.commit()
 
-        return {"so": so, "sto": sto}
+        return {"so": so, "sto": sto, "line1": line1, "line2": line2}
 
     # ------------------------------------------------------------------
     # List view
@@ -97,6 +101,134 @@ class TestStockOrders:
         """GET /stock-orders/99999/print returns 404."""
         resp = client.get("/stock-orders/99999/print")
         assert resp.status_code == 404
+
+    # ------------------------------------------------------------------
+    # Pick
+    # ------------------------------------------------------------------
+
+    def test_pick_single_line_on_open_order(self, client, app, db, session, setup_data):
+        """POST /pick on an Open order issues stock for the picked line, flips status to
+        Picking, and leaves the other line untouched."""
+        sto, line1, line2 = setup_data["sto"], setup_data["line1"], setup_data["line2"]
+        item = Item(code=line1.item_code, description="Fan Unit 600mm", qty_on_hand=10.0, active=True)
+        session.add(item)
+        session.commit()
+
+        resp = client.post(
+            f"/stock-orders/{sto.id}/pick",
+            data={f"pick_qty_{line1.id}": "2.0", "picked_by": "Warehouse Sam"},
+            follow_redirects=True,
+        )
+        assert resp.status_code == 200
+
+        with app.app_context():
+            updated_item = Item.query.filter_by(code=line1.item_code).first()
+            assert updated_item.qty_on_hand == 8.0
+
+            updated_sto = db.session.get(StockOrder, sto.id)
+            assert updated_sto.status == "Picking"
+
+            updated_line1 = db.session.get(StockOrderLine, line1.id)
+            assert updated_line1.qty_issued == 2.0
+
+            updated_line2 = db.session.get(StockOrderLine, line2.id)
+            assert (updated_line2.qty_issued or 0.0) == 0.0
+
+            movement = StockMovement.query.filter_by(item_id=updated_item.id, movement_type='ISSUE').first()
+            assert movement is not None
+            assert movement.created_by == "Warehouse Sam"
+
+    def test_pick_second_pass_picks_remaining_line_without_double_issue(self, client, app, db, session, setup_data):
+        """A second /pick call on a Picking order picks the remaining line and does not
+        re-issue the already-fully-picked line; status stays Picking (not auto-Complete)."""
+        sto, line1, line2 = setup_data["sto"], setup_data["line1"], setup_data["line2"]
+        item1 = Item(code=line1.item_code, description="Fan Unit 600mm", qty_on_hand=10.0, active=True)
+        item2 = Item(code=line2.item_code, description="Bearing Set", qty_on_hand=20.0, active=True)
+        session.add_all([item1, item2])
+        session.commit()
+
+        # First pass: fully pick line1 only.
+        client.post(
+            f"/stock-orders/{sto.id}/pick",
+            data={f"pick_qty_{line1.id}": "2.0", f"pick_qty_{line2.id}": "0", "picked_by": "Sam"},
+            follow_redirects=True,
+        )
+
+        with app.app_context():
+            assert db.session.get(StockOrder, sto.id).status == "Picking"
+
+        # Second pass: resubmit line1 (already fully picked -> clamps to 0, no double issue)
+        # and pick line2 for the first time.
+        resp = client.post(
+            f"/stock-orders/{sto.id}/pick",
+            data={f"pick_qty_{line1.id}": "2.0", f"pick_qty_{line2.id}": "4.0", "picked_by": "Sam"},
+            follow_redirects=True,
+        )
+        assert resp.status_code == 200
+
+        with app.app_context():
+            updated_item1 = Item.query.filter_by(code=line1.item_code).first()
+            updated_item2 = Item.query.filter_by(code=line2.item_code).first()
+            assert updated_item1.qty_on_hand == 8.0  # unchanged from first pass
+            assert updated_item2.qty_on_hand == 16.0  # 20 - 4
+
+            updated_line1 = db.session.get(StockOrderLine, line1.id)
+            updated_line2 = db.session.get(StockOrderLine, line2.id)
+            assert updated_line1.qty_issued == 2.0
+            assert updated_line2.qty_issued == 4.0
+
+            updated_sto = db.session.get(StockOrder, sto.id)
+            assert updated_sto.status == "Picking"
+
+    def test_pick_clamps_overlarge_qty_to_outstanding(self, client, app, db, session, setup_data):
+        """Submitting a pick qty larger than what's outstanding clamps to the remaining amount."""
+        sto, line1 = setup_data["sto"], setup_data["line1"]
+        item = Item(code=line1.item_code, description="Fan Unit 600mm", qty_on_hand=10.0, active=True)
+        session.add(item)
+        session.commit()
+
+        resp = client.post(
+            f"/stock-orders/{sto.id}/pick",
+            data={f"pick_qty_{line1.id}": "999", "picked_by": "Sam"},
+            follow_redirects=True,
+        )
+        assert resp.status_code == 200
+
+        with app.app_context():
+            updated_item = Item.query.filter_by(code=line1.item_code).first()
+            assert updated_item.qty_on_hand == 8.0  # only the outstanding 2.0 was issued
+
+            updated_line1 = db.session.get(StockOrderLine, line1.id)
+            assert updated_line1.qty_issued == 2.0
+
+    def test_pick_unmatched_item_code_skips_line_others_still_process(self, client, app, db, session, setup_data):
+        """A line with no catalogue match is skipped with a warning; other lines in the
+        same submission still process."""
+        sto, line1, line2 = setup_data["sto"], setup_data["line1"], setup_data["line2"]
+        # Only line1's item code has a catalogue match — line2's does not.
+        item = Item(code=line1.item_code, description="Fan Unit 600mm", qty_on_hand=10.0, active=True)
+        session.add(item)
+        session.commit()
+
+        resp = client.post(
+            f"/stock-orders/{sto.id}/pick",
+            data={f"pick_qty_{line1.id}": "2.0", f"pick_qty_{line2.id}": "4.0", "picked_by": "Sam"},
+            follow_redirects=True,
+        )
+        assert resp.status_code == 200
+        assert b"No catalogue match" in resp.data
+
+        with app.app_context():
+            updated_item = Item.query.filter_by(code=line1.item_code).first()
+            assert updated_item.qty_on_hand == 8.0
+
+            updated_line1 = db.session.get(StockOrderLine, line1.id)
+            updated_line2 = db.session.get(StockOrderLine, line2.id)
+            assert updated_line1.qty_issued == 2.0
+            assert (updated_line2.qty_issued or 0.0) == 0.0
+
+            updated_sto = db.session.get(StockOrder, sto.id)
+            assert updated_sto.status == "Picking"
 
     # ------------------------------------------------------------------
     # Cancel
@@ -170,8 +302,8 @@ class TestStockOrders:
 
     def test_complete_deducts_stock_for_matching_items(self, client, app, db, session, setup_data):
         """POST /complete issues stock per line when the item_code matches the catalogue."""
-        sto = setup_data["sto"]
-        item = Item(code="FAN-001", description="Fan Unit 600mm", qty_on_hand=10.0, active=True)
+        sto, line1 = setup_data["sto"], setup_data["line1"]
+        item = Item(code=line1.item_code, description="Fan Unit 600mm", qty_on_hand=10.0, active=True)
         session.add(item)
         session.commit()
 
@@ -179,11 +311,11 @@ class TestStockOrders:
         assert resp.status_code == 200
 
         with app.app_context():
-            updated_item = Item.query.filter_by(code="FAN-001").first()
+            updated_item = Item.query.filter_by(code=line1.item_code).first()
             assert updated_item.qty_on_hand == 8.0  # 10 - qty(2.0) from line1
 
-            line1 = StockOrderLine.query.filter_by(stock_order_id=sto.id, item_code="FAN-001").first()
-            assert line1.qty_issued == 2.0
+            updated_line1 = db.session.get(StockOrderLine, line1.id)
+            assert updated_line1.qty_issued == 2.0
 
             movement = StockMovement.query.filter_by(item_id=updated_item.id, movement_type='ISSUE').first()
             assert movement is not None
@@ -192,7 +324,7 @@ class TestStockOrders:
     def test_complete_flags_unmatched_item_codes_without_blocking(self, client, app, setup_data):
         """POST /complete flashes a warning for lines with no catalogue match, but still completes."""
         sto = setup_data["sto"]
-        # No Item rows exist for FAN-001/BRG-007 in this test — both lines are unmatched.
+        # No Item rows exist for line1/line2's item codes in this test — both lines are unmatched.
         resp = client.post(f"/stock-orders/{sto.id}/complete", follow_redirects=True)
         assert resp.status_code == 200
         assert b"No catalogue match" in resp.data

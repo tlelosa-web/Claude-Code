@@ -655,3 +655,72 @@
   No further roadmap item currently queued.
 - Blockers: None.
 - Commits: `782514a`, `ca30d89`.
+
+## 2026-07-14 — Ops: Repo Health Check + Spec Status Cleanup, Batch 21, Batch 22
+
+- Domain: Software/AI. Opened via `/continue`; resumed cleanly (clean tree, 149 tests green,
+  nothing queued from Batch 20).
+- Tebello asked for a general repo health check, prompted by noticing
+  `docs/specs/dashboard-open-filter.md` stuck on "Pending approval" despite being shipped weeks
+  earlier. Checked port 5000 for a stale dev-server (none found, unlike Batches 12/20). Found a
+  real issue instead: `.git/refs/heads/` had two leftover files (`master.lock.bak.1`,
+  `master.lock.bak.30564`) from the OneDrive lock-corruption incident documented in Batch 14 —
+  breaking `git branch -a`/`git log --all` with `fatal: bad object`. Verified `master.lock.bak.1`
+  pointed to an already-merged ancestor (`520f955`, no data loss) before deleting both; `git fsck`
+  clean afterward. Verified app factory imports cleanly, offline-first constraint intact.
+- The "Pending approval" spec wasn't an isolated case — 5 specs had stale pre-build status lines
+  despite shipping. Updated all 5 to `Shipped` with batch/commit refs. Commit `3aae9fb`.
+- Tebello then asked about `templates/sales_orders/build_bom.html` red/amber coloring (confirmed
+  intentional shortfall-display styling from Batch 18/20, not a bug — no code change) and reported
+  two issues: no search on SO/WO/STO lists, and an uploaded-then-closed SO (SO4731) not showing up.
+  Looked up SO4731 directly via ORM query — confirmed Closed status, hidden by the SO list's
+  default `view=open` (Batch 16 decision), not a search gap.
+- **Batch 21**: Tebello reported the "All" toggle silently reverting to Open-only. Root cause: the
+  "All" link in all 4 list templates (SO/WO/STO/PO) never passed an explicit `view=all` param —
+  it linked to the bare URL, which fell through to the route's `'open'` default once Batch 16
+  flipped that default. The button had been non-functional since Batch 16. Fix request: rename
+  "Open only"→"Open", add a "Closed" button (negates the existing ACTIVE tuple, no new status
+  list) on SO/WO/STO; PO gets the link-bug fix only, out of requested scope. Spec written first
+  (7 files), dispatched a single `executor` — commit `5c6e8ae`. Verified line-by-line, re-ran the
+  full suite independently (152 passed, was 149), live-checked against the real
+  `instance/sops.db` via the already-running dev server (Flask's reloader auto-picked up the
+  change) — confirmed SO4731 now correctly appears under Closed/All, hidden under Open. Logged +
+  spec committed `04f1b12`.
+- **Batch 22 — Bug Sweep**: Tebello asked to "check for other bugs." Dispatched a `reviewer` agent
+  (permanent Opus per standing policy) for a broad correctness sweep of routes/services/models.py.
+  5 findings, each independently re-verified by reading the live code before accepting — one
+  needed correcting: the reviewer (and my own first pass) called Fix 1 a 500-crash, but an
+  empirical test (`python -c` against `jinja2.Environment`) showed iterating Jinja's default
+  `Undefined` in a `{% for %}` does NOT raise — the real symptom is a silently empty dropdown, not
+  a hard crash. Corrected severity before presenting to Tebello. All 5 approved for immediate fix.
+  Spec written first (`docs/specs/bug-sweep-2026-07-14.md`), dispatched a single `executor` for 4
+  atomic commits:
+  - `22f6daa` — `reupload_order()` POST branch was missing `payment_status_options` (sibling
+    `upload_order()` always passes it) — Payment Status dropdown rendered empty on SO re-upload.
+  - `1ed8d6e` — `create_from_shortfall()` (PO auto-generator) used raw `qty_on_hand` while the
+    Stock Report button that launches it flags on demand-netted `available_qty` — could add
+    unnecessary PO lines or skip genuinely short items. Now bulk-fetches once and nets, matching
+    `reports.py:55` exactly (no N+1).
+  - `cba8171` — `confirm_pick()` was missing the `Cancelled` guard `mark_complete()` already had
+    — not reachable via current UI, but a direct POST could un-cancel a WO and re-issue stock.
+  - `1bd56c4` — `or 0.0`/`or 0` guards on `qty_on_hand * avg_cost` and cost-field formatting
+    (`reports.py`, `items.py` catalogue AJAX) that could 500 on a legacy NULL row (possible since
+    Batch 19 stopped CSV import from ever touching `qty_on_hand`), plus defensive `qty_required`
+    guards (`doc_generator.py`, `works_orders.py`). Executor found 2 additional unguarded
+    `round(item.avg_cost, 2)` sites the spec's suggested diff had missed and fixed those too.
+  - Orchestrator-side verification: read all 4 diffs in full, independently re-ran the suite
+    (159 passed, was 152). Logged + spec committed `18948d4`.
+- Tebello asked to "allow all" permissions in `.claude/settings.json`. Flagged this was a
+  git-committed, team-wide file — applying `bypassPermissions` there would drop prompts for every
+  teammate, not just Tebello. Confirmed via AskUserQuestion; Tebello initially chose the project
+  file, then asked to move it to `.claude/settings.local.json` instead (personal, already covered
+  by a global gitignore entry at `~/.config/git/ignore`, confirmed via `git check-ignore -v`
+  before relying on it). Reverted `settings.json` to its original committed state (verified via
+  `git diff` — no residual diff) and added `defaultMode: "bypassPermissions"` to
+  `settings.local.json` only. Not committed (local file, correctly untracked).
+- Full suite at end of session: 159 tests green (was 149 at session start).
+- Next task: none queued — awaiting Tebello's review/commit confirmation for the Batch 22 spec.
+  No further roadmap item currently identified.
+- Blockers: None.
+- Commits this session: `3aae9fb`, `5c6e8ae`, `04f1b12`, `22f6daa`, `1ed8d6e`, `cba8171`,
+  `1bd56c4`, `18948d4`.

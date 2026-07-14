@@ -328,3 +328,11 @@ All items below must be green before delivery:
 - [x] Full suite: 179 tests green (was 178).
 - Blockers: None.
 - Committed: `2fe75f2`.
+
+## Ops — Payment Status Data Migration Run (2026-07-14)
+- [x] Ran both payment-status migration scripts against the real `instance/sops.db` per Tebello's go-ahead (the two scripts named in Batch 24's "Next task" above). Backed up the DB first: `instance/sops.db.pre-payment-status-migration-backup-20260714_121209` (and a second identical-content safety copy `...-20260714_124613` from re-confirming state this session).
+- [x] `migrate_add_payment_status_amount_paid.py`: `amount_paid` column already present (this had evidently already been run earlier in this session before a context summarization — idempotent, no-op confirmed).
+- [x] `migrate_payment_status_values.py`: all 23 Sales Orders already on a new-list `PAYMENT_STATUS_OPTIONS` value (also already run) — 0 rows changed on this re-run, 0 guessed mappings printed (nothing left to guess once already migrated).
+- [x] Since the original run's printed GUESS list wasn't captured anywhere durable (terminal output, not logged) before context was summarized, reconstructed the review list by querying which SOs currently sit on a value the mapping table could have guessed at (old `Pending`→`Account - Pending`, `Paid`→`Cash Sale - Paid`, `Unpaid`→`Cash Sale - Unpaid`): **22 of 23 SOs** — only SO4725 (`Account - Up to Date`) came from a direct, non-guessed mapping (old `On Hold`/`Account - Up to Date`/`Partially Paid` values). Full list: SO4517, SO4556, SO4624, SO4661, SO4685, SO4698, SO4699, SO4702, SO4710, SO4714, SO4717, SO4718, SO4719, SO4722, SO4724, SO4726, SO4727, SO4728, SO4729, SO4730, SO4731, SO4732.
+- Next task: **Tebello to manually review and correct, per SO on the SO detail page, any of the 22 listed above whose guessed Payment Status is wrong** (this is real production data — the migration script itself can't know which `Pending`/`Paid`/`Unpaid` orders were actually cash sales vs. accounts). Not yet reviewed as of this entry.
+- Blockers: None (review is not code-blocking, but is a live-data-correctness item for Tebello).

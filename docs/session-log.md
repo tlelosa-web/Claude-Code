@@ -769,3 +769,37 @@
 - Blockers: None — two open decisions flagged above, neither blocking.
 - Commits this pair of batches: `6c70850`, `c7491d8`, `4ccfb13`, `1350b31`, `62c4ab7`, `9b6b079`,
   `8ca3603`, `10bad4b`, `24c583b`, `0e1b0c7`, `76a5021`, `b5a0d03`, `80bd14d`, `515f840`.
+
+## 2026-07-14 — Fix: STO unmatched-item-code Complete-gate regression
+
+- Domain: Software/AI. Session opened with `/continue`; resolved the one open decision
+  flagged at the end of Batch 23/24 (`docs/todo.md`) — this commit was already present on
+  `master` (`2fe75f2`) when the session resumed but hadn't been written up in `docs/todo.md`
+  or here yet, so this entry backfills it.
+- Root cause: the Batch 23 picking-step full-pick gate (`complete_order()`) checked raw
+  `qty_issued < qty` for every line with no exception for lines whose `item_code` never
+  matches a catalogue `Item` — but `pick_lines()` (`/pick`) has always skipped unmatched
+  lines with a warning rather than issuing against them, so such a line's `qty_issued` can
+  never reach `qty`. Net effect: any STO with even one bad/unrecognized item code became
+  permanently stuck at `Picking`, unable to reach `Complete` or auto-close its parent SO —
+  a regression from the pre-picking-step behavior, which tolerated unmatched lines.
+- Fix: `routes/stock_orders.py` gained `_line_needs_pick(line)` (true only when a line has
+  outstanding qty *and* its `item_code` resolves to a real `Item`) and
+  `can_complete_stock_order(stock_order)` built on it. `complete_order()`'s gate now calls
+  `can_complete_stock_order()` instead of its own inline check; `view_order()` computes the
+  same value and passes it to the template as `can_complete`, replacing
+  `templates/stock_orders/detail.html`'s own namespace-based `all_picked` loop (which had no
+  such tolerance) — this closes off the class of bug where the server-side gate and the
+  detail page's button state could independently drift apart.
+- Tests: reworked `test_complete_blocked_when_a_line_item_code_has_no_catalogue_match` into
+  `test_complete_tolerates_a_line_item_code_with_no_catalogue_match` (now asserts Complete
+  succeeds, not blocked); added
+  `test_complete_succeeds_once_matched_line_fully_picked_despite_unmatched_line` (a matched
+  line fully picked + an unmatched line left untouched must still allow Complete); the two
+  still-genuinely-blocked tests (`test_complete_blocked_while_lines_still_outstanding`,
+  `test_complete_blocked_on_picking_order_with_lines_outstanding`) were updated to seed a
+  catalogue match for every line involved, so they keep testing real outstanding-pick
+  blocking rather than accidentally relying on the old unmatched-line behavior.
+- Full suite: 179 tests green (was 178).
+- Blockers: None.
+- Commit: `2fe75f2`.

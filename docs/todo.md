@@ -319,3 +319,12 @@ All items below must be green before delivery:
 - Next task: Tebello to run `python scripts/migrate_add_payment_status_amount_paid.py` then `python scripts/migrate_payment_status_values.py` against the real `instance/sops.db` when ready, and review the printed list of "GUESS" SO mappings (old `Pending`/`Paid`/`Unpaid` → new value) for correctness.
 - Blockers: None. Two specs (`stock-order-picking-step.md`, `payment-status-cash-account-amount-paid.md`) to be committed separately per convention.
 - Commits: `24c583b`, `0e1b0c7`, `76a5021`, `b5a0d03`, `80bd14d`, `515f840`.
+
+## Fix — STO unmatched-item-code Complete-gate regression (2026-07-14)
+- [x] Resolved the open decision flagged at the end of Batch 23: an `StockOrderLine` whose `item_code` never resolves to a catalogue `Item` could never reach `qty_issued >= qty` via `/pick` (skipped there with a warning), which meant the Batch 23 picking-step full-pick gate permanently blocked `/complete` for that order — a regression from the pre-picking-step behavior, which tolerated unmatched lines.
+- [x] `routes/stock_orders.py`: added shared `can_complete_stock_order()`/`_line_needs_pick()` helpers — a line only "needs pick" if it has outstanding qty AND its `item_code` resolves to a real catalogue `Item`. Used by both `complete_order()` (the gate) and `view_order()` (passed to the template as `can_complete`), so the server-side gate and the detail page's Mark Complete button state can never drift out of sync.
+- [x] `templates/stock_orders/detail.html`: removed the template's own namespace-based `all_picked` loop (had no unmatched-line tolerance) in favor of the server-computed `can_complete`.
+- [x] `tests/test_stock_orders.py`: renamed/reworked `test_complete_blocked_when_a_line_item_code_has_no_catalogue_match` → `test_complete_tolerates_a_line_item_code_with_no_catalogue_match` (asserts Complete now succeeds); added `test_complete_succeeds_once_matched_line_fully_picked_despite_unmatched_line` regression test; updated the two still-blocked tests to seed catalogue matches for both lines so they continue to test genuine outstanding-pick blocking, not the unmatched-line case.
+- [x] Full suite: 179 tests green (was 178).
+- Blockers: None.
+- Committed: `2fe75f2`.

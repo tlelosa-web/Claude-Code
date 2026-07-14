@@ -563,6 +563,14 @@ def update_payment_status(order_id):
         flash(f"Invalid payment status: {new_status}", "error")
         return redirect(url_for('sales_orders.view_order', order_id=order_id))
 
+    if new_status == 'Cash Sale - Partial':
+        amount_raw = request.form.get('amount_paid', '').strip()
+        try:
+            so.amount_paid = float(amount_raw) if amount_raw else (so.amount_paid or 0.0)
+        except ValueError:
+            flash("Amount Paid must be a number.", "error")
+            return redirect(url_for('sales_orders.view_order', order_id=order_id))
+
     so.payment_status = new_status
     db.session.commit()
 

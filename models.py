@@ -128,7 +128,7 @@ class StockOrder(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     stock_order_number = db.Column(db.String(100), unique=True, nullable=False)
     so_id = db.Column(db.Integer, db.ForeignKey('sales_order.id'), nullable=False)
-    status = db.Column(db.String(50), default='Open')  # Open / Complete / Cancelled
+    status = db.Column(db.String(50), default='Open')  # Open / Picking / Complete / Cancelled
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     lines = db.relationship('StockOrderLine', backref='stock_order', lazy=True,

@@ -259,6 +259,62 @@ class TestStockOrders:
             updated = db.session.get(StockOrder, sto.id)
             assert updated.status == "Complete"  # unchanged
 
+    def test_cancel_picking_order_reverses_partial_picks(self, client, app, db, session, setup_data):
+        """POST /cancel on a Picking order with partial stock issued reverses exactly the
+        issued qty per line (REVERSAL movements), resets qty_issued to 0, status -> Cancelled."""
+        sto, line1, line2 = setup_data["sto"], setup_data["line1"], setup_data["line2"]
+        item1 = Item(code=line1.item_code, description="Fan Unit 600mm", qty_on_hand=10.0, active=True)
+        session.add(item1)
+        session.commit()
+
+        # Pick line1 only (qty 2.0) — line2 stays untouched.
+        client.post(
+            f"/stock-orders/{sto.id}/pick",
+            data={f"pick_qty_{line1.id}": "2.0", "picked_by": "Sam"},
+            follow_redirects=True,
+        )
+        with app.app_context():
+            assert db.session.get(Item, item1.id).qty_on_hand == 8.0
+            assert db.session.get(StockOrder, sto.id).status == "Picking"
+
+        resp = client.post(
+            f"/stock-orders/{sto.id}/cancel",
+            data={"cancelled_by": "Sam"},
+            follow_redirects=True,
+        )
+        assert resp.status_code == 200
+
+        with app.app_context():
+            updated_item1 = db.session.get(Item, item1.id)
+            assert updated_item1.qty_on_hand == 10.0  # fully reversed
+
+            updated_line1 = db.session.get(StockOrderLine, line1.id)
+            updated_line2 = db.session.get(StockOrderLine, line2.id)
+            assert updated_line1.qty_issued == 0.0
+            assert updated_line2.qty_issued == 0.0
+
+            updated_sto = db.session.get(StockOrder, sto.id)
+            assert updated_sto.status == "Cancelled"
+
+            reversal = StockMovement.query.filter_by(item_id=updated_item1.id, movement_type='REVERSAL').first()
+            assert reversal is not None
+            assert reversal.qty_change == 2.0
+            assert reversal.reference == sto.stock_order_number
+
+    def test_cancel_open_order_nothing_picked_makes_no_reversal_calls(self, client, app, db, session, setup_data):
+        """POST /cancel on a plain Open order (nothing picked yet) is unchanged — no
+        reversal movements are created since there is nothing to reverse."""
+        sto = setup_data["sto"]
+        resp = client.post(f"/stock-orders/{sto.id}/cancel", follow_redirects=True)
+        assert resp.status_code == 200
+
+        with app.app_context():
+            updated = db.session.get(StockOrder, sto.id)
+            assert updated.status == "Cancelled"
+            assert StockMovement.query.filter_by(
+                reference=sto.stock_order_number, movement_type='REVERSAL'
+            ).count() == 0
+
     # ------------------------------------------------------------------
     # Complete
     # ------------------------------------------------------------------

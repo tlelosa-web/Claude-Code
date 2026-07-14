@@ -107,7 +107,32 @@ def cancel_order(order_id):
     if stock_order.status == 'Complete':
         flash("Cannot cancel a completed Stock Order.", "error")
         return redirect(url_for('stock_orders.view_order', order_id=order_id))
-    
+
+    cancelled_by = request.form.get('cancelled_by', 'System').strip() or 'System'
+    unmatched = []
+    for line in stock_order.lines:
+        if not line.qty_issued:
+            continue
+        item = Item.query.filter_by(code=line.item_code).first()
+        if not item:
+            unmatched.append(line.item_code or '(blank)')
+            continue
+        reverse_issue(
+            item_id=item.id,
+            qty=line.qty_issued,
+            reference=stock_order.stock_order_number,
+            notes=f"Reversed on cancel of {stock_order.stock_order_number}",
+            created_by=cancelled_by
+        )
+        line.qty_issued = 0.0
+
+    if unmatched:
+        flash(
+            f"No catalogue match for item code(s) {', '.join(unmatched)} — "
+            "stock was not reversed for those lines.",
+            "warning"
+        )
+
     stock_order.status = 'Cancelled'
     db.session.commit()
     

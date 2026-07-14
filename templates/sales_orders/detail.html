@@ -78,6 +78,9 @@
                     </form>
                 </td></tr>
                 <tr><td class="detail-label">Total</td><td class="detail-value">R {{ '%.2f'|format(so.total_incl) }}</td></tr>
+                {% if so.payment_status == 'Cash Sale - Partial' %}
+                <tr><td class="detail-label">Balance Due</td><td class="detail-value">R {{ '%.2f'|format(so.balance_due) }}</td></tr>
+                {% endif %}
                 <tr><td class="detail-label">Status</td><td class="detail-value"><span class="badge badge-{{ so.status.lower() }}">{{ so.status }}</span></td></tr>
                 <tr><td class="detail-label">Payment Status</td><td class="detail-value">
                     <form method="POST" action="{{ url_for('sales_orders.update_payment_status', order_id=so.id) }}" style="display: flex; gap: 8px; align-items: center;">
@@ -86,6 +89,11 @@
                             <option value="{{ option }}" {{ 'selected' if so.payment_status == option else '' }}>{{ option }}</option>
                             {% endfor %}
                         </select>
+                        {% if so.payment_status == 'Cash Sale - Partial' %}
+                        <input type="number" name="amount_paid" value="{{ so.amount_paid or 0 }}" step="0.01" min="0"
+                               class="form-input" style="width: 100px; padding: 4px 8px; font-size: 0.85rem;" placeholder="Amount paid">
+                        <button type="submit" class="btn btn-secondary" style="padding: 4px 10px; font-size: 0.75rem;">Update</button>
+                        {% endif %}
                     </form>
                 </td></tr>
                 <tr><td class="detail-label">Created</td><td class="detail-value">{{ so.created_at.strftime('%Y-%m-%d %H:%M') if so.created_at else '-' }}</td></tr>

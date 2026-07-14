@@ -3,12 +3,6 @@
 {% block page_title %}Stock Order: {{ stock_order.stock_order_number }}{% endblock %}
 
 {% block content %}
-{% set ns = namespace(all_picked=true) %}
-{% for line in stock_order.lines %}
-    {% if (line.qty_issued or 0) < (line.qty or 0) %}
-        {% set ns.all_picked = false %}
-    {% endif %}
-{% endfor %}
 <div class="card animate-fade-in" style="margin-bottom: 24px;">
     <div class="card-header">
         <h2 class="card-title">Stock Order Details</h2>
@@ -24,7 +18,7 @@
                     {% endif %}
                     {% if stock_order.status in ['Open', 'Picking'] %}
                     <li>
-                        {% if ns.all_picked %}
+                        {% if can_complete %}
                         <form method="POST" action="{{ url_for('stock_orders.complete_order', order_id=stock_order.id) }}" style="display: block;" onsubmit="return confirm('Mark this Stock Order as Complete?')">
                             <button type="submit">Mark Complete</button>
                         </form>

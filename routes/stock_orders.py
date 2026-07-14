@@ -7,6 +7,22 @@ from services.stock_service import issue, reverse_issue
 
 stock_orders_bp = Blueprint('stock_orders', __name__)
 
+
+def _line_needs_pick(line):
+    """True if this line still has outstanding qty AND that qty is actually
+    pickable (its item_code resolves to a catalogue Item). A line whose
+    item_code never matches the catalogue can never be picked via /pick, so
+    it must not permanently block Complete — same tolerance complete_order()
+    has always had for unmatched item codes."""
+    outstanding = (line.qty or 0.0) - (line.qty_issued or 0.0)
+    if outstanding <= 0:
+        return False
+    return Item.query.filter_by(code=line.item_code).first() is not None
+
+
+def can_complete_stock_order(stock_order):
+    return not any(_line_needs_pick(line) for line in stock_order.lines)
+
 @stock_orders_bp.route('/stock-orders')
 def list_orders():
     """List all Stock Orders."""
@@ -24,7 +40,8 @@ def list_orders():
 def view_order(order_id):
     """View Stock Order details."""
     stock_order = StockOrder.query.get_or_404(order_id)
-    return render_template('stock_orders/detail.html', stock_order=stock_order)
+    return render_template('stock_orders/detail.html', stock_order=stock_order,
+                           can_complete=can_complete_stock_order(stock_order))
 
 @stock_orders_bp.route('/stock-orders/<int:order_id>/print')
 def print_order(order_id):
@@ -152,7 +169,7 @@ def complete_order(order_id):
         flash(f"Stock Order {stock_order.stock_order_number} is already complete.", "warning")
         return redirect(url_for('stock_orders.view_order', order_id=order_id))
 
-    if any((line.qty or 0.0) - (line.qty_issued or 0.0) > 0 for line in stock_order.lines):
+    if not can_complete_stock_order(stock_order):
         flash("All lines must be picked before this Stock Order can be completed.", "error")
         return redirect(url_for('stock_orders.view_order', order_id=order_id))
 

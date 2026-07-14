@@ -341,9 +341,16 @@ class TestStockOrders:
             assert updated.status == "Complete"
 
     def test_complete_blocked_while_lines_still_outstanding(self, client, app, db, session, setup_data):
-        """POST /complete on an order with unpicked lines is blocked by the full-pick gate —
-        flash error, no status change, no stock movement."""
-        sto = setup_data["sto"]
+        """POST /complete on an order with unpicked, catalogue-matched lines is blocked by
+        the full-pick gate — flash error, no status change, no stock movement."""
+        sto, line1, line2 = setup_data["sto"], setup_data["line1"], setup_data["line2"]
+        # Both lines have a catalogue match, so both are genuinely pickable — neither
+        # is picked, so the gate must block.
+        item1 = Item(code=line1.item_code, description="Fan Unit 600mm", qty_on_hand=10.0, active=True)
+        item2 = Item(code=line2.item_code, description="Bearing Set", qty_on_hand=20.0, active=True)
+        session.add_all([item1, item2])
+        session.commit()
+
         resp = client.post(f"/stock-orders/{sto.id}/complete", follow_redirects=True)
         assert resp.status_code == 200
         assert b"All lines must be picked" in resp.data
@@ -354,11 +361,15 @@ class TestStockOrders:
             assert StockMovement.query.filter_by(reference=sto.stock_order_number).count() == 0
 
     def test_complete_blocked_on_picking_order_with_lines_outstanding(self, client, app, db, session, setup_data):
-        """POST /complete on a Picking order with one line still outstanding is blocked —
-        flash error, no status change, no stock movement for the outstanding line."""
+        """POST /complete on a Picking order with one catalogue-matched line still
+        outstanding is blocked — flash error, no status change, no stock movement for
+        the outstanding line."""
         sto, line1, line2 = setup_data["sto"], setup_data["line1"], setup_data["line2"]
+        # Both lines have a catalogue match — line2 is genuinely pickable but left
+        # outstanding, so it must still block Complete.
         item1 = Item(code=line1.item_code, description="Fan Unit 600mm", qty_on_hand=10.0, active=True)
-        session.add(item1)
+        item2 = Item(code=line2.item_code, description="Bearing Set", qty_on_hand=20.0, active=True)
+        session.add_all([item1, item2])
         session.commit()
 
         # Pick line1 only — line2 stays outstanding, order moves to Picking.
@@ -442,10 +453,13 @@ class TestStockOrders:
             assert movement is not None
             assert movement.reference == sto.stock_order_number
 
-    def test_complete_blocked_when_a_line_item_code_has_no_catalogue_match(self, client, app, db, session, setup_data):
+    def test_complete_tolerates_a_line_item_code_with_no_catalogue_match(self, client, app, db, session, setup_data):
         """A line whose item_code never resolves to a catalogue Item can never reach
-        qty_issued >= qty via /pick, so it permanently blocks /complete — the full-pick
-        gate takes precedence over the old "unmatched lines don't block" tolerance."""
+        qty_issued >= qty via /pick (it is always skipped there with a warning). The
+        full-pick gate on /complete must not treat that permanent gap as blocking —
+        this is the same tolerance complete_order() has always had for unmatched item
+        codes, restored after a regression where the picking-step gate made such a
+        line block Complete forever."""
         sto, line1, line2 = setup_data["sto"], setup_data["line1"], setup_data["line2"]
         # Only line1 has a catalogue match — line2's item_code never resolves.
         item1 = Item(code=line1.item_code, description="Fan Unit 600mm", qty_on_hand=10.0, active=True)
@@ -465,8 +479,44 @@ class TestStockOrders:
 
         resp = client.post(f"/stock-orders/{sto.id}/complete", follow_redirects=True)
         assert resp.status_code == 200
-        assert b"All lines must be picked" in resp.data
+        assert b"All lines must be picked" not in resp.data
 
         with app.app_context():
             updated = db.session.get(StockOrder, sto.id)
-            assert updated.status == "Picking"  # blocked, not Complete
+            assert updated.status == "Complete"  # unmatched line no longer blocks Complete
+
+    def test_complete_succeeds_once_matched_line_fully_picked_despite_unmatched_line(
+        self, client, app, db, session, setup_data
+    ):
+        """Regression test: an STO with two lines — one whose item_code matches a real
+        catalogue Item (picked fully via /pick) and one whose item_code matches no
+        Item (left untouched, /pick skips it with a warning, qty_issued stays 0) —
+        must be completable via POST /complete once the matched line is fully picked,
+        even though the unmatched line's qty_issued < qty forever."""
+        sto, line1, line2 = setup_data["sto"], setup_data["line1"], setup_data["line2"]
+        # line1's item_code matches a seeded catalogue Item; line2's never will.
+        item1 = Item(code=line1.item_code, description="Fan Unit 600mm", qty_on_hand=10.0, active=True)
+        session.add(item1)
+        session.commit()
+
+        pick_resp = client.post(
+            f"/stock-orders/{sto.id}/pick",
+            data={f"pick_qty_{line1.id}": "2.0", "picked_by": "Sam"},
+            follow_redirects=True,
+        )
+        assert pick_resp.status_code == 200
+
+        with app.app_context():
+            updated_line1 = db.session.get(StockOrderLine, line1.id)
+            updated_line2 = db.session.get(StockOrderLine, line2.id)
+            assert updated_line1.qty_issued == 2.0  # matched line fully picked
+            assert (updated_line2.qty_issued or 0.0) == 0.0  # unmatched line untouched
+            assert db.session.get(StockOrder, sto.id).status == "Picking"
+
+        resp = client.post(f"/stock-orders/{sto.id}/complete", follow_redirects=True)
+        assert resp.status_code == 200
+        assert b"All lines must be picked" not in resp.data
+
+        with app.app_context():
+            updated = db.session.get(StockOrder, sto.id)
+            assert updated.status == "Complete"

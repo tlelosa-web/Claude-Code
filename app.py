@@ -18,6 +18,9 @@ def ensure_schema_columns():
     if 'payment_status' not in columns:
         db.session.execute(text("ALTER TABLE sales_order ADD COLUMN payment_status VARCHAR(50) DEFAULT 'Pending'"))
         db.session.commit()
+    if 'amount_paid' not in columns:
+        db.session.execute(text('ALTER TABLE sales_order ADD COLUMN amount_paid FLOAT DEFAULT 0.0'))
+        db.session.commit()
 
     if 'works_order' in inspector.get_table_names():
         wo_columns = {column['name'] for column in inspector.get_columns('works_order')}

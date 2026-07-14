@@ -184,6 +184,19 @@ class TestStockOrderListFilter:
         assert complete_sto.stock_order_number.encode() in resp.data
         assert cancelled_sto.stock_order_number.encode() in resp.data
 
+    def test_open_view_includes_picking_closed_view_excludes_it(self, client, session):
+        """A Picking STO is still in-progress — it belongs in the 'Open' list view
+        alongside Open orders, not in 'Closed'."""
+        picking_sto = self._mk(session, "Picking")
+
+        resp = client.get("/stock-orders?view=open")
+        assert resp.status_code == 200
+        assert picking_sto.stock_order_number.encode() in resp.data
+
+        resp = client.get("/stock-orders?view=closed")
+        assert resp.status_code == 200
+        assert picking_sto.stock_order_number.encode() not in resp.data
+
 
 class TestPurchaseOrderListFilter:
     _c = 0

@@ -83,6 +83,7 @@
             <table style="width: 100%; border-collapse: collapse; text-align: left;">
                 <thead>
                     <tr style="border-bottom: 2px solid var(--border-color); color: var(--text-secondary); font-size: 0.85rem; text-transform: uppercase;">
+                        <th style="padding: 12px;">FM / Job Number</th>
                         <th style="padding: 12px;">SO Number</th>
                         <th style="padding: 12px;">Customer</th>
                         <th style="padding: 12px;">Delivery Date</th>
@@ -93,6 +94,9 @@
                 <tbody>
                     {% for so in open_sales_orders %}
                         <tr style="border-bottom: 1px solid var(--border-color); font-size: 0.95rem;">
+                            <td style="padding: 16px; color: var(--text-secondary);">
+                                {{ so.job_numbers or '-' }}
+                            </td>
                             <td style="padding: 16px; font-weight: 600; color: var(--brand-primary);">
                                 {{ so.so_number }}
                             </td>

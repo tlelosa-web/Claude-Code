@@ -4,7 +4,7 @@ from sqlalchemy import nullslast
 from models import db, WorksOrder, BOMLine, Item, SalesOrder, StockOrder
 from routes.sales_orders import can_close_sales_order
 from services.doc_generator import get_works_order_print_context
-from services.stock_service import issue, reverse_issue
+from services.stock_service import issue, reverse_issue, produce, reverse_production
 from services.order_filters import WO_ACTIVE
 
 works_orders_bp = Blueprint('works_orders', __name__)
@@ -57,6 +57,15 @@ def mark_complete(order_id):
             # Assembly header lines represent the finished product, not a stored
             # component, so they must never be issued from stores.
             if bom_line.line_type == 'ASSEMBLY_ITEM':
+                if bom_line.item.is_stocked_finished_good:
+                    produce(
+                        item_id=bom_line.item_id,
+                        qty=bom_line.qty_required,
+                        reference=wo.wo_number,
+                        notes=f"Produced by {wo.wo_number} ({wo.sales_order.job_reference if wo.sales_order else ''})",
+                        created_by=request.form.get('completed_by', 'System').strip() or 'System'
+                    )
+                    bom_line.qty_issued = bom_line.qty_required
                 continue
             qty_to_issue = (bom_line.qty_required or 0.0) - bom_line.qty_issued
             if qty_to_issue > 0:
@@ -117,6 +126,15 @@ def reopen_order(order_id):
         if wo.status == 'Complete':
             for bom_line in wo.bom_lines:
                 if bom_line.line_type == 'ASSEMBLY_ITEM':
+                    if bom_line.item.is_stocked_finished_good and bom_line.qty_issued > 0:
+                        reverse_production(
+                            item_id=bom_line.item_id,
+                            qty=bom_line.qty_issued,
+                            reference=wo.wo_number,
+                            notes=f"Production reversed on reopen of {wo.wo_number}",
+                            created_by=request.form.get('reopened_by', 'System').strip() or 'System'
+                        )
+                        bom_line.qty_issued = 0.0
                     continue
                 if bom_line.qty_issued > 0:
                     reverse_issue(

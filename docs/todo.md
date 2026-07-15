@@ -6,10 +6,7 @@
 
 ## In progress
 
-- [ ] **Test Sheet Fan Lines UI fix** — replace the per-fan boxed form panel
-      with a compact table (one row per fan), matching how
-      `pdf_generator.py` already renders the Test Record Sheet. Spec:
-      `docs/specs/2026-07-15-test-sheet-fan-lines-table.md`.
+- [ ] None currently.
 
 ## Next up
 
@@ -27,8 +24,12 @@
 
 ## Done
 
-- [x] **2026-07-15** — DCOE onboarding: created `CLAUDE.md`, `docs/`
-      scaffold (`todo.md`, `session-log.md`, `decisions/`, `bugs/`,
+- [x] **2026-07-15** — Test Sheet Fan Lines UI fix committed (`7c0f785`):
+      `App.jsx`/`App.css` per-fan panel replaced with a table matching
+      `pdf_generator.py`'s output. Spec:
+      `docs/specs/2026-07-15-test-sheet-fan-lines-table.md`.
+- [x] **2026-07-15** — DCOE onboarding committed (`5571d63`): `CLAUDE.md`,
+      `docs/` scaffold (`todo.md`, `session-log.md`, `decisions/`, `bugs/`,
       `research/`, `specs/`), recorded
       `docs/decisions/ADR-001-dcoe-onboarding.md`. Existing 5-folder
       GEMINI-era layout (`1_Documentation/` → `5_Archive_and_Debug/`) kept

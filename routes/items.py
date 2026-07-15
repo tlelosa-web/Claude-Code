@@ -106,6 +106,7 @@ def update_item(item_id):
     description = request.form.get('description', '').strip()
     category = request.form.get('category', '').strip()
     active = request.form.get('active') == 'on'
+    is_stocked_finished_good = request.form.get('is_stocked_finished_good') == 'on'
 
     if not code:
         flash("Item code cannot be blank.", "error")
@@ -129,6 +130,7 @@ def update_item(item_id):
     item.description = description
     item.category = category
     item.active = active
+    item.is_stocked_finished_good = is_stocked_finished_good
     item.last_cost = last_cost
     item.avg_cost = avg_cost
     item.excl_price = excl_price

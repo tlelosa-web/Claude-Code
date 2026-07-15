@@ -25,6 +25,7 @@ class TestUpdateItem:
             'description': 'Updated description',
             'category': 'New Category',
             'active': 'on',
+            'is_stocked_finished_good': 'on',
             'last_cost': '5.5',
             'avg_cost': '6.25',
             'excl_price': '10.0',
@@ -39,12 +40,35 @@ class TestUpdateItem:
         assert item.description == 'Updated description'
         assert item.category == 'New Category'
         assert item.active is True
+        assert item.is_stocked_finished_good is True
         assert item.last_cost == 5.5
         assert item.avg_cost == 6.25
         assert item.excl_price == 10.0
         assert item.incl_price == 11.5
         # Qty on Hand must never be touched by this route.
         assert item.qty_on_hand == 10.0
+
+    def test_update_item_is_stocked_finished_good_checkbox_unchecked(self, app, db, session, client):
+        item = Item(code=self._next_code(), description="Desc", active=True,
+                    is_stocked_finished_good=True)
+        session.add(item)
+        session.commit()
+
+        # Unchecked checkboxes are simply absent from the posted form data.
+        response = client.post(f'/items/{item.id}/edit', data={
+            'code': item.code,
+            'description': 'Desc',
+            'category': '',
+            'active': 'on',
+            'last_cost': '0',
+            'avg_cost': '0',
+            'excl_price': '0',
+            'incl_price': '0',
+        }, follow_redirects=True)
+
+        assert response.status_code == 200
+        db.session.refresh(item)
+        assert item.is_stocked_finished_good is False
 
     def test_update_item_inactive_checkbox_unchecked(self, app, db, session, client):
         item = Item(code=self._next_code(), description="Desc", active=True)

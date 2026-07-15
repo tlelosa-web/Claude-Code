@@ -103,6 +103,28 @@ class TestStockOrders:
         assert resp.status_code == 200
         assert b"Available (10.0)" in resp.data
 
+    def test_detail_item_code_links_to_matched_item(self, client, session, setup_data):
+        """A line whose item_code resolves to a catalogue Item renders its
+        code as a link to /items/<id> (see
+        docs/specs/item-links-and-so-search-2026-07-15.md)."""
+        sto, line1 = setup_data["sto"], setup_data["line1"]
+        item = Item(code=line1.item_code, description="Fan Unit 600mm", qty_on_hand=10.0, active=True)
+        session.add(item)
+        session.commit()
+
+        resp = client.get(f"/stock-orders/{sto.id}")
+        assert resp.status_code == 200
+        assert f'href="/items/{item.id}"'.encode() in resp.data
+
+    def test_detail_unmatched_item_code_not_linked(self, client, setup_data):
+        """A line with no catalogue match renders plain text, no link."""
+        sto = setup_data["sto"]
+        resp = client.get(f"/stock-orders/{sto.id}")
+        assert resp.status_code == 200
+        # No catalogue item exists for line1/line2 in this fixture, so no
+        # /items/<id> link should be present anywhere on the page.
+        assert b'href="/items/' not in resp.data
+
     def test_detail_comment_shows_shortfall_with_next_po_due(self, client, session, setup_data):
         """A line short on stock, with an open PO inbound that doesn't fully
         cover the gap, still references that PO's due date."""

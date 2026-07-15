@@ -7,6 +7,7 @@
     <div class="card-header">
         <h2 class="card-title">{{ 'Open Sales Orders' if view == 'open' else ('Closed Sales Orders' if view == 'closed' else 'All Sales Orders') }}</h2>
         <div style="display: flex; gap: 8px; align-items: center;">
+            <input type="text" id="so-search" class="form-input" placeholder="Search SO #, customer, job number..." style="width: 240px; padding: 6px 10px; font-size: 0.8rem;">
             <div style="display: flex; gap: 4px;">
                 <a href="{{ url_for('sales_orders.list_orders', view='all') }}" class="btn {{ 'btn-primary' if view == 'all' else 'btn-secondary' }}" style="padding: 6px 12px; font-size: 0.8rem;">All</a>
                 <a href="{{ url_for('sales_orders.list_orders', view='open') }}" class="btn {{ 'btn-primary' if view == 'open' else 'btn-secondary' }}" style="padding: 6px 12px; font-size: 0.8rem;">Open</a>
@@ -39,7 +40,7 @@
             </thead>
             <tbody>
                 {% for so in orders %}
-                <tr>
+                <tr data-search="{{ (so.so_number ~ ' ' ~ (so.job_numbers or '') ~ ' ' ~ (so.reference or '') ~ ' ' ~ (so.customer_name or '') ~ ' ' ~ (so.sales_rep or '')) | lower }}">
                     <td><a href="{{ url_for('sales_orders.view_order', order_id=so.id) }}" class="link-primary">{{ so.so_number }}</a></td>
                     <td>{{ so.job_numbers or '-' }}</td>
                     <td>{{ so.reference or '-' }}</td>
@@ -83,4 +84,19 @@
 {% block extra_scripts %}
 <script src="{{ url_for('static', filename='js/resizable_columns.js') }}"></script>
 <script>makeColumnsResizable('so-list-table');</script>
+<script>
+    (function() {
+        var searchInput = document.getElementById('so-search');
+        var table = document.getElementById('so-list-table');
+        if (!searchInput || !table) return;
+
+        searchInput.addEventListener('input', function() {
+            var query = this.value.toLowerCase().trim();
+            var rows = table.querySelectorAll('tbody tr[data-search]');
+            rows.forEach(function(row) {
+                row.style.display = row.dataset.search.indexOf(query) !== -1 ? '' : 'none';
+            });
+        });
+    })();
+</script>
 {% endblock %}

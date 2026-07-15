@@ -49,6 +49,7 @@ def get_works_order_print_context(wo_id):
 
         line_dict = {
             'id': line.id,
+            'item_id': item.id,
             'item_code': item.code,
             'description': item.description,
             'category': item.category,
@@ -76,6 +77,7 @@ def get_works_order_print_context(wo_id):
                 child_shortfall = max(0.0, (child.qty_required or 0.0) - child_available_qty)
                 components.append({
                     'id': child.id,
+                    'item_id': child_item.id,
                     'item_code': child_item.code,
                     'description': child_item.description,
                     'category': child_item.category,

@@ -102,9 +102,16 @@
             <tbody>
                 {% for line in stock_order.lines %}
                 {% set outstanding = (line.qty or 0) - (line.qty_issued or 0) %}
+                {% set extra = line_extras.get(line.id, {}) %}
                 <tr>
                     <td>{{ loop.index }}</td>
-                    <td>{{ line.item_code or '-' }}</td>
+                    <td>
+                        {% if extra.item_id %}
+                            <a href="{{ url_for('items.detail', item_id=extra.item_id) }}" class="link-primary">{{ line.item_code or '-' }}</a>
+                        {% else %}
+                            {{ line.item_code or '-' }}
+                        {% endif %}
+                    </td>
                     <td>{{ line.description or '' }}</td>
                     <td>{{ line.qty }}</td>
                     {% if stock_order.status in ['Open', 'Picking'] %}
@@ -116,7 +123,7 @@
                                {% if outstanding <= 0 %}disabled{% endif %}>
                     </td>
                     {% endif %}
-                    <td>{{ line_comments.get(line.id, '-') }}</td>
+                    <td>{{ extra.comment or '-' }}</td>
                 </tr>
                 {% endfor %}
             </tbody>

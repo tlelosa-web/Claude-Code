@@ -271,3 +271,36 @@ class TestWOPrintContextShortfall:
         assert line['qty_committed'] == 4.0
         assert line['available_qty'] == 6.0
         assert line['shortfall'] == 2.0  # 8 required - 6 available
+
+    def test_item_id_present_on_flat_and_nested_lines(self, app, db, session):
+        """Regression test: item_id must be present on both a top-level
+        flat_lines entry and a nested assembly_items[].components entry, so
+        templates/works_orders/detail.html can link the item code to
+        /items/<id> (see docs/specs/item-links-and-so-search-2026-07-15.md)."""
+        flat_item = self._make_item(session, qty_on_hand=5.0)
+        parent_item = self._make_item(session, qty_on_hand=1.0)
+        child_item = self._make_item(session, qty_on_hand=3.0)
+        so = self._make_so(session)
+        wo = self._make_wo(session, so)
+
+        session.add(BOMLine(
+            wo_id=wo.id, item_id=flat_item.id, qty_required=1.0, qty_issued=0.0,
+            line_type="COMPONENT",
+        ))
+        parent_line = BOMLine(
+            wo_id=wo.id, item_id=parent_item.id, qty_required=1.0, qty_issued=0.0,
+            line_type="ASSEMBLY_ITEM",
+        )
+        session.add(parent_line)
+        session.flush()
+        session.add(BOMLine(
+            wo_id=wo.id, item_id=child_item.id, qty_required=1.0, qty_issued=0.0,
+            line_type="COMPONENT", parent_line_id=parent_line.id,
+        ))
+        session.commit()
+
+        context = get_works_order_print_context(wo.id)
+
+        assert context['flat_lines'][0]['item_id'] == flat_item.id
+        assert context['assembly_items'][0]['item_id'] == parent_item.id
+        assert context['assembly_items'][0]['components'][0]['item_id'] == child_item.id

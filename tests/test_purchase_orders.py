@@ -220,6 +220,29 @@ class TestPurchaseOrderListDetailPrint:
         assert print_resp.status_code == 200
         assert "PURCHASE ORDER" in print_resp.get_data(as_text=True)
 
+    def test_matched_line_item_code_links_to_item(self, app, db, session, client):
+        """A matched PO line's item code links to /items/<id> (see
+        docs/specs/item-links-and-so-search-2026-07-15.md); an unmatched
+        line does not."""
+        item = Item(code="PO-LINK-TEST", description="Linked Item", qty_on_hand=0, active=True)
+        session.add(item)
+        session.flush()
+
+        po = PurchaseOrder(po_number="PO-VIEW-TEST-002", supplier_name="Link Test Supplier", status='Open')
+        session.add(po)
+        session.flush()
+        session.add(POLine(po_id=po.id, item_id=item.id, item_code_raw='PO-LINK-TEST',
+                            description='Linked line', qty_ordered=1.0, qty_received=0.0))
+        session.add(POLine(po_id=po.id, item_id=None, item_code_raw='UNMATCHED-CODE',
+                            description='Unmatched line', qty_ordered=1.0, qty_received=0.0))
+        session.commit()
+
+        resp = client.get(f'/purchase-orders/{po.id}')
+        assert resp.status_code == 200
+        body = resp.get_data(as_text=True)
+        assert f'href="/items/{item.id}"' in body
+        assert "Unmatched" in body
+
 
 class TestPurchaseOrderFullLifecycleFromRealPDF:
     """End-to-end: real PDF upload -> scrape the review form's hidden

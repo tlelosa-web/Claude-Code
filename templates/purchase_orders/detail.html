@@ -76,7 +76,7 @@
                         <td>{{ loop.index }}</td>
                         <td>
                             {% if line.item %}
-                                {{ line.item.code }}
+                                <a href="{{ url_for('items.detail', item_id=line.item.id) }}" class="link-primary">{{ line.item.code }}</a>
                             {% else %}
                                 <span class="badge badge-cancelled">Unmatched</span>
                                 <form method="POST" action="{{ url_for('purchase_orders.link_item', order_id=po.id) }}" style="display: inline-flex; gap: 4px; margin-top: 4px;">

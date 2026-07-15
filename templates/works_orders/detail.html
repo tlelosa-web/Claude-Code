@@ -119,7 +119,7 @@
                 {% for assembly in assembly_items %}
                 <tr style="background: rgba(232, 97, 10, 0.05);">
                     <td>{{ global_index[0] }}</td>
-                    <td colspan="2"><strong>{{ assembly.item_code }} - {{ assembly.description }}</strong></td>
+                    <td colspan="2"><strong><a href="{{ url_for('items.detail', item_id=assembly.item_id) }}" class="link-primary">{{ assembly.item_code }}</a> - {{ assembly.description }}</strong></td>
                     <td>{{ assembly.category or '-' }}</td>
                     <td>{{ assembly.qty_required }}</td>
                     {% if wo.order_type == 'ASSEMBLY' %}
@@ -142,7 +142,7 @@
                 {% for comp in assembly.components %}
                 <tr>
                     <td></td>
-                    <td style="padding-left: 20px; color: #666;">└─ {{ comp.item_code }}</td>
+                    <td style="padding-left: 20px; color: #666;">└─ <a href="{{ url_for('items.detail', item_id=comp.item_id) }}" class="link-primary">{{ comp.item_code }}</a></td>
                     <td style="color: #666;">{{ comp.description }}</td>
                     <td>{{ comp.category or '-' }}</td>
                     <td>{{ comp.qty_required }}</td>
@@ -170,7 +170,7 @@
                 {% for line in flat_lines %}
                 <tr class="{% if line.shortfall > 0 %}row-amber{% endif %}">
                     <td>{{ loop.index }}</td>
-                    <td><strong>{{ line.item_code }}</strong></td>
+                    <td><strong><a href="{{ url_for('items.detail', item_id=line.item_id) }}" class="link-primary">{{ line.item_code }}</a></strong></td>
                     <td>{{ line.description }}</td>
                     <td>{{ line.category or '-' }}</td>
                     <td>{{ line.qty_required }}</td>

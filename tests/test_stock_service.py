@@ -88,6 +88,46 @@ class TestStockService:
         assert movement.qty_after == 65.0
         assert movement.reference == "WO-TEST-005"
 
+    def test_produce_adds_qty(self, app, db, session):
+        """Test that produce() adds quantity on hand and logs a PRODUCTION movement."""
+        from services.stock_service import produce
+
+        item = Item(code="TEST006", description="Test Item 6", qty_on_hand=20.0, active=True)
+        session.add(item)
+        session.flush()
+
+        produce(item.id, 5, "WO-TEST-006", "Produced by WO-TEST-006", "Tester")
+        session.commit()
+
+        item = db.session.get(Item, item.id)
+        assert item.qty_on_hand == 25.0
+
+        movement = StockMovement.query.filter_by(item_id=item.id, movement_type='PRODUCTION').first()
+        assert movement is not None
+        assert movement.qty_change == 5.0
+        assert movement.qty_after == 25.0
+        assert movement.reference == "WO-TEST-006"
+
+    def test_reverse_production_removes_qty(self, app, db, session):
+        """Test that reverse_production() subtracts qty and logs a REVERSAL movement."""
+        from services.stock_service import reverse_production
+
+        item = Item(code="TEST007", description="Test Item 7", qty_on_hand=30.0, active=True)
+        session.add(item)
+        session.flush()
+
+        reverse_production(item.id, 5, "WO-TEST-007", "Production reversed on reopen", "Tester")
+        session.commit()
+
+        item = db.session.get(Item, item.id)
+        assert item.qty_on_hand == 25.0
+
+        movement = StockMovement.query.filter_by(item_id=item.id, movement_type='REVERSAL').first()
+        assert movement is not None
+        assert movement.qty_change == -5.0
+        assert movement.qty_after == 25.0
+        assert movement.reference == "WO-TEST-007"
+
     def test_qty_after_snapshot(self, app, db, session):
         """Test that qty_after correctly reflects state after movement."""
         from services.stock_service import issue, receipt

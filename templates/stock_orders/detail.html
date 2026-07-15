@@ -96,7 +96,7 @@
                     <th>Picked</th>
                     <th>Pick Qty</th>
                     {% endif %}
-                    <th>Notes</th>
+                    <th>Comments</th>
                 </tr>
             </thead>
             <tbody>
@@ -116,7 +116,7 @@
                                {% if outstanding <= 0 %}disabled{% endif %}>
                     </td>
                     {% endif %}
-                    <td>{{ line.notes or '-' }}</td>
+                    <td>{{ line_comments.get(line.id, '-') }}</td>
                 </tr>
                 {% endfor %}
             </tbody>

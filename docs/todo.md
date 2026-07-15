@@ -402,3 +402,14 @@ All items below must be green before delivery:
 - Next task: none queued — awaiting Tebello's review/commit confirmation.
 - Blockers: None.
 - Commits: `0336953`, `2f632a3`, `9f0833f`, `3123892`, `3823ef9`, `2b2b3e4`. Spec (`dashboard-bom-ui-fixes-2026-07-15.md`) to be committed separately per convention.
+
+## Batch 28 — Stock Order Detail: Notes → Comments (availability/on-order) (2026-07-15)
+- [x] Tebello requested (from a live STO0014 screenshot) that the Stock Order detail page's "Notes" column become a "Comments" column stating availability, or referencing the closest-due open PO when short. Small, precedented, 2-file change (no separate spec — `routes/stock_orders.py edit_order()`'s existing GET handler already does the exact same bulk-fetch pattern this reuses).
+- [x] `routes/stock_orders.py`: new `_line_comments(stock_order)` helper. Resolves each line's `item_code` to a catalogue `Item`, bulk-fetches `qty_on_order`/`qty_committed` (with `exclude_sto_id` so the order's own demand isn't counted against itself, matching every other single-order shortfall site) and `next_po_due` via `services/demand.py`, and reuses `item_to_bom_json()` (imported from `routes.sales_orders`, already used by `edit_order()`) for the `available_qty` arithmetic rather than re-deriving it inline — this calc is already duplicated at 5 other sites per `.claude/agent-memory/reviewer/pattern_shortfall_duplication.md`, which explicitly asks to reuse the canonical calc rather than add a 6th copy when touching this area. Wired into `view_order()`.
+- [x] `templates/stock_orders/detail.html`: `Notes` header → `Comments`; cell now reads `line_comments.get(line.id, '-')` instead of `line.notes`.
+- [x] Tests: 4 new cases in `tests/test_stock_orders.py` — unmatched item code, fully-available, short-with-a-PO-due-date (verified the PO's qty doesn't have to fully cover the gap to still be referenced), short-with-no-PO. Full suite: 200 → 204 passed.
+- [x] `ruff check` clean on both touched Python files (the pre-existing `E712`/`E711` findings in `edit_order()` are untouched lines, out of scope).
+- [x] Live-verified against the real `instance/sops.db` — navigated to the exact STO0014 from Tebello's screenshot: `Available (5.0)`, `Available (6.0)`, and 3 genuine `Short N.0 — not on order` lines (real live shortfalls, not test data). Caught and killed a second stale dev-server process bound to the same port mid-verification (Windows allowed two processes to hold `LISTENING` on :5000 simultaneously — same recurring class of issue as Batch 12/20/27, but this is the first time it manifested as two concurrent listeners rather than one leftover from a prior session) before trusting the render.
+- Next task: none queued — awaiting Tebello's review/commit confirmation.
+- Blockers: None.
+- Commits: not yet committed — pending Tebello's review of this entry.

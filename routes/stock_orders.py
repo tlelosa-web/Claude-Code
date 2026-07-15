@@ -36,12 +36,62 @@ def list_orders():
     orders = query.order_by(nullslast(SalesOrder.delivery_date.asc())).all()
     return render_template('stock_orders/list.html', orders=orders, view=view)
 
+def _line_comments(stock_order):
+    """Per-line Comments column: availability if the outstanding qty is
+    covered, otherwise a shortfall referencing the closest-due open PO for
+    that item. Reuses item_to_bom_json()/services/demand.py for the
+    available_qty arithmetic rather than re-deriving it inline — this calc
+    is duplicated at several sites already (see
+    .claude/agent-memory/reviewer/pattern_shortfall_duplication.md); adding
+    a 6th independent copy here was avoided on purpose."""
+    from routes.sales_orders import item_to_bom_json
+    from services.demand import get_qty_on_order_bulk, get_qty_committed_bulk, get_next_po_due_bulk
+
+    items_by_code = {}
+    for line in stock_order.lines:
+        if line.item_code not in items_by_code:
+            items_by_code[line.item_code] = Item.query.filter_by(code=line.item_code).first()
+
+    item_ids = [item.id for item in items_by_code.values() if item]
+    qty_on_order_map = get_qty_on_order_bulk(item_ids=item_ids)
+    qty_committed_map = get_qty_committed_bulk(item_ids=item_ids, exclude_sto_id=stock_order.id)
+    next_po_due_map = get_next_po_due_bulk(item_ids=item_ids)
+
+    comments = {}
+    for line in stock_order.lines:
+        item = items_by_code.get(line.item_code)
+        if not item:
+            comments[line.id] = 'Item not in catalogue'
+            continue
+
+        payload = item_to_bom_json(
+            item,
+            qty_on_order=qty_on_order_map.get(item.id, 0.0),
+            qty_committed=qty_committed_map.get(item.id, 0.0),
+        )
+        available_qty = payload['available_qty']
+        outstanding = (line.qty or 0.0) - (line.qty_issued or 0.0)
+
+        if available_qty >= outstanding:
+            comments[line.id] = f'Available ({available_qty:.1f})'
+        else:
+            short = outstanding - available_qty
+            due = next_po_due_map.get(item.id)
+            if due:
+                comments[line.id] = f'Short {short:.1f} — on order, due {due.strftime("%d/%m/%Y")}'
+            else:
+                comments[line.id] = f'Short {short:.1f} — not on order'
+
+    return comments
+
+
 @stock_orders_bp.route('/stock-orders/<int:order_id>')
 def view_order(order_id):
     """View Stock Order details."""
     stock_order = StockOrder.query.get_or_404(order_id)
     return render_template('stock_orders/detail.html', stock_order=stock_order,
-                           can_complete=can_complete_stock_order(stock_order))
+                           can_complete=can_complete_stock_order(stock_order),
+                           line_comments=_line_comments(stock_order))
 
 @stock_orders_bp.route('/stock-orders/<int:order_id>/print')
 def print_order(order_id):

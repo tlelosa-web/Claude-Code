@@ -84,6 +84,62 @@ class TestStockOrders:
         resp = client.get("/stock-orders/99999")
         assert resp.status_code == 404
 
+    def test_detail_comment_unmatched_item_code(self, client, setup_data):
+        """A line whose item_code has no catalogue match shows the
+        unmatched-item comment rather than an availability figure."""
+        sto = setup_data["sto"]
+        resp = client.get(f"/stock-orders/{sto.id}")
+        assert resp.status_code == 200
+        assert b"Item not in catalogue" in resp.data
+
+    def test_detail_comment_shows_available_when_covered(self, client, session, setup_data):
+        """A line fully covered by qty_on_hand shows an Available comment."""
+        sto, line1 = setup_data["sto"], setup_data["line1"]
+        item = Item(code=line1.item_code, description="Fan Unit 600mm", qty_on_hand=10.0, active=True)
+        session.add(item)
+        session.commit()
+
+        resp = client.get(f"/stock-orders/{sto.id}")
+        assert resp.status_code == 200
+        assert b"Available (10.0)" in resp.data
+
+    def test_detail_comment_shows_shortfall_with_next_po_due(self, client, session, setup_data):
+        """A line short on stock, with an open PO inbound that doesn't fully
+        cover the gap, still references that PO's due date."""
+        from datetime import date
+        from models import PurchaseOrder, POLine
+
+        sto, line2 = setup_data["sto"], setup_data["line2"]
+        item = Item(code=line2.item_code, description="Bearing Set", qty_on_hand=1.0, active=True)
+        session.add(item)
+        session.flush()
+
+        po = PurchaseOrder(po_number=f"PO-STOTEST-{sto.id}", status="Open", due_date=date(2026, 8, 1))
+        session.add(po)
+        session.flush()
+        # Only 1 unit inbound - not enough to fully cover the shortfall on
+        # its own, but available_qty (qty_on_hand + qty_on_order) must still
+        # net it in per services/demand.py's canonical formula.
+        session.add(POLine(po_id=po.id, item_id=item.id, qty_ordered=1.0, qty_received=0.0))
+        session.commit()
+
+        resp = client.get(f"/stock-orders/{sto.id}")
+        assert resp.status_code == 200
+        # line2.qty = 4.0, available = 1.0 (on hand) + 1.0 (on order) = 2.0 -> short 2.0
+        assert b"Short 2.0 \xe2\x80\x94 on order, due 01/08/2026" in resp.data
+
+    def test_detail_comment_shows_shortfall_not_on_order(self, client, session, setup_data):
+        """A line short on stock with no inbound PO says so explicitly."""
+        sto, line1 = setup_data["sto"], setup_data["line1"]
+        item = Item(code=line1.item_code, description="Fan Unit 600mm", qty_on_hand=0.0, active=True)
+        session.add(item)
+        session.commit()
+
+        resp = client.get(f"/stock-orders/{sto.id}")
+        assert resp.status_code == 200
+        # line1.qty = 2.0, on_hand 0.0 -> short 2.0, no PO
+        assert b"Short 2.0 \xe2\x80\x94 not on order" in resp.data
+
     # ------------------------------------------------------------------
     # Print
     # ------------------------------------------------------------------

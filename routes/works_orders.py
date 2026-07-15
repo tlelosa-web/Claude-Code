@@ -126,7 +126,7 @@ def reopen_order(order_id):
         if wo.status == 'Complete':
             for bom_line in wo.bom_lines:
                 if bom_line.line_type == 'ASSEMBLY_ITEM':
-                    if bom_line.item.is_stocked_finished_good and bom_line.qty_issued > 0:
+                    if bom_line.qty_issued > 0:
                         reverse_production(
                             item_id=bom_line.item_id,
                             qty=bom_line.qty_issued,

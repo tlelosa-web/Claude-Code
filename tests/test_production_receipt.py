@@ -104,3 +104,42 @@ class TestProductionReceipt:
             assert movement is not None
             assert movement.qty_change == -3.0
             assert movement.qty_after == 10.0
+
+    def test_reopen_reverses_produced_stock_even_if_flag_later_cleared(self, client, app, db, session):
+        """Reopen must key off qty_issued (what actually happened at Complete
+        time), not the item's current is_stocked_finished_good value — the
+        flag is mutable catalogue metadata and can change between Complete
+        and Reopen. Otherwise a flag toggled off in between would leave the
+        produced stock permanently un-reversed."""
+        data = self._setup(session, is_stocked_finished_good=True)
+        wo, assembly_item = data["wo"], data["assembly_item"]
+
+        client.post(f"/works-orders/{wo.id}/complete", follow_redirects=True)
+        with app.app_context():
+            assert db.session.get(Item, assembly_item.id).qty_on_hand == 13.0
+
+        # Toggle the flag off via the real Edit Item route (not a raw ORM
+        # write), same code path an actual user would hit.
+        edit_resp = client.post(f"/items/{assembly_item.id}/edit", data={
+            'code': assembly_item.code,
+            'description': assembly_item.description,
+            'category': '',
+            'active': 'on',
+            'last_cost': '0',
+            'avg_cost': '0',
+            'excl_price': '0',
+            'incl_price': '0',
+        }, follow_redirects=True)
+        assert edit_resp.status_code == 200
+        with app.app_context():
+            assert db.session.get(Item, assembly_item.id).is_stocked_finished_good is False
+
+        resp = client.post(f"/works-orders/{wo.id}/reopen", follow_redirects=True)
+        assert resp.status_code == 200
+
+        with app.app_context():
+            updated_item = db.session.get(Item, assembly_item.id)
+            assert updated_item.qty_on_hand == 10.0  # still fully reversed
+
+            assembly_line = BOMLine.query.filter_by(wo_id=wo.id, line_type='ASSEMBLY_ITEM').first()
+            assert assembly_line.qty_issued == 0.0

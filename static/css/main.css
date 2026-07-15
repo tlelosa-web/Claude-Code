@@ -371,7 +371,8 @@ textarea.form-input {
     text-transform: uppercase;
     letter-spacing: 0.3px;
 }
-.badge-draft, .badge-open { background: var(--fm-blue); color: #fff; }
+.badge-draft { background: var(--fm-amber); color: #fff; }
+.badge-open { background: var(--fm-blue); color: #fff; }
 .badge-inprogress { background: var(--fm-orange); color: #fff; }
 .badge-picking { background: var(--fm-orange); color: #fff; }
 .badge-complete { background: var(--fm-green); color: #fff; }

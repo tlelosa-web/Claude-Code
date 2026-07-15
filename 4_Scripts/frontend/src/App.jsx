@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import FormFields, { Field, Select } from "./components/FormFields";
+import FormFields from "./components/FormFields";
 import LivePreview from "./components/LivePreview";
 import "./App.css";
 
@@ -284,14 +284,6 @@ function App() {
     });
   };
 
-  const duplicateTestLine = (index) => {
-    setTestLines((prev) => {
-      if (prev.length >= MAX_TEST_LINES) return prev;
-      const source = prev[index] || createTestLine();
-      return [...prev.slice(0, index + 1), { ...source }, ...prev.slice(index + 1)];
-    });
-  };
-
   const removeTestLine = (index) => {
     setTestLines((prev) => {
       if (prev.length <= 1) return [createTestLine()];
@@ -551,43 +543,56 @@ function App() {
                         Add Fan
                       </button>
                     </div>
-                    {testLines.map((line, index) => (
-                      <div className="test-line" key={index}>
-                        <div className="test-line-title">
-                          <span>Fan {index + 1}</span>
-                          <div className="test-line-actions">
-                            <button className="btn btn-small" type="button" onClick={() => duplicateTestLine(index)} disabled={testLines.length >= MAX_TEST_LINES}>
-                              Duplicate
-                            </button>
-                            <button className="btn btn-small" type="button" onClick={() => removeTestLine(index)} disabled={testLines.length === 1}>
-                              Remove
-                            </button>
-                          </div>
-                        </div>
-                        <div className="test-line-grid">
-                          <Field label="Motor Serial No." value={line.motor_serial_number} onChange={(v) => updateTestLine(index, "motor_serial_number", v)} />
-                          <Field label="Blade Pitch Deg." value={line.blade_pitch_deg} onChange={(v) => updateTestLine(index, "blade_pitch_deg", v)} placeholder={formData.class_pitch || ""} />
-                          <Field label="Tacho/Clamp Serial" value={line.tacho_clamp_serial_no} onChange={(v) => updateTestLine(index, "tacho_clamp_serial_no", v)} placeholder="N/A" />
-                          <Field label="Speed r/min" value={line.speed_actual} onChange={(v) => updateTestLine(index, "speed_actual", v)} placeholder={formData.op_speed || ""} />
-                          <Field label="Current PH1" value={line.current_ph1} onChange={(v) => updateTestLine(index, "current_ph1", v)} />
-                          <Field label="Current PH2" value={line.current_ph2} onChange={(v) => updateTestLine(index, "current_ph2", v)} />
-                          <Field label="Current PH3" value={line.current_ph3} onChange={(v) => updateTestLine(index, "current_ph3", v)} />
-                          <Field label="Voltage PH1" value={line.voltage_ph1} onChange={(v) => updateTestLine(index, "voltage_ph1", v)} placeholder={formData.voltage || ""} />
-                          <Field label="Voltage PH2" value={line.voltage_ph2} onChange={(v) => updateTestLine(index, "voltage_ph2", v)} placeholder={formData.voltage || ""} />
-                          <Field label="Voltage PH3" value={line.voltage_ph3} onChange={(v) => updateTestLine(index, "voltage_ph3", v)} placeholder={formData.voltage || ""} />
-                          <Select
-                            label="Connection"
-                            value={line.connection}
-                            onChange={(v) => updateTestLine(index, "connection", v)}
-                            options={[
-                              { label: "STAR", value: "STAR" },
-                              { label: "DELTA", value: "DELTA" },
-                            ]}
-                            placeholder={formData.connection || "Select..."}
-                          />
-                        </div>
-                      </div>
-                    ))}
+                    <div className="test-lines-table-wrap">
+                      <table className="test-lines-table">
+                        <thead>
+                          <tr>
+                            <th>Fan</th>
+                            <th>Motor Serial No.</th>
+                            <th>Blade Pitch Deg.</th>
+                            <th>Tacho/Clamp Serial</th>
+                            <th>Speed r/min</th>
+                            <th>Current PH1</th>
+                            <th>Current PH2</th>
+                            <th>Current PH3</th>
+                            <th>Voltage PH1</th>
+                            <th>Voltage PH2</th>
+                            <th>Voltage PH3</th>
+                            <th>Connection</th>
+                            <th></th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {testLines.map((line, index) => (
+                            <tr key={index}>
+                              <td className="test-line-index">{index + 1}</td>
+                              <td><input className="field-input" value={line.motor_serial_number || ""} onChange={(e) => updateTestLine(index, "motor_serial_number", e.target.value)} /></td>
+                              <td><input className="field-input" value={line.blade_pitch_deg || ""} onChange={(e) => updateTestLine(index, "blade_pitch_deg", e.target.value)} placeholder={formData.class_pitch || ""} /></td>
+                              <td><input className="field-input" value={line.tacho_clamp_serial_no || ""} onChange={(e) => updateTestLine(index, "tacho_clamp_serial_no", e.target.value)} placeholder="N/A" /></td>
+                              <td><input className="field-input" value={line.speed_actual || ""} onChange={(e) => updateTestLine(index, "speed_actual", e.target.value)} placeholder={formData.op_speed || ""} /></td>
+                              <td><input className="field-input" value={line.current_ph1 || ""} onChange={(e) => updateTestLine(index, "current_ph1", e.target.value)} /></td>
+                              <td><input className="field-input" value={line.current_ph2 || ""} onChange={(e) => updateTestLine(index, "current_ph2", e.target.value)} /></td>
+                              <td><input className="field-input" value={line.current_ph3 || ""} onChange={(e) => updateTestLine(index, "current_ph3", e.target.value)} /></td>
+                              <td><input className="field-input" value={line.voltage_ph1 || ""} onChange={(e) => updateTestLine(index, "voltage_ph1", e.target.value)} placeholder={formData.voltage || ""} /></td>
+                              <td><input className="field-input" value={line.voltage_ph2 || ""} onChange={(e) => updateTestLine(index, "voltage_ph2", e.target.value)} placeholder={formData.voltage || ""} /></td>
+                              <td><input className="field-input" value={line.voltage_ph3 || ""} onChange={(e) => updateTestLine(index, "voltage_ph3", e.target.value)} placeholder={formData.voltage || ""} /></td>
+                              <td>
+                                <select className="field-select" value={line.connection || ""} onChange={(e) => updateTestLine(index, "connection", e.target.value)}>
+                                  <option value="">{formData.connection || "Select..."}</option>
+                                  <option value="STAR">STAR</option>
+                                  <option value="DELTA">DELTA</option>
+                                </select>
+                              </td>
+                              <td>
+                                <button className="btn btn-small" type="button" onClick={() => removeTestLine(index)} disabled={testLines.length === 1}>
+                                  Remove
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
                 </div>
                 <div className="footer-actions">

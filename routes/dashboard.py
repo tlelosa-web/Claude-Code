@@ -49,7 +49,20 @@ def index():
 
     # Recent works orders
     recent_wos = WorksOrder.query.order_by(WorksOrder.created_at.desc()).limit(5).all()
-    
+
+    # Total Sales Value card: Draft + Open SOs only (same SO_ACTIVE set as
+    # the Open Sales Orders table above), split by payment_status prefix.
+    active_sos = SalesOrder.query.filter(SalesOrder.status.in_(SO_ACTIVE)).all()
+    total_value = sum(so.total_incl for so in active_sos)
+    cash_sale_value = sum(
+        so.total_incl for so in active_sos
+        if so.payment_status and so.payment_status.startswith('Cash Sale')
+    )
+    account_value = sum(
+        so.total_incl for so in active_sos
+        if so.payment_status and so.payment_status.startswith('Account')
+    )
+
     return render_template(
         'dashboard.html',
         open_wos=open_wos,
@@ -58,5 +71,8 @@ def index():
         low_stock_count=low_stock_count,
         reorder_count=reorder_count,
         recent_wos=recent_wos,
-        open_sales_orders=open_sales_orders
+        open_sales_orders=open_sales_orders,
+        total_value=total_value,
+        cash_sale_value=cash_sale_value,
+        account_value=account_value
     )

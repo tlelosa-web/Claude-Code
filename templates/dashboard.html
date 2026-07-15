@@ -66,6 +66,31 @@
     </a>
 </div>
 
+<!-- Total Sales Value (Draft + Open SOs) -->
+<div class="card animate-fade-in" style="margin-bottom: 24px;">
+    <div class="card-header">
+        <h2 class="card-title">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+            Total Sales Value
+        </h2>
+        <span style="font-size: 0.8rem; color: var(--text-muted);">Draft + Open Sales Orders</span>
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; padding: 20px;">
+        <div>
+            <div class="stat-label">Total</div>
+            <div class="stat-val" style="--accent: var(--brand-primary); color: var(--accent);">R {{ '%.2f'|format(total_value) }}</div>
+        </div>
+        <div>
+            <div class="stat-label">Cash Sale</div>
+            <div class="stat-val" style="--accent: var(--brand-success); color: var(--accent);">R {{ '%.2f'|format(cash_sale_value) }}</div>
+        </div>
+        <div>
+            <div class="stat-label">Account</div>
+            <div class="stat-val" style="--accent: var(--brand-secondary); color: var(--accent);">R {{ '%.2f'|format(account_value) }}</div>
+        </div>
+    </div>
+</div>
+
 <!-- Open Sales Orders -->
 <div class="card animate-fade-in" style="margin-bottom: 24px;">
     <div class="card-header">

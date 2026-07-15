@@ -106,6 +106,9 @@
                     <option value="{{ cat }}">{{ cat }}</option>
                     {% endfor %}
                 </select>
+                <select id="assembly-target" class="form-input" style="width: auto;">
+                    <option value="">— standalone item —</option>
+                </select>
             </div>
         </div>
         <div id="item-table"></div>
@@ -284,7 +287,41 @@
                 row.remove();
                 window.updateEditCount();
                 window.syncEditJSON();
+                window.refreshAssemblyOptions();
                 return;
+            }
+        };
+
+        // ============================================
+        // "Add as component of…" target select — mirrors build_bom.html's
+        // componentFanLine pattern, but sourced from assembly-rows already
+        // in the table instead of checked Fan radios.
+        // ============================================
+
+        window.refreshAssemblyOptions = function() {
+            var select = document.getElementById('assembly-target');
+            var body = document.getElementById('selected-items-body');
+            if (!select || !body) return;
+
+            var previousValue = select.value;
+            var assemblyRows = body.querySelectorAll('tr.assembly-row');
+
+            select.innerHTML = '<option value="">— standalone item —</option>';
+            assemblyRows.forEach(function(row) {
+                var code = row.getAttribute('data-item-id');
+                var descCell = row.querySelector('td:nth-child(2)');
+                var desc = descCell ? descCell.textContent : '';
+                var opt = document.createElement('option');
+                opt.value = code;
+                opt.textContent = code + ' — ' + desc;
+                select.appendChild(opt);
+            });
+
+            var stillPresent = Array.prototype.slice.call(select.options).some(function(o) {
+                return o.value === previousValue;
+            });
+            if (stillPresent) {
+                select.value = previousValue;
             }
         };
 
@@ -313,26 +350,67 @@
             var body = document.getElementById('selected-items-body');
             if (!body) return;
 
+            var assemblyTarget = document.getElementById('assembly-target');
+            var assemblyCode = assemblyTarget ? assemblyTarget.value : '';
+
             var tr = document.createElement('tr');
             tr.setAttribute('data-item-id', item.code);
             tr.setAttribute('data-numeric-id', item.id);
-            tr.className = 'flat-row';
 
-            tr.innerHTML =
-                '<td><strong>' + escHtml(item.code) + '</strong></td>' +
-                '<td>' + escHtml(item.description) + '</td>' +
-                '<td><input type="number" class="qty-input form-input" value="1" min="0" step="0.01" style="width: 80px; padding: 4px 6px; font-size: 0.85rem;"></td>' +
-                '<td>' +
-                    '<label style="display: flex; align-items: center; gap: 4px; font-size: 0.8rem;">' +
-                        '<input type="radio" name="item_type_' + item.code.replace(/[^a-zA-Z0-9]/g, '_') + '" value="WORKS" checked> Works' +
-                    '</label>' +
-                    '<label style="display: flex; align-items: center; gap: 4px; font-size: 0.8rem; margin-top: 4px;">' +
-                        '<input type="radio" name="item_type_' + item.code.replace(/[^a-zA-Z0-9]/g, '_') + '" value="STOCK"> Stock' +
-                    '</label>' +
-                '</td>' +
-                '<td><button type="button" class="btn btn-danger btn-sm" onclick="removeItemByCode(\'' + item.code.replace(/'/g, "\\'") + '\')">Remove</button></td>';
+            // Find the chosen assembly-row (if any) up front, so a missing
+            // match falls back to the standalone flat-row behaviour instead
+            // of silently dropping the item.
+            var assemblyRow = null;
+            if (assemblyCode) {
+                var assemblyRows = body.querySelectorAll('tr.assembly-row');
+                for (var ai = 0; ai < assemblyRows.length; ai += 1) {
+                    if (assemblyRows[ai].getAttribute('data-item-id') === assemblyCode) {
+                        assemblyRow = assemblyRows[ai];
+                        break;
+                    }
+                }
+            }
 
-            body.appendChild(tr);
+            if (assemblyRow) {
+                // Nest as a component-row, matching the server-rendered
+                // "└─" indent styling, inserted as the last component of
+                // the chosen assembly (i.e. right before the next
+                // assembly-row/flat-row, or end of table).
+                tr.className = 'component-row';
+                tr.innerHTML =
+                    '<td style="padding-left: 20px;">└─ ' + escHtml(item.code) + '</td>' +
+                    '<td>' + escHtml(item.description) + '</td>' +
+                    '<td><input type="number" class="qty-input form-input" value="1" min="0" step="0.01" style="width: 80px; padding: 4px 6px; font-size: 0.85rem;"></td>' +
+                    '<td>-</td>' +
+                    '<td><button type="button" class="btn btn-danger btn-sm" onclick="removeItemByCode(\'' + item.code.replace(/'/g, "\\'") + '\')">Remove</button></td>';
+
+                var insertBefore = assemblyRow.nextElementSibling;
+                while (insertBefore && insertBefore.classList.contains('component-row')) {
+                    insertBefore = insertBefore.nextElementSibling;
+                }
+                if (insertBefore) {
+                    body.insertBefore(tr, insertBefore);
+                } else {
+                    body.appendChild(tr);
+                }
+            } else {
+                tr.className = 'flat-row';
+                tr.innerHTML =
+                    '<td><strong>' + escHtml(item.code) + '</strong></td>' +
+                    '<td>' + escHtml(item.description) + '</td>' +
+                    '<td><input type="number" class="qty-input form-input" value="1" min="0" step="0.01" style="width: 80px; padding: 4px 6px; font-size: 0.85rem;"></td>' +
+                    '<td>' +
+                        '<label style="display: flex; align-items: center; gap: 4px; font-size: 0.8rem;">' +
+                            '<input type="radio" name="item_type_' + item.code.replace(/[^a-zA-Z0-9]/g, '_') + '" value="WORKS" checked> Works' +
+                        '</label>' +
+                        '<label style="display: flex; align-items: center; gap: 4px; font-size: 0.8rem; margin-top: 4px;">' +
+                            '<input type="radio" name="item_type_' + item.code.replace(/[^a-zA-Z0-9]/g, '_') + '" value="STOCK"> Stock' +
+                        '</label>' +
+                    '</td>' +
+                    '<td><button type="button" class="btn btn-danger btn-sm" onclick="removeItemByCode(\'' + item.code.replace(/'/g, "\\'") + '\')">Remove</button></td>';
+
+                body.appendChild(tr);
+            }
 
             // Bind qty input to syncEditJSON
             var qtyInput = tr.querySelector('.qty-input');
@@ -472,6 +550,7 @@
         document.addEventListener('DOMContentLoaded', function() {
             window.updateEditCount();
             window.syncEditJSON();
+            window.refreshAssemblyOptions();
 
             // Bind syncEditJSON to all pre-existing qty inputs
             var existingQtyInputs = document.querySelectorAll('#selected-items-body .qty-input');

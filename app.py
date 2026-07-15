@@ -45,6 +45,9 @@ def ensure_schema_columns():
         if 'max_level' not in item_columns:
             db.session.execute(text('ALTER TABLE item ADD COLUMN max_level FLOAT DEFAULT 0.0'))
             db.session.commit()
+        if 'is_stocked_finished_good' not in item_columns:
+            db.session.execute(text('ALTER TABLE item ADD COLUMN is_stocked_finished_good BOOLEAN DEFAULT 0'))
+            db.session.commit()
 
     if 'stock_order_line' in inspector.get_table_names():
         sto_line_columns = {column['name'] for column in inspector.get_columns('stock_order_line')}

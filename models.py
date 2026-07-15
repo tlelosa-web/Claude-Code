@@ -20,6 +20,7 @@ class Item(db.Model):
     reorder_point = db.Column(db.Float, default=0.0)  # flag for replenishment when qty_on_hand <= this
     reorder_qty = db.Column(db.Float, default=0.0)  # suggested qty for "Create PO from shortfall"
     max_level = db.Column(db.Float, default=0.0)  # target max stock level; 0 means "not set" (same convention as reorder_point)
+    is_stocked_finished_good = db.Column(db.Boolean, default=False)  # opt-in: WO Complete produces this item's qty_on_hand; see docs/specs/production-receipt-on-wo-complete.md
 
     # Relationships
     movements = db.relationship('StockMovement', backref='item', lazy=True)

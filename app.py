@@ -75,7 +75,8 @@ def create_app(config_class=Config):
     from routes.reports import reports_bp
     from routes.stock_orders import stock_orders_bp
     from routes.purchase_orders import purchase_orders_bp
-    
+    from routes.settings import settings_bp
+
     app.register_blueprint(dashboard_bp)
     app.register_blueprint(items_bp)
     app.register_blueprint(sales_orders_bp)
@@ -83,17 +84,33 @@ def create_app(config_class=Config):
     app.register_blueprint(reports_bp)
     app.register_blueprint(stock_orders_bp)
     app.register_blueprint(purchase_orders_bp)
+    app.register_blueprint(settings_bp)
 
     # Display filter: dates render as DD/MM/YYYY everywhere except HTML5 date
     # inputs, which require the ISO value format regardless of display locale.
     app.jinja_env.filters['dmy'] = lambda d: d.strftime('%d/%m/%Y') if d else ''
 
+    # Makes currency_symbol available in every template without per-route
+    # wiring - see services/settings_service.py + docs/specs/
+    # po-price-date-columns-currency-settings-2026-07-16.md (Part C).
+    @app.context_processor
+    def inject_currency_symbol():
+        from services.settings_service import get_currency_symbol
+        return {'currency_symbol': get_currency_symbol()}
+
     # Bootstrap database and seed data on first run
     with app.app_context():
-        from models import Item
+        from models import Item, Setting
         db.create_all()
         ensure_schema_columns()
-        
+
+        # Belt-and-suspenders alongside scripts/migrate_add_settings_table.py -
+        # db.create_all() above already covers the new setting table, this
+        # just seeds the default row so display is unchanged out of the box.
+        if not Setting.query.filter_by(key='currency_symbol').first():
+            db.session.add(Setting(key='currency_symbol', value='R'))
+            db.session.commit()
+
         if Item.query.count() == 0:
             # Auto-import from CSV if it exists
             csv_path = os.path.join(Config.BASE_DIR, 'data', 'ItemListingReport.csv')

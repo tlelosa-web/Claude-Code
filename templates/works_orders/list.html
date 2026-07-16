@@ -18,6 +18,7 @@
         <table class="data-table" id="orders-table">
             <thead>
                 <tr>
+                    <th class="col-date">Created</th>
                     <th>Job Number</th>
                     <th>WO/PL Number</th>
                     <th>Type</th>
@@ -26,13 +27,13 @@
                     <th class="col-date">Delivery Date</th>
                     <th>Status</th>
                     <th>Issued By</th>
-                    <th class="col-date">Created</th>
                     <th>Actions</th>
                 </tr>
             </thead>
             <tbody>
                 {% for wo in orders %}
                 <tr>
+                    <td class="col-date">{{ wo.created_at | dmy or '-' }}</td>
                     <td>{{ wo.job_number or '-' }}</td>
                     <td><a href="{{ url_for('works_orders.view_order', order_id=wo.id) }}" class="link-primary">{{ wo.wo_number }}</a></td>
                     <td>
@@ -51,7 +52,6 @@
                     <td class="col-date">{{ (wo.sales_order.delivery_date | dmy or '-') if wo.sales_order else '-' }}</td>
                     <td><span class="badge badge-{{ wo.status.lower().replace(' ', '') }}">{{ wo.status }}</span></td>
                     <td>{{ wo.issued_by or '-' }}</td>
-                    <td class="col-date">{{ wo.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
                     <td>
                         <div class="dropdown">
                             <button type="button" class="btn btn-secondary" style="padding: 4px 10px; font-size: 0.75rem;" onclick="toggleDropdown(this)">Actions ▾</button>

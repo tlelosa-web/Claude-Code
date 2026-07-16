@@ -18,26 +18,26 @@
         <table class="data-table" id="sto-list-table">
             <thead>
                 <tr>
+                    <th class="col-date">Created</th>
                     <th>Job Number</th>
                     <th>Stock Order No</th>
                     <th>SO Reference</th>
                     <th>Customer</th>
                     <th class="col-date">Delivery Date</th>
                     <th>Status</th>
-                    <th class="col-date">Created</th>
                     <th>Actions</th>
                 </tr>
             </thead>
             <tbody>
                 {% for order in orders %}
                 <tr>
+                    <td class="col-date">{{ order.created_at | dmy or '-' }}</td>
                     <td>{{ order.job_numbers or '-' }}</td>
                     <td><a href="{{ url_for('stock_orders.view_order', order_id=order.id) }}" class="link-primary">{{ order.stock_order_number }}</a></td>
                     <td>{{ order.sales_order.so_number if order.sales_order else '-' }}</td>
                     <td>{{ order.sales_order.customer_name if order.sales_order else '-' }}</td>
                     <td class="col-date">{{ (order.sales_order.delivery_date | dmy or '-') if order.sales_order else '-' }}</td>
                     <td><span class="badge badge-{{ order.status.lower() }}">{{ order.status }}</span></td>
-                    <td class="col-date">{{ order.created_at.strftime('%Y-%m-%d %H:%M') if order.created_at else '-' }}</td>
                     <td>
                         <a href="{{ url_for('stock_orders.view_order', order_id=order.id) }}" class="btn btn-secondary" style="padding: 4px 10px; font-size: 0.75rem;">View</a>
                     </td>

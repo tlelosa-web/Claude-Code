@@ -25,11 +25,11 @@
         <table class="data-table" id="so-list-table">
             <thead>
                 <tr>
+                    <th class="col-date">Date</th>
                     <th>SO Number</th>
                     <th>Job Number(s)</th>
                     <th>Customer Ref.</th>
                     <th>Customer</th>
-                    <th class="col-date">Date</th>
                     <th class="col-date">Delivery Date</th>
                     <th>Sales Rep</th>
                     <th>Total</th>
@@ -41,11 +41,11 @@
             <tbody>
                 {% for so in orders %}
                 <tr data-search="{{ (so.so_number ~ ' ' ~ (so.job_numbers or '') ~ ' ' ~ (so.reference or '') ~ ' ' ~ (so.customer_name or '') ~ ' ' ~ (so.sales_rep or '')) | lower }}">
+                    <td class="col-date">{{ so.so_date | dmy or '-' }}</td>
                     <td><a href="{{ url_for('sales_orders.view_order', order_id=so.id) }}" class="link-primary">{{ so.so_number }}</a></td>
                     <td>{{ so.job_numbers or '-' }}</td>
                     <td>{{ so.reference or '-' }}</td>
                     <td>{{ so.customer_name or '-' }}</td>
-                    <td class="col-date">{{ so.so_date | dmy or '-' }}</td>
                     <td class="col-date">{{ so.delivery_date | dmy or '-' }}</td>
                     <td>{{ so.sales_rep or '-' }}</td>
                     <td>{{ currency_symbol }} {{ '%.2f'|format(so.total_incl) }}</td>

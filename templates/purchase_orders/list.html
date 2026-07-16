@@ -20,6 +20,7 @@
         <table class="data-table" id="po-list-table">
             <thead>
                 <tr>
+                    <th class="col-date">PO Date</th>
                     <th>PO Number</th>
                     <th>Reference</th>
                     <th>Supplier</th>
@@ -32,6 +33,7 @@
             <tbody>
                 {% for order in orders %}
                 <tr>
+                    <td class="col-date">{{ order.po_date | dmy or '-' }}</td>
                     <td><a href="{{ url_for('purchase_orders.view_order', order_id=order.id) }}" class="link-primary">{{ order.po_number }}</a></td>
                     <td>{{ order.reference or '-' }}</td>
                     <td>{{ order.supplier_name or '-' }}</td>

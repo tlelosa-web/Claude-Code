@@ -232,6 +232,24 @@ Full Load Amperage is looked up from the motor performance data PDF based on:
 - Pole count
 - Voltage
 
+## Launching Without a Terminal
+
+For day-to-day use you don't need to open any terminal windows or run `pip install` / `npm install` by hand every time — that's only needed once, per the Installation section above.
+
+### Start the app
+
+Double-click **`Nameplate Tool.lnk`** (or `Launch_NamePlate_Tool.vbs` directly) in the project root. This starts the backend and frontend with no visible console windows, then opens `http://localhost:5173` in your browser automatically after a few seconds.
+
+If nothing opens, the backend virtual environment probably hasn't been set up yet — you'll get a popup saying so. Run `RUN_PIPELINE.bat` once from the project root (it will tell you the exact `python -m venv` / `pip install` commands to run first), then try the launcher again.
+
+### Stop the app
+
+Double-click **`Stop_NamePlate_Tool.vbs`** in the project root. It stops both servers and shows a confirmation popup. Since the servers run hidden, this is the normal way to stop them — there's no window to Ctrl+C in.
+
+### If something looks wrong
+
+Check `5_Archive_and_Debug/launch_hidden.log` for the last launch's timestamps and process IDs. If you need to see the servers' live output (e.g. debugging a backend error), use `RUN_PIPELINE.bat` instead — it runs the same servers in two visible terminal windows.
+
 ## Troubleshooting
 
 ### "Import could not be resolved" errors

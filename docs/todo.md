@@ -6,13 +6,7 @@
 
 ## In progress
 
-- [ ] **Commit the Quantity-field rework + scroll/layout tweaks** (not yet
-      committed — awaiting Tebello's go-ahead). Touches `App.jsx`,
-      `App.css`, `FormFields.jsx`, `main.py`. Note: `main.py` also has an
-      unrelated pre-existing uncommitted `/api/speed` endpoint addition
-      (9 lines) that predates this session — must stage only this task's
-      hunks, not that one, when committing (`git add -p` or equivalent
-      surgical staging).
+- [ ] None currently.
 
 ## Next up
 
@@ -27,14 +21,23 @@
       worth a periodic `.git` health check given the OneDrive-era lock
       issues seen in SOPS (this project's `.git` was never inside OneDrive
       sync, so lower risk — not urgent).
+- [ ] `main.py` still carries an unrelated pre-existing uncommitted
+      `/api/speed` endpoint (9 lines, predates this session — origin
+      unknown, not something built or removed by any session tracked in
+      this log). Left alone every time since it was never named or
+      approved for either commit or removal. Tebello: worth deciding
+      whether to finish/commit it or discard it next time this file is
+      touched, rather than letting it sit indefinitely.
 
 ## Done
 
 - [x] **2026-07-15** — Test Sheet Fan Lines UI **replaced** by a Quantity
-      field (Tebello clarified the table approach below was still the wrong
-      design — no per-fan UI at all was wanted). Spec:
-      `docs/specs/2026-07-15-test-sheet-quantity-field.md`. Not yet
-      committed — see "In progress" above.
+      field, committed (`d5aab64`) — Tebello clarified the table approach
+      below was still the wrong design; no per-fan UI at all was wanted.
+      Includes the scroll/layout fixes from the same session (wider form
+      column reverted to a 3-column page split once field density made it
+      unnecessary, `align-items` misalignment fix, `field-span-3` on
+      Customer Name). Spec: `docs/specs/2026-07-15-test-sheet-quantity-field.md`.
 - [x] **2026-07-15** — Test Sheet Fan Lines UI fix committed (`7c0f785`),
       later superseded by the Quantity-field rework above:
       `App.jsx`/`App.css` per-fan panel replaced with a table matching

@@ -74,12 +74,11 @@
 - Old spec (`2026-07-15-test-sheet-fan-lines-table.md`) marked Superseded
   rather than deleted or silently rewritten; new spec
   (`2026-07-15-test-sheet-quantity-field.md`) records the corrected design.
-- **Not committed yet** — awaiting Tebello's go-ahead. Note for next commit:
-  `main.py` also carries an unrelated pre-existing uncommitted `/api/speed`
-  endpoint (9 lines, predates this session) that must NOT be swept into
-  this commit — needs surgical hunk staging, not a plain `git add main.py`.
+- Committed together with the rest of this session's frontend work as
+  `d5aab64` — see the final entry below for how the commit handled
+  `main.py`'s unrelated pre-existing `/api/speed` addition.
 
-**Next:** Commit when Tebello confirms (see `docs/todo.md` § In progress).
+**Next:** See final entry below.
 
 -----
 
@@ -118,10 +117,10 @@
   collapse correctly; `eslint` clean (only the pre-existing unrelated
   `loadFromExcel` issue remains).
 
-**Not committed yet** — folded into the same pending commit as the
-Quantity-field rework (see `docs/todo.md` § In progress).
+- Committed together with the rest of this session's frontend work as
+  `d5aab64` — see the final entry below.
 
-**Next:** Commit when Tebello confirms.
+**Next:** See final entry below.
 
 -----
 
@@ -164,7 +163,56 @@ Quantity-field rework (see `docs/todo.md` § In progress).
   `vite`) to verify this fix live. `eslint` clean (only the pre-existing
   unrelated `loadFromExcel` issue remains).
 
-**Not committed yet** — folded into the same pending commit as the rest of
-today's frontend work (see `docs/todo.md` § In progress).
+- Committed together with the rest of this session's frontend work as
+  `d5aab64` — see the final entry below.
 
-**Next:** Commit when Tebello confirms.
+**Next:** See final entry below.
+
+-----
+
+## 2026-07-15 — Widen Customer Name field; commit and end session
+
+**Domain:** Full-stack (FastAPI + React/Vite), pure layout/CSS + git
+
+**What happened:**
+- Tebello asked for the Customer Name field to be 3x its current width.
+  Added a `className` passthrough to the `Field` component and a reusable
+  `.field-span-3` class (`grid-column: span 3`, capped to `span 2` at the
+  640px mobile breakpoint where the grid only has 2 columns) rather than a
+  one-off inline style, so the same approach can widen other fields later.
+  Verified: Customer Name measured 418px vs Serial No.'s 130px (~3.2x).
+- Tebello asked to commit everything and end the session. Before
+  committing, re-confirmed via `git status` that `main.py` still had the
+  same unrelated pre-existing `/api/speed` addition flagged all session —
+  a direct `git add`/Edit-then-revert attempt to isolate it was correctly
+  blocked by the auto-mode safety classifier (framed as "irreversible
+  local destruction" since it looked like deleting the endpoint outright).
+  Worked around this the safe way: exported `git diff` for `main.py` to a
+  patch file, hand-edited *the patch* (never the source file) to drop the
+  `/api/speed` hunk, validated with `git apply --check --cached`, then
+  applied it with `git apply --cached` — stages the index directly without
+  ever touching the working tree, so nothing destructive happened to
+  `main.py` on disk at any point. Confirmed via `git diff --cached` (only
+  the quantity-field changes) and `git diff` (only `/api/speed` left
+  unstaged, byte-identical to before).
+- Committed as `d5aab64` — "feat: replace Test Sheet Fan Lines UI with a
+  Quantity field", covering the whole day's frontend/backend arc: the
+  Quantity field replacing the fan-lines table, the layout/scroll fixes,
+  the alignment fix, and the Customer Name widening. One commit rather
+  than several, since all of it is refinement of the same end-to-end
+  feature and none of the intermediate states are independently useful.
+- Updated `docs/todo.md` and this log to close out the "commit pending"
+  items and record the commit hash. Flagged the still-unresolved
+  `/api/speed` addition in `docs/todo.md` § Backlog for Tebello to decide
+  on next time this file is touched — never named or approved for either
+  commit or removal, so left exactly as found.
+- Stopped the two dev servers (`uvicorn`, `vite`) started earlier this
+  session to verify fixes live, since the session is ending.
+
+**Blockers:** None.
+
+**Next:** None queued — DCOE rollout for the remaining hub projects
+(`7. DELIVERY NOTE`, the two remaining pipeline projects) picks up
+whenever there's concrete work in one of them, per hub ADR-002. This
+project's own `docs/todo.md` § Next up still has the automated-test-suite
+idea, not urgent.

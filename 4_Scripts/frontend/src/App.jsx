@@ -3,22 +3,6 @@ import FormFields from "./components/FormFields";
 import LivePreview from "./components/LivePreview";
 import "./App.css";
 
-const MAX_TEST_LINES = 20;
-
-const createTestLine = () => ({
-  motor_serial_number: "",
-  blade_pitch_deg: "",
-  tacho_clamp_serial_no: "",
-  speed_actual: "",
-  current_ph1: "",
-  current_ph2: "",
-  current_ph3: "",
-  voltage_ph1: "",
-  voltage_ph2: "",
-  voltage_ph3: "",
-  connection: "",
-});
-
 const getLocalIsoDate = () => {
   const d = new Date();
   const yyyy = d.getFullYear();
@@ -46,6 +30,7 @@ function App() {
     voltage: "",
     phase: "",
     date_of_manuf: getLocalIsoDate(),
+    quantity: "1",
     frequency: "50",
     op_temp: "20",
     op_speed: "",
@@ -65,31 +50,15 @@ function App() {
   });
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [testSheetPreviewUrl, setTestSheetPreviewUrl] = useState("");
-  const [testLines, setTestLines] = useState([createTestLine()]);
 
   const busy = busyState.saving || busyState.loadingExcel || busyState.preview;
 
-  const buildTestLinesPayload = (lines = testLines, data = formData) =>
-    lines.map((line) => ({
-      motor_serial_number: line.motor_serial_number || "",
-      blade_pitch_deg: line.blade_pitch_deg || data.class_pitch || "",
-      tacho_clamp_serial_no: line.tacho_clamp_serial_no || "N/A",
-      speed_actual: line.speed_actual || data.op_speed || "",
-      current_ph1: line.current_ph1 || "",
-      current_ph2: line.current_ph2 || "",
-      current_ph3: line.current_ph3 || "",
-      voltage_ph1: line.voltage_ph1 || data.voltage || "",
-      voltage_ph2: line.voltage_ph2 || data.voltage || "",
-      voltage_ph3: line.voltage_ph3 || data.voltage || "",
-      connection: line.connection || data.connection || "",
-    }));
-
   const buildRequestPayload = () => ({
     ...formData,
-    test_lines: buildTestLinesPayload(),
+    quantity: parseInt(formData.quantity, 10) || 1,
   });
 
-  const getPreviewDataKey = (data, lines = testLines) =>
+  const getPreviewDataKey = (data) =>
     JSON.stringify({
       customer_name: data.customer_name,
       serial_no: data.serial_no,
@@ -102,6 +71,7 @@ function App() {
       voltage: data.voltage,
       phase: data.phase,
       date_of_manuf: data.date_of_manuf,
+      quantity: data.quantity,
       frequency: data.frequency,
       op_temp: data.op_temp,
       op_speed: data.op_speed,
@@ -109,7 +79,6 @@ function App() {
       connection: data.connection,
       relube_interval: data.relube_interval,
       manufacturer: data.manufacturer,
-      test_lines: buildTestLinesPayload(lines, data),
     });
 
   useEffect(() => {
@@ -198,7 +167,7 @@ function App() {
     }
     if (busyState.saving || busyState.loadingExcel) return;
 
-    const nextPreviewDataKey = getPreviewDataKey(formData, testLines);
+    const nextPreviewDataKey = getPreviewDataKey(formData);
     if (nextPreviewDataKey === previewDataKeyRef.current) return;
 
     previewTimerRef.current = setTimeout(() => {
@@ -221,6 +190,7 @@ function App() {
     formData.imp_form,
     formData.phase,
     formData.date_of_manuf,
+    formData.quantity,
     formData.frequency,
     formData.op_temp,
     formData.op_speed,
@@ -228,7 +198,6 @@ function App() {
     formData.connection,
     formData.relube_interval,
     formData.manufacturer,
-    testLines,
   ]);
 
   // =========================
@@ -254,8 +223,9 @@ function App() {
         "Motor kW, Pole count, and Voltage are all required";
     }
 
-    if (testLines.length > MAX_TEST_LINES)
-      errs.test_lines = `A single test sheet can hold ${MAX_TEST_LINES} fan lines.`;
+    const qty = parseInt(data.quantity, 10);
+    if (!qty || qty < 1) errs.quantity = "Quantity must be at least 1.";
+    else if (qty > 20) errs.quantity = "Quantity cannot exceed 20 (test sheet capacity).";
 
     return errs;
   };
@@ -269,26 +239,6 @@ function App() {
       ...prev,
       [field]: value,
     }));
-  };
-
-  const updateTestLine = (index, field, value) => {
-    setTestLines((prev) =>
-      prev.map((line, i) => (i === index ? { ...line, [field]: value } : line))
-    );
-  };
-
-  const addTestLine = () => {
-    setTestLines((prev) => {
-      if (prev.length >= MAX_TEST_LINES) return prev;
-      return [...prev, createTestLine()];
-    });
-  };
-
-  const removeTestLine = (index) => {
-    setTestLines((prev) => {
-      if (prev.length <= 1) return [createTestLine()];
-      return prev.filter((_line, i) => i !== index);
-    });
   };
 
   const _errMsg = (err) => {
@@ -351,7 +301,7 @@ function App() {
     if (!silent) setStatus("Refreshing Test Sheet preview...");
 
     // Update the ref immediately to prevent infinite retry loops if the fetch fails
-    previewDataKeyRef.current = getPreviewDataKey(formData, testLines);
+    previewDataKeyRef.current = getPreviewDataKey(formData);
 
     setBusyState((prev) => ({ ...prev, preview: true }));
     try {
@@ -482,6 +432,7 @@ function App() {
       voltage: "",
       phase: "",
       date_of_manuf: "",
+      quantity: "1",
       frequency: "50",
       op_temp: "20",
       op_speed: "",
@@ -490,7 +441,6 @@ function App() {
       relube_interval: "N/A",
       manufacturer: "",
     });
-    setTestLines([createTestLine()]);
     if (testSheetPreviewUrl) URL.revokeObjectURL(testSheetPreviewUrl);
     setTestSheetPreviewUrl("");
   };
@@ -533,67 +483,6 @@ function App() {
                     options={options}
                     showAdvanced={showAdvanced}
                   />
-                  <div className="test-lines-panel">
-                    <div className="test-lines-header">
-                      <div>
-                        <h3>Test Sheet Fan Lines</h3>
-                        {errors.test_lines ? <div className="field-error">{errors.test_lines}</div> : null}
-                      </div>
-                      <button className="btn" type="button" onClick={addTestLine} disabled={testLines.length >= MAX_TEST_LINES}>
-                        Add Fan
-                      </button>
-                    </div>
-                    <div className="test-lines-table-wrap">
-                      <table className="test-lines-table">
-                        <thead>
-                          <tr>
-                            <th>Fan</th>
-                            <th>Motor Serial No.</th>
-                            <th>Blade Pitch Deg.</th>
-                            <th>Tacho/Clamp Serial</th>
-                            <th>Speed r/min</th>
-                            <th>Current PH1</th>
-                            <th>Current PH2</th>
-                            <th>Current PH3</th>
-                            <th>Voltage PH1</th>
-                            <th>Voltage PH2</th>
-                            <th>Voltage PH3</th>
-                            <th>Connection</th>
-                            <th></th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {testLines.map((line, index) => (
-                            <tr key={index}>
-                              <td className="test-line-index">{index + 1}</td>
-                              <td><input className="field-input" value={line.motor_serial_number || ""} onChange={(e) => updateTestLine(index, "motor_serial_number", e.target.value)} /></td>
-                              <td><input className="field-input" value={line.blade_pitch_deg || ""} onChange={(e) => updateTestLine(index, "blade_pitch_deg", e.target.value)} placeholder={formData.class_pitch || ""} /></td>
-                              <td><input className="field-input" value={line.tacho_clamp_serial_no || ""} onChange={(e) => updateTestLine(index, "tacho_clamp_serial_no", e.target.value)} placeholder="N/A" /></td>
-                              <td><input className="field-input" value={line.speed_actual || ""} onChange={(e) => updateTestLine(index, "speed_actual", e.target.value)} placeholder={formData.op_speed || ""} /></td>
-                              <td><input className="field-input" value={line.current_ph1 || ""} onChange={(e) => updateTestLine(index, "current_ph1", e.target.value)} /></td>
-                              <td><input className="field-input" value={line.current_ph2 || ""} onChange={(e) => updateTestLine(index, "current_ph2", e.target.value)} /></td>
-                              <td><input className="field-input" value={line.current_ph3 || ""} onChange={(e) => updateTestLine(index, "current_ph3", e.target.value)} /></td>
-                              <td><input className="field-input" value={line.voltage_ph1 || ""} onChange={(e) => updateTestLine(index, "voltage_ph1", e.target.value)} placeholder={formData.voltage || ""} /></td>
-                              <td><input className="field-input" value={line.voltage_ph2 || ""} onChange={(e) => updateTestLine(index, "voltage_ph2", e.target.value)} placeholder={formData.voltage || ""} /></td>
-                              <td><input className="field-input" value={line.voltage_ph3 || ""} onChange={(e) => updateTestLine(index, "voltage_ph3", e.target.value)} placeholder={formData.voltage || ""} /></td>
-                              <td>
-                                <select className="field-select" value={line.connection || ""} onChange={(e) => updateTestLine(index, "connection", e.target.value)}>
-                                  <option value="">{formData.connection || "Select..."}</option>
-                                  <option value="STAR">STAR</option>
-                                  <option value="DELTA">DELTA</option>
-                                </select>
-                              </td>
-                              <td>
-                                <button className="btn btn-small" type="button" onClick={() => removeTestLine(index)} disabled={testLines.length === 1}>
-                                  Remove
-                                </button>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
                 </div>
                 <div className="footer-actions">
                   <button className="btn btn-primary" type="button" onClick={generateNameplatePDF} disabled={busyState.saving || busyState.loadingExcel}>

@@ -143,9 +143,9 @@ class NameplatePayload(BaseModel):
     frequency: str = CONFIG["DEFAULT_FREQ"]
     connection: str = ""
     date_of_manuf: str = ""
+    quantity: int = 1
     relube_interval: str = "N/A"
     manufacturer: str = ""
-    test_lines: list[TestLinePayload] = Field(default_factory=list)
 
 class TestRecordSheetPayload(BaseModel):
     date: str = Field(..., description="Date e.g. 22/01/2026")
@@ -279,13 +279,13 @@ def _normalise_test_lines(lines: list[TestLinePayload], fallback: dict) -> list[
     for line in lines[:20]:
         data = line.dict()
         normalised.append({
-            "motor_serial_number": _clean(data.get("motor_serial_number")),
+            "motor_serial_number": _clean(data.get("motor_serial_number")) or _clean(fallback.get("motor_serial_number")),
             "blade_pitch_deg": _clean(data.get("blade_pitch_deg")) or _clean(fallback.get("blade_pitch_deg")),
             "tacho_clamp_serial_no": _clean(data.get("tacho_clamp_serial_no")) or "N/A",
             "speed_actual": _clean(data.get("speed_actual")) or _clean(fallback.get("speed_actual")),
-            "current_ph1": _clean(data.get("current_ph1")),
-            "current_ph2": _clean(data.get("current_ph2")),
-            "current_ph3": _clean(data.get("current_ph3")),
+            "current_ph1": _clean(data.get("current_ph1")) or _clean(fallback.get("current_ph1")),
+            "current_ph2": _clean(data.get("current_ph2")) or _clean(fallback.get("current_ph2")),
+            "current_ph3": _clean(data.get("current_ph3")) or _clean(fallback.get("current_ph3")),
             "voltage_ph1": _clean(data.get("voltage_ph1")) or _clean(fallback.get("voltage_ph1")),
             "voltage_ph2": _clean(data.get("voltage_ph2")) or _clean(fallback.get("voltage_ph2")),
             "voltage_ph3": _clean(data.get("voltage_ph3")) or _clean(fallback.get("voltage_ph3")),
@@ -452,7 +452,8 @@ def api_reports_download(file: str):
 def api_test_record_sheet_from_nameplate(payload: NameplatePayload):
     import shutil
 
-    if len(payload.test_lines) > 20:
+    quantity = payload.quantity if payload.quantity and payload.quantity > 0 else 1
+    if quantity > 20:
         return JSONResponse({"error": "A single test sheet can hold up to 20 fan lines."}, status_code=400)
 
     m_f, p_i, v_f = _to_float(payload.motor), _to_int(payload.pole), _to_float(payload.voltage)
@@ -528,7 +529,10 @@ def api_test_record_sheet_from_nameplate(payload: NameplatePayload):
         "voltage_ph3": _clean(test_sheet.get("voltage_ph3")) or _clean(nameplate_from_payload.get("voltage")),
         "connection": _clean(conn),
     }
-    derived_fallback["test_lines"] = _normalise_test_lines(payload.test_lines, derived_fallback)
+    derived_fallback["test_lines"] = _normalise_test_lines(
+        [TestLinePayload() for _ in range(quantity)],
+        derived_fallback,
+    )
 
     nameplate_data = {
         "nameplate": nameplate_from_payload,

@@ -9,9 +9,9 @@ export function SectionHeader({ title, icon }) {
   );
 }
 
-export function Field({ label, value, onChange, disabled, placeholder, type = "text", error, readOnly }) {
+export function Field({ label, value, onChange, disabled, placeholder, type = "text", error, readOnly, className }) {
   return (
-    <div className="field-container">
+    <div className={`field-container${className ? ` ${className}` : ""}`}>
       <label className="field-label">{label}</label>
       <input
         className={`field-input${error ? " field-input-error" : ""}`}
@@ -77,7 +77,7 @@ export default function FormFields({ data, errors, onChange, options = {}, showA
   return (
     <div className="form-grid">
       <SectionHeader title="Customer" />
-      <Field label="Customer Name" value={data.customer_name} onChange={(v) => onChange("customer_name", v)} placeholder="e.g. ACME Ltd" error={errors.customer_name} />
+      <Field label="Customer Name" value={data.customer_name} onChange={(v) => onChange("customer_name", v)} placeholder="e.g. ACME Ltd" error={errors.customer_name} className="field-span-3" />
       <Field label="Serial No." value={data.serial_no} onChange={(v) => onChange("serial_no", v)} placeholder="e.g. FM5107" error={errors.serial_no} />
       <SectionHeader title="Fan" />
       <Field label="Series" value={data.series} onChange={(v) => onChange("series", v)} error={errors.series} />
@@ -92,6 +92,7 @@ export default function FormFields({ data, errors, onChange, options = {}, showA
       <Select label="Motor kW" value={data.motor} onChange={(v) => onChange("motor", v)} options={motorOptions.length ? motorOptions : []} error={errors.electrical} />
       <Select label="Motor Phase" value={data.phase} onChange={(v) => onChange("phase", v)} options={phaseOptions} placeholder="Select..." />
       <Field label="Date of Manufacture" type="date" value={data.date_of_manuf} onChange={(v) => onChange("date_of_manuf", v)} />
+      <Field label="Quantity" type="number" value={data.quantity} onChange={(v) => onChange("quantity", v)} placeholder="e.g. 1" error={errors.quantity} />
 
       {showAdvanced ? (
         <>

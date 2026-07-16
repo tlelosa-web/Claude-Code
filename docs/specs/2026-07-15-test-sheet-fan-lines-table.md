@@ -1,6 +1,10 @@
 # Spec — Test Sheet Fan Lines: table UI instead of per-fan panel
 
-**Date:** 2026-07-15 | **Status:** Approved (Tebello, this session) | **Owner:** Tebello Lelosa
+**Date:** 2026-07-15 | **Status:** Superseded same day by
+`docs/specs/2026-07-15-test-sheet-quantity-field.md` — Tebello clarified the
+actual intent was to remove all per-fan UI (table included) and replace it
+with a single Quantity field. Kept here for the record; do not implement
+this version. | **Owner:** Tebello Lelosa
 
 ## Problem
 

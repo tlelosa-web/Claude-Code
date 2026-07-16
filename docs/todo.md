@@ -6,7 +6,13 @@
 
 ## In progress
 
-- [ ] None currently.
+- [ ] **Commit the Quantity-field rework + scroll/layout tweaks** (not yet
+      committed — awaiting Tebello's go-ahead). Touches `App.jsx`,
+      `App.css`, `FormFields.jsx`, `main.py`. Note: `main.py` also has an
+      unrelated pre-existing uncommitted `/api/speed` endpoint addition
+      (9 lines) that predates this session — must stage only this task's
+      hunks, not that one, when committing (`git add -p` or equivalent
+      surgical staging).
 
 ## Next up
 
@@ -24,7 +30,13 @@
 
 ## Done
 
-- [x] **2026-07-15** — Test Sheet Fan Lines UI fix committed (`7c0f785`):
+- [x] **2026-07-15** — Test Sheet Fan Lines UI **replaced** by a Quantity
+      field (Tebello clarified the table approach below was still the wrong
+      design — no per-fan UI at all was wanted). Spec:
+      `docs/specs/2026-07-15-test-sheet-quantity-field.md`. Not yet
+      committed — see "In progress" above.
+- [x] **2026-07-15** — Test Sheet Fan Lines UI fix committed (`7c0f785`),
+      later superseded by the Quantity-field rework above:
       `App.jsx`/`App.css` per-fan panel replaced with a table matching
       `pdf_generator.py`'s output. Spec:
       `docs/specs/2026-07-15-test-sheet-fan-lines-table.md`.

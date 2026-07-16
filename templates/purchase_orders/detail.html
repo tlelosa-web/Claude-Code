@@ -61,6 +61,8 @@
                         <th>#</th>
                         <th>Item Code</th>
                         <th>Description</th>
+                        <th>Unit Price</th>
+                        <th>Line Total</th>
                         <th>Qty Ordered</th>
                         <th>Qty Received</th>
                         <th>Remaining</th>
@@ -87,6 +89,8 @@
                             {% endif %}
                         </td>
                         <td>{{ line.description or '' }}</td>
+                        <td>{{ currency_symbol }} {{ "%.2f"|format(line.excl_price or 0) }}</td>
+                        <td>{{ currency_symbol }} {{ "%.2f"|format(line.excl_total or 0) }}</td>
                         <td>{{ line.qty_ordered }}</td>
                         <td>{{ line.qty_received or 0 }}</td>
                         <td>{{ remaining }}</td>

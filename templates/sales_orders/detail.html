@@ -77,9 +77,9 @@
                         <button type="submit" class="btn btn-secondary" style="padding: 4px 10px; font-size: 0.75rem;">Update</button>
                     </form>
                 </td></tr>
-                <tr><td class="detail-label">Total</td><td class="detail-value">R {{ '%.2f'|format(so.total_incl) }}</td></tr>
+                <tr><td class="detail-label">Total</td><td class="detail-value">{{ currency_symbol }} {{ '%.2f'|format(so.total_incl) }}</td></tr>
                 {% if so.payment_status == 'Cash Sale - Partial' %}
-                <tr><td class="detail-label">Balance Due</td><td class="detail-value">R {{ '%.2f'|format(so.balance_due) }}</td></tr>
+                <tr><td class="detail-label">Balance Due</td><td class="detail-value">{{ currency_symbol }} {{ '%.2f'|format(so.balance_due) }}</td></tr>
                 {% endif %}
                 <tr><td class="detail-label">Status</td><td class="detail-value"><span class="badge badge-{{ so.status.lower() }}">{{ so.status }}</span></td></tr>
                 <tr><td class="detail-label">Payment Status</td><td class="detail-value">
@@ -128,10 +128,10 @@
                     <td>{{ loop.index }}</td>
                     <td>{{ item.description or '' }}</td>
                     <td>{{ item.qty }}</td>
-                    <td>R {{ "%.2f"|format(item.excl_price) }}</td>
+                    <td>{{ currency_symbol }} {{ "%.2f"|format(item.excl_price) }}</td>
                     <td>{{ item.vat_pct }}%</td>
-                    <td>R {{ "%.2f"|format(item.excl_total) }}</td>
-                    <td>R {{ "%.2f"|format(item.incl_total) }}</td>
+                    <td>{{ currency_symbol }} {{ "%.2f"|format(item.excl_total) }}</td>
+                    <td>{{ currency_symbol }} {{ "%.2f"|format(item.incl_total) }}</td>
                     <td>{{ item.job_number or '-' }}</td>
                 </tr>
                 {% endfor %}

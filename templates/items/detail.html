@@ -56,11 +56,11 @@
         <div>
             <table class="detail-table">
                 <tr><td class="detail-label">Qty on Hand</td><td class="detail-value" style="font-size: 1.5rem; font-weight: 700; color: var(--brand-primary);">{{ item.qty_on_hand }}</td></tr>
-                <tr><td class="detail-label">Last Cost</td><td class="detail-value">R {{ "%.2f"|format(item.last_cost) }}</td></tr>
-                <tr><td class="detail-label">Avg. Cost</td><td class="detail-value">R {{ "%.2f"|format(item.avg_cost) }}</td></tr>
-                <tr><td class="detail-label">Excl. Price</td><td class="detail-value">R {{ "%.2f"|format(item.excl_price) }}</td></tr>
-                <tr><td class="detail-label">Incl. Price</td><td class="detail-value">R {{ "%.2f"|format(item.incl_price) }}</td></tr>
-                <tr><td class="detail-label">Stock Value</td><td class="detail-value">R {{ "%.2f"|format(item.qty_on_hand * item.avg_cost) }}</td></tr>
+                <tr><td class="detail-label">Last Cost</td><td class="detail-value">{{ currency_symbol }} {{ "%.2f"|format(item.last_cost) }}</td></tr>
+                <tr><td class="detail-label">Avg. Cost</td><td class="detail-value">{{ currency_symbol }} {{ "%.2f"|format(item.avg_cost) }}</td></tr>
+                <tr><td class="detail-label">Excl. Price</td><td class="detail-value">{{ currency_symbol }} {{ "%.2f"|format(item.excl_price) }}</td></tr>
+                <tr><td class="detail-label">Incl. Price</td><td class="detail-value">{{ currency_symbol }} {{ "%.2f"|format(item.incl_price) }}</td></tr>
+                <tr><td class="detail-label">Stock Value</td><td class="detail-value">{{ currency_symbol }} {{ "%.2f"|format(item.qty_on_hand * item.avg_cost) }}</td></tr>
             </table>
             <div style="text-align: right; margin-top: 8px;">
                 <button type="button" class="btn btn-primary" @click="stockOpen = true; reorderQtyDirty = false">Adjust Stock &amp; Levels</button>

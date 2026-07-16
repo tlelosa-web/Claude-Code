@@ -78,15 +78,15 @@
     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; padding: 20px;">
         <div>
             <div class="stat-label">Total</div>
-            <div class="stat-val" style="--accent: var(--brand-primary); color: var(--accent);">R {{ '%.2f'|format(total_value) }}</div>
+            <div class="stat-val" style="--accent: var(--brand-primary); color: var(--accent);">{{ currency_symbol }} {{ '%.2f'|format(total_value) }}</div>
         </div>
         <div>
             <div class="stat-label">Cash Sale</div>
-            <div class="stat-val" style="--accent: var(--brand-success); color: var(--accent);">R {{ '%.2f'|format(cash_sale_value) }}</div>
+            <div class="stat-val" style="--accent: var(--brand-success); color: var(--accent);">{{ currency_symbol }} {{ '%.2f'|format(cash_sale_value) }}</div>
         </div>
         <div>
             <div class="stat-label">Account</div>
-            <div class="stat-val" style="--accent: var(--brand-secondary); color: var(--accent);">R {{ '%.2f'|format(account_value) }}</div>
+            <div class="stat-val" style="--accent: var(--brand-secondary); color: var(--accent);">{{ currency_symbol }} {{ '%.2f'|format(account_value) }}</div>
         </div>
     </div>
 </div>

@@ -121,11 +121,11 @@
                         <td>{{ loop.index }}</td>
                         <td>{{ item.description or '' }}</td>
                         <td>{{ item.qty }}</td>
-                        <td>R {{ "%.2f"|format(item.excl_price) }}</td>
+                        <td>{{ currency_symbol }} {{ "%.2f"|format(item.excl_price) }}</td>
                         <td>{{ item.disc_pct if item.disc_pct else 0 }}%</td>
                         <td>{{ item.vat_pct }}%</td>
-                        <td>R {{ "%.2f"|format(item.excl_total) }}</td>
-                        <td>R {{ "%.2f"|format(item.incl_total) }}</td>
+                        <td>{{ currency_symbol }} {{ "%.2f"|format(item.excl_total) }}</td>
+                        <td>{{ currency_symbol }} {{ "%.2f"|format(item.incl_total) }}</td>
                     </tr>
                     {% endfor %}
                 </tbody>

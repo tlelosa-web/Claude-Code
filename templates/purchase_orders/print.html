@@ -82,21 +82,21 @@
                 <td><strong>{{ line.item.code if line.item else (line.item_code_raw or '-') }}</strong></td>
                 <td>{{ line.description or '' }}</td>
                 <td style="text-align: right;">{{ "%.2f"|format(line.qty_ordered or 0) }}</td>
-                <td style="text-align: right;">R {{ "%.2f"|format(line.excl_price or 0) }}</td>
-                <td style="text-align: right;">R {{ "%.2f"|format(line.excl_total or 0) }}</td>
-                <td style="text-align: right;">R {{ "%.2f"|format(line.incl_total or 0) }}</td>
+                <td style="text-align: right;">{{ currency_symbol }} {{ "%.2f"|format(line.excl_price or 0) }}</td>
+                <td style="text-align: right;">{{ currency_symbol }} {{ "%.2f"|format(line.excl_total or 0) }}</td>
+                <td style="text-align: right;">{{ currency_symbol }} {{ "%.2f"|format(line.incl_total or 0) }}</td>
             </tr>
             {% endfor %}
         </tbody>
         <tfoot>
             <tr>
                 <td colspan="5" style="text-align: right;">Total Excl.:</td>
-                <td style="text-align: right;">R {{ "%.2f"|format(po.lines|sum(attribute='excl_total') or 0) }}</td>
+                <td style="text-align: right;">{{ currency_symbol }} {{ "%.2f"|format(po.lines|sum(attribute='excl_total') or 0) }}</td>
                 <td></td>
             </tr>
             <tr>
                 <td colspan="5" style="text-align: right;">Total Incl.:</td>
-                <td colspan="2" style="text-align: right;">R {{ "%.2f"|format(po.lines|sum(attribute='incl_total') or 0) }}</td>
+                <td colspan="2" style="text-align: right;">{{ currency_symbol }} {{ "%.2f"|format(po.lines|sum(attribute='incl_total') or 0) }}</td>
             </tr>
         </tfoot>
     </table>

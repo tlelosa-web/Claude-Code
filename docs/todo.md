@@ -31,6 +31,18 @@
 
 ## Done
 
+- [x] **2026-07-16** — Hidden (no-terminal) launcher committed (`0b36ffb`):
+      `Launch_NamePlate_Tool.vbs` / `Stop_NamePlate_Tool.vbs` +
+      `RUN_PIPELINE_HIDDEN.ps1` / `STOP_PIPELINE.ps1`. Root cause found
+      during testing: killing only the port-listening process doesn't stop
+      the app, because `uvicorn --reload` runs a supervisor that respawns a
+      new worker — fixed by recording the root PIDs at launch
+      (`5_Archive_and_Debug/pipeline.pids`, gitignored) and using
+      `taskkill /T` to kill the whole tree. `Nameplate Tool.lnk` (project
+      root) repointed at the hidden launcher; a matching desktop shortcut
+      was also created for Tebello directly (not tracked in git). Documented
+      in `1_Documentation/USER_GUIDE.md` § Launching Without a Terminal.
+      `RUN_PIPELINE.bat` (visible windows) kept as-is for debugging.
 - [x] **2026-07-15** — Test Sheet Fan Lines UI **replaced** by a Quantity
       field, committed (`d5aab64`) — Tebello clarified the table approach
       below was still the wrong design; no per-fan UI at all was wanted.

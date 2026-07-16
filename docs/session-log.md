@@ -216,3 +216,68 @@
 whenever there's concrete work in one of them, per hub ADR-002. This
 project's own `docs/todo.md` § Next up still has the automated-test-suite
 idea, not urgent.
+
+-----
+
+## 2026-07-16 — Hidden (no-terminal) launcher
+
+**Domain:** Full-stack (FastAPI + React/Vite), tooling/DX
+
+**What happened:**
+- Tebello asked how to launch the app without opening terminal windows.
+  `RUN_PIPELINE.bat` (existing launcher) opens two visible `cmd /k` windows
+  every time. Offered four options (minimized windows / fully hidden +
+  stop script / single-process build / tray icon); Tebello picked fully
+  hidden + stop script.
+- Built `RUN_PIPELINE_HIDDEN.ps1` (backend via venv `python.exe -m uvicorn
+  --reload`, frontend via `npm.cmd run dev`, both `Start-Process
+  -WindowStyle Hidden`, then opens the browser) and
+  `Launch_NamePlate_Tool.vbs` as the double-click entry point (`WScript.Shell.Run`
+  with windowstyle 0, so even the launch itself is invisible).
+- First stop-script version killed whatever was listening on 8000/5173 —
+  testing found this doesn't actually stop the backend: `uvicorn --reload`
+  runs a supervisor process that respawns a new worker (new PID) the moment
+  the old one dies, so a port-based kill just triggers an infinite
+  whack-a-mole. Confirmed via `Get-CimInstance Win32_Process` that the real
+  process tree is a root reloader → worker child (backend) and
+  `npm-cli.js` → `cmd.exe` → `node vite.js` (frontend).
+- Fixed by capturing the root process IDs `Start-Process -PassThru` returns
+  at launch time, saving them to `5_Archive_and_Debug/pipeline.pids`
+  (gitignored — matches existing `5_Archive_and_Debug/` ignore rule), and
+  having `STOP_PIPELINE.ps1` run `taskkill /PID <root> /T /F` on each,
+  which kills the whole tree in one shot. Kept a port-based sweep as a
+  fallback for anything the pid file doesn't cover (stale file, manual
+  process start, etc.).
+- Verified end-to-end live (not just read the code): launched via the
+  actual `.vbs` files, confirmed both servers respond (`curl` 200 on
+  `:5173` and `:8000/docs`) with zero visible windows, confirmed
+  `Stop_NamePlate_Tool.vbs` fully clears both ports afterward. Along the
+  way, found and worked around an unrelated environment quirk: this
+  session's own shell has a stale/unreachable phantom process holding
+  port 8000 that neither `Get-Process`, `Get-CimInstance`, nor `taskkill`
+  from within it could see or kill (Tebello closed it manually from their
+  real desktop afterward, confirmed by rechecking the ports).
+- `Nameplate Tool.lnk` (project root) repointed from `RUN_PIPELINE.bat` to
+  `Launch_NamePlate_Tool.vbs` (was `TargetPath` = the bat file; now the
+  vbs). Documented usage in `1_Documentation/USER_GUIDE.md` § "Launching
+  Without a Terminal" (start/stop/troubleshooting), inserted as an isolated
+  diff hunk via `git add -p` to avoid bundling in the pre-existing unrelated
+  uncommitted edits already sitting in that file (the flagged `/api/speed`-
+  related doc changes — left untouched, still not committed).
+- Also created a shortcut on Tebello's actual Windows desktop
+  (`Nameplate Tool.lnk` → same `Launch_NamePlate_Tool.vbs` target) per a
+  follow-up request. Not part of the git repo (lives outside the project
+  folder).
+- Committed as `0b36ffb`: the 4 new launcher files + repointed `.lnk` +
+  the isolated `USER_GUIDE.md` hunk. Left every other pre-existing
+  uncommitted change in the repo (`main.py`'s `/api/speed`, `doc_history.json`,
+  `excel_source.py`, `DEPLOYMENT.md`, `CONFLICT_ANALYSIS.md`,
+  `backend.log`, `test_api_fixes.py`) exactly as found — none of it was
+  named or approved for this commit.
+
+**Blockers:** None.
+
+**Next:** None queued for this project beyond the existing `docs/todo.md`
+§ Next up item (automated test suite, not urgent). The unrelated
+`/api/speed` uncommitted change in `main.py` is still waiting on a
+decision from Tebello (§ Backlog).

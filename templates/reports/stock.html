@@ -41,7 +41,7 @@
     <div id="stock-table"></div>
     <div style="padding: 16px; border-top: 1px solid var(--border-color); display: flex; justify-content: space-between; font-size: 1rem;">
         <span>Total Items: <strong id="total-items">0</strong></span>
-        <span>Grand Total Value: <strong id="grand-total" style="color: var(--brand-primary); font-size: 1.3rem;">R 0.00</strong></span>
+        <span>Grand Total Value: <strong id="grand-total" style="color: var(--brand-primary); font-size: 1.3rem;">{{ currency_symbol }} 0.00</strong></span>
     </div>
 </div>
 {% endblock %}
@@ -81,8 +81,8 @@ document.addEventListener('DOMContentLoaded', function() {
                         { title: 'Category', field: 'category' },
                         { title: 'Qty on Hand', field: 'qty_on_hand', formatter: 'number', bottomCalc: 'sum' },
                         { title: 'Available Qty', field: 'available_qty', formatter: 'number', bottomCalc: 'sum' },
-                        { title: 'Avg Cost (R)', field: 'avg_cost', formatter: 'money', formatterParams: { decimal: '.', thousand: ',', symbol: 'R ' } },
-                        { title: 'Stock Value (R)', field: 'stock_value', formatter: 'money', formatterParams: { decimal: '.', thousand: ',', symbol: 'R ' }, bottomCalc: 'sum' },
+                        { title: 'Avg Cost ({{ currency_symbol }})', field: 'avg_cost', formatter: 'money', formatterParams: { decimal: '.', thousand: ',', symbol: '{{ currency_symbol }} ' } },
+                        { title: 'Stock Value ({{ currency_symbol }})', field: 'stock_value', formatter: 'money', formatterParams: { decimal: '.', thousand: ',', symbol: '{{ currency_symbol }} ' }, bottomCalc: 'sum' },
                         { title: 'Reorder Point', field: 'reorder_point' },
                         { title: 'Last Movement', field: 'last_movement_date' }
                     ],
@@ -96,7 +96,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
                 
                 document.getElementById('total-items').textContent = data.total_items;
-                document.getElementById('grand-total').textContent = 'R ' + data.grand_total.toLocaleString('en-ZA', {minimumFractionDigits: 2});
+                document.getElementById('grand-total').textContent = '{{ currency_symbol }} ' + data.grand_total.toLocaleString('en-ZA', {minimumFractionDigits: 2});
             });
     }
     

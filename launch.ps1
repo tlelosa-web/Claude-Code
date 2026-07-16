@@ -1,4 +1,6 @@
 # SOPS - Sales Order Processing System Launcher
+Set-Location -LiteralPath $PSScriptRoot
+
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host "Starting SOPS Application..." -ForegroundColor Cyan
 Write-Host "========================================" -ForegroundColor Cyan
@@ -13,11 +15,17 @@ if (-Not (Test-Path "venv\Scripts\python.exe")) {
     exit 1
 }
 
-# Start the Flask application
-Write-Host "Launching application at http://127.0.0.1:5000" -ForegroundColor Green
-Write-Host "Press Ctrl+C to stop the server" -ForegroundColor Yellow
-Write-Host ""
+# If a server is already listening on 5000 (e.g. left running from a
+# previous launch), don't try to start a second one - just open the browser.
+$alreadyRunning = Get-NetTCPConnection -LocalPort 5000 -State Listen -ErrorAction SilentlyContinue
 
-& .\venv\Scripts\python.exe app.py
+if ($alreadyRunning) {
+    Write-Host "Server already running on port 5000 - opening browser only." -ForegroundColor Yellow
+} else {
+    Write-Host "Launching server at http://127.0.0.1:5000 in a new window..." -ForegroundColor Green
+    Start-Process -FilePath "venv\Scripts\python.exe" -ArgumentList "app.py" -WorkingDirectory $PSScriptRoot
+    Write-Host "Waiting for it to come up..."
+    Start-Sleep -Seconds 3
+}
 
-Read-Host "Press Enter to exit"
+Start-Process "http://127.0.0.1:5000"

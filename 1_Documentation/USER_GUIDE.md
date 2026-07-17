@@ -113,25 +113,11 @@ The application is now ready to use. Open your browser to `http://localhost:5173
 
 ## API Endpoints
 
-### GET `/api/speed`
-Get operating speed based on pole count.
-
-**Parameters:**
-- `pole` (string): 2, 4, 6, or 8
-
-**Response:**
-```json
-{
-  "op_speed": "1440",
-  "error": null
-}
-```
-
 ### GET `/api/fla`
 Calculate Full Load Amperage (FLA).
 
 **Parameters:**
-- `motor_kw` (string): Motor power in kW
+- `motor` (string): Motor power in kW
 - `pole` (string): Pole count (2, 4, 6, or 8)
 - `voltage` (string): Voltage (380, 525, or 220)
 
@@ -147,9 +133,9 @@ Calculate Full Load Amperage (FLA).
 Determine connection type (STAR/DELTA).
 
 **Parameters:**
-- `motor_kw` (string): Motor power in kW
-- `pole` (string): Pole count (2, 4, 6, or 8)
 - `voltage` (string): Voltage (380, 525, or 220)
+- `pole` (string): Pole count (2, 4, 6, or 8)
+- `motor` (string): Motor power in kW
 
 **Response:**
 ```json

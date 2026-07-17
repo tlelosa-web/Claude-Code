@@ -15,10 +15,13 @@ This analysis identifies discrepancies and potential documentation conflicts in 
    - Actual code lives under `4_Scripts/backend` and `4_Scripts/frontend`.
    - `README.md` and `QUICKSTART.md` correctly reference `4_Scripts/backend` and `4_Scripts/frontend`, making `DEPLOYMENT.md` the inconsistent file.
 
-2. Root path inconsistency
-   - `DEPLOYMENT.md` example uses `c:\Users\Fan Movement\OneDrive - Fan Movement (Pty) Ltd\Desktop\NamePlateTool`.
-   - Actual workspace path is `c:\Users\Fan Movement\OneDrive - Fan Movement (Pty) Ltd\Desktop\Operations\5. Nameplate & Test Sheet`.
-   - This indicates `DEPLOYMENT.md` appears to be outdated or written for a prior repository name/location.
+2. Root path inconsistency (RESOLVED 2026-07-15)
+   - `DEPLOYMENT.md` previously used `c:\Users\Fan Movement\OneDrive - Fan Movement (Pty) Ltd\Desktop\NamePlateTool`.
+   - Actual workspace path is now `C:\Dev\Operations\3. Nameplate & Test Sheet` (moved outside OneDrive
+     sync; the folder was also renumbered from `5.` to `3.` at some point — an OneDrive junction at the
+     old path still resolves for compatibility).
+   - `DEPLOYMENT.md`'s quick-start `cd` was updated to `C:\Dev\Operations\3. Nameplate & Test Sheet\4_Scripts`,
+     which also resolves the backend/frontend root-location mismatch noted below.
 
 3. Generic frontend documentation
    - `4_Scripts/frontend/README.md` is a generic React + Vite template document, not specific to this application.
@@ -41,4 +44,4 @@ This analysis identifies discrepancies and potential documentation conflicts in 
 
 ## Conclusion
 
-The documentation consistently describes a FastAPI + React/Vite motor nameplate generator, but `DEPLOYMENT.md` contains the clearest structural mismatch with the live repository. `README.md`, `QUICKSTART.md`, and `GEMINI.md` should be treated as the primary authoritative sources for this workspace. `DEPLOYMENT.md` should be corrected to use `4_Scripts/backend`, `4_Scripts/frontend`, and the actual workspace path `c:\Users\Fan Movement\OneDrive - Fan Movement (Pty) Ltd\Desktop\Operations\5. Nameplate & Test Sheet`.
+The documentation consistently describes a FastAPI + React/Vite motor nameplate generator. `DEPLOYMENT.md`'s structural mismatch with the live repository has been corrected: its quick-start now points to `C:\Dev\Operations\3. Nameplate & Test Sheet\4_Scripts`, which resolves both the stale root path and the `4_Scripts/backend` / `4_Scripts/frontend` location issue in one fix. `README.md`, `QUICKSTART.md`, and `GEMINI.md` remain the primary authoritative sources for this workspace.

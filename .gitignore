@@ -16,3 +16,7 @@ dist/
 # Generated outputs and archives
 3_Live_Reports/
 5_Archive_and_Debug/
+
+# Runtime-generated logs/history (not source)
+4_Scripts/backend/doc_history.json
+4_Scripts/backend/logs/

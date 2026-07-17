@@ -6,7 +6,7 @@
 
 1. **Navigate to project root:**
    ```powershell
-   cd 'c:\Users\Fan Movement\OneDrive - Fan Movement (Pty) Ltd\Desktop\NamePlateTool'
+   cd 'C:\Dev\Operations\3. Nameplate & Test Sheet\4_Scripts'
    ```
 
 2. **Start backend server:**

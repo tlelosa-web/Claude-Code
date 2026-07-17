@@ -112,29 +112,33 @@
                         <th style="padding: 12px;">SO Number</th>
                         <th style="padding: 12px;">Customer</th>
                         <th style="padding: 12px;">Delivery Date</th>
-                        <th style="padding: 12px;">Status</th>
+                        <th style="padding: 12px; text-align: right;">Status</th>
+                        <th style="padding: 12px; text-align: right;">Payment Status</th>
                         <th style="padding: 12px; text-align: right;">Action</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for so in open_sales_orders %}
                         <tr style="border-bottom: 1px solid var(--border-color); font-size: 0.95rem;">
-                            <td style="padding: 16px; color: var(--text-secondary);">
+                            <td style="padding: 16px; color: var(--text-secondary); vertical-align: middle;">
                                 {{ so.job_numbers or '-' }}
                             </td>
-                            <td style="padding: 16px; font-weight: 600; color: var(--brand-primary);">
+                            <td style="padding: 16px; font-weight: 600; color: var(--brand-primary); vertical-align: middle;">
                                 {{ so.so_number }}
                             </td>
-                            <td style="padding: 16px;">{{ so.customer_name or '-' }}</td>
-                            <td style="padding: 16px; color: var(--text-secondary);">
+                            <td style="padding: 16px; vertical-align: middle;">{{ so.customer_name or '-' }}</td>
+                            <td style="padding: 16px; color: var(--text-secondary); vertical-align: middle;">
                                 {{ so.delivery_date | dmy or '-' }}
                             </td>
-                            <td style="padding: 16px;">
+                            <td style="padding: 16px; text-align: right; vertical-align: middle;">
                                 <span class="badge badge-{{ so.status.lower() }}">
                                     {{ so.status }}
                                 </span>
                             </td>
-                            <td style="padding: 16px; text-align: right;">
+                            <td style="padding: 16px; text-align: right; vertical-align: middle;">
+                                {{ so.payment_status or '-' }}
+                            </td>
+                            <td style="padding: 16px; text-align: right; vertical-align: middle;">
                                 <a href="{{ url_for('sales_orders.view_order', order_id=so.id) }}" class="btn btn-secondary" style="padding: 4px 10px; font-size: 0.75rem;">
                                     View
                                 </a>

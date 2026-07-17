@@ -27,19 +27,19 @@
                     <th class="col-date">Due Date</th>
                     <th>Status</th>
                     <th class="col-date">Created</th>
-                    <th>Actions</th>
+                    <th data-sortable="false">Actions</th>
                 </tr>
             </thead>
             <tbody>
                 {% for order in orders %}
                 <tr>
-                    <td class="col-date">{{ order.po_date | dmy or '-' }}</td>
+                    <td class="col-date" data-sort="{{ order.po_date.isoformat() if order.po_date else '' }}">{{ order.po_date | dmy or '-' }}</td>
                     <td><a href="{{ url_for('purchase_orders.view_order', order_id=order.id) }}" class="link-primary">{{ order.po_number }}</a></td>
                     <td>{{ order.reference or '-' }}</td>
                     <td>{{ order.supplier_name or '-' }}</td>
-                    <td class="col-date">{{ order.due_date.strftime('%Y-%m-%d') if order.due_date else '-' }}</td>
+                    <td class="col-date" data-sort="{{ order.due_date.isoformat() if order.due_date else '' }}">{{ order.due_date.strftime('%Y-%m-%d') if order.due_date else '-' }}</td>
                     <td><span class="badge badge-{{ order.status.lower().replace(' ', '-') }}">{{ order.status }}</span></td>
-                    <td class="col-date">{{ order.created_at.strftime('%Y-%m-%d %H:%M') if order.created_at else '-' }}</td>
+                    <td class="col-date" data-sort="{{ order.created_at.isoformat() if order.created_at else '' }}">{{ order.created_at.strftime('%Y-%m-%d %H:%M') if order.created_at else '-' }}</td>
                     <td>
                         <a href="{{ url_for('purchase_orders.view_order', order_id=order.id) }}" class="btn btn-secondary" style="padding: 4px 10px; font-size: 0.75rem;">View</a>
                     </td>
@@ -57,4 +57,6 @@
 {% block extra_scripts %}
 <script src="{{ url_for('static', filename='js/resizable_columns.js') }}"></script>
 <script>makeColumnsResizable('po-list-table');</script>
+<script src="{{ url_for('static', filename='js/table_sort_filter.js') }}"></script>
+<script>makeTableSortableFilterable('po-list-table');</script>
 {% endblock %}

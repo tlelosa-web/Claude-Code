@@ -47,7 +47,7 @@
 
         var headerCells = Array.prototype.slice.call(table.querySelectorAll('thead th'));
         headerCells.forEach(function (th, index) {
-            th.style.position = 'relative';
+            th.style.position = 'sticky';
 
             var handle = document.createElement('div');
             handle.className = 'col-resize-handle';

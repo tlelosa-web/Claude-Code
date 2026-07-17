@@ -25,18 +25,18 @@
                     <th>Customer</th>
                     <th class="col-date">Delivery Date</th>
                     <th>Status</th>
-                    <th>Actions</th>
+                    <th data-sortable="false">Actions</th>
                 </tr>
             </thead>
             <tbody>
                 {% for order in orders %}
                 <tr>
-                    <td class="col-date">{{ order.created_at | dmy or '-' }}</td>
+                    <td class="col-date" data-sort="{{ order.created_at.isoformat() if order.created_at else '' }}">{{ order.created_at | dmy or '-' }}</td>
                     <td>{{ order.job_numbers or '-' }}</td>
                     <td><a href="{{ url_for('stock_orders.view_order', order_id=order.id) }}" class="link-primary">{{ order.stock_order_number }}</a></td>
                     <td>{{ order.sales_order.so_number if order.sales_order else '-' }}</td>
                     <td>{{ order.sales_order.customer_name if order.sales_order else '-' }}</td>
-                    <td class="col-date">{{ (order.sales_order.delivery_date | dmy or '-') if order.sales_order else '-' }}</td>
+                    <td class="col-date" data-sort="{{ order.sales_order.delivery_date.isoformat() if order.sales_order and order.sales_order.delivery_date else '' }}">{{ (order.sales_order.delivery_date | dmy or '-') if order.sales_order else '-' }}</td>
                     <td><span class="badge badge-{{ order.status.lower() }}">{{ order.status }}</span></td>
                     <td>
                         <a href="{{ url_for('stock_orders.view_order', order_id=order.id) }}" class="btn btn-secondary" style="padding: 4px 10px; font-size: 0.75rem;">View</a>
@@ -55,4 +55,6 @@
 {% block extra_scripts %}
 <script src="{{ url_for('static', filename='js/resizable_columns.js') }}"></script>
 <script>makeColumnsResizable('sto-list-table');</script>
+<script src="{{ url_for('static', filename='js/table_sort_filter.js') }}"></script>
+<script>makeTableSortableFilterable('sto-list-table');</script>
 {% endblock %}

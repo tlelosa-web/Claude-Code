@@ -27,13 +27,13 @@
                     <th class="col-date">Delivery Date</th>
                     <th>Status</th>
                     <th>Issued By</th>
-                    <th>Actions</th>
+                    <th data-sortable="false">Actions</th>
                 </tr>
             </thead>
             <tbody>
                 {% for wo in orders %}
                 <tr>
-                    <td class="col-date">{{ wo.created_at | dmy or '-' }}</td>
+                    <td class="col-date" data-sort="{{ wo.created_at.isoformat() if wo.created_at else '' }}">{{ wo.created_at | dmy or '-' }}</td>
                     <td>{{ wo.job_number or '-' }}</td>
                     <td><a href="{{ url_for('works_orders.view_order', order_id=wo.id) }}" class="link-primary">{{ wo.wo_number }}</a></td>
                     <td>
@@ -49,7 +49,7 @@
                         {% endif %}
                     </td>
                     <td>{{ wo.sales_order.customer_name if wo.sales_order else '-' }}</td>
-                    <td class="col-date">{{ (wo.sales_order.delivery_date | dmy or '-') if wo.sales_order else '-' }}</td>
+                    <td class="col-date" data-sort="{{ wo.sales_order.delivery_date.isoformat() if wo.sales_order and wo.sales_order.delivery_date else '' }}">{{ (wo.sales_order.delivery_date | dmy or '-') if wo.sales_order else '-' }}</td>
                     <td><span class="badge badge-{{ wo.status.lower().replace(' ', '') }}">{{ wo.status }}</span></td>
                     <td>{{ wo.issued_by or '-' }}</td>
                     <td>
@@ -88,6 +88,8 @@
 {% block extra_scripts %}
 <script src="{{ url_for('static', filename='js/resizable_columns.js') }}"></script>
 <script>makeColumnsResizable('orders-table');</script>
+<script src="{{ url_for('static', filename='js/table_sort_filter.js') }}"></script>
+<script>makeTableSortableFilterable('orders-table');</script>
 <script>
 // Override toggleDropdown to handle viewport overflow
 (function() {

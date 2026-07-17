@@ -2,10 +2,11 @@
 
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
   Dialog,
@@ -25,7 +26,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { FileText, Plus, RefreshCw, Send, CheckCircle2, Pencil, Trash2 } from "lucide-react";
+import { FileText, Plus, RefreshCw, Send, CheckCircle2, Pencil, Trash2, Download } from "lucide-react";
 
 interface DeliveryNote {
   id: string;
@@ -328,6 +329,16 @@ export default function DeliveryNotePage() {
                           </TableCell>
                           <TableCell className="text-right">
                             <div className="flex items-center justify-end gap-2">
+                              <a
+                                href={`/api/dn/${dn.id}/pdf`}
+                                className={cn(
+                                  buttonVariants({ variant: "outline", size: "icon" }),
+                                  "bg-white/5 border-white/10 hover:bg-white/10 text-slate-300 transition-colors"
+                                )}
+                                title="Download PDF"
+                              >
+                                <Download className="h-4 w-4" />
+                              </a>
                               <Button
                                 variant="outline"
                                 size="icon"

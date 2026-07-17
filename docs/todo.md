@@ -483,3 +483,21 @@ All items below must be green before delivery:
 - Next task: none queued. Batch 24 payment-status data migration review (19 of 22 SOs still unconfirmed) remains the only outstanding live-data item, carried forward from prior batches.
 - Blockers: None.
 - Committed: `eb11757` (implementation). Spec (`list-sort-filter-sticky-headers-dashboard-2026-07-17.md`) committed separately per convention.
+
+## Ops — 'Items Catalogue' renamed to 'Inventory' (2026-07-17)
+- [x] Tebello asked to rename the "Item Catalogue" label. Flagged a naming
+      collision before acting: SOPS already has "Stock Report" and "Stock
+      Adjustment" as distinct nav items, so renaming to "Stock" would add a
+      third, confusable label — Tebello picked **"Inventory"** instead, and
+      scoped the change to the main nav link + page title/heading only
+      (left the separate "Item Catalogue" component-search panel inside
+      BOM Builder untouched — different UI element, not this page).
+- [x] Text-only change, 2 files: `templates/base.html` (sidebar link) and
+      `templates/items/catalogue.html` (`<title>`, page heading). No route,
+      blueprint, endpoint, or filename changes — `items.catalogue` endpoint
+      and `/items` URL untouched, so this carries no risk to bookmarks or
+      other templates' `url_for()` calls.
+- [x] Full suite: 216 tests green (unchanged — no test asserted on the old
+      label text). Live-verified against the running dev server: nav shows
+      "Inventory", page title/heading both read "Inventory".
+- Blockers: None.

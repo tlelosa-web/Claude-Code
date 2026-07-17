@@ -550,3 +550,67 @@ All items below must be green before delivery:
 - Blockers: None.
 - Committed: `fe06eaa`. Spec committed together with the implementation
   (single commit, per this batch's scope).
+
+## Batch 33 — AMU + suggested Min/Max reorder levels from Sage (2026-07-17)
+- [x] Direct follow-on to Batch 32: Tebello asked to also port AvgMovement's
+      AMU (average monthly usage) + automated Min/Max reorder-level
+      suggestion logic into SOPS — a capability SOPS never had (its own
+      `reorder_point`/`max_level` are manually set, only 11/3,126 items have
+      them). Scoped via AskUserQuestion: **new, separate `amu`/
+      `suggested_min`/`suggested_max` fields, never written into the
+      existing manually-curated `reorder_point`/`max_level`/`reorder_qty`**
+      (Batch 25) — purely informational, no "apply suggestion" button
+      (not asked for). Formula reuses `Item.lead_time_weeks` (Batch 32)
+      instead of re-parsing `OutstandingPOByItemReport.csv` a second time —
+      avoiding a second instance of the "two processes compute the same
+      thing" problem this whole thread exists to fix. Spec:
+      `docs/specs/amu-minmax-reorder-suggestion-2026-07-17.md`.
+- [x] Dispatched a single `executor` agent, commit `112e321`:
+      `Item.amu`/`suggested_min`/`suggested_max` columns; migration script
+      (not run against `instance/sops.db`); new
+      `services/movement_history_importer.py` (parsing + `round_amu_half()`
+      adapted verbatim from AvgMovement's `item_movement_report.py`); new
+      upload-only `/items/import-movement-history` route + template;
+      Stock Report and Item detail both show the three new fields. Items
+      not present in `ItemMovementReport.csv` are deliberately left
+      untouched (not force-floored to AMU=1.0 the way AvgMovement's own
+      report did for every catalogue item) — SOPS should only suggest a
+      level where the CSV actually has data.
+- [x] **Incident during the executor's own sanity check, self-caught and
+      self-reported:** a manual verification run against the real
+      `data/ItemMovementReport.csv` used `create_app()` (defaults to the
+      live DB) instead of a test fixture; `db.session.commit()` fired
+      before the follow-up rollback, briefly writing computed values into
+      1,725 items in `instance/sops.db`. The executor caught this
+      immediately, reverted all three fields to `0.0` for every item, and
+      flagged it unprompted in its report rather than omitting it.
+      **Independently verified by the orchestrator** (not just taken on
+      trust): `instance/sops.db` confirmed clean — 0 items with non-zero
+      `amu`/`suggested_min`/`suggested_max`, 0 NULLs, item count unchanged
+      at 3,126, the 11 manually-set `reorder_point`/`max_level` items
+      untouched, `supplier` still correctly unmigrated (consistent with
+      Batch 32 also not yet run live). `instance/` is gitignored, so
+      nothing from this ever touched git.
+- [x] Orchestrator-side verification: read every diff line-by-line against
+      the spec (all 14 changed/new files) — matched exactly, no writes to
+      `reorder_point`/`max_level`/`reorder_qty`, no re-parsing of the PO
+      file. Independently re-ran the full suite (248 passed, was 230).
+- [x] Additionally ran the importer against the **real**
+      `ItemMovementReport.csv` (already present in this repo's `data/`,
+      unused until now) in a fresh isolated in-memory test DB — 1,725
+      items updated, 19 unmatched skipped, 1,242 correctly left untouched.
+      Hand-verified the formula against 2 real rows
+      (e.g. `M10X40`: AMU 540 × lead-time-months 0.8 → min 432, max
+      432 + round(540×2) = 1512 — both matched the importer's output).
+- [x] Full suite: 248 tests green (was 230, +18 new).
+- Next task: Tebello to run both migrations + both real-data imports
+  against `instance/sops.db` when ready (Batch 32's and this batch's are
+  independent, can be run in either order). AvgMovement retirement stays
+  on hold pending Tebello's own decision (not reopened by this batch) —
+  but worth noting the capability gap that held it back (AMU/Min-Max) is
+  now closed alongside Batch 32's Supplier/Lead Time, so nothing AvgMovement
+  does is unreplicated in SOPS anymore. Revisit at the hub level whenever
+  Tebello wants to.
+- Blockers: None.
+- Committed: `112e321`. Spec committed together with the implementation
+  (single commit, per this batch's scope).

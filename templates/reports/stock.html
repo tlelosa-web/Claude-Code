@@ -84,6 +84,8 @@ document.addEventListener('DOMContentLoaded', function() {
                         { title: 'Avg Cost ({{ currency_symbol }})', field: 'avg_cost', formatter: 'money', formatterParams: { decimal: '.', thousand: ',', symbol: '{{ currency_symbol }} ' } },
                         { title: 'Stock Value ({{ currency_symbol }})', field: 'stock_value', formatter: 'money', formatterParams: { decimal: '.', thousand: ',', symbol: '{{ currency_symbol }} ' }, bottomCalc: 'sum' },
                         { title: 'Reorder Point', field: 'reorder_point' },
+                        { title: 'Supplier', field: 'supplier' },
+                        { title: 'Lead Time (wks)', field: 'lead_time_weeks', formatter: 'number' },
                         { title: 'Last Movement', field: 'last_movement_date' }
                     ],
                     rowFormatter: function(row) {

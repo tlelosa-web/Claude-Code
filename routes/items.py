@@ -4,6 +4,7 @@ from werkzeug.utils import secure_filename
 from sqlalchemy.exc import IntegrityError
 from models import db, Item, StockMovement
 from services.item_importer import import_items_from_csv
+from services.po_by_item_importer import import_supplier_lead_time_from_csv
 from services.stock_service import adjust
 
 items_bp = Blueprint('items', __name__)
@@ -186,5 +187,34 @@ def import_csv():
                 return redirect(url_for('items.import_csv'))
         else:
             flash("Please choose a file or select to seed the default file.", "error")
-            
+
     return render_template('items/import.html')
+
+
+@items_bp.route('/items/import-supplier-leadtime', methods=['GET', 'POST'])
+def import_supplier_leadtime():
+    """Upload-only import of Supplier + Lead Time (weeks) from Sage's
+    OutstandingPOByItemReport.csv. Only enriches existing catalogue items
+    matched by code - never creates new items, never touches qty_on_hand
+    or the qty_on_order figure computed live from internal POs.
+    See docs/specs/supplier-lead-time-import-2026-07-17.md."""
+    if request.method == 'POST':
+        uploaded_file = request.files.get('csv_file')
+
+        if uploaded_file and uploaded_file.filename:
+            upload_dir = current_app.config['UPLOAD_FOLDER']
+            os.makedirs(upload_dir, exist_ok=True)
+            file_path = os.path.join(upload_dir, secure_filename(uploaded_file.filename))
+            uploaded_file.save(file_path)
+
+            try:
+                updated_count, unmatched_count = import_supplier_lead_time_from_csv(file_path)
+                flash(f"{updated_count} items updated, {unmatched_count} item codes not found in catalogue.", "success")
+                return redirect(url_for('items.catalogue'))
+            except Exception as e:
+                flash(f"Error importing CSV: {str(e)}", "error")
+                return redirect(url_for('items.import_supplier_leadtime'))
+        else:
+            flash("Please choose a CSV file to import.", "error")
+
+    return render_template('items/import_supplier_leadtime.html')

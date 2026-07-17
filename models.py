@@ -21,6 +21,8 @@ class Item(db.Model):
     reorder_qty = db.Column(db.Float, default=0.0)  # suggested qty for "Create PO from shortfall"
     max_level = db.Column(db.Float, default=0.0)  # target max stock level; 0 means "not set" (same convention as reorder_point)
     is_stocked_finished_good = db.Column(db.Boolean, default=False)  # opt-in: WO Complete produces this item's qty_on_hand; see docs/specs/production-receipt-on-wo-complete.md
+    supplier = db.Column(db.String(255))  # most-frequent supplier from PO history, CSV-sourced
+    lead_time_weeks = db.Column(db.Float, default=0.0)  # avg lead time in weeks, CSV-sourced
 
     # Relationships
     movements = db.relationship('StockMovement', backref='item', lazy=True)

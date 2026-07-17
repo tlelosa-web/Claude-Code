@@ -119,3 +119,44 @@ class TestStockReportDemandNettedBelowReorder:
         body = response.get_data(as_text=True)
         assert 'Available Qty' in body
         assert item.code in body
+
+    def test_supplier_and_lead_time_weeks_present_in_stock_data(self, app, db, session, client):
+        item = Item(code=self._next_code("STOCKRPT-SUPPLIER"), description="Supplier field item",
+                    qty_on_hand=10.0, active=True, supplier="Acme Supplies",
+                    lead_time_weeks=2.5)
+        session.add(item)
+        session.commit()
+
+        response = client.get('/reports/stock/data?active_only=false')
+        data = response.get_json()
+        row = next(i for i in data['items'] if i['code'] == item.code)
+
+        assert row['supplier'] == 'Acme Supplies'
+        assert row['lead_time_weeks'] == 2.5
+
+    def test_supplier_and_lead_time_weeks_default_to_placeholder_when_unset(self, app, db, session, client):
+        item = Item(code=self._next_code("STOCKRPT-NOSUPPLIER"), description="No supplier item",
+                    qty_on_hand=10.0, active=True)
+        session.add(item)
+        session.commit()
+
+        response = client.get('/reports/stock/data?active_only=false')
+        data = response.get_json()
+        row = next(i for i in data['items'] if i['code'] == item.code)
+
+        assert row['supplier'] == '-'
+        assert row['lead_time_weeks'] == 0.0
+
+    def test_supplier_and_lead_time_weeks_present_in_csv_export(self, app, db, session, client):
+        item = Item(code=self._next_code("STOCKRPT-SUPPLIER-CSV"), description="Supplier CSV item",
+                    qty_on_hand=10.0, active=True, supplier="Acme Supplies",
+                    lead_time_weeks=3.0)
+        session.add(item)
+        session.commit()
+
+        response = client.get('/reports/stock/export-csv')
+        assert response.status_code == 200
+        body = response.get_data(as_text=True)
+        assert 'Supplier' in body
+        assert 'Lead Time (weeks)' in body
+        assert 'Acme Supplies' in body

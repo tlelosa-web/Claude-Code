@@ -51,6 +51,8 @@
                         {{ 'Active' if item.active else 'Inactive' }}
                     </span>
                 </td></tr>
+                <tr><td class="detail-label">Supplier</td><td class="detail-value">{{ item.supplier or '-' }}</td></tr>
+                <tr><td class="detail-label">Lead Time</td><td class="detail-value">{{ "%.1f"|format(item.lead_time_weeks or 0) }} weeks</td></tr>
             </table>
         </div>
         <div>

@@ -39,3 +39,29 @@ export async function PATCH(
     return NextResponse.json({ error: "Failed to update Delivery Note" }, { status: 500 });
   }
 }
+
+export async function DELETE(
+  req: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params;
+
+    const existingDn = await prisma.deliveryNote.findUnique({
+      where: { id },
+    });
+
+    if (!existingDn) {
+      return NextResponse.json({ error: "Delivery Note not found" }, { status: 404 });
+    }
+
+    await prisma.deliveryNote.delete({
+      where: { id },
+    });
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error("Error deleting DN:", error);
+    return NextResponse.json({ error: "Failed to delete Delivery Note" }, { status: 500 });
+  }
+}

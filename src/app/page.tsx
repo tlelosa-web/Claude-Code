@@ -15,7 +15,17 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { FileText, Plus, RefreshCw, Send, CheckCircle2, Pencil } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { FileText, Plus, RefreshCw, Send, CheckCircle2, Pencil, Trash2 } from "lucide-react";
 
 interface DeliveryNote {
   id: string;
@@ -40,6 +50,10 @@ export default function DeliveryNotePage() {
   const [editingDn, setEditingDn] = useState<DeliveryNote | null>(null);
   const [editFormData, setEditFormData] = useState({ date: "", customer: "", description: "" });
   const [editLoading, setEditLoading] = useState(false);
+
+  // Delete confirmation state
+  const [deletingDn, setDeletingDn] = useState<DeliveryNote | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   const fetchDns = async () => {
     try {
@@ -150,6 +164,29 @@ export default function DeliveryNotePage() {
       toast.error(error instanceof Error ? error.message : "Failed to update delivery note");
     } finally {
       setEditLoading(false);
+    }
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!deletingDn) return;
+
+    setDeleteLoading(true);
+    try {
+      const res = await fetch(`/api/dn/${deletingDn.id}`, { method: "DELETE" });
+      const result = await res.json();
+      if (!res.ok) throw new Error(result.error || "Failed to delete delivery note");
+
+      toast.success("Delivery Note deleted.", {
+        icon: <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+      });
+
+      setDeletingDn(null);
+      fetchDns();
+      fetchNextDn();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to delete delivery note");
+    } finally {
+      setDeleteLoading(false);
     }
   };
 
@@ -300,6 +337,15 @@ export default function DeliveryNotePage() {
                               >
                                 <Pencil className="h-4 w-4" />
                               </Button>
+                              <Button
+                                variant="outline"
+                                size="icon"
+                                onClick={() => setDeletingDn(dn)}
+                                className="bg-red-500/10 border-red-500/20 hover:bg-red-500/20 text-red-400 transition-colors"
+                                title="Delete"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
                             </div>
                           </TableCell>
                         </TableRow>
@@ -380,6 +426,36 @@ export default function DeliveryNotePage() {
           </form>
         </DialogContent>
       </Dialog>
+
+      {/* Delete Confirmation */}
+      <AlertDialog open={!!deletingDn} onOpenChange={(open) => { if (!open) setDeletingDn(null); }}>
+        <AlertDialogContent className="bg-slate-950/95 border-white/10 backdrop-blur-xl text-slate-50">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-white">
+              Delete {deletingDn?.dnNumber}?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-slate-400">
+              This can&apos;t be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="bg-transparent border-none p-0 -mx-0 -mb-0">
+            <AlertDialogCancel
+              disabled={deleteLoading}
+              className="bg-white/5 border-white/10 hover:bg-white/10 text-slate-300"
+            >
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteConfirm}
+              disabled={deleteLoading}
+              className="bg-red-600 hover:bg-red-500 text-white"
+            >
+              {deleteLoading && <RefreshCw className="mr-2 h-4 w-4 animate-spin" />}
+              {deleteLoading ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

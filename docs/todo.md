@@ -501,3 +501,52 @@ All items below must be green before delivery:
       label text). Live-verified against the running dev server: nav shows
       "Inventory", page title/heading both read "Inventory".
 - Blockers: None.
+
+## Batch 32 — Supplier + Lead Time import from Sage (2026-07-17)
+- [x] Cross-project review found `8. AvgMovement` (standalone Excel pipeline)
+      computes per-item Supplier and Lead Time from a Sage export
+      (`OutstandingPOByItemReport.csv`) SOPS doesn't ingest. Tebello: fold it
+      into SOPS rather than run two overlapping systems; retire AvgMovement
+      once this ships (tracked as a separate hub-level decision, not part of
+      this batch). Scoped via 3 rounds of AskUserQuestion: surfaced on Stock
+      Report + Item detail; new separate manual CSV import (not folded into
+      the existing Items import); **On Order explicitly excluded** — SOPS
+      already computes `qty_on_order` live from its own Purchase Orders
+      (`services/demand.py`), importing a second on-order figure from the
+      Sage CSV would recreate the exact "two processes, same thing" problem
+      this batch exists to remove. Spec:
+      `docs/specs/supplier-lead-time-import-2026-07-17.md`.
+- [x] Dispatched a single `executor` agent, commit `fe06eaa`:
+      `Item.supplier`/`Item.lead_time_weeks` columns; migration script
+      (not run against `instance/sops.db` — held for go-ahead, same
+      convention as every prior schema change here); new
+      `services/po_by_item_importer.py` (parsing logic adapted from
+      AvgMovement's `parse_po_by_item()`, on-order/pending-qty parsing
+      deliberately omitted); new upload-only `/items/import-supplier-leadtime`
+      route + template; Stock Report (`stock_data`, `stock_export_csv`,
+      Tabulator columns) and Item detail page both show the two new fields.
+- [x] Orchestrator-side verification: read every diff line-by-line against
+      the spec (all 14 changed/new files) — matched exactly, no on-order
+      data parsed or surfaced anywhere, no scope creep. Independently
+      re-ran the full suite (230 passed, was 216). `grep` for
+      `cdn.`/`fonts.googleapis` on touched files — clean.
+- [x] Live-verified: found the dev server on :5000 hadn't reloaded the new
+      Python (routes/models need a process restart; templates hot-reload
+      alone isn't enough) — new import route 404'd. Asked Tebello before
+      restarting a process this session didn't start (same standing
+      practice as Batch 12/20/27/28/29/30's recurring stale-server class of
+      issue); confirmed, restarted. New import page, Stock Report columns,
+      and Item detail fields all render correctly, no console errors.
+- [x] Additionally ran the new importer against the **real**
+      `OutstandingPOByItemReport.csv` (from `8. AvgMovement/2_Source_Data/`)
+      in an isolated in-memory test DB (not `instance/sops.db`) as a
+      real-data sanity check beyond the fixture-CSV unit tests: 1,219 items
+      updated with real supplier names/lead times, 17 unmatched item codes
+      skipped cleanly (not created), zero exceptions.
+- [x] Full suite: 230 tests green (was 216, +14 new).
+- Next task: Tebello to run the migration + import the real CSV against
+  `instance/sops.db` when ready. AvgMovement retirement is a separate
+  hub-level decision (ADR), not queued here.
+- Blockers: None.
+- Committed: `fe06eaa`. Spec committed together with the implementation
+  (single commit, per this batch's scope).

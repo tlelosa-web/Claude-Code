@@ -7,7 +7,15 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { FileText, Plus, RefreshCw, Send, CheckCircle2 } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { FileText, Plus, RefreshCw, Send, CheckCircle2, Pencil } from "lucide-react";
 
 interface DeliveryNote {
   id: string;
@@ -27,6 +35,11 @@ export default function DeliveryNotePage() {
     description: "",
   });
   const [loading, setLoading] = useState(false);
+
+  // Edit dialog state
+  const [editingDn, setEditingDn] = useState<DeliveryNote | null>(null);
+  const [editFormData, setEditFormData] = useState({ date: "", customer: "", description: "" });
+  const [editLoading, setEditLoading] = useState(false);
 
   const fetchDns = async () => {
     try {
@@ -92,6 +105,51 @@ export default function DeliveryNotePage() {
       toast.error(error.message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const openEditDialog = (dn: DeliveryNote) => {
+    setEditingDn(dn);
+    setEditFormData({
+      date: new Date(dn.date).toISOString().split("T")[0],
+      customer: dn.customer,
+      description: dn.description,
+    });
+  };
+
+  const handleEditSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingDn) return;
+    if (!editFormData.date || !editFormData.customer || !editFormData.description) {
+      toast.error("Please fill in all required fields.");
+      return;
+    }
+
+    setEditLoading(true);
+    try {
+      const res = await fetch(`/api/dn/${editingDn.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          date: editFormData.date,
+          customer: editFormData.customer,
+          description: editFormData.description,
+        }),
+      });
+
+      const result = await res.json();
+      if (!res.ok) throw new Error(result.error || "Failed to update delivery note");
+
+      toast.success("Delivery Note updated successfully!", {
+        icon: <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+      });
+
+      setEditingDn(null);
+      fetchDns();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to update delivery note");
+    } finally {
+      setEditLoading(false);
     }
   };
 
@@ -212,12 +270,13 @@ export default function DeliveryNotePage() {
                       <TableHead className="text-slate-300 font-medium">Date</TableHead>
                       <TableHead className="text-slate-300 font-medium">Customer</TableHead>
                       <TableHead className="text-slate-300 font-medium">Description</TableHead>
+                      <TableHead className="text-slate-300 font-medium text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {dns.length === 0 ? (
                       <TableRow className="border-white/10 hover:bg-white/5">
-                        <TableCell colSpan={4} className="h-32 text-center text-slate-500">
+                        <TableCell colSpan={5} className="h-32 text-center text-slate-500">
                           No delivery notes found. Create one to get started.
                         </TableCell>
                       </TableRow>
@@ -230,6 +289,19 @@ export default function DeliveryNotePage() {
                           <TableCell className="text-slate-400 group-hover:text-slate-300 transition-colors max-w-[200px] truncate" title={dn.description}>
                             {dn.description}
                           </TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex items-center justify-end gap-2">
+                              <Button
+                                variant="outline"
+                                size="icon"
+                                onClick={() => openEditDialog(dn)}
+                                className="bg-white/5 border-white/10 hover:bg-white/10 text-slate-300 transition-colors"
+                                title="Edit"
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
                         </TableRow>
                       ))
                     )}
@@ -240,6 +312,74 @@ export default function DeliveryNotePage() {
           </Card>
         </div>
       </div>
+
+      {/* Edit Dialog */}
+      <Dialog open={!!editingDn} onOpenChange={(open) => { if (!open) setEditingDn(null); }}>
+        <DialogContent className="bg-slate-950/95 border-white/10 backdrop-blur-xl text-slate-50 sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-white">Edit Delivery Note</DialogTitle>
+            <DialogDescription className="text-slate-400">
+              Update the date, customer, and description. The DN number is locked once issued.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleEditSubmit} className="space-y-5">
+            <div className="space-y-2">
+              <Label htmlFor="edit-dnNumber" className="text-slate-300">DN Number</Label>
+              <Input
+                id="edit-dnNumber"
+                value={editingDn?.dnNumber ?? ""}
+                disabled
+                className="bg-white/5 border-white/10 text-slate-300 font-mono"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="edit-date" className="text-slate-300">Date</Label>
+              <Input
+                id="edit-date"
+                type="date"
+                value={editFormData.date}
+                onChange={(e) => setEditFormData({ ...editFormData, date: e.target.value })}
+                required
+                className="bg-white/5 border-white/10 text-white focus:border-blue-500/50 focus:ring-blue-500/20"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="edit-customer" className="text-slate-300">Customer</Label>
+              <Input
+                id="edit-customer"
+                value={editFormData.customer}
+                onChange={(e) => setEditFormData({ ...editFormData, customer: e.target.value })}
+                required
+                className="bg-white/5 border-white/10 text-white placeholder:text-slate-500 focus:border-blue-500/50 focus:ring-blue-500/20 transition-all"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="edit-description" className="text-slate-300">Description</Label>
+              <Input
+                id="edit-description"
+                value={editFormData.description}
+                onChange={(e) => setEditFormData({ ...editFormData, description: e.target.value })}
+                required
+                className="bg-white/5 border-white/10 text-white placeholder:text-slate-500 focus:border-blue-500/50 focus:ring-blue-500/20 transition-all"
+              />
+            </div>
+
+            <DialogFooter className="bg-transparent border-none p-0 -mx-0 -mb-0">
+              <Button
+                type="submit"
+                disabled={editLoading}
+                className="bg-blue-600 hover:bg-blue-500 text-white shadow-[0_0_15px_rgba(37,99,235,0.4)] hover:shadow-[0_0_20px_rgba(59,130,246,0.6)] transition-all"
+              >
+                {editLoading && <RefreshCw className="mr-2 h-4 w-4 animate-spin" />}
+                {editLoading ? "Saving..." : "Save Changes"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

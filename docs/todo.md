@@ -448,6 +448,26 @@ All items below must be green before delivery:
 - Blockers: None.
 - Commits: `800eb65`, `e8414bb`, `5ab90bf`, `a83c3d2`, `6ebd7b6`, `db6f5fc`, `032164a`. Spec (`po-price-date-columns-currency-settings-2026-07-16.md`) committed together with `800eb65`.
 
+## Ops — Carried Forward: Batch 24 Payment-Status Review (in progress, Tebello-driven, 2026-07-17)
+
+- [ ] Surfaced again during a hub-level cross-project status pass
+      (`docs/reports/status-report-2026-07-17.md` at hub root) — this is the
+      same item first flagged in the "Ops — Payment Status Data Migration
+      Run" entry above (2026-07-14) and explicitly deferred twice since
+      (2026-07-15 "Ops — is_stocked_finished_good Migration Check" entry).
+      **19 of 22 Sales Orders** (SO4556, SO4624, SO4661, SO4685, SO4699,
+      SO4702, SO4710, SO4714, SO4717, SO4718, SO4719, SO4722, SO4724,
+      SO4726, SO4728–SO4732) still sit on the migration's best-guess
+      Payment Status mapping — real production data.
+- **2026-07-17 update:** Tebello confirmed this is now actively in progress
+  — reviewing/correcting each SO's Payment Status directly via the SO
+  detail page as normal work, not a deferred/stalled item. Not a code task,
+  nothing for a future session to action unless asked; a future `/continue`
+  can spot-check the guessed-value list above against the live DB to see
+  how many remain, rather than re-flagging this as neglected.
+- Blockers: None (not code-blocking — a live-data-correctness item Tebello
+  is working through directly).
+
 ## Batch 31 — Sort/Filter by Any Column + Sticky Headers (SO/WO/STO/PO Lists) + Dashboard Payment Status (2026-07-17)
 - [x] Tebello requested 3 things: filter/sort by any column on all modules, always-visible headers when scrolling lists, and a Payment Status column on the Dashboard's Open Sales Orders card (between Status and View, with better column alignment). Scope confirmed via 4 rounds of AskUserQuestion: sort/filter + sticky headers scoped to the 4 plain-table order lists only (Sales/Works/Stock/Purchase Orders) — Items Catalogue/Reports already sort via Tabulator's click-to-sort, left untouched; implementation via a new vanilla JS utility (not a Tabulator migration — Batch 29 already rejected that for these pages' Actions-column forms/dropdowns); dashboard alignment = consistent cell alignment (vertical-center + right-align Status/Payment Status/Action). Spec written first (8 files touched — plan-first rule): `docs/specs/list-sort-filter-sticky-headers-dashboard-2026-07-17.md`.
 - [x] Dispatched a single `executor` agent, working directly on `master` (no worktree, per this repo's documented OneDrive git-corruption history) — commit `eb11757`:

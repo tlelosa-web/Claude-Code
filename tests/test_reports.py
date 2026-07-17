@@ -160,3 +160,46 @@ class TestStockReportDemandNettedBelowReorder:
         assert 'Supplier' in body
         assert 'Lead Time (weeks)' in body
         assert 'Acme Supplies' in body
+
+    def test_amu_and_suggested_minmax_present_in_stock_data(self, app, db, session, client):
+        item = Item(code=self._next_code("STOCKRPT-AMU"), description="AMU field item",
+                    qty_on_hand=10.0, active=True, amu=4.5,
+                    suggested_min=2.0, suggested_max=10.0)
+        session.add(item)
+        session.commit()
+
+        response = client.get('/reports/stock/data?active_only=false')
+        data = response.get_json()
+        row = next(i for i in data['items'] if i['code'] == item.code)
+
+        assert row['amu'] == 4.5
+        assert row['suggested_min'] == 2.0
+        assert row['suggested_max'] == 10.0
+
+    def test_amu_and_suggested_minmax_default_to_zero_when_unset(self, app, db, session, client):
+        item = Item(code=self._next_code("STOCKRPT-NOAMU"), description="No AMU item",
+                    qty_on_hand=10.0, active=True)
+        session.add(item)
+        session.commit()
+
+        response = client.get('/reports/stock/data?active_only=false')
+        data = response.get_json()
+        row = next(i for i in data['items'] if i['code'] == item.code)
+
+        assert row['amu'] == 0.0
+        assert row['suggested_min'] == 0
+        assert row['suggested_max'] == 0
+
+    def test_amu_and_suggested_minmax_present_in_csv_export(self, app, db, session, client):
+        item = Item(code=self._next_code("STOCKRPT-AMU-CSV"), description="AMU CSV item",
+                    qty_on_hand=10.0, active=True, amu=3.0,
+                    suggested_min=1.0, suggested_max=6.0)
+        session.add(item)
+        session.commit()
+
+        response = client.get('/reports/stock/export-csv')
+        assert response.status_code == 200
+        body = response.get_data(as_text=True)
+        assert 'AMU' in body
+        assert 'Suggested Min' in body
+        assert 'Suggested Max' in body

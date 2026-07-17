@@ -54,6 +54,15 @@ def ensure_schema_columns():
         if 'lead_time_weeks' not in item_columns:
             db.session.execute(text('ALTER TABLE item ADD COLUMN lead_time_weeks FLOAT DEFAULT 0.0'))
             db.session.commit()
+        if 'amu' not in item_columns:
+            db.session.execute(text('ALTER TABLE item ADD COLUMN amu FLOAT DEFAULT 0.0'))
+            db.session.commit()
+        if 'suggested_min' not in item_columns:
+            db.session.execute(text('ALTER TABLE item ADD COLUMN suggested_min FLOAT DEFAULT 0.0'))
+            db.session.commit()
+        if 'suggested_max' not in item_columns:
+            db.session.execute(text('ALTER TABLE item ADD COLUMN suggested_max FLOAT DEFAULT 0.0'))
+            db.session.commit()
 
     if 'stock_order_line' in inspector.get_table_names():
         sto_line_columns = {column['name'] for column in inspector.get_columns('stock_order_line')}

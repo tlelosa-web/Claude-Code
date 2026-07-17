@@ -81,7 +81,10 @@ def stock_data():
             'reorder_qty': item.reorder_qty or 0,
             'below_reorder': is_below_reorder,
             'supplier': item.supplier or '-',
-            'lead_time_weeks': round(item.lead_time_weeks or 0.0, 1)
+            'lead_time_weeks': round(item.lead_time_weeks or 0.0, 1),
+            'amu': round(item.amu or 0.0, 1),
+            'suggested_min': item.suggested_min or 0,
+            'suggested_max': item.suggested_max or 0
         })
 
     return jsonify({
@@ -105,7 +108,8 @@ def stock_export_csv():
     writer = csv.writer(output)
     writer.writerow(['Code', 'Description', 'Category', 'Qty on Hand', 'Qty On Order',
                      'Qty Committed', 'Available Qty', 'Avg. Cost (R)', 'Stock Value (R)',
-                     'Last Movement Date', 'Supplier', 'Lead Time (weeks)'])
+                     'Last Movement Date', 'Supplier', 'Lead Time (weeks)',
+                     'AMU', 'Suggested Min', 'Suggested Max'])
 
     grand_total = 0.0
     for item in items:
@@ -123,10 +127,11 @@ def stock_export_csv():
                         item.qty_on_hand, round(qty_on_order, 2), round(qty_committed, 2),
                         round(available_qty, 2), round(item.avg_cost or 0.0, 2),
                         round(stock_value, 2), last_movement_date,
-                        item.supplier or '', round(item.lead_time_weeks or 0.0, 1)])
+                        item.supplier or '', round(item.lead_time_weeks or 0.0, 1),
+                        round(item.amu or 0.0, 1), item.suggested_min or 0, item.suggested_max or 0])
 
     writer.writerow([])
-    writer.writerow(['', '', '', '', '', '', '', 'Grand Total (R)', round(grand_total, 2), '', '', ''])
+    writer.writerow(['', '', '', '', '', '', '', 'Grand Total (R)', round(grand_total, 2), '', '', '', '', '', ''])
     
     csv_content = output.getvalue()
     output.close()

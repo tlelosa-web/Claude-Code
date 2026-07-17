@@ -23,6 +23,9 @@ class Item(db.Model):
     is_stocked_finished_good = db.Column(db.Boolean, default=False)  # opt-in: WO Complete produces this item's qty_on_hand; see docs/specs/production-receipt-on-wo-complete.md
     supplier = db.Column(db.String(255))  # most-frequent supplier from PO history, CSV-sourced
     lead_time_weeks = db.Column(db.Float, default=0.0)  # avg lead time in weeks, CSV-sourced
+    amu = db.Column(db.Float, default=0.0)  # average monthly usage, CSV-sourced; 0.0 = not computed
+    suggested_min = db.Column(db.Float, default=0.0)  # AMU-based suggested reorder point, CSV-sourced, informational only
+    suggested_max = db.Column(db.Float, default=0.0)  # AMU-based suggested max level, CSV-sourced, informational only
 
     # Relationships
     movements = db.relationship('StockMovement', backref='item', lazy=True)

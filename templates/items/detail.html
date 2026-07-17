@@ -53,6 +53,8 @@
                 </td></tr>
                 <tr><td class="detail-label">Supplier</td><td class="detail-value">{{ item.supplier or '-' }}</td></tr>
                 <tr><td class="detail-label">Lead Time</td><td class="detail-value">{{ "%.1f"|format(item.lead_time_weeks or 0) }} weeks</td></tr>
+                <tr><td class="detail-label">AMU (avg. monthly usage)</td><td class="detail-value">{{ "%.1f"|format(item.amu or 0) }}</td></tr>
+                <tr><td class="detail-label">Suggested Min / Max</td><td class="detail-value">{{ item.suggested_min or 0 }} / {{ item.suggested_max or 0 }}</td></tr>
             </table>
         </div>
         <div>

@@ -8,6 +8,7 @@ from models import db, SalesOrder, SOLineItem, Item, WorksOrder, BOMLine, StockM
 from services.pdf_parser import parse_sales_order_pdf
 from services.order_filters import SO_ACTIVE
 from services.invoice_importer import import_invoices_from_csv
+from services.status_change_log import log_change
 
 sales_orders_bp = Blueprint('sales_orders', __name__)
 
@@ -599,6 +600,23 @@ def update_delivery_date(order_id):
     db.session.commit()
 
     flash(f"Delivery Date for {so.so_number} updated to {new_date.strftime('%d/%m/%Y')}.", "success")
+    return redirect(url_for('sales_orders.view_order', order_id=order_id))
+
+
+@sales_orders_bp.route('/sales-orders/<int:order_id>/report-notes', methods=['POST'])
+def update_report_notes(order_id):
+    """Set the manual, carried-forward Notes column for the Sales Order
+    Report export. See docs/specs/sales-order-report-excel-export-2026-07-17.md."""
+    so = SalesOrder.query.get_or_404(order_id)
+    new_notes = request.form.get('report_notes', '').strip()
+    old_notes = so.report_notes or ''
+
+    if new_notes != old_notes:
+        log_change('SO', so.id, so.so_number, 'report_notes', so.report_notes, new_notes or None)
+        so.report_notes = new_notes or None
+        db.session.commit()
+
+    flash(f"Notes updated for {so.so_number}.", "success")
     return redirect(url_for('sales_orders.view_order', order_id=order_id))
 
 

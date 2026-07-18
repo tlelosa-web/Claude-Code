@@ -97,6 +97,12 @@
                     </form>
                 </td></tr>
                 <tr><td class="detail-label">Created</td><td class="detail-value">{{ so.created_at.strftime('%Y-%m-%d %H:%M') if so.created_at else '-' }}</td></tr>
+                <tr><td class="detail-label">Notes</td><td class="detail-value">
+                    <form method="POST" action="{{ url_for('sales_orders.update_report_notes', order_id=so.id) }}" style="display: flex; gap: 8px; align-items: flex-start;">
+                        <textarea name="report_notes" aria-label="Notes" class="form-input" rows="2" style="width: 100%; padding: 4px 8px; font-size: 0.85rem;">{{ so.report_notes or '' }}</textarea>
+                        <button type="submit" class="btn btn-secondary" style="padding: 4px 10px; font-size: 0.75rem;">Update</button>
+                    </form>
+                </td></tr>
             </table>
         </div>
     </div>

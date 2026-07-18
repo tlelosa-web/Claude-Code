@@ -5,7 +5,7 @@ See docs/specs/fm-numbers-default-open-so-report.md.
 """
 import pytest
 from datetime import datetime, timezone
-from models import db, SalesOrder, SOLineItem, StockOrder, StockOrderLine, PAYMENT_STATUS_OPTIONS
+from models import db, SalesOrder, SOLineItem, StockOrder, StockOrderLine, StatusChangeLog, PAYMENT_STATUS_OPTIONS
 from scripts.migrate_payment_status_values import migrate_payment_status_values
 
 
@@ -202,6 +202,53 @@ class TestBalanceDue:
 
         assert so.amount_paid == 0.0
         assert so.balance_due == so.total_incl == 500.0
+
+
+class TestUpdateReportNotes:
+    """POST /sales-orders/<id>/report-notes -- see Sequencing item 8 of
+    docs/specs/sales-order-report-excel-export-2026-07-17.md."""
+    _c = 0
+
+    def _mk_so(self, session, report_notes=None):
+        TestUpdateReportNotes._c += 1
+        n = TestUpdateReportNotes._c
+        so = SalesOrder(so_number=f"REPORT-NOTES-{n:03d}", customer_name="Report Test Co",
+                        status="Draft", report_notes=report_notes,
+                        created_at=datetime.now(timezone.utc))
+        session.add(so)
+        session.commit()
+        return so
+
+    def test_update_report_notes_sets_value(self, client, session):
+        so = self._mk_so(session)
+        resp = client.post(f"/sales-orders/{so.id}/report-notes", data={"report_notes": "Awaiting stock"})
+        assert resp.status_code == 302
+
+        updated = db.session.get(SalesOrder, so.id)
+        assert updated.report_notes == "Awaiting stock"
+
+    def test_update_report_notes_logs_change_only_when_value_differs(self, client, session):
+        so = self._mk_so(session, report_notes="Original note")
+        before_count = StatusChangeLog.query.count()
+
+        # Same value submitted -- no log row, no-op
+        client.post(f"/sales-orders/{so.id}/report-notes", data={"report_notes": "Original note"})
+        assert StatusChangeLog.query.count() == before_count
+
+        # Different value -- exactly one log row
+        client.post(f"/sales-orders/{so.id}/report-notes", data={"report_notes": "Updated note"})
+        rows = StatusChangeLog.query.filter_by(order_id=so.id, order_type='SO', field_name='report_notes').all()
+        assert len(rows) == 1
+        assert rows[0].old_value == "Original note"
+        assert rows[0].new_value == "Updated note"
+
+    def test_update_report_notes_blank_clears_value(self, client, session):
+        so = self._mk_so(session, report_notes="Something")
+        resp = client.post(f"/sales-orders/{so.id}/report-notes", data={"report_notes": "  "})
+        assert resp.status_code == 302
+
+        updated = db.session.get(SalesOrder, so.id)
+        assert updated.report_notes is None
 
 
 class TestPaymentStatusDataMigration:

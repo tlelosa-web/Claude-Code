@@ -1,0 +1,82 @@
+-- === INSTRUMENT SETTINGS ===
+instrument {
+    name = "JBS Momentum Continuation", 
+    overlay = true
+}
+
+-- === 1. SIGNAL & COLOR SETTINGS ===
+break_call_color = input { default = "#00ffcc", type = input.color, title = "01. Breakout Call Color" }
+break_put_color  = input { default = "#ff00ff", type = input.color, title = "02. Breakout Put Color" }
+ema_fast_color   = input { default = "#00ff00", type = input.color, title = "03. Fast EMA Color" }
+ema_slow_color   = input { default = "#ff0000", type = input.color, title = "04. Slow EMA Color" }
+
+-- === 2. MOMENTUM PARAMETERS ===
+fast_ema_len = input { default = 13, type = input.integer, title = "05. Momentum Fast EMA" }
+slow_ema_len = input { default = 48, type = input.integer, title = "06. Momentum Slow EMA" }
+vol_sma_len  = input { default = 20, type = input.integer, title = "07. Volume SMA Filter" }
+
+-- === 3. S/R & POC SETTINGS ===
+lookback = input { default = 20, type = input.integer, title = "08. Dynamic Lookback" }
+poc_color = input { default = "#ffeb3b", type = input.color, title = "09. POC Line (Yellow)" }
+
+-- === CORE CALCULATIONS ===
+ema_f = ema(close, fast_ema_len)
+ema_s = ema(close, slow_ema_len)
+v_sma = sma(volume, vol_sma_len)
+
+-- Plotting Momentum EMAs
+plot(ema_f, "Fast EMA", ema_fast_color, 1)
+plot(ema_s, "Slow EMA", ema_slow_color, 2)
+
+-- === FETCH 15-MINUTE DATA ===
+sec_15m = security(current_ticker_id, "15m")
+if not sec_15m then return end
+
+h15 = sec_15m.high
+l15 = sec_15m.low
+c15 = sec_15m.close
+v15 = sec_15m.volume
+v15_sma = sma(v15, vol_sma_len)
+
+-- === BREAKOUT & MOMENTUM LOGIC ===
+-- A breakout is defined as 15M close above/below previous 15M high/low
+-- with volume confirmation and EMA alignment.
+
+vol_ok = v15 > v15_sma
+momo_up = ema_f > ema_s
+momo_dn = ema_f < ema_s
+
+-- Detect if we just broke the 15M High/Low
+break_up = c15 > h15[1] and momo_up and vol_ok
+break_dn = c15 < l15[1] and momo_dn and vol_ok
+
+-- === POINT OF CONTROL (POC) ===
+local poc_price = make_series()
+local high_v = highest(v15, 20)
+if v15 == high_v then poc_price:set(c15)
+else poc_price:set(nz(poc_price[1], c15)) end
+plot(poc_price, "POC", poc_color, 1, 0, style.dash_line)
+
+-- === SIGNAL GENERATION (RETEST FOCUS) ===
+-- We signal "GO" when price is above the broken level and momentum is strong
+call_go = break_up and close > h15[1]
+put_go  = break_dn and close < l15[1]
+
+-- === PLOTTING ===
+-- 15M Structural Levels (The "Breakout" Lines)
+plot(h15, "15M High", "#f70202", 2)
+plot(l15, "15M Low", "#0bd104", 2)
+
+if call_go then
+    plot_shape(true, "MOMO CALL", shape_style.triangleup, shape_size.huge, break_call_color, shape_location.belowbar, 0, "MOMO", "white")
+end
+
+if put_go then
+    plot_shape(true, "MOMO PUT", shape_style.triangledown, shape_size.huge, break_put_color, shape_location.abovebar, 0, "MOMO", "white")
+end
+
+-- Dynamic S/R for Retests
+res_dyn = highest(high, lookback)
+sup_dyn = lowest(low, lookback)
+plot(res_dyn, "Dyn Res", "#1976d2", 1)
+plot(sup_dyn, "Dyn Sup", "#ff9800", 1)

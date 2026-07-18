@@ -1,0 +1,13 @@
+Name,Role,AllocationPercent,Start,Finish,AvailabilityConfirmed,Notes,CVPath
+Echo,Project Manager,60,2026-03-12,2026-03-20,Pending,Owns schedule/resource pack; governance & gates,submission\planning\CVs\Echo_CV.pdf
+Alpha,Solution Architect,50,2026-03-12,2026-03-20,Pending,Technical proposal; SDL; TEC alignment,submission\planning\CVs\Alpha_CV.pdf
+Beta,OT Integration Specialist,30,2026-03-13,2026-03-18,Pending,Contributes to integrations and tag strategy,submission\planning\CVs\Beta_CV.pdf
+Charlie,Systems and DB Engineer,30,2026-03-13,2026-03-18,Pending,System architecture and DB considerations,submission\planning\CVs\Charlie_CV.pdf
+Delta,Network and Security Engineer,30,2026-03-13,2026-03-18,Pending,Security design and network requirements,submission\planning\CVs\Delta_CV.pdf
+Foxtrot,Service Delivery Lead,40,2026-03-14,2026-03-20,Pending,Support & SLA plan; governance & escalation,submission\planning\CVs\Foxtrot_CV.pdf
+Golf,Quality Manager,40,2026-03-16,2026-03-20,Pending,QCP/ITP; CQP; QA gate,submission\planning\CVs\Golf_CV.pdf
+Hotel,HSE Lead,30,2026-03-16,2026-03-18,Pending,SHE Acknowledgement; Safety File skeleton,submission\planning\CVs\Hotel_CV.pdf
+India,Commercial Lead,50,2026-03-13,2026-03-20,Pending,Annexure K; Annexure M; TEC workshop,submission\planning\CVs\India_CV.pdf
+Juliet,Contracts & Legal,30,2026-03-18,2026-03-20,Pending,NEC3 review; conditions acceptance; legal gate,submission\planning\CVs\Juliet_CV.pdf
+Kilo,Bid & Portal Coordinator,40,2026-03-18,2026-03-20,Pending,Packaging; portal dry-run; submission,submission\planning\CVs\Kilo_CV.pdf
+Notes,,"","",,"",All allocations pending owner confirmation; dates align to Milestone Timeline,""

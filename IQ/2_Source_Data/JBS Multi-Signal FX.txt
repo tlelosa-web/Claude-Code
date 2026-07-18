@@ -1,0 +1,313 @@
+-- === INSTRUMENT SETTINGS ===
+instrument {
+    name = "JBS Multi-Signal FX", 
+    overlay = true
+}
+
+-- === FLATTENED INPUTS (FIXED FOR IQ OPTION DISPLAY) ===
+
+-- Signal Colors
+call_color = input { default = "#0bd104", type = input.color, title = "01. Signal Call Color" }
+put_color  = input { default = "#f70202", type = input.color, title = "02. Signal Put Color" }
+
+-- Candle Colors
+positive_color = input { default = "#0bd104", type = input.color, title = "03. Candle Positive Color" }
+neutral_color  = input { default = "#2f3633", type = input.color, title = "04. Candle Neutral Color" }
+negative_color = input { default = "#f70202", type = input.color, title = "05. Candle Negative Color" }
+
+-- Trend Periods (Optimized for FX)
+ema_short_period = input { default = "8", type = input.string, title = "06. Micro Trend EMA (8)" }
+ema_long_period = input { default = "200", type = input.string, title = "07. Macro Trend EMA (200)" }
+
+-- Momentum Periods
+ema_fast_period = input { default = "5", type = input.string, title = "08. Momentum Fast EMA (5)" }
+ema_slow_period = input { default = "20", type = input.string, title = "09. Momentum Slow EMA (20)" }
+
+-- Lookback Period (Optimized for FX)
+lookback_period = input { default = "20", type = input.string, title = "10. High/Low Lookback (20)" }
+
+-- 15m Support/Resistance Levels
+resistance_color = input { default = "#f70202", type = input.color, title = "11. R-Level Color" }
+resistance_width = input { default = 2, type = input.line_width, title = "12. R-Level Width" }
+support_color    = input { default = "#0bd104", type = input.color, title = "13. S-Level Color" }
+support_width    = input { default = 2, type = input.line_width, title = "14. S-Level Width" }
+
+-- ZigZag Reversal (Optimized for FX)
+reversal_percent = input { default = 1.5, type = input.double, min = 0.01, max = 100, step = 0.1, title = "15. ZigZag Reversal % (1.5)" }
+zigzag_up_color   = input { default = "#02f7aa", type = input.color, title = "16. ZigZag Up Color" }
+zigzag_down_color = input { default = "#f77902", type = input.color, title = "17. ZigZag Down Color" }
+zigzag_width      = input { default = 1, type = input.line_width, title = "18. ZigZag Width" }
+
+-- B/S: Dual SMA Crossover (Optimized for FX)
+ma_fast_period = input { default = 13, type = input.integer, min = 1, max = 1000, title = "19. B/S: Fast MA (13)" }
+ma_slow_period = input { default = 48, type = input.integer, min = 1, max = 1000, title = "20. B/S: Slow MA (48)" }
+signal_period  = input { default = 5, type = input.integer, min = 1, max = 1000, title = "21. B/S: Signal Period" }
+ma_source_type = input { default = "close", type = input.string_selection, options = { "open", "high", "low", "close", "hl2", "hlc3", "ohlc4" }, title = "22. B/S: MA Source" }
+
+-- B/S: Buy/Sell Signal Visibility
+go_buy_color     = input { default = "green", type = input.color, title = "23. B Buy Color" }
+show_buy_signal = input { default = true, type = input.plot_visibility, title = "24. Show B Buy Signal" }
+go_sell_color    = input { default = "red", type = input.color, title = "25. S Sell Color" }
+show_sell_signal = input { default = true, type = input.plot_visibility, title = "26. Show S Sell Signal" }
+
+-- 144 EMA Envelope Filter (Optimized for FX)
+use_envelope = input { default = true, type = input.bool, title = "27. Use 144 EMA Envelope" }
+ema_period = input { default = 144, type = input.integer, min = 50, max = 300, title = "28. Envelope EMA Period" }
+envelope_pct = input { default = 1.0, type = input.double, min = 0.1, max = 10.0, step = 0.1, title = "29. Envelope Percent (1.0%)" }
+
+
+-- === CORE CALCULATIONS ===
+ema_short = ema(close, tonumber(ema_short_period))
+ema_long  = ema(close, tonumber(ema_long_period))
+ema_fast  = ema(hlc3, tonumber(ema_fast_period))
+ema_slow  = ema(hlc3, tonumber(ema_slow_period))
+resistance_level = highest(high, tonumber(lookback_period))
+support_level    = lowest(low, tonumber(lookback_period))
+
+bullish_trend = (close > close[1]) and (close > ema_short) and (ema_short > ema_short[1])
+bearish_trend = (close < close[1]) and (close < ema_short) and (ema_short < ema_short[1])
+
+-- === 1-MIN CANDLE COLORING ===
+sec_1m = security(current_ticker_id, "1m")
+if sec_1m then
+    local bar_color = neutral_color
+    if bullish_trend then
+        bar_color = positive_color
+    elseif bearish_trend then
+        bar_color = negative_color
+    end
+    plot_candle(open, high, low, close, "ES", bar_color)
+    plot(resistance_level, "Resistance", resistance_color, resistance_width)
+    plot(support_level, "Support", support_color, support_width)
+end
+
+-- === FETCH 15-MINUTE DATA ===
+sec_15m = security(current_ticker_id, "15m")
+if not sec_15m then
+    return
+end
+o15 = sec_15m.open
+h15 = sec_15m.high
+l15 = sec_15m.low
+c15 = sec_15m.close
+
+-- === 144 EMA ENVELOPE (PLOTTING FIXED) ===
+local envelope_ok_call = true
+local envelope_ok_put  = true
+
+if use_envelope then
+    ema_144 = ema(c15, ema_period)
+    dev = ema_144 * (envelope_pct / 100)
+    upper_band = ema_144 + dev
+    lower_band = ema_144 - dev
+
+    -- Plot Fix: Simplified style 
+    plot(upper_band, "Upper Envelope", "#4caf50", 1, 0, style.solid_line) 
+    plot(lower_band, "Lower Envelope", "#f44336", 1, 0, style.solid_line) 
+    plot(ema_144, "EMA 144", "#9e9e9e", 1, 0, style.solid_line)
+
+    -- Enforce directional bias
+    envelope_ok_call = c15 >= upper_band
+    envelope_ok_put  = c15 <= lower_band
+end
+
+-- === 15M CANDLESTICK PATTERNS DEFINITION ===
+local body = abs(c15 - o15)
+local range = h15 - l15
+
+-- 1. Strong Multi-Bar Patterns
+bull_engulf_15 = (c15[1] < o15[1]) and (c15 > o15) and (c15 > h15[1]) and (c15[2] >= o15)
+bear_engulf_15 = (c15[1] > o15[1]) and (c15 < o15) and (c15 < l15[1]) and (c15[2] <= o15)
+
+three_inside_up_15 = (c15[2] < o15[2]) and (c15[1] > o15[1]) and ((h15[1] <= h15[2]) and (l15[1] >= l15[2])) and (c15 > o15) and (c15 > c15[2])
+three_inside_down_15 = (c15[2] > o15[2]) and (c15[1] < o15[1]) and ((h15[1] <= h15[2]) and (l15[1] >= l15[2])) and (c15 < o15) and (c15 < c15[2])
+
+morning_star_15 = (c15[2] < o15[2]) and ((abs(c15[1] - o15[1]) / (h15[1] - l15[1])) < 0.3) and (c15 > o15) and (c15 > (o15[2] + c15[2]) / 2)
+evening_star_15 = (c15[2] > o15[2]) and ((abs(c15[1] - o15[1]) / (h15[1] - l15[1])) < 0.3) and (c15 < o15) and (c15 < (o15[2] + c15[2]) / 2)
+
+-- 2. Minor/Single-Bar Patterns
+hammer_15 = body < range / 3 and min(o15, c15) > h15 - range / 3 and (o15 - l15) > 2 * body
+shooting_star_15 = body < range / 3 and max(o15, c15) < l15 + range / 3 and (h15 - c15) > 2 * body
+
+tweezer_bottoms_15 = (l15 == l15[1] or abs(l15 - l15[1]) < (h15[1] - l15[1]) * 0.1) and (c15[1] < o15[1]) and (c15 > o15)
+tweezer_tops_15 = (h15 == h15[1] or abs(h15 - h15[1]) < (h15[1] - l15[1]) * 0.1) and (c15[1] > o15[1]) and (c15 < o15)
+
+
+-- === SIGNALS WITH ENVELOPE FILTER (ADJUSTED LOGIC) ===
+
+-- Group all bullish patterns
+call_pattern_found = bull_engulf_15 or three_inside_up_15 or morning_star_15 or hammer_15 or tweezer_bottoms_15
+-- Group all bearish patterns
+put_pattern_found  = bear_engulf_15 or three_inside_down_15 or evening_star_15 or shooting_star_15 or tweezer_tops_15
+
+-- Final Signal: Candlestick pattern must be present AND 144 EMA Envelope bias must be OK.
+call_signal_15 = call_pattern_found and envelope_ok_call
+put_signal_15  = put_pattern_found and envelope_ok_put
+
+-- === STATE TRACKING (NO CHANGE) ===
+local active_call_price = make_series()
+local active_put_price  = make_series()
+local call_active = make_series()
+local put_active  = make_series()
+local call_origin_bar = make_series()
+local put_origin_bar  = make_series()
+
+active_call_price:set(na)
+active_put_price:set(na)
+call_active:set(false)
+put_active:set(false)
+call_origin_bar:set(false)
+put_origin_bar:set(false)
+
+if sec_15m.is_new_candle then
+    call_active:set(false)
+    put_active:set(false)
+    active_call_price:set(na)
+    active_put_price:set(na)
+    call_origin_bar:set(false)
+    put_origin_bar:set(false)
+    if call_signal_15 then
+        call_active:set(true)
+        active_call_price:set(c15)
+        call_origin_bar:set(true)
+    elseif put_signal_15 then
+        put_active:set(true)
+        active_put_price:set(c15)
+        put_origin_bar:set(true)
+    end
+else
+    call_active:set(nz(call_active[1], false))
+    put_active:set(nz(put_active[1], false))
+    active_call_price:set(nz(active_call_price[1], na))
+    active_put_price:set(nz(active_put_price[1], na))
+    call_origin_bar:set(false)
+    put_origin_bar:set(false)
+end
+
+-- === EXIT: 5-MIN CLOSE (NO CHANGE) ===
+sec_5m = security(current_ticker_id, "5m")
+close_5m = sec_5m and sec_5m.close or na
+
+if call_active() and not na(close_5m) and close_5m < active_call_price() then
+    call_active:set(false)
+    active_call_price:set(na)
+end
+if put_active() and not na(close_5m) and close_5m > active_put_price() then
+    put_active:set(false)
+    active_put_price:set(na)
+end
+
+-- === PLOT TRIANGLES (NO CHANGE) ===
+if call_origin_bar() then
+    plot_shape(
+        true,
+        "Call_Triangle",
+        shape_style.triangleup,
+        shape_size.large,
+        call_color,
+        shape_location.belowbar,
+        0,
+        "CALL",
+        "A"
+    )
+end
+if put_origin_bar() then
+    plot_shape(
+        true,
+        "Put_Triangle",
+        shape_style.triangledown,
+        shape_size.large,
+        put_color,
+        shape_location.abovebar,
+        0,
+        "PUT",
+        "A"
+    )
+end
+
+-- === HORIZONTAL LINES (NO CHANGE) ===
+if call_active() then
+    local line = make_series()
+    for i = 0, 1000 do line:set(active_call_price()) end
+    plot(line, "Call_Line", call_color, 1, 0, style.solid_line)
+end
+if put_active() then
+    local line = make_series()
+    for i = 0, 1000 do line:set(active_put_price()) end
+    plot(line, "Put_Line", put_color, 1, 0, style.solid_line)
+end
+
+-- === 15M S/R LEVELS (NO CHANGE) ===
+plot(sec_15m.high, "Resistance_15m", resistance_color, resistance_width, 0, style.solid_line) 
+plot(sec_15m.low, "Support_15m", support_color, support_width, 0, style.solid_line) 
+
+-- === ZIGZAG (NO CHANGE) ===
+local pct = reversal_percent / 100
+local reference = make_series()
+reference:set(nz(reference[1], high))
+local is_up = make_series()
+is_up:set(nz(is_up[1], true))
+local high_track = make_series()
+local low_track = make_series()
+local pivot_point = make_series()
+local range = reference * pct
+if is_up() then
+    high_track:set(max(high, nz(high_track[1], high)))
+    if close < high_track[1] - range then
+        pivot_point:set(high_track)
+        is_up:set(false)
+        reference:set(high_track)
+    end
+else
+    low_track:set(min(low, nz(low_track[1], low)))
+    if close > low_track[1] + range then
+        pivot_point:set(low_track)
+        is_up:set(true)
+        reference:set(low_track)
+    end
+end
+local zigzag_color = is_up() and zigzag_up_color or zigzag_down_color
+plot(pivot_point, "ZigZag", zigzag_color, zigzag_width, -1, style.solid_line) 
+
+-- === B/S INDICATOR (NO CHANGE) ===
+local source = close
+if ma_source_type == "open" then source = open
+elseif ma_source_type == "high" then source = high
+elseif ma_source_type == "low" then source = low
+elseif ma_source_type == "hl2" then source = hl2
+elseif ma_source_type == "hlc3" then source = hlc3
+elseif ma_source_type == "ohlc4" then source = ohlc4
+end
+sma_fast = sma(source, ma_fast_period)
+sma_slow = sma(source, ma_slow_period)
+buffer1 = sma_fast - sma_slow
+buffer2 = wma(buffer1, signal_period)
+buy_condition  = buffer1 > buffer2 and buffer1[1] <= buffer2[1]
+sell_condition = buffer1 < buffer2 and buffer1[1] >= buffer2[1]
+
+if show_buy_signal then
+    plot_shape(
+        buy_condition,
+        "B_Buy",
+        shape_style.triangleup,
+        shape_size.large,
+        go_buy_color,
+        shape_location.belowbar,
+        -1,
+        "B",
+        "green"
+    )
+end
+if show_sell_signal then
+    plot_shape(
+        sell_condition,
+        "S_Sell",
+        shape_style.triangledown,
+        shape_size.large,
+        go_sell_color,
+        shape_location.abovebar,
+        -1,
+        "S",
+        "red"
+    )
+end

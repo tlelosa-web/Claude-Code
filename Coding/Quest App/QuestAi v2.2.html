@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+  <meta name="mobile-web-app-capable" content="yes">
+  <title>🪙 Quest v2.2 - Focused</title>
+  <style>
+    /* 1. Global Reset & Base Theme */
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+    html { touch-action: manipulation; }
+    body { 
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
+        background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); 
+        color: #e2e8f0; 
+        padding: 16px; 
+        line-height: 1.6; 
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+    .container { width: 100%; max-width: 600px; margin: 0 auto; }
+
+    /* 2. Navigation Controller (Focused View) */
+    .view-navigation {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 20px;
+        background: rgba(15, 23, 42, 0.6);
+        padding: 6px;
+        border-radius: 16px;
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        position: sticky;
+        top: 10px;
+        z-index: 100;
+        backdrop-filter: blur(10px);
+    }
+    .nav-btn {
+        flex: 1;
+        padding: 12px;
+        border: none;
+        background: transparent;
+        color: #94a3b8;
+        font-size: 13px;
+        font-weight: 800;
+        border-radius: 12px;
+        cursor: pointer;
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+    .nav-btn.active {
+        background: #fbbf24;
+        color: #0f172a;
+        box-shadow: 0 4px 12px rgba(251, 191, 36, 0.3);
+    }
+
+    /* 3. Card Structures */
+    .quest-card {
+        background: linear-gradient(135deg, #1e293b, #1a2332);
+        padding: 24px;
+        border-radius: 20px;
+        margin-bottom: 20px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+        border: 1px solid rgba(255,255,255,0.08);
+        display: none; /* Controlled by JS switchView */
+        animation: cardFadeIn 0.3s ease-out;
+    }
+    .quest-card.view-active { display: block; }
+
+    @keyframes cardFadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Card 1: Goal & Progress Elements */
+    header { text-align: center; margin-bottom: 20px; }
+    h1 { font-size: 24px; color: #fbbf24; margin-bottom: 4px; text-shadow: 0 0 20px rgba(251,191,36,0.5); font-weight: 800; text-transform: uppercase; letter-spacing: 2px; }
+    .version-text { font-size: 10px; color: #94a3b8; font-weight: 600; display: block; opacity: 0.7; }
+    .datetime { font-size: 14px; color: #cbd5e1; margin-bottom: 20px; font-family: 'SF Mono', monospace; }
+
+    .progress-ring-container { position: relative; width: 140px; height: 140px; margin: 0 auto 24px; }
+    .progress-ring { transform: rotate(-90deg); }
+    .progress-ring__circle { transition: stroke-dashoffset 0.8s ease; stroke: #0f172a; }
+    .progress-ring__fill { stroke: url(#gradient); stroke-linecap: round; }
+    .progress-ring-text { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-weight: 800; font-size: 22px; color: #fbbf24; }
+
+    .wealth-showcase { background: rgba(15, 23, 42, 0.4); border: 1px solid rgba(59, 130, 246, 0.2); border-radius: 16px; padding: 20px; margin-bottom: 20px; text-align: center; }
+    .total-wealth-value { font-size: 34px; font-weight: 900; background: linear-gradient(135deg, #3b82f6, #10b981); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .wealth-breakdown { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 15px; }
+    .wealth-item { background: rgba(30, 41, 59, 0.5); padding: 10px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05); }
+
+    .sub-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+    .metric-card { background: rgba(15, 23, 42, 0.4); padding: 12px; border-radius: 12px; text-align: center; border: 1px solid rgba(255,255,255,0.03); }
+    .metric-label { display: block; color: #94a3b8; font-weight: 700; font-size: 10px; text-transform: uppercase; margin-bottom: 4px; }
+    .metric-value { font-weight: 800; font-size: 15px; }
+
+    /* Card 2: Trade Execution Elements */
+    .section-title { font-size: 16px; font-weight: 800; margin-bottom: 16px; color: #fbbf24; display: flex; align-items: center; gap: 8px; text-transform: uppercase; }
+    .current-trade-hero { background: linear-gradient(135deg, rgba(251, 191, 36, 0.1), rgba(245, 158, 11, 0.1)); border: 2px solid rgba(251, 191, 36, 0.3); border-radius: 16px; padding: 24px; margin-bottom: 20px; text-align: center; }
+    .current-trade-value { font-size: 42px; font-weight: 900; color: #fbbf24; text-shadow: 0 0 15px rgba(251, 191, 36, 0.4); line-height: 1; }
+
+    .result-row { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 12px; padding: 14px; border-radius: 14px; border: 1px solid rgba(255,255,255,0.08); background: rgba(15, 23, 42, 0.2); margin-bottom: 10px; }
+    .win-row { border-left: 4px solid #10b981; }
+    .loss-row { border-left: 4px solid #ef4444; }
+
+    .btn-group { display: flex; gap: 12px; margin-bottom: 12px; }
+    .btn { flex: 1; padding: 18px; font-size: 15px; font-weight: 800; border: none; border-radius: 14px; cursor: pointer; transition: transform 0.1s; text-transform: uppercase; }
+    .btn:active { transform: scale(0.96); }
+    .btn-loss { background: #dc2626; color: white; box-shadow: 0 4px 0 #991b1b; }
+    .btn-win { background: #10b981; color: white; box-shadow: 0 4px 0 #047857; }
+    .btn-save { background: #fbbf24; color: #0f172a; width: 100%; box-shadow: 0 4px 0 #d97706; margin-top: 8px; }
+
+    /* Card 3: Journal & Settings Elements */
+    .history { max-height: 300px; overflow-y: auto; background: rgba(15, 23, 42, 0.4); border-radius: 12px; padding: 10px; margin-bottom: 20px; }
+    .history-item { padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.05); display: grid; grid-template-columns: 35px 1fr 80px 85px; font-size: 12px; align-items: center; }
+
+    /* Modals & Overlays */
+    .settings-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(15, 23, 42, 0.95); backdrop-filter: blur(15px); z-index: 2000; display: none; align-items: center; justify-content: center; padding: 20px; }
+    .settings-overlay.show { display: flex; }
+    .settings-card { background: #1e293b; border-radius: 20px; padding: 24px; width: 100%; max-width: 420px; max-height: 90vh; overflow-y: auto; border: 1px solid rgba(255,255,255,0.1); }
+    
+    #toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%) translateY(20px); background: #3b82f6; color: white; padding: 14px 28px; border-radius: 12px; font-weight: 800; z-index: 3000; opacity: 0; pointer-events: none; transition: 0.3s; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
+    #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    .gold { color: #fbbf24; } .treasure { color: #10b981; } .loss { color: #ef4444; }
+    #context-total-wealth { display: none; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    
+    <header>
+      <h1>Quest</h1>
+      <span class="version-text">v2.2 Focused Mode</span>
+      <div class="datetime" id="datetime">Loading…</div>
+    </header>
+
+    <nav class="view-navigation">
+      <button class="nav-btn active" id="btn-view-1" onclick="switchView(1)">📈 Goal</button>
+      <button class="nav-btn" id="btn-view-2" onclick="switchView(2)">⚡ Trade</button>
+      <button class="nav-btn" id="btn-view-3" onclick="switchView(3)">📜 Log</button>
+    </nav>
+
+    <div class="quest-card view-active" id="card-1">
+      <div class="progress-ring-container">
+        <svg class="progress-ring" width="140" height="140">
+          <defs>
+            <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stop-color="#3b82f6" />
+              <stop offset="100%" stop-color="#10b981" />
+            </linearGradient>
+          </defs>
+          <circle class="progress-ring__circle" stroke-width="8" fill="transparent" r="56" cx="70" cy="70"/>
+          <circle class="progress-ring__circle progress-ring__fill" stroke-width="8" stroke-dasharray="351.9" stroke-dashoffset="351.9" fill="transparent" r="56" cx="70" cy="70" id="ring-fill"/>
+        </svg>
+        <div class="progress-ring-text" id="ring-percent">0%</div>
+      </div>
+
+      <div class="wealth-showcase">
+        <div class="total-wealth-value" id="total-wealth-display">R0.00</div>
+        <div class="wealth-breakdown">
+          <div class="wealth-item"><div class="metric-label">Account</div><div class="metric-value gold" id="account-balance">R0.00</div></div>
+          <div class="wealth-item"><div class="metric-label">Vault</div><div class="metric-value treasure" id="saved-balance">R0.00</div></div>
+        </div>
+      </div>
+
+      <div class="sub-grid" style="margin-bottom:20px;">
+        <div class="metric-card"><span class="metric-label">Wins</span><span class="metric-value treasure" id="total-wins-display">0</span></div>
+        <div class="metric-card"><span class="metric-label">Losses</span><span class="metric-value loss" id="total-losses-display">0</span></div>
+        <div class="metric-card"><span class="metric-label">Win Rate</span><span class="metric-value gold" id="actual-win-rate-display">0%</span></div>
+      </div>
+
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+        <div class="metric-card" style="text-align:left;"><span class="metric-label">Quest Day</span><div class="metric-value" id="level-display">Day 1</div></div>
+        <div class="metric-card" style="text-align:left;"><span class="metric-label">Today's Target</span><div class="metric-value" id="daily-target-display">R0.00</div></div>
+        <div class="metric-card" style="text-align:left;"><span class="metric-label">Start Date</span><div class="metric-value" id="start-date-display">-</div></div>
+        <div class="metric-card" style="text-align:left;"><span class="metric-label">Goal Date</span><div class="metric-value" id="predicted-end-date-display">-</div></div>
+      </div>
+    </div>
+
+    <div class="quest-card" id="card-2">
+      <div style="display:flex; justify-content:space-between; margin-bottom:15px;">
+        <h2 class="section-title">⚡ Execute Trade</h2>
+        <div style="font-size:12px; font-weight:800; color:#94a3b8;"><span id="risk-percent-display">0%</span> Risk / <span id="multiplier-display">0%</span> Prof</div>
+      </div>
+
+      <div class="current-trade-hero">
+        <div class="metric-label" style="margin-bottom:8px;">Trade Risk Amount</div>
+        <div class="current-trade-value" id="current-trade">R0.00</div>
+        <span id="context-total-wealth"></span>
+      </div>
+
+      <div class="result-row win-row">
+        <span>🟩</span>
+        <div style="flex-grow:1;"><div class="metric-label">If Win</div><div style="font-size:11px; color:#64748b;">Next Wealth: <span id="win-total-preview">R0</span></div></div>
+        <div class="metric-value treasure" id="next-trade-win" style="font-size:18px;">R0</div>
+      </div>
+
+      <div class="result-row loss-row">
+        <span>🟥</span>
+        <div style="flex-grow:1;"><div class="metric-label">If Loss</div><div style="font-size:11px; color:#64748b;">Next Wealth: <span id="loss-total-preview">R0</span></div></div>
+        <div class="metric-value loss" id="next-trade-loss" style="font-size:18px;">R0</div>
+      </div>
+
+      <div style="background:rgba(59, 130, 246, 0.1); border-left:4px solid #3b82f6; padding:15px; border-radius:0 12px 12px 0; margin:20px 0;">
+        <div class="metric-label" style="color:#93c5fd; margin-bottom:2px;">Trade Guidance</div>
+        <div id="trade-context-hint" style="font-family:'SF Mono'; font-size:13px; color:#bfdbfe; font-weight:700;">Awaiting first trade...</div>
+      </div>
+
+      <div class="btn-group">
+        <button class="btn btn-loss" id="loss-btn">Loss</button>
+        <button class="btn btn-win" id="win-btn">Win</button>
+      </div>
+      <button class="btn btn-save" id="save-btn" disabled>💰 Save Vault Profit</button>
+    </div>
+
+    <div class="quest-card" id="card-3">
+      <h2 class="section-title">📜 Quest Journal</h2>
+      <div id="history" class="history"></div>
+      
+      <button class="btn" id="open-settings-btn" style="background:#334155; color:white; width:100%; margin-bottom:12px; box-shadow:0 4px 0 #1e293b;">⚙️ Configure Quest</button>
+      
+      <div class="btn-group">
+        <button class="btn" id="export-btn" style="background:#334155; color:white; font-size:13px; box-shadow:0 4px 0 #1e293b;">📤 Export</button>
+        <button class="btn" id="reset-btn" style="background:#450a0a; color:white; font-size:13px; box-shadow:0 4px 0 #2d0606;">↺ Reset</button>
+      </div>
+    </div>
+
+    <div id="settings-overlay" class="settings-overlay">
+      <div class="settings-card">
+        <h2 class="section-title">Settings</h2>
+        <div style="display:grid; gap:15px; margin-bottom:25px;">
+            <div><label>Opening Balance</label><input type="number" id="openingInput" step="0.01"></div>
+            <div><label>Target Goal</label><input type="number" id="targetInput"></div>
+            <div><label>Start Date</label><input type="date" id="startDateInput"></div>
+            <div><label>End Date</label><input type="date" id="completionDateInput"></div>
+            <div><label>Risk %</label><input type="number" id="riskPercent" step="0.1"></div>
+            <div><label>Profit %</label><input type="number" id="profitPercent"></div>
+            <div><label>Save %</label><input type="number" id="savePercent"></div>
+            <div style="display:none;"><input type="number" id="targetProfitPctInput" value="0"></div>
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <label style="margin:0;">Manual Start Date Mode</label>
+                <input type="checkbox" id="custom-mode-checkbox" style="width:auto;">
+            </div>
+        </div>
+        <div class="btn-group">
+          <button class="btn" id="close-settings-btn" style="background:#334155; color:white;">Cancel</button>
+          <button class="btn btn-win" id="apply-custom">Apply Changes</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="toast">Updated</div>
+  </div>
+
+  <script>
+    /* JAVASCRIPT - 100% Logic Parity with v2.1 */
+    function getTodayYMD() { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; }
+    function getFutureYMD(days) { const d = new Date(); d.setDate(d.getDate() + days); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; }
+    function formatZAR(num) { return 'R' + Math.abs(num).toFixed(2); }
+    function showToast(msg) { const t = document.getElementById('toast'); t.textContent = msg; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 2000); }
+
+    // Core State Variables
+    let openingBalance = 100, targetAmount = 150000, durationDays = 30, savedBalance = 0;
+    let riskPercent = 3.53, profitPercent = 100, savePercent = 50, targetProfitPct = 0;
+    let currentBalance = 100, currentDay = 1, nextId = 1, totalWins = 0, totalLosses = 0;
+    let lastWinProfit = 0, customMode = false;
+    let userDefinedStartDate = getTodayYMD(), userDefinedCompletionDate = getFutureYMD(30);
+    let tradeLog = [];
+
+    // DOM Elements
+    const accountBalanceEl = document.getElementById('account-balance'), savedBalanceEl = document.getElementById('saved-balance'), totalWealthDisplayEl = document.getElementById('total-wealth-display');
+    const levelDisplayEl = document.getElementById('level-display'), dailyTargetDisplayEl = document.getElementById('daily-target-display'), startDateDisplayEl = document.getElementById('start-date-display');
+    const predictedEndDateDisplayEl = document.getElementById('predicted-end-date-display'), totalWinsDisplayEl = document.getElementById('total-wins-display'), totalLossesDisplayEl = document.getElementById('total-losses-display');
+    const actualWinRateDisplayEl = document.getElementById('actual-win-rate-display'), currentTradeEl = document.getElementById('current-trade');
+    const historyEl = document.getElementById('history'), ringFill = document.getElementById('ring-fill'), ringPercentText = document.getElementById('ring-percent');
+    const contextHint = document.getElementById('trade-context-hint'), contextTotalWealthEl = document.getElementById('context-total-wealth');
+    const winTotalPreviewEl = document.getElementById('win-total-preview'), lossTotalPreviewEl = document.getElementById('loss-total-preview');
+
+    // FOCUS VIEW LOGIC
+    function switchView(viewIndex) {
+        document.querySelectorAll('.nav-btn').forEach((btn, i) => {
+            btn.classList.toggle('active', (i + 1) === viewIndex);
+        });
+        document.querySelectorAll('.quest-card').forEach((card, i) => {
+            card.classList.toggle('view-active', (i + 1) === viewIndex);
+        });
+    }
+
+    function setProgress(percent) {
+      const circumference = 56 * 2 * Math.PI;
+      const offset = circumference - (percent / 100 * circumference);
+      ringFill.style.strokeDashoffset = Math.max(0, offset);
+      ringPercentText.textContent = `${percent.toFixed(1)}%`;
+    }
+
+    function recalculate() {
+      const today = new Date(); today.setHours(0,0,0,0);
+      const start = new Date(userDefinedStartDate); start.setHours(0,0,0,0);
+      const diffTime = today - start;
+      currentDay = Math.max(1, Math.floor(diffTime / 86400000) + 1);
+
+      const totalWealth = currentBalance + savedBalance;
+      const idealDailyRate = Math.pow(targetAmount / openingBalance, 1 / durationDays) - 1;
+      const targetWealthToday = openingBalance * Math.pow(1 + idealDailyRate, currentDay);
+      
+      const currentRiskAmount = currentBalance * (riskPercent / 100);
+      const profitPerTrade = currentRiskAmount * (profitPercent / 100);
+      
+      setProgress(Math.min((totalWealth / targetAmount) * 100, 100));
+
+      contextHint.textContent = totalWealth < targetWealthToday 
+        ? `${formatZAR(targetWealthToday - totalWealth)} behind daily target curve.` 
+        : `Target reached for Quest Day ${currentDay}.`;
+
+      accountBalanceEl.textContent = formatZAR(currentBalance);
+      savedBalanceEl.textContent = formatZAR(savedBalance);
+      totalWealthDisplayEl.textContent = formatZAR(totalWealth);
+      contextTotalWealthEl.textContent = formatZAR(totalWealth);
+      
+      levelDisplayEl.textContent = `Day ${currentDay}`;
+      dailyTargetDisplayEl.textContent = formatZAR(targetWealthToday);
+      startDateDisplayEl.textContent = new Date(userDefinedStartDate).toLocaleDateString();
+      predictedEndDateDisplayEl.textContent = new Date(userDefinedCompletionDate).toLocaleDateString();
+      
+      document.getElementById('risk-percent-display').textContent = `${riskPercent.toFixed(2)}%`;
+      document.getElementById('multiplier-display').textContent = `${profitPercent.toFixed(1)}%`;
+      currentTradeEl.textContent = formatZAR(currentRiskAmount);
+      
+      document.getElementById('next-trade-win').textContent = formatZAR(currentRiskAmount * (profitPercent/100));
+      document.getElementById('next-trade-loss').textContent = formatZAR(currentRiskAmount);
+      winTotalPreviewEl.textContent = formatZAR(currentBalance + profitPerTrade + savedBalance);
+      lossTotalPreviewEl.textContent = formatZAR(currentBalance - currentRiskAmount + savedBalance);
+      
+      totalWinsDisplayEl.textContent = totalWins;
+      totalLossesDisplayEl.textContent = totalLosses;
+      const totalT = totalWins + totalLosses;
+      actualWinRateDisplayEl.textContent = totalT > 0 ? ((totalWins / totalT) * 100).toFixed(1) + '%' : '0%';
+      
+      const totalProfitAvailable = totalWealth - openingBalance;
+      document.getElementById('save-btn').disabled = totalProfitAvailable <= 0;
+    }
+
+    function saveState() {
+      const s = { openingBalance, targetAmount, durationDays, savedBalance, riskPercent, profitPercent, savePercent, currentBalance, tradeLog, nextId, customMode, totalWins, totalLosses, userDefinedStartDate, userDefinedCompletionDate };
+      localStorage.setItem('questStateV22', JSON.stringify(s));
+    }
+
+    function init() {
+      const saved = localStorage.getItem('questStateV22');
+      if (saved) {
+        const s = JSON.parse(saved);
+        Object.assign(window, s);
+        document.getElementById('openingInput').value = openingBalance;
+        document.getElementById('targetInput').value = targetAmount;
+        document.getElementById('startDateInput').value = userDefinedStartDate;
+        document.getElementById('completionDateInput').value = userDefinedCompletionDate;
+        document.getElementById('riskPercent').value = riskPercent;
+        document.getElementById('profitPercent').value = profitPercent;
+        document.getElementById('savePercent').value = savePercent;
+      }
+      recalculate(); renderHistory();
+    }
+
+    function renderHistory() {
+      historyEl.innerHTML = tradeLog.slice().reverse().map(item => `
+        <div class="history-item">
+          <span style="font-weight:800; color:#64748b;">#${item.id}</span>
+          <span style="color:${item.type==='win'?'#10b981':item.type==='loss'?'#ef4444':'#fbbf24'}; font-weight:800;">${item.type.toUpperCase()}</span>
+          <span style="font-weight:700;">${(item.change >= 0 ? '+' : '') + formatZAR(item.change)}</span>
+          <span style="color:#cbd5e1;">${formatZAR(item.balance)}</span>
+        </div>`).join('');
+    }
+
+    document.getElementById('win-btn').onclick = () => {
+      const profit = (currentBalance * (riskPercent / 100)) * (profitPercent / 100);
+      currentBalance += profit; totalWins++;
+      tradeLog.push({ id: nextId++, type: 'win', change: profit, balance: currentBalance, time: new Date() });
+      recalculate(); renderHistory(); saveState();
+    };
+    document.getElementById('loss-btn').onclick = () => {
+      const loss = currentBalance * (riskPercent / 100);
+      currentBalance -= loss; totalLosses++;
+      tradeLog.push({ id: nextId++, type: 'loss', change: -loss, balance: currentBalance, time: new Date() });
+      recalculate(); renderHistory(); saveState();
+    };
+    document.getElementById('save-btn').onclick = () => {
+        const totalProfit = (currentBalance + savedBalance) - openingBalance;
+        const amt = totalProfit * (savePercent / 100);
+        savedBalance += amt; currentBalance -= amt;
+        tradeLog.push({ id: nextId++, type: 'save', change: -amt, balance: currentBalance, time: new Date() });
+        recalculate(); renderHistory(); saveState();
+    };
+
+    document.getElementById('open-settings-btn').onclick = () => document.getElementById('settings-overlay').classList.add('show');
+    document.getElementById('close-settings-btn').onclick = () => document.getElementById('settings-overlay').classList.remove('show');
+    document.getElementById('apply-custom').onclick = () => {
+      openingBalance = parseFloat(document.getElementById('openingInput').value);
+      targetAmount = parseFloat(document.getElementById('targetInput').value);
+      riskPercent = parseFloat(document.getElementById('riskPercent').value);
+      profitPercent = parseFloat(document.getElementById('profitPercent').value);
+      savePercent = parseFloat(document.getElementById('savePercent').value);
+      userDefinedStartDate = document.getElementById('startDateInput').value;
+      userDefinedCompletionDate = document.getElementById('completionDateInput').value;
+      durationDays = Math.ceil((new Date(userDefinedCompletionDate) - new Date(userDefinedStartDate)) / 86400000) || 30;
+      recalculate(); saveState(); showToast('Quest Updated');
+      document.getElementById('settings-overlay').classList.remove('show');
+    };
+    document.getElementById('reset-btn').onclick = () => { if(confirm('Reset all progress?')) { localStorage.removeItem('questStateV22'); location.reload(); } };
+    document.getElementById('export-btn').onclick = () => {
+      let txt = `Quest Log v2.2\nTotal Wealth: ${formatZAR(currentBalance + savedBalance)}\n` + tradeLog.map(l => `#${l.id} ${l.type.toUpperCase()} ${formatZAR(l.change)}`).join('\n');
+      navigator.clipboard.writeText(txt).then(() => showToast('Log Copied'));
+    };
+
+    window.onload = init;
+    setInterval(() => { document.getElementById('datetime').textContent = new Date().toLocaleString(); }, 1000);
+  </script>
+</body>
+</html>

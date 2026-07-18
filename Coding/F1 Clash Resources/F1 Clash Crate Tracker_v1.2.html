@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>F1 Clash - Ultimate 8-Step Tracker</title>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-950 text-slate-100 font-sans">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        const STEPS = {
+            1: { p: 12, g: [4, 8] },
+            2: { p: 24, g: [5, 10, 15, 20] },
+            3: { p: 26, g: [9, 13, 17, 21] }, // As per user file table
+            4: { p: 40, g: [8, 16, 24, 32] },
+            5: { p: 32, g: [6, 12, 18, 24] },
+            6: { p: 48, g: [8, 16, 24, 32, 40] },
+            7: { p: 24, g: [5, 10, 15, 20] },
+            8: { p: 24, g: [4, 8, 12, 16, 20] }
+        };
+
+        const App = () => {
+            const [anchor, setAnchor] = useState(() => localStorage.getItem('f1_8_anchor') || "4436");
+            const [activeStep, setActiveStep] = useState(() => parseInt(localStorage.getItem('f1_8_step')) || 3);
+            const [history, setHistory] = useState(() => JSON.parse(localStorage.getItem('f1_8_history')) || []);
+            const [gpCount, setGpCount] = useState(() => parseInt(localStorage.getItem('f1_8_gp')) || 0);
+
+            useEffect(() => {
+                localStorage.setItem('f1_8_anchor', anchor);
+                localStorage.setItem('f1_8_step', activeStep);
+                localStorage.setItem('f1_8_history', JSON.stringify(history));
+                localStorage.setItem('f1_8_gp', gpCount);
+            }, [anchor, activeStep, history, gpCount]);
+
+            const currentWin = parseInt(anchor) + history.length;
+            
+            const addCrate = (type) => {
+                if (type === 'GP') setGpCount(prev => prev + 1);
+                setHistory([...history, type]);
+            };
+
+            const getExpected = (winNum) => {
+                // GP wins "shift" the target sequence as per PDF
+                const distance = (winNum - parseInt(anchor)) - gpCount;
+                const pattern = STEPS[activeStep];
+                
+                if (distance === pattern.p) return 'PREMIUM';
+                if (pattern.g.includes(distance)) return 'GOLD';
+                return 'S / F';
+            };
+
+            const reset = () => {
+                if(confirm("Clear all data and reset?")) {
+                    setHistory([]);
+                    setGpCount(0);
+                    setAnchor("");
+                }
+            };
+
+            // Display Logic: Last 2 (Past) and Next 6 (Future) = 8 Total
+            const display = [];
+            for (let i = history.length - 1; i >= Math.max(0, history.length - 2); i--) {
+                const w = parseInt(anchor) + i + 1;
+                display.push({ win: w, actual: history[i], expected: getExpected(w), type: 'past' });
+            }
+            for (let i = history.length; i < history.length + 6; i++) {
+                const w = parseInt(anchor) + i + 1;
+                display.push({ win: w, actual: null, expected: getExpected(w), type: 'future' });
+            }
+
+            return (
+                <div className="min-h-screen p-4 flex flex-col items-center">
+                    <div className="w-full max-w-md bg-slate-900 rounded-[2rem] border border-slate-800 shadow-2xl overflow-hidden">
+                        
+                        {/* Header & Step Selector */}
+                        <div className="bg-red-600 p-6">
+                            <div className="flex justify-between items-center mb-4">
+                                <h1 className="text-xl font-black italic uppercase">Crate Tracker</h1>
+                                <select 
+                                    value={activeStep} 
+                                    onChange={(e) => setActiveStep(parseInt(e.target.value))}
+                                    className="bg-black/20 text-xs font-bold border-none rounded px-2 py-1 outline-none"
+                                >
+                                    {[1,2,3,4,5,6,7,8].map(s => <option key={s} value={s}>STEP {s}</option>)}
+                                </select>
+                            </div>
+                            <div className="flex justify-between items-end">
+                                <div className="text-[10px] font-bold opacity-80 uppercase tracking-tighter">
+                                    Current Win: <span className="text-white text-base block">{currentWin}</span>
+                                </div>
+                                <div className="text-[10px] text-right font-bold opacity-80 uppercase">
+                                    Last Premium: <span className="text-white block" onClick={() => {const a = prompt("Set Win #:", anchor); if(a) setAnchor(a)}}>{anchor} ✎</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="p-6 space-y-4">
+                            {/* The 8-Win Rolling Log (Latest at Top) */}
+                            <div className="space-y-2 min-h-[380px]">
+                                {display.map((race, idx) => (
+                                    <div key={idx} className={`flex justify-between items-center p-3 rounded-xl border transition-all ${
+                                        race.type === 'past' ? 'bg-slate-800/30 border-slate-800 opacity-40' : 
+                                        race.win === currentWin + 1 ? 'bg-blue-600/10 border-blue-500 ring-2 ring-blue-500/20' : 'bg-slate-800/80 border-transparent'
+                                    }`}>
+                                        <div>
+                                            <p className="text-[9px] font-bold text-slate-500 uppercase">Win {race.win}</p>
+                                            <p className={`text-sm font-black ${race.expected !== 'S / F' ? 'text-yellow-400' : 'text-slate-100'}`}>
+                                                {race.expected}
+                                            </p>
+                                        </div>
+                                        <div className="text-right">
+                                            {race.actual ? (
+                                                <span className="text-[10px] font-mono bg-slate-700 px-2 py-1 rounded">LOGGED: {race.actual}</span>
+                                            ) : (
+                                                <span className="text-[9px] text-slate-500 font-bold uppercase tracking-widest">Upcoming</span>
+                                            )}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+
+                            {/* Controls */}
+                            <div className="grid grid-cols-3 gap-2 pt-4 border-t border-slate-800">
+                                <button onClick={() => addCrate('F')} className="bg-slate-800 py-3 rounded-lg font-bold text-xs hover:bg-slate-700 active:scale-95">F (Full)</button>
+                                <button onClick={() => addCrate('S')} className="bg-slate-800 py-3 rounded-lg font-bold text-xs hover:bg-slate-700 active:scale-95">S (Std)</button>
+                                <button onClick={() => addCrate('GP')} className="bg-green-600/20 border border-green-500 text-green-400 py-3 rounded-lg font-bold text-xs active:scale-95">GP WIN</button>
+                                
+                                <button onClick={() => addCrate('G')} className="col-span-2 bg-blue-600 py-4 rounded-lg font-black text-sm active:scale-95">GOT GOLD (G)</button>
+                                <button onClick={() => addCrate('P/L')} className="bg-yellow-500 text-black py-4 rounded-lg font-black text-sm active:scale-95">PREMIUM</button>
+                            </div>
+
+                            <button onClick={reset} className="w-full text-[10px] text-slate-600 font-bold uppercase text-center mt-2">Reset Entire Sequence</button>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>

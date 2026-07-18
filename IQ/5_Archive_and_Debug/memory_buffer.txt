@@ -1,0 +1,11 @@
+# Project Memory Buffer
+# Persistent knowledge about architecture decisions, edge cases, and system rules
+# Format: Memory Point N — Description
+
+Memory Point 1 — Project uses AGENT.md Directive → Orchestration → Execution (DOE) architecture model.
+Memory Point 2 — Workspace structure: 1_Documentation, 2_Source_Data, 3_Live_Reports, 4_Scripts, 5_Archive_and_Debug.
+Memory Point 3 — Signal generator uses RSI + Stochastic with ADX regime filtering (TRENDING vs RANGING).
+Memory Point 4 — Live market data fetched via free API (Yahoo Finance / exchangerate-api) for forex pairs.
+Memory Point 5 — All scripts use relative paths from project root.
+Memory Point 6 — CSV signal logs saved to 3_Live_Reports/ directory.
+Memory Point 7 — Debug logging writes to 5_Archive_and_Debug/debug_log.txt.

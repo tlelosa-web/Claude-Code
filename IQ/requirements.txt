@@ -1,0 +1,8 @@
+# IQ Option Signal Generator - Dependencies
+# Python 3.7+ required
+
+# Live market data feed
+yfinance>=0.2.18
+
+# Fallback API (optional, used if yfinance fails)
+requests>=2.28.0

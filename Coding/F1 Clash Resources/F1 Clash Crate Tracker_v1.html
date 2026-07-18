@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>F1 Clash - Pro Sequence Tracker</title>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-950 text-white font-sans">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        const App = () => {
+            const [startWin, setStartWin] = useState(() => localStorage.getItem('f1_start_win') || "");
+            const [history, setHistory] = useState(() => JSON.parse(localStorage.getItem('f1_pro_history')) || []);
+            
+            // This is the sequence logic from your Ark 3 / Step 3 file
+            // Distances between key crates (Simplified for the tracker)
+            const MILESTONES = [8, 12, 18, 26, 40]; 
+
+            useEffect(() => {
+                localStorage.setItem('f1_start_win', startWin);
+                localStorage.setItem('f1_pro_history', JSON.stringify(history));
+            }, [startWin, history]);
+
+            const currentWinCount = startWin ? parseInt(startWin) + history.length : null;
+
+            const addCrate = (type) => {
+                if (!startWin) return alert("Please set your last Premium Win count first!");
+                setHistory([...history, type]);
+            };
+
+            const reset = () => {
+                if(confirm("Clear all data and start new sequence?")) {
+                    setHistory([]);
+                    setStartWin("");
+                }
+            };
+
+            return (
+                <div className="min-h-screen flex flex-col items-center p-4">
+                    <div className="w-full max-w-md bg-slate-900 rounded-3xl border border-slate-800 shadow-2xl overflow-hidden">
+                        
+                        {/* Status Bar */}
+                        <div className="bg-red-600 p-6 text-center">
+                            <h1 className="text-xl font-black uppercase italic italic">Crate Sequence Tracker</h1>
+                            <div className="text-red-100 text-xs mt-1 font-mono uppercase tracking-widest">
+                                Current Win: {currentWinCount || "Not Set"}
+                            </div>
+                        </div>
+
+                        <div className="p-6 space-y-6">
+                            {/* Input for Starting Point */}
+                            {!startWin ? (
+                                <div className="bg-slate-800 p-4 rounded-xl border border-blue-500/50">
+                                    <label className="block text-xs font-bold text-blue-400 mb-2 uppercase">Last Platinum/Legendary Win #</label>
+                                    <input 
+                                        type="number" 
+                                        placeholder="e.g. 4436" 
+                                        className="w-full bg-slate-950 p-3 rounded-lg border border-slate-700 text-white font-mono"
+                                        onKeyDown={(e) => e.key === 'Enter' && setStartWin(e.target.value)}
+                                        onBlur={(e) => setStartWin(e.target.value)}
+                                    />
+                                    <p className="text-[10px] text-slate-400 mt-2 italic">As per Ark 3 instructions: Add win count of last P or L in cell A2.</p>
+                                </div>
+                            ) : (
+                                <div className="flex justify-between items-center bg-slate-800 p-3 rounded-xl">
+                                    <span className="text-sm text-slate-400">Anchor: <b className="text-white">{startWin}</b></span>
+                                    <button onClick={() => setStartWin("")} className="text-[10px] text-red-400 font-bold underline">CHANGE</button>
+                                </div>
+                            )}
+
+                            {/* Predictive List */}
+                            <div className="space-y-2 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
+                                {history.map((type, i) => (
+                                    <div key={i} className="flex justify-between text-sm py-2 border-b border-slate-800 font-mono">
+                                        <span className="text-slate-500">Win {parseInt(startWin) + i + 1}</span>
+                                        <span className={type === 'GP' ? 'text-green-400' : 'text-blue-400'}>{type}</span>
+                                    </div>
+                                ))}
+                            </div>
+
+                            {/* Action Buttons */}
+                            <div className="grid grid-cols-2 gap-3">
+                                <button onClick={() => addCrate('S')} className="bg-slate-800 hover:bg-slate-700 py-4 rounded-xl font-bold border border-slate-700 transition-all active:scale-95">Standard (S)</button>
+                                <button onClick={() => addCrate('G')} className="bg-blue-900 hover:bg-blue-800 py-4 rounded-xl font-bold border border-blue-500 transition-all active:scale-95">Gold (G)</button>
+                                <button onClick={() => addCrate('GP')} className="bg-green-900 hover:bg-green-800 py-4 rounded-xl font-bold border border-green-500 transition-all active:scale-95">GP Event</button>
+                                <button onClick={() => addCrate('P/L')} className="bg-yellow-600 hover:bg-yellow-500 py-4 rounded-xl font-bold text-black transition-all active:scale-95">Premium (P/L)</button>
+                            </div>
+
+                            <div className="bg-slate-950 border border-slate-800 p-4 rounded-xl text-center">
+                                <p className="text-xs text-slate-500 uppercase font-bold mb-1">Next Goal Guidance</p>
+                                <p className="text-lg font-mono text-yellow-500">
+                                    {history.includes('P/L') ? "Cycle Complete - Reset A2" : "Track Golds to confirm Pattern"}
+                                </p>
+                            </div>
+
+                            <button onClick={reset} className="w-full text-slate-600 hover:text-red-500 text-[10px] font-black uppercase tracking-widest transition">
+                                Fully Reset Data
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>

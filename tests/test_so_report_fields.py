@@ -5,7 +5,7 @@ See docs/specs/fm-numbers-default-open-so-report.md.
 """
 import pytest
 from datetime import datetime, timezone
-from models import db, SalesOrder, SOLineItem, StockOrder, StockOrderLine, StatusChangeLog, PAYMENT_STATUS_OPTIONS
+from models import db, SalesOrder, SOLineItem, StockOrder, StockOrderLine, WorksOrder, StatusChangeLog, PAYMENT_STATUS_OPTIONS
 from scripts.migrate_payment_status_values import migrate_payment_status_values
 
 
@@ -251,6 +251,111 @@ class TestBalanceDue:
 
         assert so.amount_paid == 0.0
         assert so.balance_due == so.total_incl == 500.0
+
+
+class TestReportStatus:
+    """SalesOrder.report_status / display_report_status -- computed property
+    coverage across all real states, per Sequencing item 17 and Decision 1 of
+    docs/specs/sales-order-report-excel-export-2026-07-17.md (the *all*-based
+    Ready-Dispatch rule, not the earlier *any*-based draft)."""
+    _c = 0
+
+    def _mk_so(self, session, status='Draft'):
+        TestReportStatus._c += 1
+        n = TestReportStatus._c
+        so = SalesOrder(so_number=f"REPORT-STATUS-{n:03d}", customer_name="Report Test Co",
+                        status=status, created_at=datetime.now(timezone.utc))
+        session.add(so)
+        session.flush()
+        return so, n
+
+    def _mk_wo(self, session, so, n, status, suffix=""):
+        wo = WorksOrder(wo_number=f"RS-WO-{n:03d}{suffix}", so_id=so.id,
+                        order_type='ASSEMBLY', status=status)
+        session.add(wo)
+        return wo
+
+    def _mk_sto(self, session, so, n, status, suffix=""):
+        sto = StockOrder(stock_order_number=f"RS-STO-{n:03d}{suffix}", so_id=so.id, status=status)
+        session.add(sto)
+        return sto
+
+    def test_loaded_when_no_wo_or_sto(self, session):
+        so, n = self._mk_so(session)
+        session.commit()
+        assert so.report_status == 'Loaded'
+
+    def test_released_when_wo_exists_and_not_terminal(self, session):
+        so, n = self._mk_so(session, status='Open')
+        self._mk_wo(session, so, n, 'Open')
+        session.commit()
+        assert so.report_status == 'Released'
+
+    def test_released_when_sto_exists_and_not_terminal(self, session):
+        so, n = self._mk_so(session, status='Open')
+        self._mk_sto(session, so, n, 'Open')
+        session.commit()
+        assert so.report_status == 'Released'
+
+    def test_ready_dispatch_when_single_wo_complete(self, session):
+        so, n = self._mk_so(session, status='Open')
+        self._mk_wo(session, so, n, 'Complete')
+        session.commit()
+        assert so.report_status == 'Ready-Dispatch'
+
+    def test_ready_dispatch_when_all_terminal_mix_of_complete_and_cancelled(self, session):
+        so, n = self._mk_so(session, status='Open')
+        self._mk_wo(session, so, n, 'Complete', suffix='A')
+        self._mk_wo(session, so, n, 'Cancelled', suffix='B')
+        session.commit()
+        assert so.report_status == 'Ready-Dispatch'
+
+    def test_all_cancelled_stays_released_not_ready_dispatch(self, session):
+        """Edge case called out explicitly in Decision 1: an SO whose WOs/STOs
+        are all Cancelled (no completions at all) must NOT read as
+        Ready-Dispatch -- the any_complete guard exists to avoid the vacuous-
+        truth bug (all-terminal trivially satisfied by an all-Cancelled set)."""
+        so, n = self._mk_so(session, status='Open')
+        self._mk_wo(session, so, n, 'Cancelled', suffix='A')
+        self._mk_sto(session, so, n, 'Cancelled', suffix='B')
+        session.commit()
+        assert so.report_status == 'Released'
+
+    def test_multi_wo_partial_complete_stays_released(self, session):
+        """Some-but-not-all Complete must read as Released, not
+        Ready-Dispatch -- all_terminal requires every linked order terminal."""
+        so, n = self._mk_so(session, status='Open')
+        self._mk_wo(session, so, n, 'Complete', suffix='A')
+        self._mk_wo(session, so, n, 'Open', suffix='B')
+        session.commit()
+        assert so.report_status == 'Released'
+
+    def test_none_when_so_status_closed(self, session):
+        so, n = self._mk_so(session, status='Open')
+        self._mk_wo(session, so, n, 'Complete')
+        session.commit()
+        so.status = 'Closed'
+        session.commit()
+        assert so.report_status is None
+
+    def test_none_when_so_status_cancelled(self, session):
+        so, n = self._mk_so(session, status='Cancelled')
+        session.commit()
+        assert so.report_status is None
+
+    def test_display_report_status_suffix_present_and_absent(self, session):
+        so, n = self._mk_so(session, status='Open')
+        self._mk_wo(session, so, n, 'Open')
+        session.commit()
+        assert so.report_status == 'Released'
+
+        so.on_hold = False
+        session.commit()
+        assert so.display_report_status == 'Released'
+
+        so.on_hold = True
+        session.commit()
+        assert so.display_report_status == 'Released — On Hold'
 
 
 class TestUpdateReportNotes:

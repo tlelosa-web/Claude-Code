@@ -54,6 +54,9 @@ class SalesOrder(db.Model):
     payment_status = db.Column(db.String(50), default='Account - Pending')  # Cash Sale - Unpaid/Paid/Partial / Account - Pending/Up to Date/On Hold/Overdue
     amount_paid = db.Column(db.Float, default=0.0)  # only read/written/displayed when payment_status == 'Cash Sale - Partial'
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    report_notes = db.Column(db.Text)  # manual, carried-forward Notes column for the Sales Order Report export
+    on_hold = db.Column(db.Boolean, default=False)  # manual flag, SO-level only -- see docs/specs/sales-order-report-excel-export-2026-07-17.md Decision 1
+    on_hold_reason = db.Column(db.Text)
 
     # Relationships
     line_items = db.relationship('SOLineItem', backref='sales_order', lazy=True, cascade="all, delete-orphan")
@@ -72,6 +75,30 @@ class SalesOrder(db.Model):
     @property
     def balance_due(self):
         return self.total_incl - (self.amount_paid or 0.0)
+
+    @property
+    def report_status(self):
+        """Computed Sales Order Report status -- fully derived from linked
+        WO/STO events, no stored/manual value. See docs/specs/
+        sales-order-report-excel-export-2026-07-17.md Decision 1 (final,
+        all-based Ready-Dispatch rule)."""
+        if self.status in ('Closed', 'Cancelled'):
+            return None  # not shown/relevant -- SalesOrder.status already covers closure
+        orders = list(self.works_orders) + list(self.stock_orders)
+        if not orders:
+            return 'Loaded'
+        all_terminal = all(o.status in ('Complete', 'Cancelled') for o in orders)
+        any_complete = any(o.status == 'Complete' for o in orders)
+        if all_terminal and any_complete:
+            return 'Ready-Dispatch'
+        return 'Released'
+
+    @property
+    def display_report_status(self):
+        base = self.report_status
+        if base is None:
+            return None
+        return f"{base} — On Hold" if self.on_hold else base
 
 class SOLineItem(db.Model):
     __tablename__ = 'so_line_item'
@@ -217,3 +244,42 @@ class Setting(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     key = db.Column(db.String(100), unique=True, nullable=False)
     value = db.Column(db.String(255))
+
+
+class Invoice(db.Model):
+    """Imported from Sage's CustomerInvoicesReport.csv (Monthly INV tab
+    source). No FK to SalesOrder -- deliberate, see docs/specs/
+    sales-order-report-excel-export-2026-07-17.md Decision 4."""
+    __tablename__ = 'invoice'
+
+    id = db.Column(db.Integer, primary_key=True)
+    invoice_number = db.Column(db.String(100), unique=True, nullable=False)
+    customer_ref = db.Column(db.String(100))
+    customer_name = db.Column(db.String(255))
+    sales_rep = db.Column(db.String(255))
+    invoice_date = db.Column(db.Date)
+    due_date = db.Column(db.Date)
+    exclusive = db.Column(db.Float, default=0.0)
+    vat = db.Column(db.Float, default=0.0)
+    total_selling = db.Column(db.Float, default=0.0)
+    total_outstanding = db.Column(db.Float, default=0.0)
+    imported_at = db.Column(db.DateTime, default=datetime.now)
+
+
+class StatusChangeLog(db.Model):
+    """Event-driven audit log for the fixed tracked-field list described in
+    docs/specs/sales-order-report-excel-export-2026-07-17.md Decision 2.
+    order_type/order_id follow StockMovement's plain-reference convention --
+    not FK-enforced, since this table is polymorphic across sales_order/
+    works_order/stock_order."""
+    __tablename__ = 'status_change_log'
+
+    id = db.Column(db.Integer, primary_key=True)
+    order_type = db.Column(db.String(10), nullable=False)  # 'SO' / 'WO' / 'STO'
+    order_id = db.Column(db.Integer, nullable=False)  # PK into sales_order/works_order/stock_order
+    order_number = db.Column(db.String(100))  # denormalized so_number/wo_number/stock_order_number
+    field_name = db.Column(db.String(50), nullable=False)
+    old_value = db.Column(db.Text)
+    new_value = db.Column(db.Text)
+    changed_at = db.Column(db.DateTime, default=datetime.now)
+    changed_by = db.Column(db.String(255))  # optional; 'System' where no explicit actor is known

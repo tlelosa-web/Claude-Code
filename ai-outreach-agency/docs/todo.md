@@ -1,6 +1,6 @@
 # Task Queue — ai-outreach-agency
 
-> Updated: 2026-07-18
+> Updated: 2026-07-19
 
 ---
 
@@ -30,21 +30,23 @@
 - [x] Fix `approvals` table never being written by the real pipeline — `run_approval_gate` (`src/approval/cli.py`) returned an `ApprovalResult` but never called `save_approval`/`init_approvals_table`, so the table only ever existed in tests. Added `_persist_approval()`, called from all three decision branches (approve/reject/edit). Found while building the dashboard's approval-history view, which would otherwise always render empty. New unit-conftest mock (`mock_persist_approval`) keeps existing isolated unit tests from writing to the real `data/leads.db` fallback path; two integration tests (`TestHappyPath`, `TestRejectionPath` in `test_full_pipeline.py`) now assert a real `approvals` row is written.
 - [x] Visual dashboard for lead store — `src/dashboard/` (`data.py` query functions + `generator.py` self-contained HTML renderer, no new dependency) and a new `ai-outreach dashboard [--output PATH] [--open]` CLI command. Shows summary cards, the pipeline funnel, a campaign × status matrix, and approval/rejection history. `Settings.DASHBOARD_PATH` (default `dashboard.html`, gitignored) controls the default output location. 16 new tests (129 passing total).
 - [x] **Planning**: Adapted `docs/specs/drafts/handoff-tracking.md` (OpenRouter-out-of-credits workaround: headless `claude -p` under Tebello's subscription, replacing `asset_gen`'s OpenRouter call) to this project's real migration/config conventions. Full build plan written to `docs/specs/handoff-tracking-build.md`. Key finding: `email_draft` has no existing OpenRouter call site to replace (only `asset_gen` and `research` do) — build scoped to `asset_gen` only pending Tebello's decision on the combined-call option (see Build Queue Step 22).
+- [x] **Planning (ADR-004)**: Designed the second cost-elimination track — local Ollama (`qwen3:8b`) for the `research` summariser, replacing its OpenRouter call. `docs/decisions/ADR-004-local-ollama-research-inference.md` + `docs/specs/ollama-research-build.md`. Key findings: `nomic-embed-text`/embeddings scoped **out** (no consumer exists in the codebase — `ResearchResult` has no vector field, dedup is string-based); fail-loud on unreachable Ollama (no silent fallback to the also-broken OpenRouter); no schema change so no migration file; client placed in `research/` not `shared/` (single consumer, per `apify_client.py` precedent).
 
 ---
 
 ## Known Issues
 
-- [ ] OpenRouter account is out of credits for the default 4096-token request (HTTP 402, can only afford ~2659 tokens as of 2026-07-04). Top up at openrouter.ai/settings/credits before running a real batch — otherwise every research call will fail (research stage is untouched by the headless-handoff feature below; it still needs working OpenRouter credits to reach `asset_gen` at all).
+- [ ] OpenRouter account is out of credits for the default 4096-token request (HTTP 402, can only afford ~2659 tokens as of 2026-07-04). Top up at openrouter.ai/settings/credits before running a real batch. **Both** OpenRouter call sites now have zero-cost replacement tracks in flight: `asset_gen` → headless Claude Code (Ollama Build Queue's sibling, see `docs/specs/handoff-tracking-build.md`), and `research` → local Ollama (see the Ollama Build Queue below). Once both land + prerequisites are met, the pipeline no longer depends on OpenRouter credits at all. Until then, research still needs either working OpenRouter credits or the Ollama track built + Ollama installed.
 
 ---
 
-## Build Queue
+## Build Queue A — Claude Code Headless Handoff (asset_gen)
 
-**Feature: Claude Code Headless Handoff (asset_gen).** Full detail, dependency
-ordering, and Reviewer-sign-off flags in `docs/specs/handoff-tracking-build.md`.
-Branch: `feature/handoff-tracking`. Steps flagged **[sign-off]** require
-Reviewer approval *before* the executor starts, not just before merge.
+Full detail, dependency ordering, and Reviewer-sign-off flags in
+`docs/specs/handoff-tracking-build.md`. Branch: `feature/handoff-tracking`.
+Steps flagged **[sign-off]** require Reviewer approval *before* the executor
+starts, not just before merge. Touches `src/handoff/*`, `src/asset_gen/*`,
+`src/approval/*`, `src/main.py` — no overlap with Build Queue B.
 
 - [ ] 1. ADR-003 (`docs/decisions/ADR-003-headless-claude-handoff.md`) — architect
 - [ ] 2. `src/handoff/__init__.py` package marker — executor
@@ -81,6 +83,40 @@ Reviewer approval *before* the executor starts, not just before merge.
 
 ---
 
+## Build Queue B — Local Ollama Inference (research)
+
+Second cost-elimination track. Full detail + prerequisites in
+`docs/specs/ollama-research-build.md` / ADR-004. Branch: `feature/handoff-tracking`
+(shared, independently orderable). Touches `src/research/*`, `src/config.py`,
+`.env.example`, docs — **no overlap with Build Queue A**. No **[sign-off]** steps
+(research sits upstream of the approval gate — see spec §6); Reviewer still
+approves the new network client before merge as normal.
+
+> **Prerequisites (Tebello only — manual, not executor steps):** install Ollama
+> (`OllamaSetup.exe` from ollama.com/download, or `winget install Ollama.Ollama`
+> after verifying the ID via `winget search ollama`), then `ollama pull qwen3:8b`
+> (~5 GB). Do **not** pull `nomic-embed-text` (scoped out). Tests pass offline
+> without any of this; prerequisites are only needed to run a real (non-offline)
+> batch. See spec §Prerequisites.
+
+- [ ] 1. ADR-004 (`docs/decisions/ADR-004-local-ollama-research-inference.md`) — architect **[done]**
+- [ ] 2. RED `tests/unit/test_config.py` (`OLLAMA_BASE_URL`, `OLLAMA_MODEL`) — tester
+- [ ] 3. GREEN `src/config.py` edit (Settings + load_settings) — executor
+- [ ] 4. RED `tests/unit/test_ollama_client.py` (mocked `requests.post`: success/parse, connection-refused → `OllamaUnreachableError`, timeout, non-200 → `OllamaError`, bad shape, rate-limiter called, no API key, clean-prose/`think:false`) — tester
+- [ ] 5. GREEN `src/research/ollama_client.py` (`call_ollama`, `OllamaError`, `OllamaUnreachableError`, `RateLimiter`, `OLLAMA_RATE_LIMIT_PER_MIN`) — executor
+- [ ] 6. RED `tests/unit/test_claude_summariser.py` (OFFLINE stub preserved; non-offline calls `call_ollama`; unreachable propagates, no OpenRouter fallback) — tester
+- [ ] 7. GREEN `src/research/claude_summariser.py` (swap `call_openrouter` → `call_ollama` in non-offline branch only) — executor
+- [ ] 8. `.env.example` entry (`OLLAMA_BASE_URL`, `OLLAMA_MODEL`) — executor
+- [ ] 9. RED `tests/integration/test_full_pipeline.py` extended (research produces summary offline, zero real HTTP to 11434) — tester
+- [ ] 10. GREEN — close any gaps Step 9 surfaces — executor
+- [ ] 11. Acceptance-criteria verification pass (spec §8 checklist) — tester + reviewer
+- [ ] 12. `docs/api-patterns.md` — new "Local Ollama Inference (research)" section — doc-writer
+- [ ] 13. `docs/architecture.md` + `CLAUDE.md` research-stage/stack update — doc-writer
+- [ ] 14. Final `docs/todo.md` update — doc-writer
+
+---
+
 ## Future (not yet scheduled)
 
 - [ ] **Option B** (deferred, needs its own spec if wanted): combine `asset_gen` + `email_draft` into a single per-lead headless handoff call (per the original draft's `handoff_template.md` ASSET+EMAIL design), adding fields to `AssetResult`/`DraftResult` and redesigning the approval-gate display to show the drafted email alongside the asset before human review. Not started — see `docs/specs/handoff-tracking-build.md` §5.
+- [ ] **Embeddings / semantic features** (deferred, needs its own spec + ADR if wanted): `nomic-embed-text` and a vector store were in Tebello's draft pipeline diagram but have **no consumer** in the codebase today (no semantic search, RAG, or vector dedup — dedup is string-based). Scoped out of ADR-004. Revisit only when a real retrieval/similarity feature is specified.

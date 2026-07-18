@@ -615,7 +615,7 @@ All items below must be green before delivery:
 - Committed: `112e321`. Spec committed together with the implementation
   (single commit, per this batch's scope).
 
-## Batch 34 — Native Sales Order Report Excel export (2026-07-17, revised twice — final pass complete)
+## Batch 34 — Native Sales Order Report Excel export (2026-07-17/18, revised twice, built, reviewed, merged)
 
 **Numbering note:** originally requested as "Batch 33" by the hub-level
 task brief, on the (reasonable, but incorrect at time of writing) assumption
@@ -682,10 +682,15 @@ in `docs/specs/sales-order-report-excel-export-2026-07-17.md`.
      export-accuracy goal.
   5. **Export default `?view=open` confirmed**, not just recommended —
      matches Batch 16/21's list-page convention.
-- [ ] **Not yet dispatched to an Executor.** Spec status is now "Ready for
-      dispatch" — no open design questions remain from either questionnaire
-      round. Next actual step is Orchestrator dispatch per the spec's
-      24-step Sequencing section.
+- [x] **Dispatched, built, reviewed, and merged (2026-07-18).** Orchestrator
+      ran the 24-step Sequencing plan as 10 sequential Executor chunks in an
+      isolated worktree (`feature/batch-34-sales-order-report`), each
+      independently spot-checked against the real diff as it landed (not
+      just trusting the Executor's self-report). Two Executor runs hit the
+      session's usage limit mid-task (resumed from the exact commit/file
+      state each time, verified nothing was corrupted before resuming —
+      once with zero commits lost, once with an in-progress uncommitted
+      edit that was safe to hand back).
 - Planned task sequence (24 atomic steps, see spec's "Sequencing" section
   for full file-level detail, final version): `models.py` (Invoice +
   StatusChangeLog + SalesOrder `on_hold`/`on_hold_reason` + computed
@@ -704,7 +709,41 @@ in `docs/specs/sales-order-report-excel-export-2026-07-17.md`.
   delivery-date/amount_paid logging hooks → export workbook builder
   (`Total` = `balance_due`) + route (`?view=open` default) + UI → Change
   Log report route/template/nav → full suite green.
-- Next task: dispatch to an Executor — spec is final, no Tebello
-  confirmation blockers remain.
-- Blockers: None. (Previously: awaiting Tebello's spec review — resolved
-  by the two questionnaire rounds above.)
+- [x] **Reviewer audit (2026-07-18)** found one blocker and one security
+      warning across the full 26-commit diff, both fixed in a final pass
+      (2 more commits) and independently re-verified before merge:
+  1. **Blocker — WO Edit guard drift:** `templates/works_orders/detail.html`
+     showed the Edit link for `Released` WOs (per spec), but
+     `routes/works_orders.py`'s `edit_order()`/`update_order()` guards were
+     never updated to match — a dead button. Fixed to match the sibling
+     `StockOrder.edit_order()`, which already had the correct guard; added
+     a regression test (none existed for this specific transition, which is
+     how it slipped through 8 prior Executor chunks).
+  2. **Warning — Excel/CSV formula injection:** free-text fields
+     (`customer_name`, `reference`, `sales_rep`, `report_notes`,
+     `job_numbers` — several PDF-parsed, externally influenceable) were
+     written into export cells unsanitized; a value starting with
+     `=`/`+`/`-`/`@` would execute as a formula when opened in Excel. Fixed
+     with a `_safe_cell_text()` helper (leading-apostrophe escape) applied
+     to every free-text cell; `status`/`payment_status`/`so_number`
+     deliberately left unescaped (system-computed, not attacker-influenceable
+     — escaping them broke an existing `'-'`-fallback test for closed SOs).
+     Also swept up 4 minor nits flagged in the same review (stale status
+     comments in `models.py`, two missing badge CSS rules, a stale
+     docstring).
+- [x] **Merged to `master` (2026-07-18)**, merge commit summarizing the
+      batch. Full suite: 331 passed on `master` post-merge. 3 migration
+      scripts run against live `instance/sops.db` (Tebello's explicit
+      go-ahead) after a fresh backup — additive only (3 new `sales_order`
+      columns + 2 new tables), verified directly against the live schema
+      afterward, not just trusted from script output. Worktree
+      unregistered from git; the physical folder
+      (`C:\Dev\Operations\sops-worktree-batch34`) failed to delete due to a
+      Windows file-lock (permission denied) and is harmless leftover
+      clutter — not a git-tracked worktree anymore, safe to delete manually
+      whenever convenient.
+- Next task: none from this batch — standalone `1. Daily Sales Order Files`
+  pipeline still runs in parallel per the original scope decision (not
+  decommissioned here); revisit that separately if/when Tebello wants to
+  retire it now that SOPS covers the same ground.
+- Blockers: None.

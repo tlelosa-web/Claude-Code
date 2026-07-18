@@ -240,7 +240,7 @@ def confirm_pick(order_id):
 
 @works_orders_bp.route('/works-orders/<int:order_id>/delete', methods=['POST'])
 def delete_order(order_id):
-    """Delete a Works Order or Picking List. Only allowed for Open or In Progress status."""
+    """Delete a Works Order or Picking List. Only allowed for Open, Released, or In Progress status."""
     wo = WorksOrder.query.get_or_404(order_id)
     
     if wo.status in ('Complete', 'Cancelled'):
@@ -264,11 +264,11 @@ def delete_order(order_id):
 def edit_order(order_id):
     """Render edit form pre-populated with existing BOM lines."""
     wo = WorksOrder.query.get_or_404(order_id)
-    
-    if wo.status not in ['Open', 'In Progress']:
+
+    if wo.status not in ['Open', 'Released', 'In Progress']:
         flash(f"Cannot edit Works Order {wo.wo_number}. Status is {wo.status}.", "error")
         return redirect(url_for('works_orders.view_order', order_id=order_id))
-    
+
     # Load existing BOM lines structured for edit UI
     from services.doc_generator import get_works_order_print_context
     context = get_works_order_print_context(order_id)
@@ -306,11 +306,11 @@ def update_order(order_id):
     """Receive updated BOM lines JSON, replace BOMLines, redirect to detail."""
     import json
     wo = WorksOrder.query.get_or_404(order_id)
-    
-    if wo.status not in ['Open', 'In Progress']:
+
+    if wo.status not in ['Open', 'Released', 'In Progress']:
         flash(f"Cannot edit Works Order {wo.wo_number}. Status is {wo.status}.", "error")
         return redirect(url_for('works_orders.view_order', order_id=order_id))
-    
+
     try:
         # Parse updated BOM items
         items_json = request.form.get('bom_items_json', '[]')

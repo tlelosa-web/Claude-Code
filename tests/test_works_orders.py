@@ -167,6 +167,18 @@ class TestWorksOrdersReleasedFlip:
             assert updated.status == "Complete"
             assert db.session.get(Item, item.id).qty_on_hand == 90.0
 
+    def test_edit_available_and_functional_from_released(self, client, app, db, session):
+        """Regression test for the Reviewer-flagged blocker: the Edit route
+        guard must allow 'Released', matching the Edit link already shown on
+        the detail page (mirrors the STO-side
+        test_edit_available_and_functional_from_released)."""
+        data = self._setup_wo(session, wo_status="Released")
+        wo = data["wo"]
+
+        resp = client.get(f"/works-orders/{wo.id}/edit")
+        assert resp.status_code == 200
+        assert b"Cannot edit" not in resp.data
+
 
 class TestWorksOrdersReleasedTemplateGates:
     _c = 0

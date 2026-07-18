@@ -8,6 +8,13 @@
 > Single source of truth for how this vault operates.
 > Keep under 500 lines. Move deep docs to @imports.
 
+> **Shared core:** at the start of every session, also read
+> `~/.claude/plugins/marketplaces/tlelosa-claude-config/dcoe-roster/CORE.md`
+> and treat its DCOE architecture, sub-agent roster, model routing, and
+> universal hard rules as part of this file's operating instructions. This
+> file adds Pappa T's own stack, folder layout, and project-specific rules on
+> top — it never relaxes anything CORE.md sets as universal.
+
 -----
 
 ## 📁 PROJECT OVERVIEW
@@ -270,6 +277,7 @@ git cherry-pick <commit-hash>
 - **MIMS App**: Next.js/Supabase/Tailwind — follow that stack's own idioms, not vault-wide ones.
 - **IQ / TebelloReborn / Tenders**: Python automation scripts — no framework assumed; keep scripts single-responsibility per `4_Scripts/`.
 - **ai-outreach-agency**: self-governing sub-project with its own `CLAUDE.md`, agents, and hooks. It is physically colocated in this vault but intentionally outside vault-wide DCOE orchestration — read its own `CLAUDE.md` before touching it rather than assuming this file's rules apply directly.
+- **Hub-and-spoke framing.** This file governs cross-project decisions and new work started at the vault root. Any sub-project with its own `CLAUDE.md`/`AGENTS.md` (currently: `TebelloReborn/`, `ai-outreach-agency/`) takes precedence over this hub root for work done inside that project's own folder. A sub-project without its own brain file still falls under this hub root's Hard Rules, but stack-specific conventions must be confirmed rather than assumed.
 - **Env vars**: `.env` file(s) per sub-project. Never hardcode secrets. Never commit `.env`.
 - **Personal data**: this vault holds real CVs, financial strategy, and personal records — preserve source data, never overwrite without explicit confirmation.
 - **Vault-level docs** (`00_Index_&_Logs/` … `05_Archive/`): strategy, finance, operations, brand — treated as source-of-record, not scratch space.
@@ -447,6 +455,12 @@ project-root/
 -----
 
 ## 🧠 SESSION START CHECKLIST
+
+> Tip: `/continue` (`.claude/commands/continue.md`) automates this checklist —
+> it resumes from `docs/todo.md`/`docs/session-log.md`, identifies whether the
+> next task is hub-level or belongs to a specific project folder, and reports
+> back before any work begins. Run it manually at the start of a session if
+> it wasn't invoked automatically.
 
 At the start of every session, Claude must:
 

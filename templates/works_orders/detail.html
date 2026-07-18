@@ -13,12 +13,12 @@
                 </button>
                 <ul class="dropdown-menu">
                     <li><a href="{{ url_for('works_orders.print_order', order_id=wo.id) }}" target="_blank">Print Document</a></li>
-                    {% if wo.status in ['Open', 'In Progress'] %}
+                    {% if wo.status in ['Open', 'Released', 'In Progress'] %}
                     <li><a href="{{ url_for('works_orders.edit_order', order_id=wo.id) }}">Edit Order</a></li>
                     {% else %}
                     <li><a class="disabled" title="Cannot edit a completed or cancelled order.">Edit Order</a></li>
                     {% endif %}
-                    {% if wo.status == 'Open' or wo.status == 'In Progress' %}
+                    {% if wo.status in ['Open', 'Released', 'In Progress'] %}
                         {% if wo.order_type == 'ASSEMBLY' %}
                         <li>
                             <form method="POST" action="{{ url_for('works_orders.mark_complete', order_id=wo.id) }}" style="display: block;" onsubmit="return confirm('Mark this Works Order as Complete and deduct stock?')">
@@ -40,7 +40,7 @@
                         </form>
                     </li>
                     {% endif %}
-                    {% if wo.status in ['Open', 'In Progress'] %}
+                    {% if wo.status in ['Open', 'Released', 'In Progress'] %}
                     <li>
                         <form method="POST" action="{{ url_for('works_orders.delete_order', order_id=wo.id) }}" style="display: block;" onsubmit="return confirm('Are you sure you want to delete {{ wo.wo_number }}? This cannot be undone.')">
                             <button type="submit" class="danger">Delete Order</button>

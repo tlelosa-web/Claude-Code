@@ -4,6 +4,7 @@ from models import db, StockOrder, StockOrderLine, SalesOrder, Item
 from routes.sales_orders import can_close_sales_order
 from services.order_filters import STO_ACTIVE
 from services.stock_service import issue, reverse_issue
+from services.status_change_log import log_change, track_report_status
 
 stock_orders_bp = Blueprint('stock_orders', __name__)
 
@@ -103,6 +104,18 @@ def print_order(order_id):
     """Render print-friendly Stock Order document."""
     stock_order = StockOrder.query.get_or_404(order_id)
     so = stock_order.sales_order
+
+    # First print flips Open -> Released (guarded to fire once — reprinting
+    # an already-Released-or-later STO must not re-trigger or downgrade
+    # anything). See docs/specs/sales-order-report-excel-export-2026-07-17.md
+    # Decision 1.
+    if stock_order.status == 'Open':
+        with track_report_status(so):
+            stock_order.status = 'Released'
+            log_change('STO', stock_order.id, stock_order.stock_order_number,
+                        'status', 'Open', 'Released')
+        db.session.commit()
+
     return render_template('stock_orders/print.html', stock_order=stock_order, so=so)
 
 @stock_orders_bp.route('/stock-orders/<int:order_id>/pick', methods=['POST'])
@@ -110,7 +123,7 @@ def pick_lines(order_id):
     """Confirm picks on individual Stock Order lines, deducting stock immediately per line."""
     stock_order = StockOrder.query.get_or_404(order_id)
 
-    if stock_order.status not in ('Open', 'Picking'):
+    if stock_order.status not in ('Open', 'Released', 'Picking'):
         flash(f"Cannot pick lines on a {stock_order.status} Stock Order.", "error")
         return redirect(url_for('stock_orders.view_order', order_id=order_id))
 
@@ -158,8 +171,12 @@ def pick_lines(order_id):
             flash("No pick quantities were entered.", "warning")
             return redirect(url_for('stock_orders.view_order', order_id=order_id))
 
-        if stock_order.status == 'Open':
-            stock_order.status = 'Picking'
+        if stock_order.status in ('Open', 'Released'):
+            old_status = stock_order.status
+            with track_report_status(stock_order.sales_order):
+                stock_order.status = 'Picking'
+                log_change('STO', stock_order.id, stock_order.stock_order_number,
+                            'status', old_status, 'Picking')
 
         db.session.commit()
         flash(f"Picks confirmed for Stock Order {stock_order.stock_order_number}.", "success")
@@ -205,9 +222,17 @@ def cancel_order(order_id):
             "warning"
         )
 
-    stock_order.status = 'Cancelled'
+    old_status = stock_order.status
+    with track_report_status(stock_order.sales_order):
+        stock_order.status = 'Cancelled'
+        # Guard against logging a no-op (already-Cancelled) transition —
+        # this route has no guard preventing a re-POST on an already
+        # cancelled STO, so old_status could already be 'Cancelled'.
+        if old_status != 'Cancelled':
+            log_change('STO', stock_order.id, stock_order.stock_order_number,
+                        'status', old_status, 'Cancelled')
     db.session.commit()
-    
+
     flash(f"Stock Order {stock_order.stock_order_number} has been cancelled.", "success")
     return redirect(url_for('stock_orders.view_order', order_id=order_id))
 
@@ -254,16 +279,20 @@ def complete_order(order_id):
             "warning"
         )
 
-    stock_order.status = 'Complete'
-    db.session.flush()
-
-    # Check if the Sales Order can be closed — all WOs and STOs must be Complete/Cancelled
+    old_status = stock_order.status
     so = stock_order.sales_order
-    if so:
-        can_close, _ = can_close_sales_order(so.id)
-        if can_close:
-            so.status = 'Closed'
-            db.session.flush()
+    with track_report_status(so):
+        stock_order.status = 'Complete'
+        log_change('STO', stock_order.id, stock_order.stock_order_number,
+                    'status', old_status, 'Complete')
+        db.session.flush()
+
+        # Check if the Sales Order can be closed — all WOs and STOs must be Complete/Cancelled
+        if so:
+            can_close, _ = can_close_sales_order(so.id)
+            if can_close:
+                so.status = 'Closed'
+                db.session.flush()
 
     db.session.commit()
 
@@ -310,13 +339,17 @@ def reopen_order(order_id):
             "warning"
         )
 
-    stock_order.status = 'Open'
-    db.session.flush()
-
-    # Cascade: if the parent SO was auto-closed because this STO completed, reopen it too.
-    if stock_order.sales_order and stock_order.sales_order.status == 'Closed':
-        stock_order.sales_order.status = 'Open'
+    old_status = stock_order.status
+    with track_report_status(stock_order.sales_order):
+        stock_order.status = 'Open'
+        log_change('STO', stock_order.id, stock_order.stock_order_number,
+                    'status', old_status, 'Open')
         db.session.flush()
+
+        # Cascade: if the parent SO was auto-closed because this STO completed, reopen it too.
+        if stock_order.sales_order and stock_order.sales_order.status == 'Closed':
+            stock_order.sales_order.status = 'Open'
+            db.session.flush()
 
     db.session.commit()
     flash(f"Stock Order {stock_order.stock_order_number} has been reopened.", "success")
@@ -325,12 +358,16 @@ def reopen_order(order_id):
 
 @stock_orders_bp.route('/stock-orders/<int:order_id>/edit', methods=['GET', 'POST'])
 def edit_order(order_id):
-    """Edit line items on an Open Stock Order."""
+    """Edit line items on an Open or Released Stock Order."""
     import json
     from flask import request
     stock_order = StockOrder.query.get_or_404(order_id)
 
-    if stock_order.status != 'Open':
+    # Released (printed-but-not-yet-picked) is still safe to edit — only
+    # Picking/Complete/Cancelled lock the line items. See
+    # docs/specs/sales-order-report-excel-export-2026-07-17.md Decision 1
+    # (Stock Order subsection, confirmed revision 2).
+    if stock_order.status not in ('Open', 'Released'):
         flash(f"Cannot edit a {stock_order.status} Stock Order.", "error")
         return redirect(url_for('stock_orders.view_order', order_id=order_id))
 

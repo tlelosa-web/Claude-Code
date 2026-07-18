@@ -6,6 +6,7 @@ from routes.sales_orders import can_close_sales_order
 from services.doc_generator import get_works_order_print_context
 from services.stock_service import issue, reverse_issue, produce, reverse_production
 from services.order_filters import WO_ACTIVE
+from services.status_change_log import log_change, track_report_status
 
 works_orders_bp = Blueprint('works_orders', __name__)
 
@@ -31,8 +32,19 @@ def view_order(order_id):
 def print_order(order_id):
     """Render print-friendly Works Order or Picking List page."""
     wo = WorksOrder.query.get_or_404(order_id)
+
+    # First print flips Open -> Released (guarded to fire once — reprinting
+    # an already-Released-or-later WO must not re-trigger or downgrade
+    # anything). See docs/specs/sales-order-report-excel-export-2026-07-17.md
+    # Decision 1.
+    if wo.status == 'Open':
+        with track_report_status(wo.sales_order):
+            wo.status = 'Released'
+            log_change('WO', wo.id, wo.wo_number, 'status', 'Open', 'Released')
+        db.session.commit()
+
     context = get_works_order_print_context(order_id)
-    
+
     if wo.order_type == 'ASSEMBLY':
         return render_template('works_orders/works_order_print.html', **context)
     else:
@@ -52,45 +64,48 @@ def mark_complete(order_id):
         return redirect(url_for('works_orders.view_order', order_id=order_id))
     
     try:
-        # Issue stock for each BOM line (only deduct qty_issued)
-        for bom_line in wo.bom_lines:
-            # Assembly header lines represent the finished product, not a stored
-            # component, so they must never be issued from stores.
-            if bom_line.line_type == 'ASSEMBLY_ITEM':
-                if bom_line.item.is_stocked_finished_good:
-                    produce(
+        old_status = wo.status
+        with track_report_status(wo.sales_order):
+            # Issue stock for each BOM line (only deduct qty_issued)
+            for bom_line in wo.bom_lines:
+                # Assembly header lines represent the finished product, not a stored
+                # component, so they must never be issued from stores.
+                if bom_line.line_type == 'ASSEMBLY_ITEM':
+                    if bom_line.item.is_stocked_finished_good:
+                        produce(
+                            item_id=bom_line.item_id,
+                            qty=bom_line.qty_required,
+                            reference=wo.wo_number,
+                            notes=f"Produced by {wo.wo_number} ({wo.sales_order.job_reference if wo.sales_order else ''})",
+                            created_by=request.form.get('completed_by', 'System').strip() or 'System'
+                        )
+                        bom_line.qty_issued = bom_line.qty_required
+                    continue
+                qty_to_issue = (bom_line.qty_required or 0.0) - bom_line.qty_issued
+                if qty_to_issue > 0:
+                    issue(
                         item_id=bom_line.item_id,
-                        qty=bom_line.qty_required,
+                        qty=qty_to_issue,
                         reference=wo.wo_number,
-                        notes=f"Produced by {wo.wo_number} ({wo.sales_order.job_reference if wo.sales_order else ''})",
+                        notes=f"Issued for {wo.wo_number} ({wo.sales_order.job_reference if wo.sales_order else ''})",
                         created_by=request.form.get('completed_by', 'System').strip() or 'System'
                     )
                     bom_line.qty_issued = bom_line.qty_required
-                continue
-            qty_to_issue = (bom_line.qty_required or 0.0) - bom_line.qty_issued
-            if qty_to_issue > 0:
-                issue(
-                    item_id=bom_line.item_id,
-                    qty=qty_to_issue,
-                    reference=wo.wo_number,
-                    notes=f"Issued for {wo.wo_number} ({wo.sales_order.job_reference if wo.sales_order else ''})",
-                    created_by=request.form.get('completed_by', 'System').strip() or 'System'
-                )
-                bom_line.qty_issued = bom_line.qty_required
-        
-        wo.status = 'Complete'
-        wo.completed_at = datetime.now()
-        db.session.flush()  # Flush to save before checking related WOs
-        
-        # Check if the Sales Order can be closed — all WOs and STOs must be Complete/Cancelled
-        if wo.sales_order:
-            can_close, _ = can_close_sales_order(wo.sales_order.id)
-            if can_close:
-                wo.sales_order.status = 'Closed'
-                db.session.flush()
-        
+
+            wo.status = 'Complete'
+            wo.completed_at = datetime.now()
+            log_change('WO', wo.id, wo.wo_number, 'status', old_status, 'Complete')
+            db.session.flush()  # Flush to save before checking related WOs
+
+            # Check if the Sales Order can be closed — all WOs and STOs must be Complete/Cancelled
+            if wo.sales_order:
+                can_close, _ = can_close_sales_order(wo.sales_order.id)
+                if can_close:
+                    wo.sales_order.status = 'Closed'
+                    db.session.flush()
+
         db.session.commit()
-        
+
         flash(f"Works Order {wo.wo_number} marked as Complete. Stock deducted.", "success")
     except Exception as e:
         db.session.rollback()
@@ -106,10 +121,17 @@ def cancel_order(order_id):
     if wo.status == 'Complete':
         flash(f"Works Order {wo.wo_number} is already complete and cannot be cancelled.", "error")
         return redirect(url_for('works_orders.view_order', order_id=order_id))
-    
-    wo.status = 'Cancelled'
+
+    old_status = wo.status
+    with track_report_status(wo.sales_order):
+        wo.status = 'Cancelled'
+        # Guard against logging a no-op (already-Cancelled) transition —
+        # this route has no guard preventing a re-POST on an already
+        # cancelled WO, so old_status could already be 'Cancelled'.
+        if old_status != 'Cancelled':
+            log_change('WO', wo.id, wo.wo_number, 'status', old_status, 'Cancelled')
     db.session.commit()
-    
+
     flash(f"Works Order {wo.wo_number} has been cancelled.", "success")
     return redirect(url_for('works_orders.view_order', order_id=order_id))
 
@@ -123,37 +145,40 @@ def reopen_order(order_id):
         return redirect(url_for('works_orders.view_order', order_id=order_id))
 
     try:
-        if wo.status == 'Complete':
-            for bom_line in wo.bom_lines:
-                if bom_line.line_type == 'ASSEMBLY_ITEM':
+        old_status = wo.status
+        with track_report_status(wo.sales_order):
+            if wo.status == 'Complete':
+                for bom_line in wo.bom_lines:
+                    if bom_line.line_type == 'ASSEMBLY_ITEM':
+                        if bom_line.qty_issued > 0:
+                            reverse_production(
+                                item_id=bom_line.item_id,
+                                qty=bom_line.qty_issued,
+                                reference=wo.wo_number,
+                                notes=f"Production reversed on reopen of {wo.wo_number}",
+                                created_by=request.form.get('reopened_by', 'System').strip() or 'System'
+                            )
+                            bom_line.qty_issued = 0.0
+                        continue
                     if bom_line.qty_issued > 0:
-                        reverse_production(
+                        reverse_issue(
                             item_id=bom_line.item_id,
                             qty=bom_line.qty_issued,
                             reference=wo.wo_number,
-                            notes=f"Production reversed on reopen of {wo.wo_number}",
+                            notes=f"Reversed on reopen of {wo.wo_number}",
                             created_by=request.form.get('reopened_by', 'System').strip() or 'System'
                         )
                         bom_line.qty_issued = 0.0
-                    continue
-                if bom_line.qty_issued > 0:
-                    reverse_issue(
-                        item_id=bom_line.item_id,
-                        qty=bom_line.qty_issued,
-                        reference=wo.wo_number,
-                        notes=f"Reversed on reopen of {wo.wo_number}",
-                        created_by=request.form.get('reopened_by', 'System').strip() or 'System'
-                    )
-                    bom_line.qty_issued = 0.0
 
-        wo.status = 'Open'
-        wo.completed_at = None
-        db.session.flush()
-
-        # Cascade: if the parent SO was auto-closed because this WO completed, reopen it too.
-        if wo.sales_order and wo.sales_order.status == 'Closed':
-            wo.sales_order.status = 'Open'
+            wo.status = 'Open'
+            wo.completed_at = None
+            log_change('WO', wo.id, wo.wo_number, 'status', old_status, 'Open')
             db.session.flush()
+
+            # Cascade: if the parent SO was auto-closed because this WO completed, reopen it too.
+            if wo.sales_order and wo.sales_order.status == 'Closed':
+                wo.sales_order.status = 'Open'
+                db.session.flush()
 
         db.session.commit()
         flash(f"Works Order {wo.wo_number} has been reopened.", "success")
@@ -215,7 +240,7 @@ def confirm_pick(order_id):
 
 @works_orders_bp.route('/works-orders/<int:order_id>/delete', methods=['POST'])
 def delete_order(order_id):
-    """Delete a Works Order or Picking List. Only allowed for Open or In Progress status."""
+    """Delete a Works Order or Picking List. Only allowed for Open, Released, or In Progress status."""
     wo = WorksOrder.query.get_or_404(order_id)
     
     if wo.status in ('Complete', 'Cancelled'):
@@ -239,11 +264,11 @@ def delete_order(order_id):
 def edit_order(order_id):
     """Render edit form pre-populated with existing BOM lines."""
     wo = WorksOrder.query.get_or_404(order_id)
-    
-    if wo.status not in ['Open', 'In Progress']:
+
+    if wo.status not in ['Open', 'Released', 'In Progress']:
         flash(f"Cannot edit Works Order {wo.wo_number}. Status is {wo.status}.", "error")
         return redirect(url_for('works_orders.view_order', order_id=order_id))
-    
+
     # Load existing BOM lines structured for edit UI
     from services.doc_generator import get_works_order_print_context
     context = get_works_order_print_context(order_id)
@@ -281,11 +306,11 @@ def update_order(order_id):
     """Receive updated BOM lines JSON, replace BOMLines, redirect to detail."""
     import json
     wo = WorksOrder.query.get_or_404(order_id)
-    
-    if wo.status not in ['Open', 'In Progress']:
+
+    if wo.status not in ['Open', 'Released', 'In Progress']:
         flash(f"Cannot edit Works Order {wo.wo_number}. Status is {wo.status}.", "error")
         return redirect(url_for('works_orders.view_order', order_id=order_id))
-    
+
     try:
         # Parse updated BOM items
         items_json = request.form.get('bom_items_json', '[]')

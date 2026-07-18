@@ -3,10 +3,15 @@
 Dashboard's Open Sales Orders table.
 
 See docs/specs/dashboard-open-filter.md for the active-status decisions:
-  SO:  Draft, Open        (excludes Closed)
-  WO:  Open, In Progress  (excludes Complete, Cancelled)
-  STO: Open               (excludes Complete, Cancelled)
+  SO:  Draft, Open                   (excludes Closed)
+  WO:  Open, Released, In Progress   (excludes Complete, Cancelled)
+  STO: Open, Released, Picking       (excludes Complete, Cancelled)
   PO:  Draft, Open, Partially Received (excludes Received, Cancelled)
+
+'Released' (WO/STO) added per docs/specs/
+sales-order-report-excel-export-2026-07-17.md Decision 1 -- a printed-but-
+not-yet-started/picked order is still open work, same bucket it was
+already in as 'Open' before that batch, not a newly-visible item.
 
 Default view is 'open' (flipped from 'all' in
 docs/specs/fm-numbers-default-open-so-report.md, 2026-07-10) — the bare
@@ -131,6 +136,19 @@ class TestWorksOrderListFilter:
         assert complete_wo.wo_number.encode() in resp.data
         assert cancelled_wo.wo_number.encode() in resp.data
 
+    def test_open_view_includes_released_closed_view_excludes_it(self, client, session):
+        """A 'Released' WO (printed but not yet started/complete) is still
+        open work -- belongs in the 'Open' list view, not 'Closed'."""
+        released_wo = self._mk(session, "Released")
+
+        resp = client.get("/works-orders?view=open")
+        assert resp.status_code == 200
+        assert released_wo.wo_number.encode() in resp.data
+
+        resp = client.get("/works-orders?view=closed")
+        assert resp.status_code == 200
+        assert released_wo.wo_number.encode() not in resp.data
+
 
 class TestStockOrderListFilter:
     _c = 0
@@ -196,6 +214,19 @@ class TestStockOrderListFilter:
         resp = client.get("/stock-orders?view=closed")
         assert resp.status_code == 200
         assert picking_sto.stock_order_number.encode() not in resp.data
+
+    def test_open_view_includes_released_closed_view_excludes_it(self, client, session):
+        """A 'Released' STO (Picking List printed but not yet picked) is
+        still open work -- belongs in the 'Open' list view, not 'Closed'."""
+        released_sto = self._mk(session, "Released")
+
+        resp = client.get("/stock-orders?view=open")
+        assert resp.status_code == 200
+        assert released_sto.stock_order_number.encode() in resp.data
+
+        resp = client.get("/stock-orders?view=closed")
+        assert resp.status_code == 200
+        assert released_sto.stock_order_number.encode() not in resp.data
 
 
 class TestPurchaseOrderListFilter:

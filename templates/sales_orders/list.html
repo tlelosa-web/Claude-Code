@@ -13,6 +13,8 @@
                 <a href="{{ url_for('sales_orders.list_orders', view='open') }}" class="btn {{ 'btn-primary' if view == 'open' else 'btn-secondary' }}" style="padding: 6px 12px; font-size: 0.8rem;">Open</a>
                 <a href="{{ url_for('sales_orders.list_orders', view='closed') }}" class="btn {{ 'btn-primary' if view == 'closed' else 'btn-secondary' }}" style="padding: 6px 12px; font-size: 0.8rem;">Closed</a>
             </div>
+            <a href="{{ url_for('sales_orders.export_excel', view=view) }}" class="btn btn-secondary">Export Excel</a>
+            <a href="{{ url_for('sales_orders.import_invoices') }}" class="btn btn-secondary">Import Invoices</a>
             <a href="{{ url_for('sales_orders.upload_order') }}" class="btn btn-primary">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
                 Upload New SO
@@ -34,6 +36,7 @@
                     <th>Sales Rep</th>
                     <th>Total</th>
                     <th>Status</th>
+                    <th>Report Status</th>
                     <th>Payment Status</th>
                     <th data-sortable="false">Actions</th>
                 </tr>
@@ -50,6 +53,16 @@
                     <td>{{ so.sales_rep or '-' }}</td>
                     <td data-sort="{{ so.total_incl }}">{{ currency_symbol }} {{ '%.2f'|format(so.total_incl) }}</td>
                     <td><span class="badge badge-{{ so.status.lower() }}">{{ so.status }}</span></td>
+                    <td>
+                        {% if so.report_status %}
+                        <span class="badge badge-{{ so.report_status.lower().replace('-', '') }}">{{ so.report_status }}</span>
+                        {% else %}
+                        -
+                        {% endif %}
+                        {% if so.on_hold %}
+                        <span class="badge" style="background: var(--fm-red); color: #fff; margin-left: 4px;" title="{{ so.on_hold_reason or 'On Hold' }}">On Hold</span>
+                        {% endif %}
+                    </td>
                     <td>{{ so.payment_status or '-' }}</td>
                     <td>
                         <div class="dropdown">

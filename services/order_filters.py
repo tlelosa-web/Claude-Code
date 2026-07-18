@@ -12,11 +12,11 @@ See docs/specs/dashboard-open-filter.md for the decision record.
 # SalesOrder.status: Draft / Open / Closed
 SO_ACTIVE = ('Draft', 'Open')
 
-# WorksOrder.status: Open / In Progress / Complete / Cancelled
-WO_ACTIVE = ('Open', 'In Progress')
+# WorksOrder.status: Open / Released / In Progress / Complete / Cancelled
+WO_ACTIVE = ('Open', 'Released', 'In Progress')
 
-# StockOrder.status: Open / Picking / Complete / Cancelled
-STO_ACTIVE = ('Open', 'Picking')
+# StockOrder.status: Open / Released / Picking / Complete / Cancelled
+STO_ACTIVE = ('Open', 'Released', 'Picking')
 
 # PurchaseOrder.status: Draft / Open / Partially Received / Received / Cancelled
 PO_ACTIVE = ('Draft', 'Open', 'Partially Received')

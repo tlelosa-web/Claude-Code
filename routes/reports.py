@@ -2,10 +2,23 @@ import csv
 import io
 from datetime import datetime
 from flask import Blueprint, render_template, request, jsonify, Response
-from models import db, Item, StockMovement
+from models import db, Item, StockMovement, StatusChangeLog
 from services.demand import get_qty_on_order_bulk, get_qty_committed_bulk
 
 reports_bp = Blueprint('reports', __name__)
+
+# Fixed tracked-field vocabulary for the Change Log report -- must match the
+# fields actually written by services/status_change_log.log_change() calls
+# (see docs/specs/sales-order-report-excel-export-2026-07-17.md Decision 2).
+# Deliberately not derived from a DISTINCT query against StatusChangeLog --
+# that would grow silently if a full-row-snapshot field were ever logged by
+# mistake; this list is the single source of truth for "what's allowed to
+# appear as a field_name".
+CHANGE_LOG_ORDER_TYPES = ['SO', 'WO', 'STO']
+CHANGE_LOG_FIELD_NAMES = [
+    'report_status', 'on_hold', 'on_hold_reason', 'payment_status',
+    'amount_paid', 'delivery_date', 'report_notes', 'status',
+]
 
 @reports_bp.route('/reports/stock')
 def stock():
@@ -271,3 +284,62 @@ def movements_export_csv():
         mimetype='text/csv',
         headers={'Content-Disposition': 'attachment; filename=movement_report.csv'}
     )
+
+@reports_bp.route('/reports/change-log')
+def change_log():
+    """Change Log report page -- filterable listing of every StatusChangeLog
+    row (see docs/specs/sales-order-report-excel-export-2026-07-17.md
+    Decision 2). Not a per-order timeline, not an export -- just the one
+    report page."""
+    return render_template('reports/change_log.html',
+                           order_types=CHANGE_LOG_ORDER_TYPES,
+                           field_names=CHANGE_LOG_FIELD_NAMES)
+
+@reports_bp.route('/reports/change-log/data')
+def change_log_data():
+    """JSON endpoint for the Change Log Tabulator.js table."""
+    query = StatusChangeLog.query
+
+    order_type = request.args.get('order_type', '').strip()
+    field_name = request.args.get('field_name', '').strip()
+    date_from = request.args.get('date_from', '').strip()
+    date_to = request.args.get('date_to', '').strip()
+
+    if order_type:
+        query = query.filter(StatusChangeLog.order_type == order_type)
+
+    if field_name:
+        query = query.filter(StatusChangeLog.field_name == field_name)
+
+    if date_from:
+        try:
+            dt_from = datetime.strptime(date_from, '%Y-%m-%d')
+            query = query.filter(StatusChangeLog.changed_at >= dt_from)
+        except ValueError:
+            pass
+
+    if date_to:
+        try:
+            dt_to = datetime.strptime(date_to + ' 23:59:59', '%Y-%m-%d %H:%M:%S')
+            query = query.filter(StatusChangeLog.changed_at <= dt_to)
+        except ValueError:
+            pass
+
+    changes = query.order_by(StatusChangeLog.changed_at.desc()).all()
+
+    changes_data = []
+    for c in changes:
+        changes_data.append({
+            'changed_at': c.changed_at.strftime('%Y-%m-%d %H:%M') if c.changed_at else '-',
+            'order_type': c.order_type,
+            'order_number': c.order_number or '-',
+            'field_name': c.field_name,
+            'old_value': c.old_value if c.old_value is not None else '-',
+            'new_value': c.new_value if c.new_value is not None else '-',
+            'changed_by': c.changed_by or 'System'
+        })
+
+    return jsonify({
+        'changes': changes_data,
+        'total_count': len(changes_data)
+    })

@@ -1,12 +1,17 @@
 import os
 import json
+from io import BytesIO
 from datetime import datetime
-from flask import Blueprint, render_template, request, redirect, url_for, flash, current_app, jsonify
+from flask import Blueprint, render_template, request, redirect, url_for, flash, current_app, jsonify, Response
 from werkzeug.utils import secure_filename
 from sqlalchemy import nullslast
-from models import db, SalesOrder, SOLineItem, Item, WorksOrder, BOMLine, StockMovement, StockOrder, StockOrderLine, PAYMENT_STATUS_OPTIONS
+from models import db, SalesOrder, SOLineItem, Item, WorksOrder, BOMLine, StockMovement, StockOrder, StockOrderLine, Invoice, PAYMENT_STATUS_OPTIONS
 from services.pdf_parser import parse_sales_order_pdf
 from services.order_filters import SO_ACTIVE
+from services.invoice_importer import import_invoices_from_csv
+from services.status_change_log import log_change, track_report_status
+from services.sales_order_report_export import build_sales_order_report_workbook
+from services.settings_service import get_currency_symbol
 
 sales_orders_bp = Blueprint('sales_orders', __name__)
 
@@ -20,6 +25,36 @@ def list_orders():
         query = query.filter(~SalesOrder.status.in_(SO_ACTIVE))
     orders = query.order_by(nullslast(SalesOrder.delivery_date.asc())).all()
     return render_template('sales_orders/list.html', orders=orders, view=view)
+
+@sales_orders_bp.route('/sales-orders/export-excel')
+def export_excel():
+    """On-demand Excel export of the Sales Order Report -- see docs/specs/
+    sales-order-report-excel-export-2026-07-17.md Export design +
+    Sequencing item 19. `?view=open` (Draft+Open SOs) is the confirmed
+    default; `?view=all` includes every SO regardless of status (a
+    Closed/Cancelled SO's `report_status` is None, rendered as '-' in the
+    export). Sheet 2's invoice math always queries the full Invoice table,
+    independent of the SO view filter."""
+    view = request.args.get('view', 'open')
+    query = SalesOrder.query
+    if view != 'all':
+        view = 'open'
+        query = query.filter(SalesOrder.status.in_(SO_ACTIVE))
+    orders = query.order_by(nullslast(SalesOrder.delivery_date.asc())).all()
+
+    invoices = Invoice.query.all()
+
+    wb = build_sales_order_report_workbook(orders, invoices, get_currency_symbol())
+    output = BytesIO()
+    wb.save(output)
+    output.seek(0)
+
+    filename = f"Sales_Order_Report_{datetime.now().strftime('%d.%m.%Y')}.xlsx"
+    return Response(
+        output.getvalue(),
+        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        headers={'Content-Disposition': f'attachment; filename={filename}'}
+    )
 
 def item_to_bom_json(item, qty_on_order=0.0, qty_committed=0.0, next_po_due=None):
     """Return the plain JSON shape consumed by the BOM builder UI.
@@ -104,6 +139,7 @@ def save_order():
     
     # Check if overwriting existing
     existing = SalesOrder.query.filter_by(so_number=so_number).first()
+    carry_forward = None
     if existing:
         # Block overwrite if a Works Order or Stock Order is already linked —
         # deleting the SO would orphan them (no cascade on those relationships).
@@ -117,6 +153,16 @@ def save_order():
                 "error"
             )
             return redirect(url_for('sales_orders.view_order', order_id=existing.id))
+        # Manual/report-only fields have no competing automated writer, so
+        # they must survive an overwrite rather than silently reset to
+        # column defaults — see Decision 3 of docs/specs/
+        # sales-order-report-excel-export-2026-07-17.md.
+        carry_forward = {
+            'report_notes': existing.report_notes,
+            'on_hold': existing.on_hold,
+            'on_hold_reason': existing.on_hold_reason,
+            'amount_paid': existing.amount_paid,
+        }
         # Safe to delete — only SOLineItems are linked (cascade handles them)
         db.session.delete(existing)
         db.session.flush()
@@ -147,6 +193,11 @@ def save_order():
             payment_status=request.form.get('payment_status', 'Account - Pending').strip() or 'Account - Pending',
             created_at=datetime.now()
         )
+        if carry_forward:
+            so.report_notes = carry_forward['report_notes']
+            so.on_hold = carry_forward['on_hold']
+            so.on_hold_reason = carry_forward['on_hold_reason']
+            so.amount_paid = carry_forward['amount_paid']
         db.session.add(so)
         db.session.flush()  # Get so.id
         
@@ -241,172 +292,180 @@ def build_bom(order_id):
             created_wos = []
             created_stock_order = None
 
-            # Create one WorksOrder per Fan line selected
-            if fan_line_ids:
-                # Check if a WO already exists for this SO
-                existing_wo = WorksOrder.query.filter_by(so_id=order_id).first()
-                if existing_wo:
-                    flash("A Works Order already exists for this Sales Order.", "warning")
-                    return redirect(url_for('sales_orders.view_order', order_id=order_id))
+            with track_report_status(so):
+                # Create one WorksOrder per Fan line selected
+                if fan_line_ids:
+                    # Check if a WO already exists for this SO
+                    existing_wo = WorksOrder.query.filter_by(so_id=order_id).first()
+                    if existing_wo:
+                        flash("A Works Order already exists for this Sales Order.", "warning")
+                        return redirect(url_for('sales_orders.view_order', order_id=order_id))
 
-                # Group each submitted BOM component by the Fan line it was
-                # assigned to in the UI. When only one Fan line is selected,
-                # an unassigned component defaults to it (keeps old single-fan
-                # form payloads working without the new dropdown field).
-                component_item_ids = request.form.getlist('component_item_id[]')
-                component_qtys = request.form.getlist('component_qty[]')
-                component_fan_ids = request.form.getlist('component_fan_line_id[]')
+                    # Group each submitted BOM component by the Fan line it was
+                    # assigned to in the UI. When only one Fan line is selected,
+                    # an unassigned component defaults to it (keeps old single-fan
+                    # form payloads working without the new dropdown field).
+                    component_item_ids = request.form.getlist('component_item_id[]')
+                    component_qtys = request.form.getlist('component_qty[]')
+                    component_fan_ids = request.form.getlist('component_fan_line_id[]')
 
-                components_by_fan_line = {}
-                unassigned_count = 0
-                for i, item_id_str in enumerate(component_item_ids):
-                    if not item_id_str:
-                        continue
-                    try:
-                        item_id = int(item_id_str)
-                        qty = float(component_qtys[i]) if i < len(component_qtys) else 0
-                        if qty <= 0:
+                    components_by_fan_line = {}
+                    unassigned_count = 0
+                    for i, item_id_str in enumerate(component_item_ids):
+                        if not item_id_str:
                             continue
-                    except (ValueError, IndexError):
-                        continue
-
-                    fan_id_str = component_fan_ids[i] if i < len(component_fan_ids) else ''
-                    assigned_fan_line_id = None
-                    if fan_id_str:
                         try:
-                            assigned_fan_line_id = int(fan_id_str)
-                        except ValueError:
-                            assigned_fan_line_id = None
-                    elif len(fan_line_ids) == 1:
-                        assigned_fan_line_id = fan_line_ids[0]
-
-                    if assigned_fan_line_id is None or assigned_fan_line_id not in fan_line_ids:
-                        unassigned_count += 1
-                        continue
-
-                    components_by_fan_line.setdefault(assigned_fan_line_id, []).append((item_id, qty))
-
-                if unassigned_count:
-                    flash(
-                        f"{unassigned_count} component(s) had no matching Fan line selected and were skipped.",
-                        "warning"
-                    )
-
-                # Generate sequential WO numbers ("WO0042") for each fan line
-                last_wo = WorksOrder.query.order_by(WorksOrder.id.desc()).first()
-                try:
-                    next_num = int(last_wo.wo_number.replace('WO', '')) + 1 if last_wo else 1
-                except ValueError:
-                    next_num = 1
-
-                issued_by = request.form.get('issued_by', 'System').strip() or 'System'
-
-                for fan_line_id in fan_line_ids:
-                    wo_number = f"WO{next_num:04d}"
-                    next_num += 1
-
-                    fan_line = db.session.get(SOLineItem, fan_line_id)
-
-                    works_order = WorksOrder(
-                        wo_number=wo_number,
-                        so_id=order_id,
-                        order_type='ASSEMBLY',
-                        status='Open',
-                        issued_by=issued_by,
-                        job_number=fan_line.job_number if fan_line else None
-                    )
-                    db.session.add(works_order)
-                    db.session.flush()  # Get wo.id
-
-                    # Persist the fan line as the assembly parent so the
-                    # printed Works Order shows it as a header row with its
-                    # components nested beneath. Uses the existing
-                    # line_type/parent_line_id columns (no schema change).
-                    parent_line_id = None
-                    fan_item = None
-                    if fan_line and fan_line.description:
-                        fan_code = fan_line.description.split(' - ', 1)[0].strip()
-                        if fan_code:
-                            fan_item = Item.query.filter_by(code=fan_code).first()
-                    if fan_item:
-                        assembly_line = BOMLine(
-                            wo_id=works_order.id,
-                            item_id=fan_item.id,
-                            qty_required=fan_line.qty or 1.0,
-                            unit_cost=fan_item.last_cost or 0.0,
-                            line_type='ASSEMBLY_ITEM'
-                        )
-                        db.session.add(assembly_line)
-                        db.session.flush()  # Get assembly_line.id for child parent_line_id
-                        parent_line_id = assembly_line.id
-                    else:
-                        label = fan_line.description if fan_line else fan_line_id
-                        flash(
-                            f"Fan line '{label}' could not be matched to a catalogue item; "
-                            "components saved without an assembly header.", "warning"
-                        )
-
-                    for item_id, qty in components_by_fan_line.get(fan_line_id, []):
-                        item = db.session.get(Item, item_id)
-                        if not item:
+                            item_id = int(item_id_str)
+                            qty = float(component_qtys[i]) if i < len(component_qtys) else 0
+                            if qty <= 0:
+                                continue
+                        except (ValueError, IndexError):
                             continue
-                        bom_line = BOMLine(
-                            wo_id=works_order.id,
-                            item_id=item.id,
-                            qty_required=qty,
-                            unit_cost=item.last_cost or 0.0,
-                            line_type='COMPONENT',
-                            parent_line_id=parent_line_id
+
+                        fan_id_str = component_fan_ids[i] if i < len(component_fan_ids) else ''
+                        assigned_fan_line_id = None
+                        if fan_id_str:
+                            try:
+                                assigned_fan_line_id = int(fan_id_str)
+                            except ValueError:
+                                assigned_fan_line_id = None
+                        elif len(fan_line_ids) == 1:
+                            assigned_fan_line_id = fan_line_ids[0]
+
+                        if assigned_fan_line_id is None or assigned_fan_line_id not in fan_line_ids:
+                            unassigned_count += 1
+                            continue
+
+                        components_by_fan_line.setdefault(assigned_fan_line_id, []).append((item_id, qty))
+
+                    if unassigned_count:
+                        flash(
+                            f"{unassigned_count} component(s) had no matching Fan line selected and were skipped.",
+                            "warning"
                         )
-                        db.session.add(bom_line)
 
-                    created_wos.append(works_order)
-
-            # Create StockOrder if stock lines exist
-            if stock_line_ids:
-                # Generate Stock Order number
-                last_so = StockOrder.query.order_by(StockOrder.id.desc()).first()
-                if last_so:
+                    # Generate sequential WO numbers ("WO0042") for each fan line
+                    last_wo = WorksOrder.query.order_by(WorksOrder.id.desc()).first()
                     try:
-                        last_num = int(last_so.stock_order_number.replace('STO', ''))
-                        next_num = last_num + 1
+                        next_num = int(last_wo.wo_number.replace('WO', '')) + 1 if last_wo else 1
                     except ValueError:
                         next_num = 1
-                else:
-                    next_num = 1
-                stock_order_number = f"STO{next_num:04d}"
-                
-                # Create StockOrder
-                stock_order = StockOrder(
-                    stock_order_number=stock_order_number,
-                    so_id=order_id,
-                    status='Open'
-                )
-                db.session.add(stock_order)
-                db.session.flush()
-                
-                # Create StockOrderLines
-                for line_id in stock_line_ids:
-                    line = db.session.get(SOLineItem, line_id)
-                    if not line:
-                        continue
-                    
-                    # Parse item_code from description (text before first " - ")
-                    item_code = ''
-                    if line.description:
-                        parts = line.description.split(' - ', 1)
-                        item_code = parts[0].strip() if parts else ''
-                    
-                    stock_line = StockOrderLine(
-                        stock_order_id=stock_order.id,
-                        item_code=item_code,
-                        description=line.description,
-                        qty=line.qty,
-                        job_number=line.job_number
+
+                    issued_by = request.form.get('issued_by', 'System').strip() or 'System'
+
+                    for fan_line_id in fan_line_ids:
+                        wo_number = f"WO{next_num:04d}"
+                        next_num += 1
+
+                        fan_line = db.session.get(SOLineItem, fan_line_id)
+
+                        works_order = WorksOrder(
+                            wo_number=wo_number,
+                            so_id=order_id,
+                            order_type='ASSEMBLY',
+                            status='Open',
+                            issued_by=issued_by,
+                            job_number=fan_line.job_number if fan_line else None
+                        )
+                        db.session.add(works_order)
+                        db.session.flush()  # Get wo.id
+
+                        # Persist the fan line as the assembly parent so the
+                        # printed Works Order shows it as a header row with its
+                        # components nested beneath. Uses the existing
+                        # line_type/parent_line_id columns (no schema change).
+                        parent_line_id = None
+                        fan_item = None
+                        if fan_line and fan_line.description:
+                            fan_code = fan_line.description.split(' - ', 1)[0].strip()
+                            if fan_code:
+                                fan_item = Item.query.filter_by(code=fan_code).first()
+                        if fan_item:
+                            assembly_line = BOMLine(
+                                wo_id=works_order.id,
+                                item_id=fan_item.id,
+                                qty_required=fan_line.qty or 1.0,
+                                unit_cost=fan_item.last_cost or 0.0,
+                                line_type='ASSEMBLY_ITEM'
+                            )
+                            db.session.add(assembly_line)
+                            db.session.flush()  # Get assembly_line.id for child parent_line_id
+                            parent_line_id = assembly_line.id
+                        else:
+                            label = fan_line.description if fan_line else fan_line_id
+                            flash(
+                                f"Fan line '{label}' could not be matched to a catalogue item; "
+                                "components saved without an assembly header.", "warning"
+                            )
+
+                        for item_id, qty in components_by_fan_line.get(fan_line_id, []):
+                            item = db.session.get(Item, item_id)
+                            if not item:
+                                continue
+                            bom_line = BOMLine(
+                                wo_id=works_order.id,
+                                item_id=item.id,
+                                qty_required=qty,
+                                unit_cost=item.last_cost or 0.0,
+                                line_type='COMPONENT',
+                                parent_line_id=parent_line_id
+                            )
+                            db.session.add(bom_line)
+
+                        created_wos.append(works_order)
+
+                # Create StockOrder if stock lines exist
+                if stock_line_ids:
+                    # Generate Stock Order number
+                    last_so = StockOrder.query.order_by(StockOrder.id.desc()).first()
+                    if last_so:
+                        try:
+                            last_num = int(last_so.stock_order_number.replace('STO', ''))
+                            next_num = last_num + 1
+                        except ValueError:
+                            next_num = 1
+                    else:
+                        next_num = 1
+                    stock_order_number = f"STO{next_num:04d}"
+
+                    # Create StockOrder
+                    stock_order = StockOrder(
+                        stock_order_number=stock_order_number,
+                        so_id=order_id,
+                        status='Open'
                     )
-                    db.session.add(stock_line)
-                
-                created_stock_order = stock_order
+                    db.session.add(stock_order)
+                    db.session.flush()
+
+                    # Create StockOrderLines
+                    for line_id in stock_line_ids:
+                        line = db.session.get(SOLineItem, line_id)
+                        if not line:
+                            continue
+
+                        # Parse item_code from description (text before first " - ")
+                        item_code = ''
+                        if line.description:
+                            parts = line.description.split(' - ', 1)
+                            item_code = parts[0].strip() if parts else ''
+
+                        stock_line = StockOrderLine(
+                            stock_order_id=stock_order.id,
+                            item_code=item_code,
+                            description=line.description,
+                            qty=line.qty,
+                            job_number=line.job_number
+                        )
+                        db.session.add(stock_line)
+
+                    created_stock_order = stock_order
+
+            # Log initial status=Open creation event for each new WO/STO
+            # (old_value=None represents 'did not exist before').
+            for wo in created_wos:
+                log_change('WO', wo.id, wo.wo_number, 'status', None, 'Open')
+            if created_stock_order:
+                log_change('STO', created_stock_order.id, created_stock_order.stock_order_number, 'status', None, 'Open')
             
             # Validate at least one order type was created
             if not created_wos and not created_stock_order:
@@ -555,7 +614,14 @@ def reopen_order(order_id):
 
 @sales_orders_bp.route('/sales-orders/<int:order_id>/payment-status', methods=['POST'])
 def update_payment_status(order_id):
-    """Set the manually-tracked Payment Status (sourced from Sage/accounting, not the SO PDF)."""
+    """Set the manually-tracked Payment Status (sourced from Sage/accounting, not the SO PDF).
+
+    payment_status and amount_paid are logged as separate StatusChangeLog
+    rows (each only when it actually changed) -- amount_paid is only ever
+    submitted alongside a 'Cash Sale - Partial' payment_status, but the two
+    are still independent edits (e.g. re-submitting the same partial amount
+    with a status that was already 'Cash Sale - Partial' shouldn't log a
+    payment_status row), matching the on_hold/on_hold_reason convention."""
     so = SalesOrder.query.get_or_404(order_id)
     new_status = request.form.get('payment_status', '').strip()
 
@@ -563,15 +629,22 @@ def update_payment_status(order_id):
         flash(f"Invalid payment status: {new_status}", "error")
         return redirect(url_for('sales_orders.view_order', order_id=order_id))
 
+    new_amount_paid = so.amount_paid
     if new_status == 'Cash Sale - Partial':
         amount_raw = request.form.get('amount_paid', '').strip()
         try:
-            so.amount_paid = float(amount_raw) if amount_raw else (so.amount_paid or 0.0)
+            new_amount_paid = float(amount_raw) if amount_raw else (so.amount_paid or 0.0)
         except ValueError:
             flash("Amount Paid must be a number.", "error")
             return redirect(url_for('sales_orders.view_order', order_id=order_id))
 
+    if new_status != so.payment_status:
+        log_change('SO', so.id, so.so_number, 'payment_status', so.payment_status, new_status)
+    if new_amount_paid != so.amount_paid:
+        log_change('SO', so.id, so.so_number, 'amount_paid', so.amount_paid, new_amount_paid)
+
     so.payment_status = new_status
+    so.amount_paid = new_amount_paid
     db.session.commit()
 
     flash(f"Payment status for {so.so_number} set to {new_status}.", "success")
@@ -594,10 +667,59 @@ def update_delivery_date(order_id):
         flash(f"Invalid Delivery Date: {new_date_str}", "error")
         return redirect(url_for('sales_orders.view_order', order_id=order_id))
 
+    if new_date != so.delivery_date:
+        log_change('SO', so.id, so.so_number, 'delivery_date', so.delivery_date, new_date)
+
     so.delivery_date = new_date
     db.session.commit()
 
     flash(f"Delivery Date for {so.so_number} updated to {new_date.strftime('%d/%m/%Y')}.", "success")
+    return redirect(url_for('sales_orders.view_order', order_id=order_id))
+
+
+@sales_orders_bp.route('/sales-orders/<int:order_id>/report-notes', methods=['POST'])
+def update_report_notes(order_id):
+    """Set the manual, carried-forward Notes column for the Sales Order
+    Report export. See docs/specs/sales-order-report-excel-export-2026-07-17.md."""
+    so = SalesOrder.query.get_or_404(order_id)
+    new_notes = request.form.get('report_notes', '').strip()
+    old_notes = so.report_notes or ''
+
+    if new_notes != old_notes:
+        log_change('SO', so.id, so.so_number, 'report_notes', so.report_notes, new_notes or None)
+        so.report_notes = new_notes or None
+        db.session.commit()
+
+    flash(f"Notes updated for {so.so_number}.", "success")
+    return redirect(url_for('sales_orders.view_order', order_id=order_id))
+
+
+@sales_orders_bp.route('/sales-orders/<int:order_id>/on-hold', methods=['POST'])
+def update_on_hold(order_id):
+    """Toggle the manual On Hold flag (SO-level only) and its optional
+    reason. Overlaid on the computed report_status via
+    SalesOrder.display_report_status -- see docs/specs/
+    sales-order-report-excel-export-2026-07-17.md Decision 1.
+
+    on_hold and on_hold_reason are logged as separate StatusChangeLog rows
+    (each only when it actually changed) rather than one combined row --
+    reads more sensibly in the eventual Change Log report, since a reason
+    edit with no flag flip (or vice versa) is still one real, distinct
+    change worth its own row."""
+    so = SalesOrder.query.get_or_404(order_id)
+    new_on_hold = request.form.get('on_hold') == 'on'
+    new_reason = request.form.get('on_hold_reason', '').strip() or None
+
+    if new_on_hold != so.on_hold:
+        log_change('SO', so.id, so.so_number, 'on_hold', so.on_hold, new_on_hold)
+    if new_reason != so.on_hold_reason:
+        log_change('SO', so.id, so.so_number, 'on_hold_reason', so.on_hold_reason, new_reason)
+
+    so.on_hold = new_on_hold
+    so.on_hold_reason = new_reason
+    db.session.commit()
+
+    flash(f"On Hold status updated for {so.so_number}.", "success")
     return redirect(url_for('sales_orders.view_order', order_id=order_id))
 
 
@@ -698,3 +820,31 @@ def reupload_order(order_id):
     
     # GET: show upload form
     return render_template('sales_orders/upload.html', existing_so=so, reupload_mode=True)
+
+
+@sales_orders_bp.route('/sales-orders/import-invoices', methods=['GET', 'POST'])
+def import_invoices():
+    """Upload-only import of Sage's CustomerInvoicesReport.csv (Monthly INV
+    tab source). Full upsert by invoice_number - see
+    services/invoice_importer.py. See docs/specs/
+    sales-order-report-excel-export-2026-07-17.md Decision 4."""
+    if request.method == 'POST':
+        uploaded_file = request.files.get('csv_file')
+
+        if uploaded_file and uploaded_file.filename:
+            upload_dir = current_app.config['UPLOAD_FOLDER']
+            os.makedirs(upload_dir, exist_ok=True)
+            file_path = os.path.join(upload_dir, secure_filename(uploaded_file.filename))
+            uploaded_file.save(file_path)
+
+            try:
+                created_count, updated_count, skipped_count = import_invoices_from_csv(file_path)
+                flash(f"Import complete! {created_count} invoices created, {updated_count} updated, {skipped_count} skipped.", "success")
+                return redirect(url_for('sales_orders.list_orders'))
+            except Exception as e:
+                flash(f"Error importing CSV: {str(e)}", "error")
+                return redirect(url_for('sales_orders.import_invoices'))
+        else:
+            flash("Please choose a CSV file to import.", "error")
+
+    return render_template('sales_orders/import_invoices.html')

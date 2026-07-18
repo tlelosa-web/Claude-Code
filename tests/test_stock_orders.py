@@ -1,7 +1,7 @@
 """Tests for the stock_orders blueprint (list, detail, pick, cancel, complete)."""
 import pytest
 from datetime import datetime, timezone
-from models import db, SalesOrder, StockOrder, StockOrderLine, Item, StockMovement
+from models import db, SalesOrder, StockOrder, StockOrderLine, Item, StockMovement, StatusChangeLog
 
 
 class TestStockOrders:
@@ -598,3 +598,243 @@ class TestStockOrders:
         with app.app_context():
             updated = db.session.get(StockOrder, sto.id)
             assert updated.status == "Complete"
+
+
+class TestStockOrdersReleasedFlip:
+    """Tests for the Batch 34 'Released' status changes to
+    routes/stock_orders.py and templates/stock_orders/detail.html
+    (Sequencing item 15,
+    docs/specs/sales-order-report-excel-export-2026-07-17.md Decision 1 —
+    Stock Order subsection):
+
+    - print_order() flips Open -> Released exactly once, logging a single
+      StatusChangeLog row; reprinting an already-Released (or later) STO
+      does not re-flip or log a duplicate/no-op change.
+    - pick_lines() works correctly starting from 'Released', not just
+      'Open' (guard + flip-condition both widened), still logging the real
+      old/new status values; 'Picking' still only fires on an actual pick.
+    - complete_order() / cancel_order() / reopen_order() still work
+      correctly starting from 'Released', each logging the real old/new
+      status values. cancel_order() guards against logging a no-op on an
+      already-Cancelled re-POST.
+    - The 6 template-conditional sites in
+      templates/stock_orders/detail.html (Edit / Mark Complete / Cancel /
+      pick-form rendering at 3 points) render their controls for a
+      'Released' STO instead of hiding them, including the Edit link
+      (STO-specific: WO has no Edit-from-Released allowance).
+    - edit_order() itself (not just the template link) is reachable and
+      functional from 'Released', not just 'Open'.
+    """
+    _c = 0
+
+    def _next(self, prefix):
+        TestStockOrdersReleasedFlip._c += 1
+        return f"{prefix}-{TestStockOrdersReleasedFlip._c:03d}"
+
+    def _setup_sto(self, session, sto_status="Open", matched_item=True):
+        so = SalesOrder(so_number=self._next("SO-STO34"), customer_name="Test Customer",
+                         status="Open", created_at=datetime.now(timezone.utc))
+        session.add(so)
+        session.flush()
+
+        sto = StockOrder(stock_order_number=self._next("STO34"), so_id=so.id,
+                          status=sto_status, created_at=datetime.now(timezone.utc))
+        session.add(sto)
+        session.flush()
+
+        line = StockOrderLine(stock_order_id=sto.id, item_code=self._next("STO34-ITEM"),
+                               description="Test Item", qty=5.0)
+        session.add(line)
+        session.flush()
+
+        item = None
+        if matched_item:
+            item = Item(code=line.item_code, description="Test Item",
+                        qty_on_hand=100.0, active=True)
+            session.add(item)
+
+        session.commit()
+        return {"so": so, "sto": sto, "line": line, "item": item}
+
+    def test_print_flips_open_to_released_once(self, client, app, db, session):
+        data = self._setup_sto(session)
+        sto = data["sto"]
+
+        resp = client.get(f"/stock-orders/{sto.id}/print")
+        assert resp.status_code == 200
+
+        with app.app_context():
+            updated = db.session.get(StockOrder, sto.id)
+            assert updated.status == "Released"
+
+            rows = StatusChangeLog.query.filter_by(
+                order_id=sto.id, order_type="STO", field_name="status").all()
+            assert len(rows) == 1
+            assert rows[0].old_value == "Open"
+            assert rows[0].new_value == "Released"
+
+    def test_reprint_does_not_reflip_or_relog(self, client, app, db, session):
+        data = self._setup_sto(session)
+        sto = data["sto"]
+
+        resp1 = client.get(f"/stock-orders/{sto.id}/print")
+        assert resp1.status_code == 200
+        resp2 = client.get(f"/stock-orders/{sto.id}/print")
+        assert resp2.status_code == 200
+
+        with app.app_context():
+            updated = db.session.get(StockOrder, sto.id)
+            assert updated.status == "Released"
+
+            rows = StatusChangeLog.query.filter_by(
+                order_id=sto.id, order_type="STO", field_name="status").all()
+            assert len(rows) == 1
+
+    def test_print_does_not_downgrade_a_later_stage_sto(self, client, app, db, session):
+        data = self._setup_sto(session, sto_status="Complete")
+        sto = data["sto"]
+
+        resp = client.get(f"/stock-orders/{sto.id}/print")
+        assert resp.status_code == 200
+
+        with app.app_context():
+            updated = db.session.get(StockOrder, sto.id)
+            assert updated.status == "Complete"
+
+            rows = StatusChangeLog.query.filter_by(
+                order_id=sto.id, order_type="STO", field_name="status").all()
+            assert len(rows) == 0
+
+    def test_pick_lines_from_released(self, client, app, db, session):
+        """pick_lines() must be reachable and must flip Released -> Picking
+        (not just Open -> Picking) once stock is actually issued."""
+        data = self._setup_sto(session, sto_status="Released")
+        sto, line, item = data["sto"], data["line"], data["item"]
+
+        resp = client.post(
+            f"/stock-orders/{sto.id}/pick",
+            data={f"pick_qty_{line.id}": "5.0", "picked_by": "Sam"},
+            follow_redirects=True,
+        )
+        assert resp.status_code == 200
+        assert b"confirmed" in resp.data
+
+        with app.app_context():
+            updated = db.session.get(StockOrder, sto.id)
+            assert updated.status == "Picking"
+            assert db.session.get(Item, item.id).qty_on_hand == 95.0
+
+            rows = StatusChangeLog.query.filter_by(
+                order_id=sto.id, order_type="STO", field_name="status").all()
+            assert len(rows) == 1
+            assert rows[0].old_value == "Released"
+            assert rows[0].new_value == "Picking"
+
+    def test_complete_from_released_with_no_pickable_lines(self, client, app, db, session):
+        """A Released STO whose only line has no catalogue match can go
+        straight Released -> Complete via complete_order() without ever
+        passing through Picking (can_complete_stock_order() tolerates
+        unmatched lines) — exercises the STO-specific complete-from-Released
+        path directly, not via pick_lines()."""
+        data = self._setup_sto(session, sto_status="Released", matched_item=False)
+        sto = data["sto"]
+
+        resp = client.post(f"/stock-orders/{sto.id}/complete", follow_redirects=True)
+        assert resp.status_code == 200
+        assert b"marked as Complete" in resp.data
+
+        with app.app_context():
+            updated = db.session.get(StockOrder, sto.id)
+            assert updated.status == "Complete"
+
+            rows = StatusChangeLog.query.filter_by(
+                order_id=sto.id, order_type="STO", field_name="status").all()
+            assert len(rows) == 1
+            assert rows[0].old_value == "Released"
+            assert rows[0].new_value == "Complete"
+
+    def test_cancel_from_released(self, client, app, db, session):
+        data = self._setup_sto(session, sto_status="Released")
+        sto = data["sto"]
+
+        resp = client.post(f"/stock-orders/{sto.id}/cancel", follow_redirects=True)
+        assert resp.status_code == 200
+        assert b"has been cancelled" in resp.data
+
+        with app.app_context():
+            updated = db.session.get(StockOrder, sto.id)
+            assert updated.status == "Cancelled"
+
+            rows = StatusChangeLog.query.filter_by(
+                order_id=sto.id, order_type="STO", field_name="status").all()
+            assert len(rows) == 1
+            assert rows[0].old_value == "Released"
+            assert rows[0].new_value == "Cancelled"
+
+    def test_cancel_already_cancelled_does_not_relog(self, client, app, db, session):
+        """Re-POSTing /cancel on an already-Cancelled STO must not write a
+        second, no-op StatusChangeLog row (mirrors the WO Chunk 5 fix)."""
+        data = self._setup_sto(session, sto_status="Released")
+        sto = data["sto"]
+
+        client.post(f"/stock-orders/{sto.id}/cancel", follow_redirects=True)
+        resp = client.post(f"/stock-orders/{sto.id}/cancel", follow_redirects=True)
+        assert resp.status_code == 200
+
+        with app.app_context():
+            updated = db.session.get(StockOrder, sto.id)
+            assert updated.status == "Cancelled"
+
+            rows = StatusChangeLog.query.filter_by(
+                order_id=sto.id, order_type="STO", field_name="status").all()
+            assert len(rows) == 1
+
+    def test_reopen_after_complete_from_released_logs_open_transition(self, client, app, db, session):
+        data = self._setup_sto(session, sto_status="Released", matched_item=False)
+        sto = data["sto"]
+
+        client.post(f"/stock-orders/{sto.id}/complete", follow_redirects=True)
+        resp = client.post(f"/stock-orders/{sto.id}/reopen", follow_redirects=True)
+        assert resp.status_code == 200
+        assert b"has been reopened" in resp.data
+
+        with app.app_context():
+            updated = db.session.get(StockOrder, sto.id)
+            assert updated.status == "Open"
+
+            rows = StatusChangeLog.query.filter_by(
+                order_id=sto.id, order_type="STO", field_name="status").order_by(
+                StatusChangeLog.id).all()
+            # Released->Complete->Open
+            assert rows[-1].old_value == "Complete"
+            assert rows[-1].new_value == "Open"
+
+    def test_edit_available_and_functional_from_released(self, client, app, db, session):
+        """Edit is confirmed (revision 2) allowed from Released, not just
+        Open — the STO-specific ripple WO does not have."""
+        data = self._setup_sto(session, sto_status="Released")
+        sto = data["sto"]
+
+        resp = client.get(f"/stock-orders/{sto.id}/edit")
+        assert resp.status_code == 200
+        assert b"Cannot edit" not in resp.data
+
+    def test_detail_page_shows_all_controls_for_released_sto(self, client, session):
+        # matched_item=False so can_complete_stock_order() is True (the one
+        # unmatched line is tolerated, see _line_needs_pick()) — this
+        # exercises the Mark Complete form (with a real href) rather than
+        # the disabled placeholder, on top of the always-rendered controls.
+        data = self._setup_sto(session, sto_status="Released", matched_item=False)
+        sto = data["sto"]
+
+        resp = client.get(f"/stock-orders/{sto.id}")
+        assert resp.status_code == 200
+        body = resp.get_data(as_text=True)
+
+        assert f"/stock-orders/{sto.id}/edit" in body
+        assert f"/stock-orders/{sto.id}/complete" in body
+        assert f"/stock-orders/{sto.id}/cancel" in body
+        assert f"/stock-orders/{sto.id}/pick" in body
+        assert "Picked" in body
+        assert "Pick Qty" in body
+        assert "Confirm Picks" in body

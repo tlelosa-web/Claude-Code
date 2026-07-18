@@ -22,8 +22,6 @@ _(none — awaiting next task selection)_
 - [ ] Resolve `Tenders/4_Scripts/tenders-sa/` — untracked nested git repo;
       decide whether to add as a proper git submodule or drop it from this
       repo entirely
-- [ ] Pull 2 pending upstream commits into the shared CORE.md template:
-      `/plugin marketplace update tlelosa-claude-config`
 
 ## Completed
 
@@ -36,3 +34,6 @@ _(none — awaiting next task selection)_
 - [x] Wire up hub-and-spoke pattern — CORE.md read instruction, `/continue`
       command (`5620fd1`)
 - [x] Verify `/continue` resumes correctly from a fresh session
+- [x] Pull 2 pending upstream commits into the shared CORE.md template
+      (`eff87e8` — home PC → Pappa T rename, fast-forwarded into the local
+      marketplace clone at `~/.claude/plugins/marketplaces/tlelosa-claude-config`)

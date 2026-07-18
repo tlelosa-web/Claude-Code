@@ -35,6 +35,15 @@
   `docs/todo.md` still held that project's task queue (superseded by its
   own copy at `ai-outreach-agency/docs/todo.md`), and this log hadn't been
   updated since 2026-06-01.
+- Ran `/continue` again: renamed the still-`"Continuation"`-titled session
+  to reflect its actual work, and archived two more sessions whose tasks
+  were fully committed — `Pappa T project brain review` (hub-and-spoke wiring,
+  `5620fd1`, verified by this run) and `Rename home PC to Pappa T`
+  (`tlelosa-claude-config`, `9e40d8a`, follow-up branch cleanup already done
+  elsewhere).
+- Fast-forwarded the local `tlelosa-claude-config` marketplace clone
+  (`~/.claude/plugins/marketplaces/tlelosa-claude-config`) past the 2 pending
+  upstream commits (`eff87e8` — home PC → Pappa T rename).
 
 ## 2026-06-01
 

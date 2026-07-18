@@ -44,6 +44,26 @@
 - Fast-forwarded the local `tlelosa-claude-config` marketplace clone
   (`~/.claude/plugins/marketplaces/tlelosa-claude-config`) past the 2 pending
   upstream commits (`eff87e8` — home PC → Pappa T rename).
+- Trimmed `CLAUDE.md` from 519 to 457 lines: removed the DCOE diagram,
+  DCOE Rules list, sub-agent roster table, and model-routing table now that
+  `CORE.md` (read every session) carries all of them verbatim. Also caught
+  and corrected a doc-vs-reality drift — both `CORE.md` and this file
+  described the default agent roster as living at `~/.claude/agents/`, which
+  doesn't exist on this machine; the files actually deploy via the plugin to
+  `~/.claude/plugins/marketplaces/tlelosa-claude-config/dcoe-roster/agents/`
+  (`d7bf782`).
+- Re-investigated the flagged `TebelloReborn/.claude/agents/` "roster fork":
+  diffed all 9 files against the shared defaults and found each one
+  substantively rewritten around the Career Engine's own pipeline stages and
+  hard rules, not a stale copy. TebelloReborn's own `CLAUDE.md` explicitly
+  names that folder canonical, and the hub's own hub-and-spoke rule gives a
+  sub-project's brain file precedence in its own folder. Replaced the
+  "known violation" note in `CLAUDE.md` with one documenting this as a
+  sanctioned override — no files deleted (`d7bf782`).
+- Resolved the untracked `Tenders/4_Scripts/tenders-sa/` nested repo:
+  registered it as a git submodule against its real upstream
+  (`alfa-rsa/tenders-sa`) rather than vendoring or dropping it (`d6da4c3`).
+  This closes out every item that was in `docs/todo.md`'s backlog.
 
 ## 2026-06-01
 

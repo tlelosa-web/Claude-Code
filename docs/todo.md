@@ -13,15 +13,7 @@ _(none — awaiting next task selection)_
 
 ## Backlog
 
-- [ ] Trim `CLAUDE.md` back under its 500-line target (currently ~518 lines
-      — the DCOE diagram and model-routing table are duplicated internally
-      and now also duplicate `CORE.md`)
-- [ ] Clean up `TebelloReborn/.claude/agents/` — delete the full 9-agent
-      roster fork, keep only genuine per-agent overrides (known violation,
-      flagged in `CLAUDE.md`, left in place deliberately until addressed)
-- [ ] Resolve `Tenders/4_Scripts/tenders-sa/` — untracked nested git repo;
-      decide whether to add as a proper git submodule or drop it from this
-      repo entirely
+_(none — all backlog items from the 2026-07-18 cleanup pass are complete)_
 
 ## Completed
 
@@ -37,3 +29,12 @@ _(none — awaiting next task selection)_
 - [x] Pull 2 pending upstream commits into the shared CORE.md template
       (`eff87e8` — home PC → Pappa T rename, fast-forwarded into the local
       marketplace clone at `~/.claude/plugins/marketplaces/tlelosa-claude-config`)
+- [x] Trim `CLAUDE.md` back under its 500-line target — 519 → 457 lines;
+      also corrected the stale `~/.claude/agents/` path reference and
+      resolved the TebelloReborn roster note (see next item) (`d7bf782`)
+- [x] Investigated the "TebelloReborn roster fork" flag — turned out to be
+      a deliberate, fully-tailored override (not a stale copy), sanctioned
+      by TebelloReborn's own `CLAUDE.md`. Updated the hub `CLAUDE.md` note
+      accordingly instead of deleting the files (`d7bf782`)
+- [x] Resolved `Tenders/4_Scripts/tenders-sa/` — registered as a proper git
+      submodule pointing at `alfa-rsa/tenders-sa` (`d6da4c3`)

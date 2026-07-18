@@ -377,6 +377,8 @@ textarea.form-input {
 .badge-draft { background: var(--fm-amber); color: #fff; }
 .badge-open { background: var(--fm-blue); color: #fff; }
 .badge-released { background: var(--fm-teal); color: #fff; }
+.badge-loaded { background: var(--fm-amber); color: #fff; }
+.badge-readydispatch { background: var(--fm-green); color: #fff; }
 .badge-inprogress { background: var(--fm-orange); color: #fff; }
 .badge-picking { background: var(--fm-orange); color: #fff; }
 .badge-complete { background: var(--fm-green); color: #fff; }

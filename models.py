@@ -120,7 +120,7 @@ class WorksOrder(db.Model):
     wo_number = db.Column(db.String(100), unique=True, nullable=False)
     so_id = db.Column(db.Integer, db.ForeignKey('sales_order.id'), nullable=False)
     order_type = db.Column(db.String(50))  # 'ASSEMBLY' or 'STOCK'
-    status = db.Column(db.String(50), default='Open')  # Open / In Progress / Complete / Cancelled
+    status = db.Column(db.String(50), default='Open')  # Open / Released / In Progress / Complete / Cancelled
     issued_by = db.Column(db.String(255))
     job_number = db.Column(db.String(50))  # FM/Job number of the originating Fan line
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
@@ -170,7 +170,7 @@ class StockOrder(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     stock_order_number = db.Column(db.String(100), unique=True, nullable=False)
     so_id = db.Column(db.Integer, db.ForeignKey('sales_order.id'), nullable=False)
-    status = db.Column(db.String(50), default='Open')  # Open / Picking / Complete / Cancelled
+    status = db.Column(db.String(50), default='Open')  # Open / Released / Picking / Complete / Cancelled
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     lines = db.relationship('StockOrderLine', backref='stock_order', lazy=True,

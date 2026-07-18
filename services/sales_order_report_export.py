@@ -24,6 +24,13 @@ No Excel formulas anywhere -- every value is computed directly in Python
 from the in-memory lists passed in, since this workbook is generated fresh
 on every request (unlike the old pipeline's daily-mutated, formula-linked
 file).
+
+Free-text fields sourced from PDF-parsed sales orders (`customer_name`,
+`reference`, `sales_rep`, `report_notes`, `job_numbers`) are externally
+influenceable, so every string cell written by this module is passed
+through `_safe_cell_text()` first to guard against Excel/CSV formula
+injection (a value starting with `=`, `+`, `-`, `@`, tab, or CR would
+otherwise be interpreted as a formula when the workbook is opened).
 """
 from datetime import date
 
@@ -44,6 +51,23 @@ SHEET1_HEADERS = [
     'Customer', 'Total', 'Sales Rep', 'Status', 'Payment Status', 'Notes',
 ]
 _LEFT_ALIGN_COLS = (5, 6, 11)  # Customer Ref., Customer, Notes
+
+
+# Leading characters that make Excel interpret a cell as a formula (or, for
+# tab/CR, that enable CSV/clipboard-based injection tricks) rather than as
+# literal text.
+_INJECTION_PREFIXES = ('=', '+', '-', '@', '\t', '\r')
+
+
+def _safe_cell_text(value):
+    """Escape a string that would otherwise be interpreted as an Excel
+    formula on open. Prefixes a leading apostrophe when the first character
+    is one of `_INJECTION_PREFIXES`, forcing Excel to treat the cell as
+    literal text. Non-string values (numbers, dates, None) pass through
+    unchanged."""
+    if isinstance(value, str) and value and value[0] in _INJECTION_PREFIXES:
+        return "'" + value
+    return value
 
 
 def _next_month(year, month):
@@ -74,7 +98,7 @@ def build_sales_order_report_workbook(sales_orders, invoices, currency_symbol='R
 
 def _style_header_row(ws, row, headers):
     for col_idx, header in enumerate(headers, start=1):
-        cell = ws.cell(row=row, column=col_idx, value=header)
+        cell = ws.cell(row=row, column=col_idx, value=_safe_cell_text(header))
         cell.font = _HEADER_FONT
         cell.fill = _HEADER_FILL
         cell.border = _BORDER
@@ -82,14 +106,20 @@ def _style_header_row(ws, row, headers):
 
 
 def _write_so_row(ws, row_idx, so, currency_fmt, include_notes=True):
+    # `status`/`payment_status` are system-computed (fixed enum-like
+    # values, e.g. 'Released' or the '-' fallback), not free text, so they
+    # are left out of the formula-injection guard below -- only fields
+    # sourced from PDF-parsed/user-entered sales-order data are escaped.
     status = so.display_report_status or '-'
     values = [
-        so.so_date, so.delivery_date, so.job_numbers or '', so.so_number,
-        so.reference or '', so.customer_name or '', so.balance_due,
-        so.sales_rep or '', status, so.payment_status or '',
+        so.so_date, so.delivery_date, _safe_cell_text(so.job_numbers or ''),
+        so.so_number, _safe_cell_text(so.reference or ''),
+        _safe_cell_text(so.customer_name or ''), so.balance_due,
+        _safe_cell_text(so.sales_rep or ''), status,
+        so.payment_status or '',
     ]
     if include_notes:
-        values.append(so.report_notes or '')
+        values.append(_safe_cell_text(so.report_notes or ''))
 
     for col_idx, value in enumerate(values, start=1):
         cell = ws.cell(row=row_idx, column=col_idx, value=value)

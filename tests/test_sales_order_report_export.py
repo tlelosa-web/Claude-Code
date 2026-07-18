@@ -19,7 +19,9 @@ from datetime import date, datetime, timedelta, timezone
 import openpyxl
 
 from models import SalesOrder, SOLineItem, WorksOrder, Invoice
-from services.sales_order_report_export import build_sales_order_report_workbook, SHEET1_HEADERS, _next_month
+from services.sales_order_report_export import (
+    build_sales_order_report_workbook, SHEET1_HEADERS, _next_month, _safe_cell_text,
+)
 
 
 def _load_workbook(resp):
@@ -246,6 +248,64 @@ class TestSheet1SummaryMath:
         rd_row = total_row + 2
         assert ws.cell(row=rd_row, column=6).value == 'Ready-Dispatch:'
         assert ws.cell(row=rd_row, column=7).value == round(so_ready.balance_due, 2)
+
+
+class TestExportFormulaInjectionGuard:
+    """Reviewer security fix: free-text fields sourced from PDF-parsed sales
+    orders must not be writable as live Excel formulas -- a value starting
+    with '=', '+', '-', '@', tab, or CR is escaped with a leading
+    apostrophe so Excel treats it as literal text on open."""
+    _c = 0
+
+    def _mk_so(self, session, **kwargs):
+        TestExportFormulaInjectionGuard._c += 1
+        n = TestExportFormulaInjectionGuard._c
+        defaults = dict(
+            so_number=f"EXPORT-INJ-{n:03d}", customer_name="Injection Test Co",
+            status="Open", created_at=datetime.now(timezone.utc),
+        )
+        defaults.update(kwargs)
+        so = SalesOrder(**defaults)
+        session.add(so)
+        session.flush()
+        session.add(SOLineItem(so_id=so.id, description="Line 1", qty=1.0, incl_total=1000.0))
+        session.commit()
+        return so
+
+    def test_safe_cell_text_escapes_formula_prefixes(self):
+        assert _safe_cell_text("=1+1") == "'=1+1"
+        assert _safe_cell_text("+SUM(A1)") == "'+SUM(A1)"
+        assert _safe_cell_text("-1+1") == "'-1+1"
+        assert _safe_cell_text("@SUM(A1)") == "'@SUM(A1)"
+        assert _safe_cell_text("\tcmd") == "'\tcmd"
+        assert _safe_cell_text("\rcmd") == "'\rcmd"
+        # Ordinary text and non-strings pass through untouched.
+        assert _safe_cell_text("Regular note") == "Regular note"
+        assert _safe_cell_text("") == ""
+        assert _safe_cell_text(None) is None
+        assert _safe_cell_text(1000.0) == 1000.0
+
+    def test_report_notes_formula_value_is_escaped_in_export(self, client, session):
+        so = self._mk_so(session, report_notes="=1+1")
+
+        resp = client.get('/sales-orders/export-excel')
+        ws = _load_workbook(resp)['Sales Order Report']
+        row = _find_row(ws, so.so_number)
+
+        assert row is not None
+        # openpyxl reads back the literal-text cell value including the
+        # escaping apostrophe -- it is not evaluated as a formula.
+        assert row['Notes'] == "'=1+1"
+
+    def test_customer_name_formula_value_is_escaped_in_export(self, client, session):
+        so = self._mk_so(session, customer_name="=cmd|'/c calc'!A1")
+
+        resp = client.get('/sales-orders/export-excel')
+        ws = _load_workbook(resp)['Sales Order Report']
+        row = _find_row(ws, so.so_number)
+
+        assert row is not None
+        assert row['Customer'] == "'=cmd|'/c calc'!A1"
 
 
 class TestSheet2InvoiceMonthBuckets:

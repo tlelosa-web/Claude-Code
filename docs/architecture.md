@@ -1,6 +1,6 @@
 # Architecture
 
-This vault is the TebelloReborn personal operating system with multiple project domains:
+This vault is Pappa T, a personal operating system with multiple project domains. ("TebelloReborn" refers only to the CV-generation/career-automation sub-project below, not the vault as a whole.)
 
 - `TebelloReborn/`: professional profile, CV generation, recruiter outreach, and job-search automation.
 - `MIMS App/`: inventory or operations web application.

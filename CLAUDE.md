@@ -13,7 +13,7 @@
 ## 📁 PROJECT OVERVIEW
 
 ```
-Project:     TebelloReborn (Master Vault)
+Project:     Pappa T
 Type:        Personal operating system + multi-project incubator
 Owner:       Tebello Lelosa
 Location:    South Africa
@@ -21,12 +21,17 @@ Role:        Operations Foreman / Strategic Operations Builder
 Inference:   claude-sonnet-5 (default, medium effort) | claude-opus-4-8 (evidence-based escalation only)
 ```
 
+> Folder on disk is `Pappa T` (`C:\Users\tlelo\Desktop\Pappa T`) — this is the
+> project's actual name, not just a path. "TebelloReborn" refers only to the
+> `TebelloReborn/` sub-project (CV generation, career automation) below.
+
 | Sub-project | Stack |
 |---|---|
 | MIMS App | Next.js, Supabase, Tailwind, TypeScript |
 | IQ | Python (signal generator, risk management) |
 | TebelloReborn | Python (CV generation, email automation), Markdown docs |
 | Tenders | Python (scraping, automation) |
+| ai-outreach-agency | Python (lead import, research, email drafting, approval dashboard) — self-governing, own `CLAUDE.md` |
 | Vault docs | Markdown |
 
 `AGENTS.md` is the canonical project brain for workflow and life-domain agent behavior —
@@ -124,6 +129,12 @@ in this project's own `.claude/agents/` wins over the user-level default.
 Run `/agents` at session start to confirm the active roster, and check for
 stray project-level files if a name conflict is suspected — none should
 exist here unless deliberately added as an override.
+
+> **Known violation (flagged for cleanup):** `TebelloReborn/.claude/agents/`
+> currently carries a full 9-agent roster copy, not an override. This
+> contradicts the rule above. Leave it in place until deliberately cleaned up
+> (delete the full fork, keep only genuine per-agent overrides) — don't treat
+> it as sanctioned precedent for other sub-projects.
 
 |Agent       |Default file                  |When to Use                            |
 |------------|-------------------------------|----------------------------------------|
@@ -258,6 +269,7 @@ git cherry-pick <commit-hash>
 - **No shared API contract across sub-projects.** Inspect the target sub-project before assuming conventions carry over (see @docs/api-patterns.md).
 - **MIMS App**: Next.js/Supabase/Tailwind — follow that stack's own idioms, not vault-wide ones.
 - **IQ / TebelloReborn / Tenders**: Python automation scripts — no framework assumed; keep scripts single-responsibility per `4_Scripts/`.
+- **ai-outreach-agency**: self-governing sub-project with its own `CLAUDE.md`, agents, and hooks. It is physically colocated in this vault but intentionally outside vault-wide DCOE orchestration — read its own `CLAUDE.md` before touching it rather than assuming this file's rules apply directly.
 - **Env vars**: `.env` file(s) per sub-project. Never hardcode secrets. Never commit `.env`.
 - **Personal data**: this vault holds real CVs, financial strategy, and personal records — preserve source data, never overwrite without explicit confirmation.
 - **Vault-level docs** (`00_Index_&_Logs/` … `05_Archive/`): strategy, finance, operations, brand — treated as source-of-record, not scratch space.
@@ -287,7 +299,13 @@ Follow **TDD** where a sub-project has executable code (Python/TypeScript):
 
 ## 🪝 HOOKS
 
-Quality gates fire automatically. Do not disable without deliberate decision.
+> **Status: scaffolded, not wired up.** `.claude/hooks/` and `.Codex/hooks/`
+> currently contain only `.gitkeep` placeholders — none of the hooks below
+> actually fire yet. The table describes the *target* behavior once
+> implemented. Don't assume lint/test gates are enforced automatically until
+> this is corrected.
+
+Quality gates should fire automatically once implemented. Do not disable without deliberate decision.
 
 |Hook           |Trigger     |Action                                  |
 |---------------|------------|----------------------------------------|
@@ -406,6 +424,8 @@ project-root/
 │   ├── hooks/
 │   └── worktrees/
 ├── MIMS App/ · IQ/ · TebelloReborn/ · Tenders/  ← Sub-project source trees
+├── ai-outreach-agency/            ← Self-governing sub-project (own CLAUDE.md,
+│                                     agents, hooks); /continue command lives here
 ├── tests/
 │   ├── unit/
 │   └── integration/

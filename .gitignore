@@ -33,3 +33,7 @@ build/
 
 # Databases
 *.db
+
+# Parallel executor sandboxes (git worktree add ...) — never tracked as regular files
+.claude/worktrees/
+.Codex/worktrees/

@@ -1,0 +1,89 @@
+{% extends 'base.html' %}
+{% block title %}Change Log - SOPS{% endblock %}
+{% block page_title %}Change Log{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='vendor/tabulator/tabulator.min.css') }}">
+<script src="{{ url_for('static', filename='vendor/tabulator/tabulator.min.js') }}"></script>
+{% endblock %}
+
+{% block content %}
+<div class="card animate-fade-in" style="margin-bottom: 24px;">
+    <div class="card-header">
+        <h2 class="card-title">Status Change Log</h2>
+        <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+            <input type="date" id="filter-date-from" class="form-input" style="width: 150px; padding: 6px 10px; font-size: 0.85rem;" placeholder="From">
+            <input type="date" id="filter-date-to" class="form-input" style="width: 150px; padding: 6px 10px; font-size: 0.85rem;" placeholder="To">
+            <select id="filter-order-type" class="form-input" style="width: 150px; padding: 6px 10px; font-size: 0.85rem;">
+                <option value="">All Order Types</option>
+                {% for order_type in order_types %}
+                <option value="{{ order_type }}">{{ order_type }}</option>
+                {% endfor %}
+            </select>
+            <select id="filter-field-name" class="form-input" style="width: 180px; padding: 6px 10px; font-size: 0.85rem;">
+                <option value="">All Fields</option>
+                {% for field_name in field_names %}
+                <option value="{{ field_name }}">{{ field_name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+    </div>
+    <div id="change-log-table"></div>
+    <div style="padding: 16px; border-top: 1px solid var(--border-color); display: flex; justify-content: flex-end; font-size: 1rem;">
+        <span>Total Records: <strong id="total-records">0</strong></span>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    let changeLogTable;
+
+    function loadChangeLogData() {
+        const params = new URLSearchParams();
+        const dateFrom = document.getElementById('filter-date-from').value;
+        const dateTo = document.getElementById('filter-date-to').value;
+        const orderType = document.getElementById('filter-order-type').value;
+        const fieldName = document.getElementById('filter-field-name').value;
+
+        if (dateFrom) params.set('date_from', dateFrom);
+        if (dateTo) params.set('date_to', dateTo);
+        if (orderType) params.set('order_type', orderType);
+        if (fieldName) params.set('field_name', fieldName);
+
+        fetch('{{ url_for("reports.change_log_data") }}?' + params.toString())
+            .then(r => r.json())
+            .then(data => {
+                if (changeLogTable) changeLogTable.destroy();
+
+                changeLogTable = new Tabulator('#change-log-table', {
+                    data: data.changes,
+                    layout: 'fitColumns',
+                    pagination: 'local',
+                    paginationSize: 25,
+                    paginationSizeSelector: [10, 25, 50, 100],
+                    columns: [
+                        { title: 'Changed At', field: 'changed_at', width: 150 },
+                        { title: 'Order Type', field: 'order_type', width: 100 },
+                        { title: 'Order Number', field: 'order_number' },
+                        { title: 'Field', field: 'field_name' },
+                        { title: 'Old Value', field: 'old_value', widthGrow: 1.5 },
+                        { title: 'New Value', field: 'new_value', widthGrow: 1.5 },
+                        { title: 'Changed By', field: 'changed_by' }
+                    ]
+                });
+
+                document.getElementById('total-records').textContent = data.total_count;
+            });
+    }
+
+    document.getElementById('filter-date-from').addEventListener('change', loadChangeLogData);
+    document.getElementById('filter-date-to').addEventListener('change', loadChangeLogData);
+    document.getElementById('filter-order-type').addEventListener('change', loadChangeLogData);
+    document.getElementById('filter-field-name').addEventListener('change', loadChangeLogData);
+
+    loadChangeLogData();
+});
+</script>
+{% endblock %}

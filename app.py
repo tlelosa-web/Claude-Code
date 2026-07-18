@@ -21,6 +21,15 @@ def ensure_schema_columns():
     if 'amount_paid' not in columns:
         db.session.execute(text('ALTER TABLE sales_order ADD COLUMN amount_paid FLOAT DEFAULT 0.0'))
         db.session.commit()
+    if 'report_notes' not in columns:
+        db.session.execute(text('ALTER TABLE sales_order ADD COLUMN report_notes TEXT'))
+        db.session.commit()
+    if 'on_hold' not in columns:
+        db.session.execute(text('ALTER TABLE sales_order ADD COLUMN on_hold BOOLEAN DEFAULT 0'))
+        db.session.commit()
+    if 'on_hold_reason' not in columns:
+        db.session.execute(text('ALTER TABLE sales_order ADD COLUMN on_hold_reason TEXT'))
+        db.session.commit()
 
     if 'works_order' in inspector.get_table_names():
         wo_columns = {column['name'] for column in inspector.get_columns('works_order')}

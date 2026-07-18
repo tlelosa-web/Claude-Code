@@ -71,89 +71,43 @@ cd TebelloReborn && python -m py_compile 4_Scripts/auto_send_emails.py
 This workspace runs on the **DCOE pattern**:
 **Domain → Context → Orchestrate → Execute**
 
-An evolution of the DOE pattern that adds an explicit Domain layer.
-Each complex task is routed through four stages. Never collapse them.
-
-```
-┌──────────────────────────────────────────────────────┐
-│                    YOU (Human)                        │
-│          Describe goal  →  Review output              │
-└───────────────────────┬──────────────────────────────┘
-                        │
-             ┌──────────▼──────────┐
-             │     DOMAIN AGENT    │  (Session start / new feature)
-             │  - Clarifies scope  │  Reads CLAUDE.md + docs/todo.md
-             │  - Confirms stack   │  Stops if acceptance criteria
-             │  - Flags ambiguity  │  are unclear. ASK before acting.
-             └──────────┬──────────┘
-                        │
-             ┌──────────▼──────────┐
-             │   CONTEXT AGENT     │  (Planner / Architect)
-             │  - Reads codebase   │  Writes spec to docs/specs/
-             │  - Writes todo.md   │  Uses ultrathink for design.
-             │  - Defines deps     │  Never implements. Routes only.
-             └──────────┬──────────┘
-                        │
-             ┌──────────▼──────────┐
-             │  ORCHESTRATOR       │  (Coordinates parallel work)
-             │  - Reads todo.md    │  Spawns Executors in worktrees.
-             │  - Tracks state     │  Context stays < 40%.
-             │  - Merges results   │  One commit per task. Always.
-             └──────────┬──────────┘
-                        │
-          ┌─────────────┼─────────────┐
-          ▼             ▼             ▼
-    ┌──────────┐  ┌──────────┐  ┌──────────┐
-    │EXECUTOR 1│  │EXECUTOR 2│  │EXECUTOR N│
-    │worktree-1│  │worktree-2│  │worktree-n│
-    │Fresh ctx │  │Fresh ctx │  │Fresh ctx │
-    │One task  │  │One task  │  │One task  │
-    │One commit│  │One commit│  │One commit│
-    └──────────┘  └──────────┘  └──────────┘
-```
-
-### DCOE Rules
-
-1. **Domain Agent** confirms scope, stack, and ambiguities before anything else.
-1. **Context Agent** writes the plan — never the code. Spec lives in `docs/specs/`.
-1. **Orchestrator** reads `docs/todo.md`, parallelises via git worktrees, merges.
-1. **Executors** each get a fresh context. One task. One atomic commit. Done.
-1. If acceptance criteria are unclear at any stage → **STOP and ask**.
-1. Orchestrator never does heavy lifting. Executors never plan.
+The full diagram and stage-by-stage DCOE Rules are defined once in the
+shared `CORE.md` (read at session start — see the note at the top of this
+file) and are not duplicated here. This section covers only what's specific
+to Pappa T's use of the pattern.
 
 -----
 
 ## 🤖 SUB-AGENT ROSTER
 
-**Default location: `~/.claude/agents/` (user-level), deployed via the
-`dcoe-roster` plugin from [tlelosa-claude-config](https://github.com/tlelosa-web/tlelosa-claude-config).**
-The full 9-role roster is installed once at user scope and is available
-automatically in every project on this machine. No per-project copying.
+The full 9-role default roster, its deployment mechanism, and model routing
+are defined once in the shared `CORE.md` (see the read-instruction at the
+top of this file) — not repeated here. Run `/agents` at session start to
+confirm the active roster.
 
-Project-level `.claude/agents/` is reserved for **overrides only** — e.g. a
-`data-agent` variant tuned to this vault's export format. A same-named file
-in this project's own `.claude/agents/` wins over the user-level default.
-Run `/agents` at session start to confirm the active roster, and check for
-stray project-level files if a name conflict is suspected — none should
-exist here unless deliberately added as an override.
+> Note on the actual on-disk path: both `CORE.md` and earlier drafts of this
+> file describe the default roster as living at `~/.claude/agents/`. On this
+> machine that directory doesn't exist — the files are deployed via the
+> `dcoe-roster` plugin at
+> `~/.claude/plugins/marketplaces/tlelosa-claude-config/dcoe-roster/agents/`
+> instead. This is a doc-vs-reality drift in the shared core (out of scope to
+> fix from this project, since `CORE.md` lives in a separate repo) — noted
+> here so it isn't mistaken for a Pappa T-specific setup issue.
 
-> **Known violation (flagged for cleanup):** `TebelloReborn/.claude/agents/`
-> currently carries a full 9-agent roster copy, not an override. This
-> contradicts the rule above. Leave it in place until deliberately cleaned up
-> (delete the full fork, keep only genuine per-agent overrides) — don't treat
-> it as sanctioned precedent for other sub-projects.
+Project-level `.claude/agents/` at **this hub root** is reserved for
+**overrides only** — a same-named file here wins over the default roster for
+work done at the vault root. This does not extend to sub-projects with their
+own `CLAUDE.md`/`AGENTS.md` (see Hub-and-spoke framing under Architecture
+Decisions): those projects set their own agent-folder convention.
 
-|Agent       |Default file                  |When to Use                            |
-|------------|-------------------------------|----------------------------------------|
-|`domain`    |`~/.claude/agents/domain.md`    |Session start, scope confirmation      |
-|`planner`   |`~/.claude/agents/planner.md`   |Break features into spec + tasks       |
-|`architect` |`~/.claude/agents/architect.md` |System design, ADRs, DB schema         |
-|`executor`  |`~/.claude/agents/executor.md`  |Implement a single well-defined task   |
-|`tester`    |`~/.claude/agents/tester.md`    |Write tests, TDD loops                 |
-|`reviewer`  |`~/.claude/agents/reviewer.md`  |Code review, security, quality gate    |
-|`doc-writer`|`~/.claude/agents/doc-writer.md`|Update docs, README, changelogs        |
-|`debugger`  |`~/.claude/agents/debugger.md`  |Systematic bug investigation           |
-|`data-agent`|`~/.claude/agents/data-agent.md`|Excel/CSV transforms, report processing|
+> **`TebelloReborn/.claude/agents/` carries a full 9-agent roster — verified
+> 2026-07-18 as a deliberate, fully-tailored override, not a stale fork.**
+> All 9 files are substantively rewritten around the Career Engine's own
+> pipeline stages (Profile Import → Vacancy Fetch → AI Matching → Document
+> Generation → Human Review) and its specific hard rules (the human-approval
+> gate). TebelloReborn's own `CLAUDE.md` explicitly names `.claude/agents/`
+> canonical for that project. Per hub-and-spoke precedence, that stands —
+> this is not a violation and shouldn't be "cleaned up."
 
 **`.Codex/agents/` is a separate layer**, specific to this vault: life-domain
 executors (career-brand, finance-risk, identity-strengths, learning-capability,
@@ -163,28 +117,11 @@ tester/reviewer/doc-writer/debugger set. Use the generic DCOE roster above for
 code and doc work; use `.Codex/agents/` when a task should be classified and
 routed by life domain first (see `docs/life-domains.md`).
 
-### Model routing (via OpenRouter)
-
-`claude-sonnet-5` at **medium effort** is the universal default for all agents.
-`claude-opus-4-8` is reserved for **evidence-based escalation only** — not assigned up front by task type.
-
-**Escalate to Opus when:**
-- Two prior Sonnet attempts on the same task have failed
-- The task requires deep architectural reasoning (system-wide redesign, non-trivial ADRs)
-- A security review is warranted (auth, data-export, file-write code)
-
-**Standing exception:** the `reviewer` agent runs permanently on `claude-opus-4-8` — code review is treated as a fixed high-stakes gate, not a per-task escalation.
-
-|Role                              |Model              |Effort |
-|-----------------------------------|-------------------|-------|
-|All agents (default)               |`claude-sonnet-5`  |Medium |
-|`reviewer` (permanent)             |`claude-opus-4-8`  |High   |
-|Escalation (2 failed attempts / deep architecture / security review)|`claude-opus-4-8`|High|
-|Search / grep only                 |`claude-haiku-4-5` |Low    |
-
-Set per-agent in frontmatter: `model: claude-haiku-4-5`
-
-**Effort tiers** map onto the Thinking Levels table below — low effort pairs with *(none)*/`think`, medium with `think hard`, high with `think harder`/`ultrathink`.
+Model routing (Sonnet-5-medium default, Opus escalation triggers, the
+permanent-Opus exception for `reviewer`) is defined in `CORE.md` — not
+repeated here. **Effort tiers** map onto the Thinking Levels table below —
+low effort pairs with *(none)*/`think`, medium with `think hard`, high with
+`think harder`/`ultrathink`.
 
 -----
 
@@ -439,8 +376,10 @@ project-root/
 │   └── integration/
 └── 00_Index_&_Logs/ … 05_Archive/  ← Vault-level strategy, finance, brand docs
 
-~/.claude/agents/                ← USER-LEVEL DEFAULT ROSTER (all projects,
-│                                    via the dcoe-roster plugin)
+~/.claude/plugins/marketplaces/tlelosa-claude-config/dcoe-roster/agents/
+│                                 ← DEFAULT ROSTER (all projects, via the
+│                                    dcoe-roster plugin — see Sub-Agent
+│                                    Roster note above re: actual path)
 ├── domain.md
 ├── planner.md
 ├── architect.md
@@ -487,7 +426,7 @@ At the start of every session, Claude must:
 1. **If acceptance criteria are unclear → STOP and ask** before implementing.
 1. **No schema changes without a migration file.** Ever.
 1. **Opus is earned, not assigned** — default to Sonnet 5 at medium effort; escalate only on evidence (failed attempts, architecture, security).
-1. **Agent roster lives at user level** (`~/.claude/agents/`) — do not fork a full copy into this project's `.claude/agents/`; add project files there only as single-agent overrides.
+1. **Agent roster lives at user level** — do not fork a full copy into *this hub root's* `.claude/agents/`; add files there only as single-agent overrides. (Sub-projects with their own `CLAUDE.md`/`AGENTS.md` set their own convention — see Sub-Agent Roster section.)
 
 -----
 

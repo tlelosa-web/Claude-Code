@@ -8,6 +8,7 @@
 __pycache__/
 *.pyc
 .pytest_cache/
+.ruff_cache/
 
 # Generated PDF exports — data/ itself stays tracked, this is output only
 exports/

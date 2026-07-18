@@ -1,6 +1,7 @@
 """Tests for the Batch 34 'Released' status changes to routes/works_orders.py
-(Sequencing item 13, docs/specs/sales-order-report-excel-export-2026-07-17.md
-Decision 1 — Works Order subsection):
+and templates/works_orders/{detail,list}.html (Sequencing items 13-14,
+docs/specs/sales-order-report-excel-export-2026-07-17.md Decision 1 — Works
+Order subsection):
 
 - print_order() flips Open -> Released exactly once, logging a single
   StatusChangeLog row; reprinting an already-Released (or later) WO does not
@@ -9,7 +10,8 @@ Decision 1 — Works Order subsection):
   starting from 'Released', not just 'Open', and each logs the real
   old/new status values.
 - The 4 template-conditional sites in templates/works_orders/detail.html
-  (Edit / Mark Complete / Confirm Pick / Delete) render their controls for a
+  (Edit / Mark Complete / Confirm Pick / Delete) and the 1 conditional site
+  in templates/works_orders/list.html (Delete) render their controls for a
   'Released' WO instead of hiding them.
 """
 from datetime import datetime, timezone
@@ -216,4 +218,13 @@ class TestWorksOrdersReleasedTemplateGates:
 
         assert f"/works-orders/{wo.id}/confirm-pick" in body
         assert f"/works-orders/{wo.id}/edit" in body
+        assert f"/works-orders/{wo.id}/delete" in body
+
+    def test_list_page_shows_delete_for_released_wo(self, client, session):
+        wo = self._setup_wo(session, order_type="ASSEMBLY")
+
+        resp = client.get("/works-orders?view=open")
+        assert resp.status_code == 200
+        body = resp.get_data(as_text=True)
+
         assert f"/works-orders/{wo.id}/delete" in body

@@ -58,7 +58,7 @@
                             <ul class="dropdown-menu">
                                 <li><a href="{{ url_for('works_orders.view_order', order_id=wo.id) }}">View</a></li>
                                 <li><a href="{{ url_for('works_orders.print_order', order_id=wo.id) }}" target="_blank">Print</a></li>
-                                {% if wo.status in ['Open', 'In Progress'] %}
+                                {% if wo.status in ['Open', 'Released', 'In Progress'] %}
                                 <li>
                                     <form method="POST" action="{{ url_for('works_orders.delete_order', order_id=wo.id) }}" style="display: block;" onsubmit="return confirm('Are you sure you want to delete {{ wo.wo_number }}? This cannot be undone.')">
                                         <button type="submit" class="danger">Delete Order</button>

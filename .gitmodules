@@ -1,0 +1,3 @@
+[submodule "Tenders/4_Scripts/tenders-sa"]
+	path = Tenders/4_Scripts/tenders-sa
+	url = https://github.com/alfa-rsa/tenders-sa.git

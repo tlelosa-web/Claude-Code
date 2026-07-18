@@ -1,0 +1,25 @@
+[project]
+name = "career-engine"
+version = "0.1.0"
+description = "Semi-automated job-application pipeline — vacancy fetch, AI matching, document generation, with a mandatory human approval gate."
+requires-python = ">=3.11"
+dependencies = [
+    "requests>=2.31",
+    "python-dotenv>=1.0",
+    "fpdf2>=2.7",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+]
+
+[project.scripts]
+career-engine = "src.main:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["src*"]

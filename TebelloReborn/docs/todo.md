@@ -28,11 +28,11 @@
 ## Build Queue — ordered, atomic (see `docs/specs/mvp-pipeline-build.md` for full detail: inputs, outputs, verification, network flags, per-step agent)
 
 ### Phase 0 — Scaffolding & Config
-- [ ] 1. `pyproject.toml` (deps + `career-engine` console script)
-- [ ] 2. `.env.example` + `.gitignore` (do NOT blanket-ignore `data/`)
-- [ ] 3. `tests/conftest.py` + `tests/unit/conftest.py` (autouse `OFFLINE_MODE`)
-- [ ] 4. [RED] `tests/unit/test_config.py`
-- [ ] 5. [GREEN] `src/config.py`
+- [x] 1. `pyproject.toml` (deps + `career-engine` console script)
+- [x] 2. `.env.example` + `.gitignore` (do NOT blanket-ignore `data/`)
+- [x] 3. `tests/conftest.py` + `tests/unit/conftest.py` (autouse `OFFLINE_MODE`)
+- [x] 4. [RED] `tests/unit/test_config.py`
+- [x] 5. [GREEN] `src/config.py`
 
 ### Phase 1 — Shared External-Client Infra
 - [ ] 6. [RED] `tests/unit/test_rate_limiter.py`

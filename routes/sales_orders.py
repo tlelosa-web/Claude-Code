@@ -1,14 +1,17 @@
 import os
 import json
+from io import BytesIO
 from datetime import datetime
-from flask import Blueprint, render_template, request, redirect, url_for, flash, current_app, jsonify
+from flask import Blueprint, render_template, request, redirect, url_for, flash, current_app, jsonify, Response
 from werkzeug.utils import secure_filename
 from sqlalchemy import nullslast
-from models import db, SalesOrder, SOLineItem, Item, WorksOrder, BOMLine, StockMovement, StockOrder, StockOrderLine, PAYMENT_STATUS_OPTIONS
+from models import db, SalesOrder, SOLineItem, Item, WorksOrder, BOMLine, StockMovement, StockOrder, StockOrderLine, Invoice, PAYMENT_STATUS_OPTIONS
 from services.pdf_parser import parse_sales_order_pdf
 from services.order_filters import SO_ACTIVE
 from services.invoice_importer import import_invoices_from_csv
 from services.status_change_log import log_change, track_report_status
+from services.sales_order_report_export import build_sales_order_report_workbook
+from services.settings_service import get_currency_symbol
 
 sales_orders_bp = Blueprint('sales_orders', __name__)
 
@@ -22,6 +25,36 @@ def list_orders():
         query = query.filter(~SalesOrder.status.in_(SO_ACTIVE))
     orders = query.order_by(nullslast(SalesOrder.delivery_date.asc())).all()
     return render_template('sales_orders/list.html', orders=orders, view=view)
+
+@sales_orders_bp.route('/sales-orders/export-excel')
+def export_excel():
+    """On-demand Excel export of the Sales Order Report -- see docs/specs/
+    sales-order-report-excel-export-2026-07-17.md Export design +
+    Sequencing item 19. `?view=open` (Draft+Open SOs) is the confirmed
+    default; `?view=all` includes every SO regardless of status (a
+    Closed/Cancelled SO's `report_status` is None, rendered as '-' in the
+    export). Sheet 2's invoice math always queries the full Invoice table,
+    independent of the SO view filter."""
+    view = request.args.get('view', 'open')
+    query = SalesOrder.query
+    if view != 'all':
+        view = 'open'
+        query = query.filter(SalesOrder.status.in_(SO_ACTIVE))
+    orders = query.order_by(nullslast(SalesOrder.delivery_date.asc())).all()
+
+    invoices = Invoice.query.all()
+
+    wb = build_sales_order_report_workbook(orders, invoices, get_currency_symbol())
+    output = BytesIO()
+    wb.save(output)
+    output.seek(0)
+
+    filename = f"Sales_Order_Report_{datetime.now().strftime('%d.%m.%Y')}.xlsx"
+    return Response(
+        output.getvalue(),
+        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        headers={'Content-Disposition': f'attachment; filename={filename}'}
+    )
 
 def item_to_bom_json(item, qty_on_order=0.0, qty_committed=0.0, next_po_due=None):
     """Return the plain JSON shape consumed by the BOM builder UI.

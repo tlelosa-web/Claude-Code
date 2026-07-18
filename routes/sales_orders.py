@@ -7,6 +7,7 @@ from sqlalchemy import nullslast
 from models import db, SalesOrder, SOLineItem, Item, WorksOrder, BOMLine, StockMovement, StockOrder, StockOrderLine, PAYMENT_STATUS_OPTIONS
 from services.pdf_parser import parse_sales_order_pdf
 from services.order_filters import SO_ACTIVE
+from services.invoice_importer import import_invoices_from_csv
 
 sales_orders_bp = Blueprint('sales_orders', __name__)
 
@@ -698,3 +699,31 @@ def reupload_order(order_id):
     
     # GET: show upload form
     return render_template('sales_orders/upload.html', existing_so=so, reupload_mode=True)
+
+
+@sales_orders_bp.route('/sales-orders/import-invoices', methods=['GET', 'POST'])
+def import_invoices():
+    """Upload-only import of Sage's CustomerInvoicesReport.csv (Monthly INV
+    tab source). Full upsert by invoice_number - see
+    services/invoice_importer.py. See docs/specs/
+    sales-order-report-excel-export-2026-07-17.md Decision 4."""
+    if request.method == 'POST':
+        uploaded_file = request.files.get('csv_file')
+
+        if uploaded_file and uploaded_file.filename:
+            upload_dir = current_app.config['UPLOAD_FOLDER']
+            os.makedirs(upload_dir, exist_ok=True)
+            file_path = os.path.join(upload_dir, secure_filename(uploaded_file.filename))
+            uploaded_file.save(file_path)
+
+            try:
+                created_count, updated_count, skipped_count = import_invoices_from_csv(file_path)
+                flash(f"Import complete! {created_count} invoices created, {updated_count} updated, {skipped_count} skipped.", "success")
+                return redirect(url_for('sales_orders.list_orders'))
+            except Exception as e:
+                flash(f"Error importing CSV: {str(e)}", "error")
+                return redirect(url_for('sales_orders.import_invoices'))
+        else:
+            flash("Please choose a CSV file to import.", "error")
+
+    return render_template('sales_orders/import_invoices.html')

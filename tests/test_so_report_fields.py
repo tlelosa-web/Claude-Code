@@ -292,6 +292,62 @@ class TestSaveOrderCarryForward:
         assert reloaded.amount_paid == 350.75
 
 
+class TestUpdateOnHold:
+    """POST /sales-orders/<id>/on-hold -- see Sequencing item 10 of
+    docs/specs/sales-order-report-excel-export-2026-07-17.md."""
+    _c = 0
+
+    def _mk_so(self, session, on_hold=False, on_hold_reason=None):
+        TestUpdateOnHold._c += 1
+        n = TestUpdateOnHold._c
+        so = SalesOrder(so_number=f"ONHOLD-SO-{n:03d}", customer_name="On Hold Test Co",
+                        status="Draft", on_hold=on_hold, on_hold_reason=on_hold_reason,
+                        created_at=datetime.now(timezone.utc))
+        session.add(so)
+        session.commit()
+        return so
+
+    def test_toggle_on_sets_flag_and_reason(self, client, session):
+        so = self._mk_so(session)
+        resp = client.post(f"/sales-orders/{so.id}/on-hold",
+                           data={"on_hold": "on", "on_hold_reason": "Waiting on payment"})
+        assert resp.status_code == 302
+
+        updated = db.session.get(SalesOrder, so.id)
+        assert updated.on_hold is True
+        assert updated.on_hold_reason == "Waiting on payment"
+
+    def test_toggle_off_clears_flag(self, client, session):
+        so = self._mk_so(session, on_hold=True, on_hold_reason="Some reason")
+        resp = client.post(f"/sales-orders/{so.id}/on-hold", data={})
+        assert resp.status_code == 302
+
+        updated = db.session.get(SalesOrder, so.id)
+        assert updated.on_hold is False
+
+    def test_logs_on_hold_and_reason_as_separate_rows_when_both_change(self, client, session):
+        so = self._mk_so(session)
+        client.post(f"/sales-orders/{so.id}/on-hold",
+                   data={"on_hold": "on", "on_hold_reason": "Awaiting stock"})
+
+        rows = StatusChangeLog.query.filter_by(order_id=so.id, order_type='SO').all()
+        field_names = {r.field_name for r in rows}
+        assert field_names == {'on_hold', 'on_hold_reason'}
+
+    def test_no_change_writes_no_log_rows(self, client, session):
+        so = self._mk_so(session, on_hold=True, on_hold_reason="Steady state")
+        before_count = StatusChangeLog.query.count()
+
+        client.post(f"/sales-orders/{so.id}/on-hold",
+                   data={"on_hold": "on", "on_hold_reason": "Steady state"})
+
+        assert StatusChangeLog.query.count() == before_count
+
+    def test_display_report_status_reflects_on_hold_overlay(self, session):
+        so = self._mk_so(session, on_hold=True)
+        assert so.display_report_status == "Loaded — On Hold"
+
+
 class TestPaymentStatusDataMigration:
     """Exercises scripts/migrate_payment_status_values.py against the
     shared in-memory fixture DB -- never instance/sops.db."""

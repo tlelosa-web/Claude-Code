@@ -636,6 +636,35 @@ def update_report_notes(order_id):
     return redirect(url_for('sales_orders.view_order', order_id=order_id))
 
 
+@sales_orders_bp.route('/sales-orders/<int:order_id>/on-hold', methods=['POST'])
+def update_on_hold(order_id):
+    """Toggle the manual On Hold flag (SO-level only) and its optional
+    reason. Overlaid on the computed report_status via
+    SalesOrder.display_report_status -- see docs/specs/
+    sales-order-report-excel-export-2026-07-17.md Decision 1.
+
+    on_hold and on_hold_reason are logged as separate StatusChangeLog rows
+    (each only when it actually changed) rather than one combined row --
+    reads more sensibly in the eventual Change Log report, since a reason
+    edit with no flag flip (or vice versa) is still one real, distinct
+    change worth its own row."""
+    so = SalesOrder.query.get_or_404(order_id)
+    new_on_hold = request.form.get('on_hold') == 'on'
+    new_reason = request.form.get('on_hold_reason', '').strip() or None
+
+    if new_on_hold != so.on_hold:
+        log_change('SO', so.id, so.so_number, 'on_hold', so.on_hold, new_on_hold)
+    if new_reason != so.on_hold_reason:
+        log_change('SO', so.id, so.so_number, 'on_hold_reason', so.on_hold_reason, new_reason)
+
+    so.on_hold = new_on_hold
+    so.on_hold_reason = new_reason
+    db.session.commit()
+
+    flash(f"On Hold status updated for {so.so_number}.", "success")
+    return redirect(url_for('sales_orders.view_order', order_id=order_id))
+
+
 @sales_orders_bp.route('/sales-orders/<int:order_id>/cancel', methods=['POST'])
 def cancel_order(order_id):
     """Cancel a Sales Order."""

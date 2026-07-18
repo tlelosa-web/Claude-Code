@@ -82,6 +82,23 @@
                 <tr><td class="detail-label">Balance Due</td><td class="detail-value">{{ currency_symbol }} {{ '%.2f'|format(so.balance_due) }}</td></tr>
                 {% endif %}
                 <tr><td class="detail-label">Status</td><td class="detail-value"><span class="badge badge-{{ so.status.lower() }}">{{ so.status }}</span></td></tr>
+                <tr><td class="detail-label">Report Status</td><td class="detail-value">
+                    {% if so.display_report_status %}
+                    <span class="badge badge-{{ so.report_status.lower().replace('-', '') }}">{{ so.display_report_status }}</span>
+                    {% else %}
+                    -
+                    {% endif %}
+                </td></tr>
+                <tr><td class="detail-label">On Hold</td><td class="detail-value">
+                    <form method="POST" action="{{ url_for('sales_orders.update_on_hold', order_id=so.id) }}" style="display: flex; gap: 8px; align-items: flex-start;">
+                        <label style="display: flex; align-items: center; gap: 4px; font-size: 0.85rem;">
+                            <input type="checkbox" name="on_hold" {{ 'checked' if so.on_hold else '' }}>
+                            On Hold
+                        </label>
+                        <textarea name="on_hold_reason" aria-label="On Hold Reason" class="form-input" rows="2" placeholder="Reason (optional)" style="width: 100%; padding: 4px 8px; font-size: 0.85rem;">{{ so.on_hold_reason or '' }}</textarea>
+                        <button type="submit" class="btn btn-secondary" style="padding: 4px 10px; font-size: 0.75rem;">Update</button>
+                    </form>
+                </td></tr>
                 <tr><td class="detail-label">Payment Status</td><td class="detail-value">
                     <form method="POST" action="{{ url_for('sales_orders.update_payment_status', order_id=so.id) }}" style="display: flex; gap: 8px; align-items: center;">
                         <select name="payment_status" class="form-input" style="width: auto; padding: 4px 8px; font-size: 0.85rem;" onchange="this.form.submit()">

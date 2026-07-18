@@ -251,6 +251,47 @@ class TestUpdateReportNotes:
         assert updated.report_notes is None
 
 
+class TestSaveOrderCarryForward:
+    """POST /sales-orders/save overwrite path must carry forward
+    report_notes/on_hold/on_hold_reason/amount_paid onto the replacement
+    SalesOrder row -- see Sequencing item 9 of docs/specs/
+    sales-order-report-excel-export-2026-07-17.md Decision 3. The overwrite
+    path only ever fires when no WO/STO is linked (guarded in save_order()),
+    so no such fixtures are needed here."""
+    _c = 0
+
+    def _mk_so(self, session):
+        TestSaveOrderCarryForward._c += 1
+        n = TestSaveOrderCarryForward._c
+        so = SalesOrder(so_number=f"CARRY-SO-{n:03d}", customer_name="Carry Forward Test Co",
+                        status="Draft", report_notes="Manual note kept between uploads",
+                        on_hold=True, on_hold_reason="Awaiting customer confirmation",
+                        payment_status="Cash Sale - Partial", amount_paid=350.75,
+                        created_at=datetime.now(timezone.utc))
+        session.add(so)
+        session.commit()
+        return so
+
+    def test_overwrite_preserves_all_four_carry_forward_fields(self, client, session):
+        so = self._mk_so(session)
+        so_number = so.so_number
+
+        resp = client.post('/sales-orders/save', data={
+            'so_number': so_number,
+            'customer_name': 'Re-uploaded Customer Name',
+            'line_items_json': '[]',
+        })
+        assert resp.status_code == 302
+
+        reloaded = SalesOrder.query.filter_by(so_number=so_number).first()
+        assert reloaded is not None
+        assert reloaded.customer_name == 'Re-uploaded Customer Name'
+        assert reloaded.report_notes == "Manual note kept between uploads"
+        assert reloaded.on_hold is True
+        assert reloaded.on_hold_reason == "Awaiting customer confirmation"
+        assert reloaded.amount_paid == 350.75
+
+
 class TestPaymentStatusDataMigration:
     """Exercises scripts/migrate_payment_status_values.py against the
     shared in-memory fixture DB -- never instance/sops.db."""

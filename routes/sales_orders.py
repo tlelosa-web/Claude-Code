@@ -106,6 +106,7 @@ def save_order():
     
     # Check if overwriting existing
     existing = SalesOrder.query.filter_by(so_number=so_number).first()
+    carry_forward = None
     if existing:
         # Block overwrite if a Works Order or Stock Order is already linked —
         # deleting the SO would orphan them (no cascade on those relationships).
@@ -119,6 +120,16 @@ def save_order():
                 "error"
             )
             return redirect(url_for('sales_orders.view_order', order_id=existing.id))
+        # Manual/report-only fields have no competing automated writer, so
+        # they must survive an overwrite rather than silently reset to
+        # column defaults — see Decision 3 of docs/specs/
+        # sales-order-report-excel-export-2026-07-17.md.
+        carry_forward = {
+            'report_notes': existing.report_notes,
+            'on_hold': existing.on_hold,
+            'on_hold_reason': existing.on_hold_reason,
+            'amount_paid': existing.amount_paid,
+        }
         # Safe to delete — only SOLineItems are linked (cascade handles them)
         db.session.delete(existing)
         db.session.flush()
@@ -149,6 +160,11 @@ def save_order():
             payment_status=request.form.get('payment_status', 'Account - Pending').strip() or 'Account - Pending',
             created_at=datetime.now()
         )
+        if carry_forward:
+            so.report_notes = carry_forward['report_notes']
+            so.on_hold = carry_forward['on_hold']
+            so.on_hold_reason = carry_forward['on_hold_reason']
+            so.amount_paid = carry_forward['amount_paid']
         db.session.add(so)
         db.session.flush()  # Get so.id
         

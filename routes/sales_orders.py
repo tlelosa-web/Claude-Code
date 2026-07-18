@@ -581,7 +581,14 @@ def reopen_order(order_id):
 
 @sales_orders_bp.route('/sales-orders/<int:order_id>/payment-status', methods=['POST'])
 def update_payment_status(order_id):
-    """Set the manually-tracked Payment Status (sourced from Sage/accounting, not the SO PDF)."""
+    """Set the manually-tracked Payment Status (sourced from Sage/accounting, not the SO PDF).
+
+    payment_status and amount_paid are logged as separate StatusChangeLog
+    rows (each only when it actually changed) -- amount_paid is only ever
+    submitted alongside a 'Cash Sale - Partial' payment_status, but the two
+    are still independent edits (e.g. re-submitting the same partial amount
+    with a status that was already 'Cash Sale - Partial' shouldn't log a
+    payment_status row), matching the on_hold/on_hold_reason convention."""
     so = SalesOrder.query.get_or_404(order_id)
     new_status = request.form.get('payment_status', '').strip()
 
@@ -589,15 +596,22 @@ def update_payment_status(order_id):
         flash(f"Invalid payment status: {new_status}", "error")
         return redirect(url_for('sales_orders.view_order', order_id=order_id))
 
+    new_amount_paid = so.amount_paid
     if new_status == 'Cash Sale - Partial':
         amount_raw = request.form.get('amount_paid', '').strip()
         try:
-            so.amount_paid = float(amount_raw) if amount_raw else (so.amount_paid or 0.0)
+            new_amount_paid = float(amount_raw) if amount_raw else (so.amount_paid or 0.0)
         except ValueError:
             flash("Amount Paid must be a number.", "error")
             return redirect(url_for('sales_orders.view_order', order_id=order_id))
 
+    if new_status != so.payment_status:
+        log_change('SO', so.id, so.so_number, 'payment_status', so.payment_status, new_status)
+    if new_amount_paid != so.amount_paid:
+        log_change('SO', so.id, so.so_number, 'amount_paid', so.amount_paid, new_amount_paid)
+
     so.payment_status = new_status
+    so.amount_paid = new_amount_paid
     db.session.commit()
 
     flash(f"Payment status for {so.so_number} set to {new_status}.", "success")
@@ -619,6 +633,9 @@ def update_delivery_date(order_id):
     except ValueError:
         flash(f"Invalid Delivery Date: {new_date_str}", "error")
         return redirect(url_for('sales_orders.view_order', order_id=order_id))
+
+    if new_date != so.delivery_date:
+        log_change('SO', so.id, so.so_number, 'delivery_date', so.delivery_date, new_date)
 
     so.delivery_date = new_date
     db.session.commit()

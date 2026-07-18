@@ -134,6 +134,55 @@ class TestPaymentStatus:
         assert updated.payment_status == "Account - Up to Date"
         assert updated.amount_paid == 42.0
 
+    def test_update_payment_status_logs_change_only_when_value_differs(self, client, session):
+        so = self._mk_so(session)
+        so.payment_status = "Account - Pending"
+        session.commit()
+        before_count = StatusChangeLog.query.count()
+
+        # Same value submitted -- no log row, no-op
+        client.post(f"/sales-orders/{so.id}/payment-status", data={"payment_status": "Account - Pending"})
+        assert StatusChangeLog.query.count() == before_count
+
+        # Different value -- exactly one payment_status log row
+        client.post(f"/sales-orders/{so.id}/payment-status", data={"payment_status": "Cash Sale - Paid"})
+        rows = StatusChangeLog.query.filter_by(order_id=so.id, order_type='SO', field_name='payment_status').all()
+        assert len(rows) == 1
+        assert rows[0].old_value == "Account - Pending"
+        assert rows[0].new_value == "Cash Sale - Paid"
+
+    def test_update_payment_status_cash_sale_partial_logs_both_fields_as_separate_rows(self, client, session):
+        so = self._mk_so(session)
+        so.payment_status = "Account - Pending"
+        so.amount_paid = 0.0
+        session.commit()
+
+        client.post(f"/sales-orders/{so.id}/payment-status",
+                   data={"payment_status": "Cash Sale - Partial", "amount_paid": "250.50"})
+
+        rows = StatusChangeLog.query.filter_by(order_id=so.id, order_type='SO').all()
+        field_names = {r.field_name for r in rows}
+        assert field_names == {'payment_status', 'amount_paid'}
+
+        # old_value/new_value are Text columns -- SQLite coerces the numeric
+        # values to their string form on storage (see status_change_log.py
+        # module docstring: "stored as-is ... whatever str()-able value").
+        amount_row = StatusChangeLog.query.filter_by(order_id=so.id, order_type='SO', field_name='amount_paid').one()
+        assert amount_row.old_value == str(0.0)
+        assert amount_row.new_value == str(250.50)
+
+    def test_update_payment_status_same_partial_amount_logs_no_amount_paid_row(self, client, session):
+        so = self._mk_so(session)
+        so.payment_status = "Cash Sale - Partial"
+        so.amount_paid = 250.50
+        session.commit()
+        before_count = StatusChangeLog.query.count()
+
+        client.post(f"/sales-orders/{so.id}/payment-status",
+                   data={"payment_status": "Cash Sale - Partial", "amount_paid": "250.50"})
+
+        assert StatusChangeLog.query.count() == before_count
+
 
 class TestStockOrderJobNumbers:
     _c = 0

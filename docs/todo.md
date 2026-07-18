@@ -614,3 +614,97 @@ All items below must be green before delivery:
 - Blockers: None.
 - Committed: `112e321`. Spec committed together with the implementation
   (single commit, per this batch's scope).
+
+## Batch 34 — Native Sales Order Report Excel export (2026-07-17, revised twice — final pass complete)
+
+**Numbering note:** originally requested as "Batch 33" by the hub-level
+task brief, on the (reasonable, but incorrect at time of writing) assumption
+that Batch 32 was the latest logged entry. Batch 33 (AMU + Min/Max, above)
+had already shipped and been logged before this spec was written — caught
+during the Planner's required pre-check of this file's tail, per the brief's
+own instruction to verify before numbering. Corrected to Batch 34 here and
+in `docs/specs/sales-order-report-excel-export-2026-07-17.md`.
+
+- [x] Spec written (plan-first rule — schema change + 15+ files, mandatory):
+      `docs/specs/sales-order-report-excel-export-2026-07-17.md`. Goal:
+      replicate the standalone `1. Daily Sales Order Files` pipeline's Excel
+      report as a native, on-demand SOPS export generated from SOPS's own
+      `SalesOrder`/`SOLineItem`/`WorksOrder` data — no dependency on Sage
+      CSVs or the colleague-owned OneDrive Contract Register/Released Jobs
+      folders. Standalone pipeline keeps running in parallel; not
+      decommissioned by this batch.
+- [x] **Revision 1 (same day):** Tebello ran a module-by-module
+      questionnaire on the status design after the original draft's
+      Decision 1 (manual `report_status` dropdown) and Decision 2 (single
+      current-state tab, no history) were flagged as needing confirmation.
+      Both were replaced: `report_status` became a **computed property**
+      (`Loaded`/`Released`/`Ready-Dispatch`, derived from real WO/STO
+      existence/completion, no stored column, no dropdown) plus a new
+      genuinely manual `SalesOrder.on_hold`/`on_hold_reason` pair as the
+      only manual field in the whole status system; `WorksOrder.status` and
+      `StockOrder.status` both gained a new `'Released'` value (fires on
+      print), no schema change needed. An event-driven `StatusChangeLog`
+      + filterable Change Log report entered scope (was previously
+      deferred). Left 4 open questions for a final round.
+- [x] **Revision 2 (same day, final pass) — all 4 open questions answered,
+      spec is now ready for dispatch, no open questions remain:**
+  1. **`Ready-Dispatch` switched from "any complete" to "all complete."**
+     `report_status`'s condition now requires every linked WO/STO to be
+     terminal (`Complete`/`Cancelled`) **and** at least one actually
+     `Complete` — avoids a vacuous-truth bug where an all-`Cancelled` SO
+     would otherwise read as ready to dispatch. Accepted consequence (per
+     Tebello, not being solved): for simple single-order SOs,
+     `Ready-Dispatch` now resolves in the same commit as the SO's own
+     auto-close to `Closed`, since both share the same
+     `can_close_sales_order()`-style "all terminal" predicate.
+  2. **WO `In Progress` confirmed to stay unwired** — no "Start Work"
+     action added, matches the original recommendation.
+  3. **STO Edit-from-`Released` confirmed** — the 6-site template ripple in
+     `templates/stock_orders/detail.html` (including the Edit-link gate at
+     line 16) is now a requirement, not a flagged recommendation.
+  4. **Total-override reinvestigated and dropped entirely.** Tebello
+     clarified the old pipeline's 2-job Total correction (FM4047/FM4164)
+     was **not** a Sage data bug — those jobs were partially paid, and the
+     manual edit was netting the amount already paid off the gross total.
+     Verified against the real `models.py`: `SalesOrder.balance_due`
+     (`total_incl - amount_paid`, Batch 24) already computes exactly this.
+     **Decision: no `total_override`/`display_total` field at all** — the
+     export's `Total` column and summary totals now source `balance_due`
+     directly, a strict generalization of `total_incl` for every SO outside
+     the partial-payment case. Ripple: the SO-fields migration drops from 4
+     columns to 3 (`report_notes`/`on_hold`/`on_hold_reason`); no Total
+     Override UI; the `StatusChangeLog` tracked-field list swaps
+     `total_override`/`display_total` for `amount_paid`. **Deliberate small
+     scope expansion, called out explicitly:** the pre-existing
+     `amount_paid` reset-on-overwrite gap in `save_order()` (previously
+     flagged as out-of-scope) is pulled into this batch's carry-forward fix
+     — left deferred, it would have silently undermined this batch's own
+     export-accuracy goal.
+  5. **Export default `?view=open` confirmed**, not just recommended —
+     matches Batch 16/21's list-page convention.
+- [ ] **Not yet dispatched to an Executor.** Spec status is now "Ready for
+      dispatch" — no open design questions remain from either questionnaire
+      round. Next actual step is Orchestrator dispatch per the spec's
+      24-step Sequencing section.
+- Planned task sequence (24 atomic steps, see spec's "Sequencing" section
+  for full file-level detail, final version): `models.py` (Invoice +
+  StatusChangeLog + SalesOrder `on_hold`/`on_hold_reason` + computed
+  `report_status`/`display_report_status`, no `total_override`) → 3
+  migration scripts (SO fields — now 3 columns, not 4 — Invoice table,
+  StatusChangeLog table; none to be run against `instance/sops.db` without
+  Tebello's go-ahead, same standing convention as Batches 24/26/32/33) →
+  `services/status_change_log.py` → invoice importer → SO detail-page
+  routes/templates (Notes, On Hold — no Total Override UI) →
+  `save_order()` carry-forward fix (`report_notes`/`on_hold`/
+  `on_hold_reason`/`amount_paid`) → `build_bom()` instrumentation →
+  `order_filters.py` (`'Released'` added to `WO_ACTIVE`/`STO_ACTIVE`) →
+  WO/STO route + template ripple (Released-flip on print, `pick_lines()`
+  guard updates, the confirmed 10-site template-conditional fix incl. STO
+  Edit-from-Released, `.badge-released` CSS) → payment-status/
+  delivery-date/amount_paid logging hooks → export workbook builder
+  (`Total` = `balance_due`) + route (`?view=open` default) + UI → Change
+  Log report route/template/nav → full suite green.
+- Next task: dispatch to an Executor — spec is final, no Tebello
+  confirmation blockers remain.
+- Blockers: None. (Previously: awaiting Tebello's spec review — resolved
+  by the two questionnaire rounds above.)

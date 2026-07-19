@@ -114,11 +114,39 @@ class TestCallOllamaUnreachable:
         with pytest.raises(OllamaUnreachableError, match="not reachable"):
             call_ollama("test prompt")
 
-    @patch("src.research.ollama_client.requests.post")
-    def test_read_timeout_raises_unreachable(self, mock_post):
-        mock_post.side_effect = requests.exceptions.Timeout("timed out")
 
-        with pytest.raises(OllamaUnreachableError, match="not reachable"):
+class TestCallOllamaReadTimeout:
+    """A read timeout means the daemon answered the connection and is
+    generating — just slowly (cold-loading qwen3:8b, large prompt). This
+    must NOT be conflated with the connection-refused/connect-timeout
+    "daemon isn't running" case (see ADR-004)."""
+
+    @patch("src.research.ollama_client.requests.post")
+    def test_read_timeout_does_not_raise_unreachable(self, mock_post):
+        mock_post.side_effect = requests.exceptions.ReadTimeout("timed out")
+
+        with pytest.raises(OllamaError) as exc_info:
+            call_ollama("test prompt")
+
+        assert not isinstance(exc_info.value, OllamaUnreachableError)
+
+    @patch("src.research.ollama_client.requests.post")
+    def test_read_timeout_message_does_not_claim_daemon_not_running(self, mock_post):
+        mock_post.side_effect = requests.exceptions.ReadTimeout("timed out")
+
+        with pytest.raises(OllamaError) as exc_info:
+            call_ollama("test prompt")
+
+        assert "is it running" not in str(exc_info.value)
+
+    @patch("src.research.ollama_client.requests.post")
+    def test_read_timeout_message_explains_slow_or_cold_loading(self, mock_post):
+        mock_post.side_effect = requests.exceptions.ReadTimeout("timed out")
+
+        with pytest.raises(OllamaError, match="timed out generating"):
+            call_ollama("test prompt")
+
+        with pytest.raises(OllamaError, match="cold-loading"):
             call_ollama("test prompt")
 
 

@@ -53,6 +53,15 @@ def call_ollama(
             json=payload,
             timeout=(CONNECT_TIMEOUT, READ_TIMEOUT),
         )
+    except requests.exceptions.ReadTimeout as e:
+        # The connection succeeded — the daemon is running and responding —
+        # it just didn't finish generating within READ_TIMEOUT. This is a
+        # different failure mode from "Ollama isn't running" and must not
+        # share that message (see ADR-004).
+        raise OllamaError(
+            f"Ollama timed out generating a response after {READ_TIMEOUT}s — "
+            "the model may be slow to respond or still cold-loading."
+        ) from e
     except (requests.exceptions.ConnectionError, requests.exceptions.Timeout) as e:
         raise OllamaUnreachableError(
             f"Ollama not reachable at {base_url} — is it running? "

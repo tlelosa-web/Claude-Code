@@ -37,3 +37,7 @@ build/
 # Parallel executor sandboxes (git worktree add ...) — never tracked as regular files
 .claude/worktrees/
 .Codex/worktrees/
+
+# Reviewer-agent scratch memory — regenerated per session, not project state
+.claude/agent-memory/
+**/.claude/agent-memory/

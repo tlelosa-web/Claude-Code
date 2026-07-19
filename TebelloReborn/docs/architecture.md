@@ -45,11 +45,11 @@ Responsibilities:
 **Module:** `src/matching/`
 **Input:** `CandidateProfile` + one `Vacancy`
 **Output:** match score, strengths, weaknesses, recommendation → `Vacancy.status: scored`
-**Network:** Required — OpenRouter (Claude)
+**Network:** Required — local Ollama daemon
 
 Responsibilities:
 - Build a comparison prompt (profile skills/experience/titles vs. vacancy requirements).
-- Call Claude via `shared/openrouter_client.py` (haiku-tier for cost-efficient scoring, per the inference routing table in `CLAUDE.md`).
+- Call a local Ollama daemon (`qwen3:8b`, native `POST /api/generate`) via `matching/ollama_client.py` — no API key, a single fixed local model with no model/effort-tier routing, per ADR-003 (`docs/decisions/ADR-003-inference-provider-split.md`).
 - Parse and persist score + rationale.
 
 ### Stage 4: Document Generation
@@ -57,10 +57,10 @@ Responsibilities:
 **Module:** `src/doc_gen/`
 **Input:** `CandidateProfile` + scored `Vacancy`
 **Output:** tailored CV text + cover letter text + PDF exports → `Vacancy.status: asset_ready`
-**Network:** Required — OpenRouter (Claude)
+**Network:** Required — headless Claude Code (local subprocess)
 
 Responsibilities:
-- Tailor CV emphasis (which experience/skills to foreground) per vacancy, via Claude — sonnet-tier, this is real content generation.
+- Tailor CV emphasis (which experience/skills to foreground) per vacancy, via a headless Claude Code subprocess (`claude -p ... --allowedTools "Read,Write" --output-format json`) run under Tebello's own Claude subscription — $0 marginal cost, real content generation, per ADR-003 (`docs/decisions/ADR-003-inference-provider-split.md`).
 - Generate a personalized cover letter per vacancy.
 - Export both to PDF via `fpdf2` (reusing the working logic pattern from the archived `generate_cv_pdf.py` and `ai-outreach-agency`'s `asset_gen/pdf_export.py`).
 
@@ -109,13 +109,13 @@ Apify (Indeed) ──┐                                  │
 Apify (LinkedIn)─┼──▶ Vacancy Fetch ──▶ SQLite (Vacancy, status=new)
                  │                                  │
                  ▼                                  ▼
-                                    AI Matching (OpenRouter/Claude)
+                                    AI Matching (Local Ollama)
                                                      │
                                                      ▼
                                     SQLite (Vacancy, status=scored)
                                                      │
                                                      ▼
-                                    Document Gen (OpenRouter/Claude + fpdf2)
+                                    Document Gen (Headless Claude Code + fpdf2)
                                                      │
                                                      ▼
                                     SQLite (Vacancy, status=asset_ready) + exports/*.pdf
@@ -132,12 +132,13 @@ Apify (LinkedIn)─┼──▶ Vacancy Fetch ──▶ SQLite (Vacancy, status=
 
 ## External Integrations
 
-| Service    | Purpose                       | Access method                          | Module              |
-|------------|--------------------------------|------------------------------------------|----------------------|
-| Apify      | Job vacancy scraping           | Indeed + LinkedIn Jobs actors (paid, cheap: LinkedIn ~$0.4/1,000 jobs) | `vacancy_search/` |
-| OpenRouter | AI matching + document generation | `anthropic/claude-*` via chat completions API | `matching/`, `doc_gen/` |
+| Service              | Purpose                | Access method                                                     | Module      |
+|----------------------|-------------------------|--------------------------------------------------------------------|-------------|
+| Apify                | Job vacancy scraping   | Indeed + LinkedIn Jobs actors (paid, cheap: LinkedIn ~$0.4/1,000 jobs) | `vacancy_search/` |
+| Local Ollama         | AI matching            | Native `POST /api/generate` to a local daemon, no API key (`qwen3:8b`) | `matching/` |
+| Headless Claude Code | Document generation     | Local `claude -p ...` subprocess under Tebello's own Claude subscription, no API key | `doc_gen/`  |
 
-Both accounts are shared with `ai-outreach-agency` (same Apify and OpenRouter accounts) — `APIFY_API_KEY` is already funded and working; `OPENROUTER_API_KEY` is currently out of credits (cross-project blocker, not fixed by this build).
+`APIFY_API_KEY` is shared with `ai-outreach-agency` (same account), already funded and working. Ollama and headless Claude Code both run against local resources (a local daemon, a local authenticated CLI) rather than a metered account — **no OpenRouter dependency exists in this project as of ADR-003** (`docs/decisions/ADR-003-inference-provider-split.md`), so there is no shared-credit blocker here anymore.
 
 ---
 

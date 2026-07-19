@@ -20,7 +20,7 @@ Investigate failures systematically: reproduce, isolate, find root cause, propos
 ## Workflow
 
 1. Reproduce the failure (run the failing test or CLI command, capture the exact error).
-2. Isolate: is it in this project's code, a shared/copied pattern from `ai-outreach-agency` that behaves differently here, or an external client (Apify/OpenRouter) response-shape mismatch?
+2. Isolate: is it in this project's code, a shared/copied pattern from `ai-outreach-agency` that behaves differently here, or an external client (Apify/local Ollama/headless Claude Code) response-shape mismatch?
 3. Identify root cause — check known gotchas first (e.g. `ai-outreach-agency`'s `db_path` threading bug, its unsaved-approval-decision bug — verify this project didn't inherit either).
 4. Propose a minimal fix; hand off to `executor` to implement, or implement directly if the fix is a one-line, obvious correction.
 

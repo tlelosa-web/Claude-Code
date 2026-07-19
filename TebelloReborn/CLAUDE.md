@@ -12,9 +12,9 @@
 Project:     TebelloReborn (Career Engine)
 Type:        Semi-automated job application system (Python CLI, offline-capable core)
 Owner:       Tebello Lelosa
-Stack:       Python 3.11+ · SQLite · Claude API via OpenRouter · Apify (job-board scraping) · fpdf2
+Stack:       Python 3.11+ · SQLite · local Ollama (qwen3:8b) · headless Claude Code · Apify (job-board scraping) · fpdf2
 Deployment:  Local Windows desktop, offline-capable core logic
-Inference:   OpenRouter → claude-sonnet-5 @ medium (default) | claude-opus-4.8 (escalation) | claude-haiku-4.5 (scoring)
+Inference:   Local Ollama (`qwen3:8b`, fixed model) — AI Matching | Headless Claude Code (Tebello's own subscription) — Document Generation | no OpenRouter, no model/effort routing (ADR-003)
 ```
 
 Continuously finds job vacancies matching Tebello's profile, scores them, generates a tailored CV and cover letter per vacancy, and stops for a mandatory human approval gate before anything leaves the system. **No auto-submission in this build** — that's a deferred future phase.
@@ -25,7 +25,7 @@ Core docs:
 
 - `docs/todo.md`: live task queue.
 - `docs/architecture.md`: pipeline design and data flow.
-- `docs/api-patterns.md`: API integration patterns (OpenRouter, Apify) + rate limiting.
+- `docs/api-patterns.md`: API integration patterns (local Ollama, headless Claude Code, Apify) + rate limiting.
 - `docs/session-log.md`: chronological session memory.
 - `docs/decisions/`: architecture decision records.
 
@@ -116,21 +116,16 @@ Agents live in `.claude/agents/`. Invoke by name or let Claude delegate.
 
 ---
 
-## 🧠 Inference Routing (OpenRouter) — v3.1
+## 🧠 Inference Routing (Local Ollama + Headless Claude Code) — v3.1
 
-All LLM calls go through OpenRouter, same convention as `ai-outreach-agency`. **`claude-sonnet-5` at medium effort is the universal default.**
+**As of ADR-003 (2026-07-19), TebelloReborn has no OpenRouter call sites at all** — this isn't a partial migration, OpenRouter is dropped entirely from the project's inference stack. The two inference-bearing pipeline stages each route to a fixed local backend, chosen by workload shape (mirrors the *pattern* — not the code — of `ai-outreach-agency`'s own ADR-004 / ADR-003 split):
 
-| Task class                                    | Model                        | Effort  | Why                                           |
-|------------------------------------------------|------------------------------|---------|------------------------------------------------|
-| **Default** — all standard work                | `anthropic/claude-sonnet-5`  | medium  | Best quality/cost balance; universal baseline  |
-| Vacancy match scoring, quick classification    | `anthropic/claude-haiku-4.5` | low     | Fast and cheap for a simple scoring pass       |
-| CV tailoring, cover letter generation          | `anthropic/claude-sonnet-5`  | medium  | Content generation, needs real quality         |
-| **Escalation only** (see triggers below)       | `anthropic/claude-opus-4.8`  | high    | Deep reasoning for genuinely hard problems     |
-| Reviewer agent (permanent)                     | `anthropic/claude-opus-4.8`  | high    | Quality/security gate stays on Opus, always    |
+- **AI Matching** (`matching/scorer.py`) calls a **local Ollama daemon** (`qwen3:8b`, native `POST /api/generate`, no API key) via `matching/ollama_client.py`. This is a single fixed model — there is no "effort tier" or model-routing concept here, the same shape as `ai-outreach-agency`'s Ollama-routed `research` stage.
+- **Document Generation** (`doc_gen/cv_generator.py` + `cover_letter_generator.py`) shells out to **headless Claude Code** (`claude -p ... --allowedTools "Read,Write" --output-format json`) as a local subprocess under Tebello's own Claude subscription — $0 marginal cost, no API key. Also a fixed invocation, not a model/effort-routing table.
 
-**Opus escalation is evidence-based** — same triggers as `ai-outreach-agency`: two failed executor attempts, deep architectural reasoning, or a security review (credential handling, any future submission/data-export path). Do not reach for Opus on a hunch.
+Neither backend has an "Opus escalation" concept — there is no OpenRouter model tier left to escalate within, and no per-token cost/pricing-deadline concern (both run at flat cost against local resources). Full reasoning: `docs/decisions/ADR-003-inference-provider-split.md`.
 
-> ⏳ Same pricing deadline as `ai-outreach-agency`: Sonnet 5 introductory pricing runs through **31 Aug 2026**. `OPENROUTER_API_KEY` is currently out of credits (shared blocker across both projects) — top up before any real batch run.
+> This section covers **pipeline inference only** (AI Matching, Document Generation). It does not touch DCOE agent-routing — the `.claude/agents/` roster's own model assignments for planner/architect/executor/etc. are a separate concern from pipeline inference and are unaffected by this ADR.
 
 ---
 
@@ -139,8 +134,8 @@ All LLM calls go through OpenRouter, same convention as `ai-outreach-agency`. **
 Core pipeline logic (profile import, schema validation, approval gate, local data transforms) must work fully offline. Only these stages require network:
 
 - Vacancy fetch (Apify — Indeed + LinkedIn actors)
-- AI matching / scoring (OpenRouter)
-- Document generation (OpenRouter)
+- AI matching / scoring (local Ollama)
+- Document generation (headless Claude Code)
 
 Design modules so offline stages never import or depend on network-requiring code. An `OFFLINE_MODE` fixture (identical convention to `ai-outreach-agency`) exists across both external clients and must keep the full test suite green without network access.
 
@@ -151,8 +146,8 @@ Design modules so offline stages never import or depend on network-requiring cod
 ```
 1. Profile Import   → data/profile_seed.json → SQLite             (one-time / updated as CV evolves)
 2. Vacancy Fetch     → Apify (Indeed + LinkedIn) → SQLite          (status: new)
-3. AI Matching       → Claude scores profile vs vacancy            (status: scored)
-4. Document Gen      → Claude generates tailored CV + cover letter (status: asset_ready)
+3. AI Matching       → Local Ollama (qwen3:8b) scores profile vs vacancy      (status: scored)
+4. Document Gen      → Headless Claude Code generates tailored CV + cover letter (status: asset_ready)
 5. Human Review      → approve / reject / edit                     (status: approved | rejected)
 ```
 
@@ -169,14 +164,17 @@ Vacancy status state machine mirrors the lead lifecycle pattern in `ai-outreach-
 
 ## 🌐 External Client Patterns
 
-Both network clients share the token-bucket rate limiter pattern from `ai-outreach-agency/src/shared/rate_limiter.py` (copied in, not re-invented):
+The rate-limited network clients share the token-bucket rate limiter pattern from `ai-outreach-agency/src/shared/rate_limiter.py` (copied in, not re-invented):
 
 | Client                              | Source                         | Default rate | Env override                  |
 |--------------------------------------|---------------------------------|---------------|--------------------------------|
-| `shared/openrouter_client.py`        | Copied/adapted from ai-outreach-agency | 60 / min | `OPENROUTER_RATE_LIMIT_PER_MIN` |
+| `matching/ollama_client.py`          | Mirrors `research/ollama_client.py` pattern (ADR-003) | 120 / min | `OLLAMA_RATE_LIMIT_PER_MIN` |
 | `vacancy_search/apify_client.py`     | Mirrors `research/apify_client.py` pattern | 30 / min | `APIFY_RATE_LIMIT_PER_MIN`      |
 
-- **OpenRouter**: real inference for matching (`matching/scorer.py`) and document generation (`doc_gen/`). Watch for **HTTP 402** (out of credits) — same account/blocker as `ai-outreach-agency`.
+The `doc_gen/` runner is **not** in this table — it is a local subprocess under a flat-cost subscription, not a rate-limited HTTP client, so no token-bucket applies to it (same distinction `ai-outreach-agency` draws between its handoff runner and its rate-limited clients).
+
+- **Local Ollama**: real inference for matching (`matching/scorer.py`) via `matching/ollama_client.py`, native `POST {OLLAMA_BASE_URL}/api/generate` against `qwen3:8b`, no API key (local daemon). Fails loudly — `OllamaUnreachableError` on connection-refused/connect-timeout ("is it running?"), `OllamaError` on read-timeout ("model may be slow/cold-loading") — distinct exception types for distinct causes, never collapsed into one message. No silent fallback (and after ADR-003 there is no OpenRouter left to fall back to anyway). See ADR-003 and `docs/api-patterns.md`.
+- **Headless Claude Code**: real document generation (`doc_gen/cv_generator.py` + `cover_letter_generator.py`) via a `src/doc_gen/` runner that shells out to `claude -p ... --allowedTools "Read,Write" --output-format json` as a local subprocess, under Tebello's own Claude subscription ($0 marginal cost, no API key). This is a **local runtime dependency, not an HTTP client** — the `claude` binary must be on `PATH` and authenticated on whatever machine runs it, which is not pip-installable or CI-verifiable and surfaces as a runtime error, not an import-time failure. Failures are data, not exceptions: the runner returns `throttled`/`error` as result fields so a throttle mid-`run-all` doesn't crash the batch; only a genuinely unexpected condition (`claude` missing from `PATH`) propagates. See ADR-003.
 - **Apify**: two dedicated job-board actors (Indeed scraper, LinkedIn Jobs scraper) confirmed available on the Apify Store. **PNet and Careers24 have no dedicated actor** — deferred; could later use the generic `website-content-crawler` actor (same one `ai-outreach-agency` already uses) plus LLM-based extraction. `OFFLINE_MODE` fixture returns 2–3 fake vacancies, matching the `apify_client.FIXTURE` convention.
 
 See @docs/api-patterns.md for full detail.
@@ -189,11 +187,14 @@ See @docs/api-patterns.md for full detail.
 
 | Var                                | Purpose                                    |
 |-------------------------------------|---------------------------------------------|
-| `OPENROUTER_API_KEY`                | OpenRouter inference (shared account with ai-outreach-agency) |
+| `OLLAMA_BASE_URL`                   | Local Ollama daemon URL (default `http://localhost:11434`) |
+| `OLLAMA_MODEL`                      | Local Ollama model for AI Matching (default `qwen3:8b`) |
 | `APIFY_API_KEY`                     | Apify scraping (shared account — already funded/working)      |
 | `DB_PATH`                           | Source-of-truth SQLite (default `career.db`) |
 | `OFFLINE_MODE`                      | Force offline stubs for all network stages   |
 | `*_RATE_LIMIT_PER_MIN`              | Per-client rate overrides                    |
+
+The headless Claude Code doc-gen runner needs **no new env var** — its auth is the local `claude` CLI's own login state, not a project secret.
 
 No Gmail integration in the MVP (no email-sending stage) — may be added if/when a submission or notification phase is built.
 
@@ -205,6 +206,7 @@ No Gmail integration in the MVP (no email-sending stage) — may be added if/whe
 
 - **ADR-001**: SQLite is the source of truth for profile + vacancy data (mirrors `ai-outreach-agency` ADR-001).
 - **ADR-002**: Job-board scraping via Apify (Indeed + LinkedIn actors) for MVP; PNet/Careers24 deferred — no dedicated Apify actor exists for either as of this decision.
+- **ADR-003**: OpenRouter dropped entirely — AI Matching routes to local Ollama (`qwen3:8b`), Document Generation routes to headless Claude Code (`claude -p`), $0 marginal cost on both, no scheduler/volume-cap machinery adopted (no documented need). See `docs/decisions/ADR-003-inference-provider-split.md`.
 - **DB access**: SQLite via `sqlite3`. No schema change without a migration file.
 - **Config**: `src/config.py` `Settings` via `python-dotenv`. Never hardcode. Never commit `.env`.
 - **Approval gate is structural**, not advisory — enforced by the status state machine, not just convention (same principle as `ai-outreach-agency`).
@@ -282,11 +284,11 @@ TebelloReborn/
 └── src/
     ├── main.py                   ← CLI runner
     ├── config.py                 ← Settings via python-dotenv
-    ├── shared/                   ← rate_limiter.py, openrouter_client.py
+    ├── shared/                   ← rate_limiter.py
     ├── profile/                  ← CandidateProfile schema + db
     ├── vacancy_search/           ← Vacancy schema + apify_client.py + db
-    ├── matching/                 ← prompt_builder.py + scorer.py
-    ├── doc_gen/                  ← cv_generator.py, cover_letter_generator.py, pdf_export.py
+    ├── matching/                 ← prompt_builder.py + scorer.py + ollama_client.py (ADR-003)
+    ├── doc_gen/                  ← runner.py, schema.py, db.py, migrations.py (ADR-003) + cv_generator.py, cover_letter_generator.py, pdf_export.py
     └── review/                   ← approval gate CLI
 ```
 
@@ -311,4 +313,6 @@ TebelloReborn/
 
 *This CLAUDE.md is a living document. Update it when new ADRs are made, stack/tooling changes, new agents or patterns are added, or hard lessons emerge.*
 
-*Last review: 2026-07-05 — Tebello Lelosa · DCOE v3.1*
+*v-next change: OpenRouter dropped entirely per ADR-003 — AI Matching now routes to local Ollama (`qwen3:8b`), Document Generation to headless Claude Code, under Tebello's own subscription. See `docs/decisions/ADR-003-inference-provider-split.md`.*
+
+*Last review: 2026-07-19 — Tebello Lelosa · DCOE v3.1*

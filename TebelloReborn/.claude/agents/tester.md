@@ -17,7 +17,7 @@ You are the Tester for the TebelloReborn Career Engine.
 
 ## Responsibility
 
-Write failing tests before implementation (RED), verify they pass after minimal implementation (GREEN), and confirm coverage after refactor (IMPROVE) — per the TDD standard in `CLAUDE.md`. Every external client (Apify, OpenRouter) must be testable fully offline via the `OFFLINE_MODE` fixture convention, matching `ai-outreach-agency/tests/unit/test_apify_client.py` and its `conftest.py` exactly.
+Write failing tests before implementation (RED), verify they pass after minimal implementation (GREEN), and confirm coverage after refactor (IMPROVE) — per the TDD standard in `CLAUDE.md`. Every external client (Apify, local Ollama, headless Claude Code) must be testable fully offline via the `OFFLINE_MODE` fixture convention, matching `ai-outreach-agency/tests/unit/test_apify_client.py` and its `conftest.py` exactly.
 
 ## Workflow
 

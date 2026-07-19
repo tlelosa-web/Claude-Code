@@ -31,12 +31,13 @@
 - [x] Visual dashboard for lead store — `src/dashboard/` (`data.py` query functions + `generator.py` self-contained HTML renderer, no new dependency) and a new `ai-outreach dashboard [--output PATH] [--open]` CLI command. Shows summary cards, the pipeline funnel, a campaign × status matrix, and approval/rejection history. `Settings.DASHBOARD_PATH` (default `dashboard.html`, gitignored) controls the default output location. 16 new tests (129 passing total).
 - [x] **Planning**: Adapted `docs/specs/drafts/handoff-tracking.md` (OpenRouter-out-of-credits workaround: headless `claude -p` under Tebello's subscription, replacing `asset_gen`'s OpenRouter call) to this project's real migration/config conventions. Full build plan written to `docs/specs/handoff-tracking-build.md`. Key finding: `email_draft` has no existing OpenRouter call site to replace (only `asset_gen` and `research` do) — build scoped to `asset_gen` only pending Tebello's decision on the combined-call option (see Build Queue Step 22).
 - [x] **Planning (ADR-004)**: Designed the second cost-elimination track — local Ollama (`qwen3:8b`) for the `research` summariser, replacing its OpenRouter call. `docs/decisions/ADR-004-local-ollama-research-inference.md` + `docs/specs/ollama-research-build.md`. Key findings: `nomic-embed-text`/embeddings scoped **out** (no consumer exists in the codebase — `ResearchResult` has no vector field, dedup is string-based); fail-loud on unreachable Ollama (no silent fallback to the also-broken OpenRouter); no schema change so no migration file; client placed in `research/` not `shared/` (single consumer, per `apify_client.py` precedent).
+- [x] **Build Queue B (ADR-004) — local Ollama inference for `research`, shipped**: `src/research/ollama_client.py` (`call_ollama`, `OllamaError`/`OllamaUnreachableError`, module-level `RateLimiter` at `OLLAMA_RATE_LIMIT_PER_MIN`, default 120/min, no API key — local daemon), `OLLAMA_BASE_URL`/`OLLAMA_MODEL` added to `Settings`/`load_settings`/`.env.example`, and `research/claude_summariser.py`'s non-offline branch swapped from `call_openrouter` to `call_ollama` (the `OFFLINE_MODE` stub short-circuit is untouched, byte-for-byte). Fails loudly on an unreachable Ollama daemon — no silent fallback to OpenRouter, which is itself out of credits (see Known Issues). Connect-timeout/connection-refused and read-timeout are distinct exception types with distinct messages (`OllamaUnreachableError` "is it running?" vs. `OllamaError` "model may be slow/cold-loading") — a conflation between the two was caught and fixed in commit `338002f`. All 14 steps of the build queue done, Reviewer (Opus) approved, full suite **153 tests passing**. Commit range: ADR-004 planning through `338002f` on `feature/handoff-tracking` (branch shared with, but file-disjoint from, Build Queue A). `asset_gen` is untouched by this track and still calls OpenRouter — its own migration (headless Claude Code, ADR-003) is Build Queue A, separately scoped and not yet built.
 
 ---
 
 ## Known Issues
 
-- [ ] OpenRouter account is out of credits for the default 4096-token request (HTTP 402, can only afford ~2659 tokens as of 2026-07-04). Top up at openrouter.ai/settings/credits before running a real batch. **Both** OpenRouter call sites now have zero-cost replacement tracks in flight: `asset_gen` → headless Claude Code (Ollama Build Queue's sibling, see `docs/specs/handoff-tracking-build.md`), and `research` → local Ollama (see the Ollama Build Queue below). Once both land + prerequisites are met, the pipeline no longer depends on OpenRouter credits at all. Until then, research still needs either working OpenRouter credits or the Ollama track built + Ollama installed.
+- [ ] OpenRouter account is out of credits for the default 4096-token request (HTTP 402, can only afford ~2659 tokens as of 2026-07-04). Top up at openrouter.ai/settings/credits before running a real batch — **but only still matters for `asset_gen`**. `research`'s half of this issue is **resolved**: Build Queue B landed (2026-07-19, ADR-004) and `research/claude_summariser.py` now runs on local Ollama (`qwen3:8b`), $0 marginal cost, independent of OpenRouter credit status — real (non-offline) research runs still need the Ollama daemon running + `qwen3:8b` pulled locally (see `docs/specs/ollama-research-build.md` §Prerequisites), which is a one-time local setup step, not a recurring cost. The remaining half — `asset_gen` — still calls OpenRouter and is blocked on this same HTTP 402 until either credits are topped up or Build Queue A (headless Claude Code, `docs/specs/handoff-tracking-build.md`, not yet built) lands.
 
 ---
 
@@ -99,20 +100,22 @@ approves the new network client before merge as normal.
 > without any of this; prerequisites are only needed to run a real (non-offline)
 > batch. See spec §Prerequisites.
 
-- [ ] 1. ADR-004 (`docs/decisions/ADR-004-local-ollama-research-inference.md`) — architect **[done]**
-- [ ] 2. RED `tests/unit/test_config.py` (`OLLAMA_BASE_URL`, `OLLAMA_MODEL`) — tester
-- [ ] 3. GREEN `src/config.py` edit (Settings + load_settings) — executor
-- [ ] 4. RED `tests/unit/test_ollama_client.py` (mocked `requests.post`: success/parse, connection-refused → `OllamaUnreachableError`, timeout, non-200 → `OllamaError`, bad shape, rate-limiter called, no API key, clean-prose/`think:false`) — tester
-- [ ] 5. GREEN `src/research/ollama_client.py` (`call_ollama`, `OllamaError`, `OllamaUnreachableError`, `RateLimiter`, `OLLAMA_RATE_LIMIT_PER_MIN`) — executor
-- [ ] 6. RED `tests/unit/test_claude_summariser.py` (OFFLINE stub preserved; non-offline calls `call_ollama`; unreachable propagates, no OpenRouter fallback) — tester
-- [ ] 7. GREEN `src/research/claude_summariser.py` (swap `call_openrouter` → `call_ollama` in non-offline branch only) — executor
-- [ ] 8. `.env.example` entry (`OLLAMA_BASE_URL`, `OLLAMA_MODEL`) — executor
-- [ ] 9. RED `tests/integration/test_full_pipeline.py` extended (research produces summary offline, zero real HTTP to 11434) — tester
-- [ ] 10. GREEN — close any gaps Step 9 surfaces — executor
-- [ ] 11. Acceptance-criteria verification pass (spec §8 checklist) — tester + reviewer
-- [ ] 12. `docs/api-patterns.md` — new "Local Ollama Inference (research)" section — doc-writer
-- [ ] 13. `docs/architecture.md` + `CLAUDE.md` research-stage/stack update — doc-writer
-- [ ] 14. Final `docs/todo.md` update — doc-writer
+- [x] 1. ADR-004 (`docs/decisions/ADR-004-local-ollama-research-inference.md`) — architect **[done]**
+- [x] 2. RED `tests/unit/test_config.py` (`OLLAMA_BASE_URL`, `OLLAMA_MODEL`) — tester
+- [x] 3. GREEN `src/config.py` edit (Settings + load_settings) — executor
+- [x] 4. RED `tests/unit/test_ollama_client.py` (mocked `requests.post`: success/parse, connection-refused → `OllamaUnreachableError`, timeout, non-200 → `OllamaError`, bad shape, rate-limiter called, no API key, clean-prose/`think:false`) — tester
+- [x] 5. GREEN `src/research/ollama_client.py` (`call_ollama`, `OllamaError`, `OllamaUnreachableError`, `RateLimiter`, `OLLAMA_RATE_LIMIT_PER_MIN`) — executor
+- [x] 6. RED `tests/unit/test_claude_summariser.py` (OFFLINE stub preserved; non-offline calls `call_ollama`; unreachable propagates, no OpenRouter fallback) — tester
+- [x] 7. GREEN `src/research/claude_summariser.py` (swap `call_openrouter` → `call_ollama` in non-offline branch only) — executor
+- [x] 8. `.env.example` entry (`OLLAMA_BASE_URL`, `OLLAMA_MODEL`) — executor
+- [x] 9. RED `tests/integration/test_full_pipeline.py` extended (research produces summary offline, zero real HTTP to 11434) — tester
+- [x] 10. GREEN — close any gaps Step 9 surfaces — executor
+- [x] 11. Acceptance-criteria verification pass (spec §8 checklist) — tester + reviewer. Also caught and fixed the read-timeout/connection-refused conflation (commit `338002f`) — read-timeout now raises `OllamaError`, not `OllamaUnreachableError`, so the two failure messages stay distinct.
+- [x] 12. `docs/api-patterns.md` — new "Local Ollama Inference (research)" section — doc-writer
+- [x] 13. `docs/architecture.md` + `CLAUDE.md` research-stage/stack update — doc-writer
+- [x] 14. Final `docs/todo.md` update — doc-writer
+
+**Build Queue B: complete.** All 14 steps done, Reviewer-approved, 153 tests passing. `research` now runs on local Ollama (`qwen3:8b`) at $0 marginal cost, independent of OpenRouter credit status.
 
 ---
 

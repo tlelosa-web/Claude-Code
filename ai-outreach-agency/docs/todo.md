@@ -38,6 +38,11 @@
 ## Known Issues
 
 - [ ] OpenRouter account is out of credits for the default 4096-token request (HTTP 402, can only afford ~2659 tokens as of 2026-07-04). Top up at openrouter.ai/settings/credits before running a real batch — **but only still matters for `asset_gen`**. `research`'s half of this issue is **resolved**: Build Queue B landed (2026-07-19, ADR-004) and `research/claude_summariser.py` now runs on local Ollama (`qwen3:8b`), $0 marginal cost, independent of OpenRouter credit status — real (non-offline) research runs still need the Ollama daemon running + `qwen3:8b` pulled locally (see `docs/specs/ollama-research-build.md` §Prerequisites), which is a one-time local setup step, not a recurring cost. The remaining half — `asset_gen` — still calls OpenRouter and is blocked on this same HTTP 402 until either credits are topped up or Build Queue A (headless Claude Code, `docs/specs/handoff-tracking-build.md`, not yet built) lands.
+- [ ] **Local Ollama generation latency is close to the 60s `READ_TIMEOUT` ceiling on this machine (CPU-only inference).** Verified 2026-07-19 with a real (non-mocked) `call_ollama()` smoke test: a cold-load call exceeded 60s and correctly raised `OllamaError` (not `OllamaUnreachableError` — the connection itself was fine); a second, warm call succeeded but still took ~62s wall time. This isn't a bug — the client's timeout distinction worked exactly as designed — but it means a real batch run risks intermittent `OllamaError`s from ordinary slow generation, not just genuine daemon-down cases. **Mitigation plan (not yet implemented, small/single-file, `src/research/ollama_client.py`):**
+  1. Bump `READ_TIMEOUT` from 60s → 120s — buys headroom against false-positive timeouts on normal (not just cold-start) calls. Lowest-risk option.
+  2. Add `keep_alive: "30m"` to the `/api/generate` request payload — prevents Ollama's default 5-minute idle-unload from forcing a repeat cold-load mid-batch when there are gaps between leads.
+  3. (Deferred until batch volume justifies it) A warm-up call at the start of `run-all` to pay the cold-load cost once, predictably, before the first real lead's timed request.
+  Recommended: do #1 + #2 together in one small commit (RED test asserting the new timeout/payload, GREEN change) before running a real multi-lead batch. #3 can wait.
 
 ---
 

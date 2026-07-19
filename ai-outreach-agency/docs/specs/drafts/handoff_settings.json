@@ -1,0 +1,7 @@
+{
+  "weekly_lead_cap": 5,
+  "daily_lead_cap": 2,
+  "min_interval_minutes": 60,
+  "run_days": ["Mon", "Wed", "Fri"],
+  "use_bare_mode": false
+}

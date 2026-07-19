@@ -1,5 +1,5 @@
 import os
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 
 try:
@@ -20,6 +20,8 @@ class Settings:
     DEFAULT_ASSET_TYPE: str = "INSIGHT_DOC"
     EXPORTS_DIR: str = "exports"
     DASHBOARD_PATH: str = "dashboard.html"
+    OLLAMA_BASE_URL: str = "http://localhost:11434"
+    OLLAMA_MODEL: str = "qwen3:8b"
 
 
 def load_settings(env_path: str | Path | None = None) -> Settings:
@@ -37,4 +39,6 @@ def load_settings(env_path: str | Path | None = None) -> Settings:
         DEFAULT_ASSET_TYPE=os.environ.get("DEFAULT_ASSET_TYPE", "INSIGHT_DOC"),
         EXPORTS_DIR=os.environ.get("EXPORTS_DIR", "exports"),
         DASHBOARD_PATH=os.environ.get("DASHBOARD_PATH", "dashboard.html"),
+        OLLAMA_BASE_URL=os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434"),
+        OLLAMA_MODEL=os.environ.get("OLLAMA_MODEL", "qwen3:8b"),
     )

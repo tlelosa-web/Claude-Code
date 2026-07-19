@@ -25,7 +25,6 @@ from src.email_draft.pipeline import run_email_draft
 from src.email_draft.schema import DraftResult
 from src.main import main
 
-
 # ── fixtures ──────────────────────────────────────────────────────────
 
 
@@ -48,20 +47,39 @@ def sample_csv(tmp_path):
     csv_path = tmp_path / "leads.csv"
     with open(csv_path, "w", newline="", encoding="utf-8") as f:
         writer = csv.writer(f)
-        writer.writerow([
-            "Company", "Name", "Title", "Email",
-            "Phone", "Website", "Industry",
-        ])
-        writer.writerow([
-            "Acme Engineering", "John Smith", "Operations Manager",
-            "john@acme.co.za", "011-555-0001",
-            "https://acme.co.za", "Manufacturing",
-        ])
-        writer.writerow([
-            "Bolt Fabrication", "Jane Doe", "Engineering Manager",
-            "jane@bolt.co.za", "011-555-0002",
-            "https://bolt.co.za", "Fabrication",
-        ])
+        writer.writerow(
+            [
+                "Company",
+                "Name",
+                "Title",
+                "Email",
+                "Phone",
+                "Website",
+                "Industry",
+            ]
+        )
+        writer.writerow(
+            [
+                "Acme Engineering",
+                "John Smith",
+                "Operations Manager",
+                "john@acme.co.za",
+                "011-555-0001",
+                "https://acme.co.za",
+                "Manufacturing",
+            ]
+        )
+        writer.writerow(
+            [
+                "Bolt Fabrication",
+                "Jane Doe",
+                "Engineering Manager",
+                "jane@bolt.co.za",
+                "011-555-0002",
+                "https://bolt.co.za",
+                "Fabrication",
+            ]
+        )
     return csv_path
 
 
@@ -82,9 +100,12 @@ def _import_csv(csv_path, conn):
 def _run_pipeline(lead, db_path, approval_input):
     """Run research → asset_gen → approval → email_draft for one lead."""
     research = research_lead(lead, db_path=db_path)
-    asset = run_asset_gen(lead, research, asset_type=AssetType.INSIGHT_DOC, db_path=db_path)
+    asset = run_asset_gen(
+        lead, research, asset_type=AssetType.INSIGHT_DOC, db_path=db_path
+    )
     approval = run_approval_gate(
-        lead, asset,
+        lead,
+        asset,
         input_fn=lambda _prompt: approval_input,
         db_path=db_path,
     )
@@ -230,7 +251,9 @@ class TestMainCLIRunCommand:
         output = capsys.readouterr().out
         assert "pain_point_summary" in output
 
-    def test_run_all_filters_by_campaign(self, tmp_path, monkeypatch, sample_csv, capsys):
+    def test_run_all_filters_by_campaign(
+        self, tmp_path, monkeypatch, sample_csv, capsys
+    ):
         import io
 
         db_path = tmp_path / "cli_test.db"
@@ -260,6 +283,41 @@ class TestMainCLIRunCommand:
         output = capsys.readouterr().out
         assert "Found 2 leads" in output
         assert "Other Co" not in output
+
+
+class TestOllamaOfflineIsolation:
+    """Build Queue B step 9 (ADR-004): the research stage must produce a
+    summary correctly under OFFLINE_MODE, and must never reach out to a
+    real local Ollama daemon (port 11434) while running the test suite."""
+
+    def test_research_stage_produces_summary_offline(self, db, sample_csv):
+        conn, db_path = db
+        _import_csv(sample_csv, conn)
+        lead = get_all_leads(conn)[0]
+
+        research = research_lead(lead, db_path=db_path)
+
+        assert isinstance(research.summary, str)
+        assert len(research.summary) > 0
+
+    def test_research_stage_makes_zero_real_http_to_ollama(
+        self, db, sample_csv, monkeypatch
+    ):
+        conn, db_path = db
+        _import_csv(sample_csv, conn)
+        lead = get_all_leads(conn)[0]
+
+        def _fail_if_called(*args, **kwargs):
+            raise AssertionError(
+                "Real HTTP request attempted against Ollama during an "
+                "OFFLINE_MODE test run"
+            )
+
+        monkeypatch.setattr("src.research.ollama_client.requests.post", _fail_if_called)
+
+        research = research_lead(lead, db_path=db_path)
+
+        assert research.summary
 
 
 class TestDuplicateImport:

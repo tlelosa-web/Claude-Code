@@ -12,7 +12,7 @@
 Project:     ai-outreach-agency
 Type:        B2B outreach automation engine (Python CLI, offline-capable core)
 Owner:       Tebello Lelosa
-Stack:       Python 3.11+ · SQLite · Claude API via OpenRouter · Apify · Google Sheets · Gmail API
+Stack:       Python 3.11+ · SQLite · Claude API via OpenRouter · local Ollama (qwen3:8b) · Apify · Google Sheets · Gmail API
 Deployment:  Local Windows desktop, offline-capable core logic
 Inference:   OpenRouter → claude-sonnet-5 @ medium (default) | claude-opus-4.8 (escalation) | claude-haiku-4.5 (search/scoring)
 ```
@@ -23,7 +23,7 @@ Core docs:
 
 - `docs/todo.md`: live task queue.
 - `docs/architecture.md`: pipeline design and data flow.
-- `docs/api-patterns.md`: API integration patterns (OpenRouter, Apify, Google Sheets, Gmail) + rate limiting.
+- `docs/api-patterns.md`: API integration patterns (OpenRouter, local Ollama, Apify, Google Sheets, Gmail) + rate limiting.
 - `docs/session-log.md`: chronological session memory.
 - `docs/decisions/`: architecture decision records.
 
@@ -108,13 +108,19 @@ Agents live in `.claude/agents/`. Invoke by name or let Claude delegate.
 
 ## 🧠 Inference Routing (OpenRouter) — v3.1
 
-All LLM calls go through OpenRouter. **`claude-sonnet-5` at medium effort is the universal default.**
+This section covers OpenRouter-routed LLM calls (the `ai-outreach` CLI's own
+agent/build-time routing, and `asset_gen`'s runtime inference call).
+**`claude-sonnet-5` at medium effort is the universal default for these.**
 Opus is reserved for evidence-based escalation, not used by default.
+**As of ADR-004, `research` summaries no longer go through OpenRouter** —
+they run on a local `qwen3:8b` Ollama daemon instead (see External Client
+Patterns below), which has no "effort tier"/model-routing concept — it's a
+single fixed local model.
 
 | Task class                                    | Model                     | Effort  | Why                                              |
 |-----------------------------------------------|---------------------------|---------|--------------------------------------------------|
 | **Default** — all standard work               | `anthropic/claude-sonnet-5` | medium  | Best quality/cost balance; universal baseline    |
-| Asset generation, email drafting, research    | `anthropic/claude-sonnet-5` | medium  | Content generation                               |
+| Asset generation, email drafting              | `anthropic/claude-sonnet-5` | medium  | Content generation                               |
 | Lead scoring, quick classification, search    | `anthropic/claude-haiku-4.5`| low     | Fast and cheap for simple decisions              |
 | **Escalation only** (see triggers below)      | `anthropic/claude-opus-4.8` | high    | Deep reasoning for genuinely hard problems       |
 | Reviewer agent (permanent)                    | `anthropic/claude-opus-4.8` | high    | Quality/security gate stays on Opus, always      |
@@ -139,7 +145,7 @@ Set per-agent in frontmatter, e.g. `model: anthropic/claude-haiku-4.5`.
 
 Core pipeline logic (lead import, schema validation, approval gate, local data transforms) must work fully offline. Only these stages require network:
 
-- Research (Apify web scraping)
+- Research (Apify web scraping + local Ollama inference — see ADR-004)
 - Asset generation (OpenRouter API)
 - Email drafting (Gmail API)
 - Lead sync (Google Sheets API)
@@ -152,12 +158,19 @@ Design modules so offline stages never import or depend on network-requiring cod
 
 ```
 1. Lead Import     → CSV/Sheets → validated lead records          (status: new)
-2. Research        → Apify scrape → Claude summary → enriched     (status: researched)
-3. Asset Gen       → Claude API → custom mini-report per lead     (status: asset_ready)
+2. Research        → Apify scrape → local Ollama summary → enriched (status: researched)
+3. Asset Gen       → Claude API (OpenRouter) → custom mini-report per lead (status: asset_ready)
 4. Approval Gate   → Human reviews lead + asset → approve/reject  (status: approved | rejected)
 5. Email Draft     → Claude API → Gmail draft (NOT sent)          (status: drafted)
 6. Send            → Human clicks send in Gmail (fully manual)
 ```
+
+> Stage 2 moved off OpenRouter onto a local Ollama daemon (`qwen3:8b`) per
+> ADR-004 (2026-07-19) — zero marginal inference cost, and unblocks research
+> independent of OpenRouter credit balance. Stage 3 (`asset_gen`) still calls
+> OpenRouter as of this note; its own migration to headless Claude Code is a
+> separate, not-yet-built track (ADR-003 / Build Queue A) — don't conflate
+> the two.
 
 **Lead status state machine** (`lead_import/db.py`, `VALID_TRANSITIONS`):
 `new → researched → asset_ready → approved / rejected → drafted`. Transitions are enforced across the research/asset_gen/approval/email_draft pipelines — no stage may skip ahead.
@@ -166,15 +179,17 @@ Design modules so offline stages never import or depend on network-requiring cod
 
 ## 🌐 External Client Patterns
 
-All three network clients share a token-bucket rate limiter (`src/shared/rate_limiter.py`) applied ahead of every real network call:
+All four network clients share a token-bucket rate limiter (`src/shared/rate_limiter.py`) applied ahead of every real network call:
 
 | Client                          | Default rate | Env override                    |
 |---------------------------------|--------------|---------------------------------|
 | `shared/openrouter_client.py`   | 60 / min     | `OPENROUTER_RATE_LIMIT_PER_MIN` |
 | `research/apify_client.py`      | 30 / min     | `APIFY_RATE_LIMIT_PER_MIN`      |
 | `email_draft/gmail_client.py`   | 20 / min     | `GMAIL_RATE_LIMIT_PER_MIN`      |
+| `research/ollama_client.py`     | 120 / min    | `OLLAMA_RATE_LIMIT_PER_MIN`     |
 
-- **OpenRouter**: real inference from `research/claude_summariser.py` and `asset_gen/generator.py`. 429s retried via mocked `time.sleep`. Watch for **HTTP 402** (out of credits) — top up at openrouter.ai/settings/credits before any batch run.
+- **OpenRouter**: real inference from `asset_gen/generator.py` only — `research/claude_summariser.py` moved off OpenRouter onto local Ollama (ADR-004, 2026-07-19). 429s retried via mocked `time.sleep`. Watch for **HTTP 402** (out of credits) — top up at openrouter.ai/settings/credits before any batch run.
+- **Local Ollama**: real inference from `research/claude_summariser.py` via `research/ollama_client.py`, native `POST /api/generate` against `qwen3:8b`, no API key (local daemon). Fails loudly — `OllamaUnreachableError` on connection-refused/connect-timeout ("is it running?"), `OllamaError` on read-timeout ("model may be slow/cold-loading") — these are distinct exception types for distinct causes, never collapsed into one message. No silent fallback to OpenRouter. See ADR-004 and `docs/api-patterns.md`.
 - **Apify**: real website-content-crawler actor, with `OFFLINE_MODE` fixture and fallback on missing key or request failure.
 - **Gmail**: OAuth2 via `InstalledAppFlow` against `credentials.json`, token cached/refreshed in `token.json`, real `drafts().create()` using the **`gmail.compose` scope only**. `OFFLINE_MODE` returns a `draft_{timestamp}` stub.
 
@@ -188,7 +203,9 @@ See @docs/api-patterns.md for full detail.
 
 | Var                                | Purpose                                  |
 |------------------------------------|------------------------------------------|
-| `OPENROUTER_API_KEY`               | OpenRouter inference                      |
+| `OPENROUTER_API_KEY`               | OpenRouter inference (asset_gen only, as of ADR-004) |
+| `OLLAMA_BASE_URL`                  | Local Ollama daemon URL (default `http://localhost:11434`) |
+| `OLLAMA_MODEL`                     | Local Ollama model for research summaries (default `qwen3:8b`) |
 | `APIFY_TOKEN`                      | Apify scraping (name per api-patterns)    |
 | `DB_PATH`                          | Source-of-truth SQLite (default `outreach.db`) |
 | `OFFLINE_MODE`                     | Force offline stubs for all network stages |
@@ -211,6 +228,7 @@ Gmail auth files (project root, gitignored): `credentials.json` (Desktop OAuth c
 - **Approval gate is structural**, not advisory — enforced by the status state machine, not just convention.
 - **Offline-first**: no feature may depend on internet connectivity in its core logic.
 - **ADR-002**: n8n retired from the stack — orchestration stays in-process via the `ai-outreach` CLI (`run`/`run-all`). See `docs/decisions/ADR-002-retire-n8n.md`.
+- **ADR-004**: `research/claude_summariser.py` moved from OpenRouter to local Ollama (`qwen3:8b`, native `/api/generate`) inference — $0 marginal cost, fails loudly (no silent OpenRouter fallback) on an unreachable daemon, distinguishes connect-timeout ("is it running?") from read-timeout ("model slow/cold-loading") as separate exception types. `nomic-embed-text`/embeddings deliberately scoped out — no consumer exists in the codebase. `asset_gen` is untouched by this ADR and still calls OpenRouter (its own migration is ADR-003, a separate track). See `docs/decisions/ADR-004-local-ollama-research-inference.md`.
 
 See @docs/decisions/ for the full ADR log.
 
@@ -230,7 +248,7 @@ Follow **TDD** for all new features:
 - Unit: `tests/unit/` — pure functions, no DB. `conftest.py` autouse fixture mocks `update_lead_status`.
 - Integration: `tests/integration/` — real CLI entry point end-to-end (`TestMainCLIRunCommand` runs through `main([...])`, not stages directly).
 - Never delete or skip tests to make them pass. Reviewer (Opus) must approve the suite before merge.
-- Current baseline: **85 passing**.
+- Current baseline: **153 passing** (as of Build Queue B / ADR-004, 2026-07-19).
 
 ---
 
@@ -318,7 +336,7 @@ ai-outreach-agency/
     │   ├── openrouter_client.py ← OpenRouter inference (rate-limited)
     │   └── rate_limiter.py      ← token-bucket RateLimiter
     ├── lead_import/             ← CSV reader + schema validator + db.py (state machine)
-    ├── research/                ← apify_client.py + claude_summariser.py
+    ├── research/                ← apify_client.py + ollama_client.py (ADR-004) + claude_summariser.py
     ├── asset_gen/               ← generator.py (custom asset per lead)
     ├── approval/                ← CLI human approval gate
     └── email_draft/             ← composer + gmail_client.py (OAuth2)
@@ -357,4 +375,4 @@ ai-outreach-agency/
 
 *This CLAUDE.md is a living document. Update it when new ADRs are made, stack/tooling changes, new agents or patterns are added, or hard lessons emerge.*
 
-*Last review: 2026-07-04 — Tebello Lelosa · DCOE v3.1*
+*Last review: 2026-07-19 — Tebello Lelosa · DCOE v3.1*

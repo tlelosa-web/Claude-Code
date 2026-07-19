@@ -57,12 +57,18 @@ status:          str   (new | researched | asset_ready | approved | drafted | se
 **Module:** `src/research/`
 **Input:** Validated lead record
 **Output:** Enriched lead with research summary
-**Network:** Required (Apify + OpenRouter)
+**Network:** Required (Apify + local Ollama)
 
 Responsibilities:
 - Take a lead's company name and website
 - Trigger Apify web scrape actor to pull public company info (about page, services, recent news)
-- Send scraped content to Claude (Sonnet via OpenRouter) for structured summary
+- Send scraped content to a **local Ollama daemon** (`qwen3:8b`, native
+  `/api/generate`) for structured summary — see ADR-004. This replaced an
+  earlier OpenRouter call; `research` now requires the Ollama daemon running
+  locally rather than an OpenRouter API key/credit balance. Unlike the other
+  network stages this dependency is not pip-installable or CI-verifiable — it
+  is a local desktop prerequisite (see `docs/specs/ollama-research-build.md`
+  §Prerequisites).
 - Extract: what they do, key services, recent projects/news, potential pain points for AI/automation
 - Attach research summary to the lead record
 - Handle scrape failures gracefully (mark lead as "research_failed", don't block pipeline)
@@ -182,11 +188,17 @@ Inter-module communication happens through the lead store — modules never call
 
 | Service | Purpose | Auth Method | Module |
 |---------|---------|-------------|--------|
-| OpenRouter | Claude API inference | API key (env var) | research, asset_gen, email_draft |
+| OpenRouter | Claude API inference | API key (env var) | asset_gen (email_draft never had its own OpenRouter call site; see ADR-004) |
+| Local Ollama (`qwen3:8b`) | Research summary inference | None (local daemon) | research (ADR-004) |
 | Apify | Web scraping | API key (env var) | research |
 | Gmail API | Create drafts | OAuth2 (credentials.json) | email_draft |
 | Google Sheets API | Lead import/sync | OAuth2 (credentials.json) | lead_import |
 | Apollo.io | Lead export | Manual CSV download | lead_import |
+
+> `asset_gen`'s OpenRouter call is scheduled to move to headless Claude Code
+> under a separate track (ADR-003, Build Queue A) — not yet built as of this
+> commit. Do not describe `asset_gen` as OpenRouter-free until that track
+> lands.
 
 ---
 

@@ -2,7 +2,7 @@ import json
 import os
 
 from src.lead_import.schema import Lead
-from src.shared.openrouter_client import call_openrouter
+from src.research.ollama_client import call_ollama
 
 
 def _stub_summary(lead: Lead, raw_data: dict) -> str:
@@ -28,4 +28,4 @@ def summarise_lead(lead: Lead, raw_data: dict) -> str:
         f"Data: {json.dumps(raw_data, default=str)}"
     )
 
-    return call_openrouter(prompt)
+    return call_ollama(prompt)

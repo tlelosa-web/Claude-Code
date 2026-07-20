@@ -21,6 +21,10 @@ def test_sales_orders_list_wires_resizable_columns(client, session):
     assert "resizable_columns.js" in body
     assert "makeColumnsResizable('so-list-table')" in body
     assert 'id="so-list-table"' in body
+    # Batch 35: the overflow-x wrapper caused sticky headers to freeze
+    # against the wrong scrollport (paint bug hiding the first row). It's
+    # the only such wrapper on this list page, so a body-wide check holds.
+    assert "overflow-x: auto" not in body
 
 
 def test_works_orders_list_wires_resizable_columns(client, session):
@@ -38,6 +42,8 @@ def test_works_orders_list_wires_resizable_columns(client, session):
     assert "resizable_columns.js" in body
     assert "makeColumnsResizable('orders-table')" in body
     assert 'id="orders-table"' in body
+    # Batch 35: see test_sales_orders_list_wires_resizable_columns.
+    assert "overflow-x: auto" not in body
 
 
 def test_stock_orders_list_wires_resizable_columns(client, session):
@@ -55,6 +61,8 @@ def test_stock_orders_list_wires_resizable_columns(client, session):
     assert "resizable_columns.js" in body
     assert "makeColumnsResizable('sto-list-table')" in body
     assert 'id="sto-list-table"' in body
+    # Batch 35: see test_sales_orders_list_wires_resizable_columns.
+    assert "overflow-x: auto" not in body
 
 
 def test_purchase_orders_list_wires_resizable_columns(client, session):
@@ -68,3 +76,5 @@ def test_purchase_orders_list_wires_resizable_columns(client, session):
     assert "resizable_columns.js" in body
     assert "makeColumnsResizable('po-list-table')" in body
     assert 'id="po-list-table"' in body
+    # Batch 35: see test_sales_orders_list_wires_resizable_columns.
+    assert "overflow-x: auto" not in body

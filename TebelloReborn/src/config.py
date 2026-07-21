@@ -15,12 +15,13 @@ def _parse_bool(value: str) -> bool:
 
 @dataclass
 class Settings:
-    OPENROUTER_API_KEY: str = ""
+    OLLAMA_BASE_URL: str = "http://localhost:11434"
+    OLLAMA_MODEL: str = "qwen3:8b"
     APIFY_API_KEY: str = ""
     DB_PATH: str = "career.db"
     OFFLINE_MODE: bool = False
     EXPORTS_DIR: str = "exports"
-    OPENROUTER_RATE_LIMIT_PER_MIN: int = 60
+    OLLAMA_RATE_LIMIT_PER_MIN: int = 120
     APIFY_RATE_LIMIT_PER_MIN: int = 30
 
 
@@ -34,13 +35,14 @@ def load_settings(env_path: str | Path | None = None) -> Settings:
         load_dotenv(env_path or ".env")
 
     return Settings(
-        OPENROUTER_API_KEY=os.environ.get("OPENROUTER_API_KEY", ""),
+        OLLAMA_BASE_URL=os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434"),
+        OLLAMA_MODEL=os.environ.get("OLLAMA_MODEL", "qwen3:8b"),
         APIFY_API_KEY=os.environ.get("APIFY_API_KEY", ""),
         DB_PATH=os.environ.get("DB_PATH", "career.db"),
         OFFLINE_MODE=_parse_bool(os.environ.get("OFFLINE_MODE", "false")),
         EXPORTS_DIR=os.environ.get("EXPORTS_DIR", "exports"),
-        OPENROUTER_RATE_LIMIT_PER_MIN=int(
-            os.environ.get("OPENROUTER_RATE_LIMIT_PER_MIN", "60")
+        OLLAMA_RATE_LIMIT_PER_MIN=int(
+            os.environ.get("OLLAMA_RATE_LIMIT_PER_MIN", "120")
         ),
         APIFY_RATE_LIMIT_PER_MIN=int(os.environ.get("APIFY_RATE_LIMIT_PER_MIN", "30")),
     )

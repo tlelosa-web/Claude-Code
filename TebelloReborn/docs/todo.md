@@ -1,6 +1,6 @@
 # Task Queue — TebelloReborn (Career Engine)
 
-> Updated: 2026-07-21 (Phase 5 in progress — steps 31-41 done)
+> Updated: 2026-07-21 (Phase 5 complete — steps 31-43 done)
 
 ---
 
@@ -93,8 +93,8 @@
 - [x] 39. [GREEN] `src/doc_gen/cover_letter_generator.py` — same offline/non-offline split as step 38
 - [x] 40. [RED] `tests/unit/test_pdf_export.py`
 - [x] 41. [GREEN] `src/doc_gen/pdf_export.py`
-- [ ] 42. [RED] `tests/unit/test_doc_gen_pipeline.py`
-- [ ] 43. [GREEN] `src/doc_gen/pipeline.py`
+- [x] 42. [RED] `tests/unit/test_doc_gen_pipeline.py`
+- [x] 43. [GREEN] `src/doc_gen/pipeline.py`
 
 > **Deliberately excluded** per ADR-003 §6 (judgment call, not an oversight): `settings.py`, `scheduler.py`, volume-cap/weekly-report machinery, `handoff_settings.json`. TebelloReborn has no documented volume-throttling requirement, unlike the sibling project's controlled-trial constraint. Do not add these by copying `ai-outreach-agency`'s fuller `handoff/` machinery — if a controlled-batch need is confirmed later, it gets its own spec + ADR.
 

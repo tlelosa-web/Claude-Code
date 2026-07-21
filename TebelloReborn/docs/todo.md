@@ -1,6 +1,6 @@
 # Task Queue — TebelloReborn (Career Engine)
 
-> Updated: 2026-07-21 (Phase 2 done)
+> Updated: 2026-07-21 (Phase 3 done)
 
 ---
 
@@ -22,6 +22,7 @@
 ## Known Issues
 
 - [ ] No dedicated Apify actor exists for PNet or Careers24 — MVP vacancy fetch covers Indeed + LinkedIn only (see planned ADR-002).
+- [ ] `src/vacancy_search/apify_client.py`'s `INDEED_ACTOR_URL`/`LINKEDIN_ACTOR_URL` actor slugs (`misceres~indeed-scraper`, `bebity~linkedin-jobs-scraper`) are unconfirmed placeholders — no exact actor slug is recorded anywhere in this project's docs, only that "dedicated actors exist on the Apify Store." Tests mock `requests.post` so the suite passes regardless; confirm the real slugs against the Apify Store before the first non-`OFFLINE_MODE` `fetch-vacancies` run.
 
 ---
 
@@ -51,12 +52,12 @@
 - [x] 15. [GREEN] `data/profile_seed.json` (Ops Foreman/Manager primary, Project Engineer secondary)
 
 ### Phase 3 — Stage 2: Vacancy Fetch (Apify for real runs)
-- [ ] 16. [RED] `tests/unit/test_vacancy_schema.py`
-- [ ] 17. [GREEN] `src/vacancy_search/schema.py`
-- [ ] 18. [RED] `tests/unit/test_vacancy_db.py`
-- [ ] 19. [GREEN] `src/vacancy_search/db.py` + `src/vacancy_search/migrations.py`
-- [ ] 20. [RED] `tests/unit/test_apify_client.py`
-- [ ] 21. [GREEN] `src/vacancy_search/apify_client.py`
+- [x] 16. [RED] `tests/unit/test_vacancy_schema.py`
+- [x] 17. [GREEN] `src/vacancy_search/schema.py`
+- [x] 18. [RED] `tests/unit/test_vacancy_db.py`
+- [x] 19. [GREEN] `src/vacancy_search/db.py` + `src/vacancy_search/migrations.py`
+- [x] 20. [RED] `tests/unit/test_apify_client.py`
+- [x] 21. [GREEN] `src/vacancy_search/apify_client.py`
 
 ### Phase 3.5 — ADRs
 - [ ] 22. `docs/decisions/ADR-001-vacancy-store.md`

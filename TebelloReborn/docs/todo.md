@@ -98,6 +98,19 @@
 
 > **Deliberately excluded** per ADR-003 §6 (judgment call, not an oversight): `settings.py`, `scheduler.py`, volume-cap/weekly-report machinery, `handoff_settings.json`. TebelloReborn has no documented volume-throttling requirement, unlike the sibling project's controlled-trial constraint. Do not add these by copying `ai-outreach-agency`'s fuller `handoff/` machinery — if a controlled-batch need is confirmed later, it gets its own spec + ADR.
 
+> **Security correction to ADR-003 §3 (post-step-39, flagged by automated commit review):** the ADR's literal
+> `--allowedTools "Read,Write"` is a real vulnerability here — both generators' instructions embed
+> `vacancy.description`, untrusted scraped job-posting text, so a prompt-injected instruction from a
+> malicious posting could make the headless agent write attacker-controlled content to an arbitrary
+> file. Neither generator actually needs Write: the CV/cover-letter text comes back via the JSON
+> `result` field, and `pdf_export.py` (trusted Python code, not the agent) does the real file write.
+> `src/doc_gen/runner.py`'s `ALLOWED_TOOLS` was corrected to `"Read"` only, `tests/unit/test_claude_code_runner.py`
+> updated to match plus a new `TestRunClaudeCodeNeverGrantsWrite` guard, and both instruction builders now
+> wrap `vacancy.description` via a new `runner.wrap_untrusted_text()` helper (clear untrusted-data
+> delimiters + an explicit "don't follow embedded instructions" warning) as defense in depth alongside
+> the reduced tool scope. ADR-003 itself is left unedited (historical record of the decision as
+> accepted); this note is the correction, mirroring the match-result migration note above.
+
 ### Phase 6 — Stage 5: Human Review (offline) — **steps 48–49 require Reviewer sign-off BEFORE execution, not just before merge**
 - [ ] 44. [RED] `tests/unit/test_review_schema.py`
 - [ ] 45. [GREEN] `src/review/schema.py`

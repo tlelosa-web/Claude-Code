@@ -1,6 +1,6 @@
 # Task Queue — TebelloReborn (Career Engine)
 
-> Updated: 2026-07-21 (Phase 5 complete — steps 31-43 done)
+> Updated: 2026-07-21 (Phase 6 in progress — steps 44-47 done; 48-49 need Reviewer sign-off before execution)
 
 ---
 
@@ -112,10 +112,10 @@
 > accepted); this note is the correction, mirroring the match-result migration note above.
 
 ### Phase 6 — Stage 5: Human Review (offline) — **steps 48–49 require Reviewer sign-off BEFORE execution, not just before merge**
-- [ ] 44. [RED] `tests/unit/test_review_schema.py`
-- [ ] 45. [GREEN] `src/review/schema.py`
-- [ ] 46. [RED] `tests/unit/test_review_db.py`
-- [ ] 47. [GREEN] `src/review/db.py` + `src/review/migrations.py`
+- [x] 44. [RED] `tests/unit/test_review_schema.py`
+- [x] 45. [GREEN] `src/review/schema.py`
+- [x] 46. [RED] `tests/unit/test_review_db.py`
+- [x] 47. [GREEN] `src/review/db.py` + `src/review/migrations.py`
 - [ ] 48. [RED] `tests/unit/test_review_cli.py` — **REVIEWER SIGN-OFF REQUIRED FIRST**
 - [ ] 49. [GREEN] `src/review/cli.py` — **REVIEWER SIGN-OFF REQUIRED FIRST**
 

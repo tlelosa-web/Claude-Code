@@ -1,6 +1,6 @@
 # Task Queue — TebelloReborn (Career Engine)
 
-> Updated: 2026-07-21 (Phase 5 in progress — steps 31-39 done)
+> Updated: 2026-07-21 (Phase 5 in progress — steps 31-41 done)
 
 ---
 
@@ -91,8 +91,8 @@
 - [x] 37. [RED] `tests/unit/test_doc_gen.py` — fresh `OFFLINE_MODE` stub branches for both generators. **Note:** unlike the sibling projects, there is no pre-existing offline branch to preserve here — both branches are new (ADR-003 §3, §7)
 - [x] 38. [GREEN] `src/doc_gen/cv_generator.py` — `OFFLINE_MODE` stub branch returns deterministic output before any subprocess call; non-offline branch routes through `runner.py`
 - [x] 39. [GREEN] `src/doc_gen/cover_letter_generator.py` — same offline/non-offline split as step 38
-- [ ] 40. [RED] `tests/unit/test_pdf_export.py`
-- [ ] 41. [GREEN] `src/doc_gen/pdf_export.py`
+- [x] 40. [RED] `tests/unit/test_pdf_export.py`
+- [x] 41. [GREEN] `src/doc_gen/pdf_export.py`
 - [ ] 42. [RED] `tests/unit/test_doc_gen_pipeline.py`
 - [ ] 43. [GREEN] `src/doc_gen/pipeline.py`
 

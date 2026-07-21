@@ -60,8 +60,8 @@
 - [x] 21. [GREEN] `src/vacancy_search/apify_client.py`
 
 ### Phase 3.5 — ADRs
-- [ ] 22. `docs/decisions/ADR-001-vacancy-store.md`
-- [ ] 23. `docs/decisions/ADR-002-apify-job-scraping.md`
+- [x] 22. `docs/decisions/ADR-001-vacancy-store.md`
+- [x] 23. `docs/decisions/ADR-002-apify-job-scraping.md`
 - [x] ADR-003 (`docs/decisions/ADR-003-inference-provider-split.md`) — already written and decided (2026-07-19). Filed **out of numeric sequence**, ahead of ADR-001/ADR-002 above: the OpenRouter-drop decision was time-sensitive (Phases 4–5 hadn't been built yet, so re-planning now means the OpenRouter path is never written at all), whereas ADR-001 (vacancy-store) and ADR-002 (Apify scraping) are documentation of already-settled Phase 2/3 conventions and can be written whenever convenient.
 
 ### Phase 4 — Stage 3: AI Matching (local Ollama, `qwen3:8b` — ADR-003 §2)

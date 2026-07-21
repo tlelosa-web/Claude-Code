@@ -25,7 +25,7 @@
 
 ---
 
-## Build Queue — ordered, atomic (see `docs/specs/mvp-pipeline-build.md` for full detail: inputs, outputs, verification, network flags, per-step agent; note the spec file itself predates ADR-003 and has not been rewritten — Phase 4/5 detail below supersedes its OpenRouter-era description until the spec is updated)
+## Build Queue — ordered, atomic (see `docs/specs/mvp-pipeline-build.md` for full detail: inputs, outputs, verification, network flags, per-step agent; the spec was rewritten for ADR-003 in `4b71833` — 46→54 steps, Phase 4/5 now match the Ollama/headless-Claude-Code routing below)
 
 ### Phase 0 — Scaffolding & Config
 - [x] 1. `pyproject.toml` (deps + `career-engine` console script)

@@ -21,6 +21,10 @@ class Vacancy:
         default_factory=lambda: datetime.now(timezone.utc).isoformat()
     )
     status: str = "new"
+    score: Optional[int] = None
+    strengths: Optional[list[str]] = None
+    weaknesses: Optional[list[str]] = None
+    recommendation: Optional[str] = None
 
     def __post_init__(self):
         for f in REQUIRED_FIELDS:
@@ -37,3 +41,6 @@ class Vacancy:
             raise ValueError(
                 f"Invalid status '{self.status}', must be one of {VALID_STATUSES}"
             )
+
+        if self.score is not None and not (0 <= self.score <= 100):
+            raise ValueError(f"score must be between 0 and 100, got {self.score}")

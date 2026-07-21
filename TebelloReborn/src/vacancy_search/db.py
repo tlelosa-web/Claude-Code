@@ -1,3 +1,4 @@
+import json
 import sqlite3
 from pathlib import Path
 from typing import List, Optional
@@ -20,6 +21,10 @@ def _vacancy_from_row(row: sqlite3.Row) -> Vacancy:
         deadline=row["deadline"],
         scraped_at=row["scraped_at"],
         status=row["status"],
+        score=row["score"],
+        strengths=json.loads(row["strengths"]) if row["strengths"] is not None else None,
+        weaknesses=json.loads(row["weaknesses"]) if row["weaknesses"] is not None else None,
+        recommendation=row["recommendation"],
     )
 
 
@@ -111,4 +116,26 @@ def update_vacancy_status(conn: sqlite3.Connection, vacancy_id: int, status: str
         raise ValueError(f"Invalid transition: {current} → {status}")
 
     conn.execute("UPDATE vacancies SET status = ? WHERE id = ?", (status, vacancy_id))
+    conn.commit()
+
+
+def save_match_result(
+    conn: sqlite3.Connection,
+    vacancy_id: int,
+    score: int,
+    strengths: List[str],
+    weaknesses: List[str],
+    recommendation: str,
+) -> None:
+    """Persist a matching pass's result onto the vacancy record (ADR-003
+    §2 — no new table). Does not touch `status`; the pipeline transitions
+    that separately via `update_vacancy_status`."""
+    conn.execute(
+        """
+        UPDATE vacancies
+        SET score = ?, strengths = ?, weaknesses = ?, recommendation = ?
+        WHERE id = ?
+        """,
+        (score, json.dumps(strengths), json.dumps(weaknesses), recommendation, vacancy_id),
+    )
     conn.commit()

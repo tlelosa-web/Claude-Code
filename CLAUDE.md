@@ -10,6 +10,17 @@
 > hard rule 1. Onboarded to DCOE 2026-07-15 per
 > `docs/decisions/ADR-001-dcoe-onboarding.md`.
 
+**At the start of every session, read
+`~/.claude/plugins/marketplaces/tlelosa-claude-config/dcoe-roster/CORE.md`
+and treat its contents as part of this project's operating instructions** —
+it carries the shared DCOE architecture, sub-agent roster, model routing,
+and universal hard rules (ADR-007, decided in the `Operations` hub). A
+session opened directly in this project folder does **not** load the root
+hub's `CLAUDE.md`, so the DCOE/roster content has to be sourced from
+`CORE.md` directly rather than via a pointer to root — `@import` can't reach
+that path either (verified 2026-07-18), so this is a plain read instruction,
+not an automatic import. Follow it explicitly each session.
+
 -----
 
 ## 📁 PROJECT OVERVIEW
@@ -25,8 +36,8 @@ Deployment:  Local Windows desktop, launched via RUN_PIPELINE.bat /
 Runtime:     Python 3.11+ (see 4_Scripts/backend/requirements.txt) ·
              Node (see 4_Scripts/frontend/package.json)
 Inference:   Model routing, effort tiers, and escalation rules follow the
-             standing policy in root `CLAUDE.md` § Sub-agent roster — not
-             duplicated here (ADR-002 pattern: point to the shared source).
+             standing policy in `CORE.md` § Model routing (see the read
+             instruction above) — not duplicated here.
 Owner:       Tebello Lelosa
 ```
 
@@ -83,10 +94,11 @@ RUN_PIPELINE.bat                     # From project root
 
 ## 🏗️ DCOE AGENT ARCHITECTURE
 
-Same architecture as every DCOE project — full description in root
-`CLAUDE.md` § DCOE Agent Architecture and § Sub-agent roster (deployed once
-at user level, `~/.claude/agents/`, active automatically here). Not
-duplicated in this file.
+Same architecture as every DCOE project — full description in `CORE.md` §
+DCOE Agent Architecture and § Sub-agent roster (see the read instruction
+above). The 9-agent roster is deployed once at user level
+(`~/.claude/agents/`) and is active automatically here. Not duplicated in
+this file.
 
 ### DCOE Rules (project-specific reminders)
 
@@ -178,8 +190,10 @@ task (anti-drift pattern).
 
 ## ⚠️ HARD RULES — NEVER VIOLATE
 
-Inherits every hard rule from root `CLAUDE.md` § Hard Rules. Project-specific
-additions:
+Inherits the universal hard rules from `CORE.md` (see the read instruction
+above) — hub-specific rules in root `CLAUDE.md` (e.g. the no-git-repo-at-root
+rule) don't apply to this project, which has its own git repo. Project-
+specific additions:
 
 1. **Frontend/backend payload shape is a contract.** Any change to a
    `test_lines` field name/shape must be made in `App.jsx`,

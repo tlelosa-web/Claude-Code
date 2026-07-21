@@ -1,6 +1,6 @@
 # Task Queue — TebelloReborn (Career Engine)
 
-> Updated: 2026-07-21 (Phase 3 done)
+> Updated: 2026-07-21 (Phase 4 done)
 
 ---
 
@@ -65,15 +65,21 @@
 - [x] ADR-003 (`docs/decisions/ADR-003-inference-provider-split.md`) — already written and decided (2026-07-19). Filed **out of numeric sequence**, ahead of ADR-001/ADR-002 above: the OpenRouter-drop decision was time-sensitive (Phases 4–5 hadn't been built yet, so re-planning now means the OpenRouter path is never written at all), whereas ADR-001 (vacancy-store) and ADR-002 (Apify scraping) are documentation of already-settled Phase 2/3 conventions and can be written whenever convenient.
 
 ### Phase 4 — Stage 3: AI Matching (local Ollama, `qwen3:8b` — ADR-003 §2)
-- [ ] 24. [RED] `tests/unit/test_matching.py`
-- [ ] 25. [GREEN] `src/matching/prompt_builder.py`
-- [ ] 26. [RED] `tests/unit/test_ollama_client.py` — module-level `RateLimiter` (`OLLAMA_RATE_LIMIT_PER_MIN`), two distinct exception types (`OllamaError` base, `OllamaUnreachableError` subclass for connection-refused/connect-timeout), no API key/no missing-key guard, native `POST {OLLAMA_BASE_URL}/api/generate` with `{"model", "prompt", "stream": false, "think": false}`, `<think>...</think>` stripped from the returned `response` field
-- [ ] 27. [GREEN] `src/matching/ollama_client.py` — lives beside its single consumer (`matching/`, not `src/shared/`), mirroring `ai-outreach-agency/research/ollama_client.py`'s shape and the `apify_client.py` single-consumer precedent (ADR-003 §2, §Alternatives.D)
-- [ ] 28. [GREEN] `src/matching/scorer.py` — consumes `ollama_client.py`; **fails loud** on `OllamaError`/`OllamaUnreachableError`, no fallback backend (ADR-003 §2)
-- [ ] 29. [RED] `tests/unit/test_matching_pipeline.py`
-- [ ] 30. [GREEN] `src/matching/pipeline.py`
+- [x] 24. [RED] `tests/unit/test_matching.py`
+- [x] 25. [GREEN] `src/matching/prompt_builder.py`
+- [x] 26. [RED] `tests/unit/test_ollama_client.py` — module-level `RateLimiter` (`OLLAMA_RATE_LIMIT_PER_MIN`), two distinct exception types (`OllamaError` base, `OllamaUnreachableError` subclass for connection-refused/connect-timeout), no API key/no missing-key guard, native `POST {OLLAMA_BASE_URL}/api/generate` with `{"model", "prompt", "stream": false, "think": false}`, `<think>...</think>` stripped from the returned `response` field
+- [x] 27. [GREEN] `src/matching/ollama_client.py` — lives beside its single consumer (`matching/`, not `src/shared/`), mirroring `ai-outreach-agency/research/ollama_client.py`'s shape and the `apify_client.py` single-consumer precedent (ADR-003 §2, §Alternatives.D)
+- [x] 28. [GREEN] `src/matching/scorer.py` — consumes `ollama_client.py`; **fails loud** on `OllamaError`/`OllamaUnreachableError`, no fallback backend (ADR-003 §2)
+- [x] 29. [RED] `tests/unit/test_matching_pipeline.py`
+- [x] 30. [GREEN] `src/matching/pipeline.py`
 
-> No new DB table for matching — the score is written onto the Phase 3 vacancy schema (status `new → scored`), per ADR-003 §2. No migration required from this phase.
+> **Corrected during Build Queue execution:** ADR-003 §2's "no migration required" note turned out
+> to be inaccurate against how Phase 3 was actually built — the `vacancies` table had no
+> score/rationale columns. Added `score`/`strengths`/`weaknesses`/`recommendation` as a proper
+> migration in `vacancy_search/migrations.py` (versions 1-4) plus a `save_match_result()` in
+> `vacancy_search/db.py`, per CLAUDE.md hard rule #6 and this project's own baseline-vs-migration
+> convention (see Resolved Items below). Covered by `tests/unit/test_vacancy_match_result.py`
+> (its own RED/GREEN pair, run before step 29 since the pipeline depends on it).
 
 ### Phase 5 — Stage 4: Document Generation (headless Claude Code, `claude -p` — ADR-003 §3–4)
 - [ ] 31. [RED] `tests/unit/test_doc_gen_schema.py` — `GenerationStatus` enum (`success` / `throttled` / `error`)
@@ -123,6 +129,11 @@
 - [x] OpenRouter Known Issue (out-of-credits blocker) resolved for TebelloReborn by ADR-003 — the project
       no longer depends on OpenRouter or its credit balance at all. (The blocker may still exist for
       `ai-outreach-agency` — it is simply no longer this project's to fix.)
+- [x] Match-result persistence (Phase 4 corrective addendum): ADR-003 §2 assumed the score columns
+      were "part of the Phase 3 vacancy schema," but Phase 3 (steps 16-19) shipped without them. Added
+      via `vacancy_search/migrations.py` (versions 1-4) rather than editing the committed baseline
+      `CREATE TABLE`, consistent with the migration-file convention above. ADR-003 itself is left
+      unedited (historical record of the decision as accepted); this note is the correction.
 
 ---
 

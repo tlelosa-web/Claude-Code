@@ -1,6 +1,6 @@
 # Task Queue — TebelloReborn (Career Engine)
 
-> Updated: 2026-07-21
+> Updated: 2026-07-21 (Phase 2 done)
 
 ---
 
@@ -43,12 +43,12 @@
 > `src/shared/openrouter_client.py` (formerly steps 8–9 in this phase) is dropped entirely per ADR-003 §1 — never built.
 
 ### Phase 2 — Stage 1: Profile Import (offline)
-- [ ] 10. [RED] `tests/unit/test_profile_schema.py`
-- [ ] 11. [GREEN] `src/profile/schema.py`
-- [ ] 12. [RED] `tests/unit/test_profile_db.py`
-- [ ] 13. [GREEN] `src/profile/db.py` + `src/profile/migrations.py`
-- [ ] 14. [RED] `tests/unit/test_profile_seed_data.py`
-- [ ] 15. [GREEN] `data/profile_seed.json` (Ops Foreman/Manager primary, Project Engineer secondary)
+- [x] 10. [RED] `tests/unit/test_profile_schema.py`
+- [x] 11. [GREEN] `src/profile/schema.py`
+- [x] 12. [RED] `tests/unit/test_profile_db.py`
+- [x] 13. [GREEN] `src/profile/db.py` + `src/profile/migrations.py`
+- [x] 14. [RED] `tests/unit/test_profile_seed_data.py`
+- [x] 15. [GREEN] `data/profile_seed.json` (Ops Foreman/Manager primary, Project Engineer secondary)
 
 ### Phase 3 — Stage 2: Vacancy Fetch (Apify for real runs)
 - [ ] 16. [RED] `tests/unit/test_vacancy_schema.py`

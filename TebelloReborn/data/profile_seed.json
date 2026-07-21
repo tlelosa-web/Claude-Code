@@ -1,0 +1,121 @@
+{
+  "name": "Tebello Lelosa",
+  "region": "Gauteng, South Africa",
+  "salary_floor": 45000,
+  "industries": [
+    "Manufacturing",
+    "Heavy Industry",
+    "Power Generation",
+    "Mining-Adjacent"
+  ],
+  "skills": [
+    "Project Management",
+    "Full Lifecycle Delivery",
+    "Tender Compilation & Bidding",
+    "Cost Estimation & Margin Optimisation",
+    "Stakeholder & Client Relations",
+    "Cross-Functional Team Leadership",
+    "Risk Mitigation",
+    "SOX Compliance",
+    "ERP & CRM Systems",
+    "Strategic Sourcing",
+    "Supplier Negotiation",
+    "Inventory Management",
+    "Demand Forecasting",
+    "S&OP Facilitation",
+    "Production Planning",
+    "Cost Reduction",
+    "Vendor Management",
+    "Logistics Coordination",
+    "Mechanical Engineering Principles",
+    "CNC Programming (Fanuc)",
+    "Technical Drawing Interpretation",
+    "CAD (Pro Engineer, AutoCAD)",
+    "Quality Control Integration",
+    "Health & Safety Compliance",
+    "Outage Planning",
+    "Root Cause Analysis",
+    "Multi-Site Operations",
+    "Executive Reporting",
+    "Government & Stakeholder Engagement",
+    "Sales-to-Budget Analysis",
+    "Team Development"
+  ],
+  "target_titles": [
+    {
+      "title": "Operations Foreman/Manager",
+      "primary": true,
+      "weight": 1.0
+    },
+    {
+      "title": "Project Engineer (Mechanical)",
+      "primary": false,
+      "weight": 0.6
+    }
+  ],
+  "experience": [
+    {
+      "title": "Operations Foreman",
+      "company": "FanMovement (Pty) Ltd",
+      "start_date": "2025-10",
+      "end_date": null,
+      "description": "Supervise daily production and workshop operations manufacturing industrial air and gas movement equipment; coordinate workflow between engineering, production, procurement, and stores; monitor inventory and material availability; support operational planning and task allocation; ensure health, safety, and quality compliance."
+    },
+    {
+      "title": "Project Engineer",
+      "company": "Howden Africa",
+      "start_date": "2023-05",
+      "end_date": "2024-03",
+      "description": "Managed engineering projects and industrial client portfolios across power generation and heavy industry sectors; prepared tender submissions and project cost estimates; coordinated project delivery across engineering, procurement, manufacturing, and supplier networks; maintained records in Microsoft AX ERP and CRM; monitored outstanding orders and debtors."
+    },
+    {
+      "title": "Project Officer",
+      "company": "Polyco (Sustainability & Recycling)",
+      "start_date": "2020-03",
+      "end_date": "2022-06",
+      "description": "Directed end-to-end rollout of 4 static Packa-Ching buy-back centres from planning through launch; orchestrated procurement across multiple suppliers; managed performance of project partners; reported weekly project status to the CEO; coordinated launch campaigns; represented Polyco at government and stakeholder meetings."
+    },
+    {
+      "title": "Project Engineer",
+      "company": "Howden Africa",
+      "start_date": "2018-01",
+      "end_date": "2019-06",
+      "description": "Managed full project lifecycle for an Eskom power station portfolio spanning 7 major stations (Camden, Duvha, Lethabo, Kendal, Majuba, Matimba, Matla); compiled costing sheets to maximise profit margins; managed tender compilation on the CRM system; processed client enquiries through to order confirmation; maintained SOX compliance across procurement and financial processes."
+    },
+    {
+      "title": "Junior Project Engineer",
+      "company": "Howden Africa",
+      "start_date": "2015-01",
+      "end_date": "2017-12",
+      "description": "Managed a dedicated client portfolio with weekly power station site visits; resolved on-site client queries in real time; processed technical enquiries and compiled detailed costings; compiled tenders on the CRM system and managed the full enquiry-to-order pipeline; earned promotion to Project Engineer on direct customer recommendation."
+    },
+    {
+      "title": "Contract Stock Controller",
+      "company": "Howden Africa",
+      "start_date": "2014-10",
+      "end_date": "2014-12",
+      "description": "Coordinated manufacture and procurement of contract stock spares for multiple Eskom power stations; managed project budgets, invoicing, and cost negotiations with suppliers; developed outage bar charts in Microsoft Project; ensured QC requirements across the procurement chain; coordinated logistics to the Middelburg central storage site."
+    },
+    {
+      "title": "Supply Chain Supervisor",
+      "company": "Morgan Advanced Materials",
+      "start_date": "2012-01",
+      "end_date": "2014-03",
+      "description": "Oversaw production planning and material resource planning for Mechanical and Electrical departments; facilitated Sales & Operations Planning (S&OP); forecasted material requirements and performed sales-to-budget gap analysis; planned and executed bi-annual stocktakes across 4 manufacturing sites; sourced alternative suppliers to reduce procurement costs."
+    },
+    {
+      "title": "Production Planner",
+      "company": "Morgan Advanced Materials",
+      "start_date": "2009-01",
+      "end_date": "2011-12",
+      "description": "Executed rough cut and finite capacity planning for production schedules; scheduled manufacturing orders using Pre-Actor production scheduling software; built Bills of Materials (BOMs) and Routings; produced production plans for workshop supervisors; expedited urgent orders; tracked plan achievement, OTDIF, and production lead time."
+    },
+    {
+      "title": "CNC Programmer & Operator",
+      "company": "Morgan Advanced Materials",
+      "start_date": "2006-11",
+      "end_date": "2008-12",
+      "description": "Programmed CNC lathes using Fanuc coding language; operated CNC equipment to manufacture precision components to technical drawings and quality standards; earned promotion to Production Planner upon completion of National Diploma in Engineering (Mechanical)."
+    }
+  ]
+}

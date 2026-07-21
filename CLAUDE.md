@@ -8,6 +8,16 @@
 > Single source of truth for how this project operates.
 > Keep under 500 lines. Move deep docs to @imports.
 
+**At the start of every session, read
+`~/.claude/plugins/marketplaces/tlelosa-claude-config/dcoe-roster/CORE.md`
+and treat its contents as part of this project's operating instructions** —
+it carries the shared DCOE architecture, sub-agent roster, model routing,
+and universal hard rules (ADR-007, decided in the `Operations` hub).
+`@import` can't reach that path (verified 2026-07-18), so this is a plain
+read instruction, not an automatic import — follow it explicitly each
+session. Everything below is project-specific content that stays local to
+this file.
+
 -----
 
 ## 📁 PROJECT OVERVIEW
@@ -56,112 +66,19 @@ sqlite3 sops.db ".tables"      # Quick schema check
 
 -----
 
-## 🏗️ DCOE AGENT ARCHITECTURE
+## 🏗️ DCOE AGENT ARCHITECTURE & SUB-AGENT ROSTER
 
-This workspace runs on the **DCOE pattern**:
-**Domain → Context → Orchestrate → Execute**
+Now sourced from `CORE.md` (see the read instruction above) rather than
+duplicated here — the 4-stage DCOE diagram, the DCOE Rules, the 9-agent
+roster table, and model routing/escalation policy all live there (ADR-007).
+Project-specific additions only:
 
-An evolution of the DOE pattern that adds an explicit Domain layer.
-Each complex task is routed through four stages. Never collapse them.
-
-```
-┌──────────────────────────────────────────────────────┐
-│                    YOU (Human)                        │
-│          Describe goal  →  Review output              │
-└───────────────────────┬──────────────────────────────┘
-                        │
-             ┌──────────▼──────────┐
-             │     DOMAIN AGENT    │  (Session start / new feature)
-             │  - Clarifies scope  │  Reads CLAUDE.md + docs/todo.md
-             │  - Confirms stack   │  Stops if acceptance criteria
-             │  - Flags ambiguity  │  are unclear. ASK before acting.
-             └──────────┬──────────┘
-                        │
-             ┌──────────▼──────────┐
-             │   CONTEXT AGENT     │  (Planner / Architect)
-             │  - Reads codebase   │  Writes spec to docs/specs/
-             │  - Writes todo.md   │  Uses ultrathink for design.
-             │  - Defines deps     │  Never implements. Routes only.
-             └──────────┬──────────┘
-                        │
-             ┌──────────▼──────────┐
-             │  ORCHESTRATOR       │  (Coordinates parallel work)
-             │  - Reads todo.md    │  Spawns Executors in worktrees.
-             │  - Tracks state     │  Context stays < 40%.
-             │  - Merges results   │  One commit per task. Always.
-             └──────────┬──────────┘
-                        │
-          ┌─────────────┼─────────────┐
-          ▼             ▼             ▼
-    ┌──────────┐  ┌──────────┐  ┌──────────┐
-    │EXECUTOR 1│  │EXECUTOR 2│  │EXECUTOR N│
-    │worktree-1│  │worktree-2│  │worktree-n│
-    │Fresh ctx │  │Fresh ctx │  │Fresh ctx │
-    │One task  │  │One task  │  │One task  │
-    │One commit│  │One commit│  │One commit│
-    └──────────┘  └──────────┘  └──────────┘
-```
-
-### DCOE Rules
-
-1. **Domain Agent** confirms scope, stack, and ambiguities before anything else.
-1. **Context Agent** writes the plan — never the code. Spec lives in `docs/specs/`.
-1. **Orchestrator** reads `docs/todo.md`, parallelises via git worktrees, merges.
-1. **Executors** each get a fresh context. One task. One atomic commit. Done.
-1. If acceptance criteria are unclear at any stage → **STOP and ask**.
-1. Orchestrator never does heavy lifting. Executors never plan.
-
------
-
-## 🤖 SUB-AGENT ROSTER
-
-**Default location: `~/.claude/agents/` (user-level).** The full roster below
-is deployed once at the user level and is available automatically in every
-project — SOPS, ai-outreach-agency, CrateTracker, Fan Nameplate Generator,
-and any future project. No per-project copying required.
-
-Project-level `.claude/agents/` is reserved for **overrides only** — e.g. a
-`data-agent` variant tuned to a specific project's export format. A
-same-named file in a project's own `.claude/agents/` wins over the
-user-level default for that project. Run `/agents` at session start to
-confirm the active roster, and `/doctor` if a name conflict is suspected.
-
-|Agent       |Default file                  |When to Use                            |
-|------------|-------------------------------|----------------------------------------|
-|`domain`    |`~/.claude/agents/domain.md`    |Session start, scope confirmation      |
-|`planner`   |`~/.claude/agents/planner.md`   |Break features into spec + tasks       |
-|`architect` |`~/.claude/agents/architect.md` |System design, ADRs, DB schema         |
-|`executor`  |`~/.claude/agents/executor.md`  |Implement a single well-defined task   |
-|`tester`    |`~/.claude/agents/tester.md`    |Write tests, TDD loops                 |
-|`reviewer`  |`~/.claude/agents/reviewer.md`  |Code review, security, quality gate    |
-|`doc-writer`|`~/.claude/agents/doc-writer.md`|Update docs, README, changelogs        |
-|`debugger`  |`~/.claude/agents/debugger.md`  |Systematic bug investigation           |
-|`data-agent`|`~/.claude/agents/data-agent.md`|Excel/CSV transforms, report processing|
-
-### Model routing (via OpenRouter)
-
-`claude-sonnet-5` at **medium effort** is the universal default for all agents.
-`claude-opus-4-8` is reserved for **evidence-based escalation only** — not assigned up front by task type.
-
-**Escalate to Opus when:**
-- Two prior Sonnet attempts on the same task have failed
-- The task requires deep architectural reasoning (system-wide redesign, non-trivial ADRs)
-- A security review is warranted (auth, data-export, file-write code)
-
-**Standing exception:** the `reviewer` agent runs permanently on `claude-opus-4-8` — code review is treated as a fixed high-stakes gate, not a per-task escalation.
-
-|Role                              |Model              |Effort |
-|-----------------------------------|-------------------|-------|
-|All agents (default)               |`claude-sonnet-5`  |Medium |
-|`reviewer` (permanent)             |`claude-opus-4-8`  |High   |
-|Escalation (2 failed attempts / deep architecture / security review)|`claude-opus-4-8`|High|
-|Search / grep only                 |`claude-haiku-4-5` |Low    |
-
-Set per-agent in frontmatter: `model: claude-haiku-4-5`
-
-**Effort tiers** map onto the Thinking Levels table below — low effort pairs with *(none)*/`think`, medium with `think hard`, high with `think harder`/`ultrathink`.
-
-**Bulk batch jobs** (large multi-file refactors, project-wide sweeps, mass research runs) should be scheduled **before 31 August 2026** — introductory pricing on current models ends after that date.
+- **Effort tiers** map onto the § Quick Reference: Thinking Levels table
+  below — low effort pairs with *(none)*/`think`, medium with `think hard`,
+  high with `think harder`/`ultrathink`.
+- **Bulk batch jobs** (large multi-file refactors, project-wide sweeps, mass
+  research runs) should be scheduled **before 31 August 2026** —
+  introductory pricing on current models ends after that date.
 
 -----
 

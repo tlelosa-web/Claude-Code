@@ -3,7 +3,7 @@ import os
 from src.profile.schema import CandidateProfile
 from src.vacancy_search.schema import Vacancy
 
-from .runner import run_claude_code
+from .runner import run_claude_code, wrap_untrusted_text
 from .schema import GenerationResult, GenerationStatus
 
 DOC_TYPE = "cv"
@@ -37,7 +37,7 @@ def _build_cv_instruction(profile: CandidateProfile, vacancy: Vacancy) -> str:
         f"Skills: {', '.join(profile.skills)}\n"
         f"Industries: {', '.join(profile.industries)}\n\n"
         f"Experience:\n{experience_lines}\n\n"
-        f"Vacancy description: {vacancy.description}\n\n"
+        f"Vacancy description:\n{wrap_untrusted_text(vacancy.description)}\n\n"
         "Produce the CV as clean markdown, ready to export to PDF."
     )
 

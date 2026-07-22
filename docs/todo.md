@@ -747,3 +747,52 @@ in `docs/specs/sales-order-report-excel-export-2026-07-17.md`.
   decommissioned here); revisit that separately if/when Tebello wants to
   retire it now that SOPS covers the same ground.
 - Blockers: None.
+
+## Batch 35 — Frozen list headers + remove horizontal scroll (SO/WO/STO/PO) (2026-07-20/22)
+
+- Triggered by Tebello reporting PO3839 "missing" from the Purchase Orders
+  list. Diagnosed live in Tebello's real Chrome: not missing — the sticky
+  `<th>` (Batch 31) sat inside `<div style="overflow-x: auto;">`, which
+  became the sticky scrollport; with persisted column widths overflowing
+  (1,751px vs a ~1,280px card) Chromium painted the header 56px low, its
+  opaque background covering the first-sorted row (PO3839 under both default
+  and PO-number sort). Sticky `th` was also inert under
+  `border-collapse: collapse`, so headers had never actually frozen.
+- Tebello then asked to "look into freezing the headers and removing
+  horizontal scroll." Scope confirmed via AskUserQuestion (3 recommended
+  options accepted): freeze below topbar (page scroll, no inner scrollbar);
+  zero-sum column resize (total width fixed → overflow impossible); existing
+  saved widths scaled-to-fit on load (with a 40px floor, heals the legacy
+  3px column). Spec: `docs/specs/frozen-headers-no-hscroll-2026-07-20.md`
+  (7 in-scope files; plan-first rule).
+- Commit `76e33cc` (executor): `.data-table` `border-collapse: collapse` →
+  `separate; border-spacing:0`; removed the `overflow-x: auto` wrapper from
+  the 4 list templates; `resizable_columns.js` reworked to zero-sum drag
+  (last column no handle, 40px floor) + scale-to-fit on load and on
+  debounced window resize (self-heals + persists normalized widths); 4
+  wiring tests gained an `overflow-x: auto` regression assertion. 331 tests
+  green.
+- Orchestrator live-verification found acceptance criterion #2 (headers
+  freeze on scroll) was **still not met** — horizontal scroll and the
+  paint bug were fixed, but headers still scrolled away. Second root cause
+  (missed in the spec): the list `<table>` also sits inside `.card`, which
+  has `overflow: hidden` (rounded-corner clip) — itself a scroll container,
+  so it, not the viewport, was the sticky scrollport. Confirmed live at
+  scrollY=800: header `<th>` viewport-top was −649px (`hidden`) vs 56px
+  (`visible`/`clip`).
+- Fix commit `c81243d`: scoped `card-sticky-head` modifier on the 4 list
+  cards + `.card.card-sticky-head { overflow: clip }` (clip still clips to
+  the rounded corners but is not a scroll container, so the header freezes).
+  Scoped, not global — detail/other pages untouched. 4 wiring tests gained
+  a `card-sticky-head` assertion. 331 tests green.
+- Live-verified with the real committed code in Tebello's Chrome: header
+  freezes flush at 56px below the topbar (Sales Orders, scrollY=1467), no
+  horizontal scroll on SO or PO, PO3839 is the first visible row again, and
+  the previously-overflowing PO saved widths self-healed to sum exactly to
+  the container (1,750px). Column filters still compose while frozen.
+- Next task: none queued. Two carried-forward live-data items remain
+  (unchanged): Batch 24 payment-status review (19/22 SOs) and the Batch
+  32/33 migration + real-data import go-ahead.
+- Blockers: None.
+- Commits: `76e33cc` (build), `c81243d` (freeze fix). Spec committed with
+  each.

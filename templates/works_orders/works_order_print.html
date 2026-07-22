@@ -39,8 +39,8 @@
             </div>
         </div>
         <div style="text-align: right;">
-            <div class="doc-title">WORKS ORDER</div>
-            <div class="doc-number">{{ wo.wo_number }}</div>
+            <div class="doc-title">JOB NUMBER(S)</div>
+            <div class="doc-number">{{ so.job_numbers if so and so.job_numbers else '-' }}</div>
             <div style="margin-top: 6px;"><span class="status-badge">{{ wo.status }}</span></div>
         </div>
     </div>
@@ -53,8 +53,8 @@
             <td>{{ so.customer_name if so else '-' }}</td>
         </tr>
         <tr>
-            <td>Job Number(s):</td>
-            <td>{{ so.job_numbers if so and so.job_numbers else '-' }}</td>
+            <td>Works Order:</td>
+            <td>{{ wo.wo_number }}</td>
             <td>SO Number:</td>
             <td>{{ so.so_number if so else '-' }}</td>
         </tr>

@@ -38,8 +38,8 @@
             </div>
         </div>
         <div style="text-align: right;">
-            <div class="doc-title">STOCK ORDER</div>
-            <div class="doc-number">{{ stock_order.stock_order_number }}</div>
+            <div class="doc-title">JOB NUMBER(S)</div>
+            <div class="doc-number">{{ so.job_numbers if so and so.job_numbers else '-' }}</div>
             <div style="margin-top: 6px;"><span class="status-badge">{{ stock_order.status }}</span></div>
         </div>
     </div>
@@ -52,8 +52,8 @@
             <td>{{ so.customer_name if so else '-' }}</td>
         </tr>
         <tr>
-            <td>Job Number(s):</td>
-            <td>{{ so.job_numbers if so and so.job_numbers else '-' }}</td>
+            <td>Stock Order:</td>
+            <td>{{ stock_order.stock_order_number }}</td>
             <td>Delivery:</td>
             <td>{{ so.delivery_address if so else '-' }}</td>
         </tr>

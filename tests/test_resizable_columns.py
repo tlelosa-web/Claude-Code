@@ -25,6 +25,10 @@ def test_sales_orders_list_wires_resizable_columns(client, session):
     # against the wrong scrollport (paint bug hiding the first row). It's
     # the only such wrapper on this list page, so a body-wide check holds.
     assert "overflow-x: auto" not in body
+    # Batch 35 fix: the list card must carry card-sticky-head so its
+    # overflow becomes `clip` (not `hidden`), letting the sticky header
+    # freeze against the viewport instead of the card.
+    assert "card-sticky-head" in body
 
 
 def test_works_orders_list_wires_resizable_columns(client, session):
@@ -44,6 +48,7 @@ def test_works_orders_list_wires_resizable_columns(client, session):
     assert 'id="orders-table"' in body
     # Batch 35: see test_sales_orders_list_wires_resizable_columns.
     assert "overflow-x: auto" not in body
+    assert "card-sticky-head" in body
 
 
 def test_stock_orders_list_wires_resizable_columns(client, session):
@@ -63,6 +68,7 @@ def test_stock_orders_list_wires_resizable_columns(client, session):
     assert 'id="sto-list-table"' in body
     # Batch 35: see test_sales_orders_list_wires_resizable_columns.
     assert "overflow-x: auto" not in body
+    assert "card-sticky-head" in body
 
 
 def test_purchase_orders_list_wires_resizable_columns(client, session):
@@ -78,3 +84,4 @@ def test_purchase_orders_list_wires_resizable_columns(client, session):
     assert 'id="po-list-table"' in body
     # Batch 35: see test_sales_orders_list_wires_resizable_columns.
     assert "overflow-x: auto" not in body
+    assert "card-sticky-head" in body

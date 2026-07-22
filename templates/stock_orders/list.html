@@ -3,7 +3,7 @@
 {% block page_title %}Stock Orders{% endblock %}
 
 {% block content %}
-<div class="card animate-fade-in">
+<div class="card card-sticky-head animate-fade-in">
     <div class="card-header">
         <h2 class="card-title">{{ 'Open Stock Orders' if view == 'open' else ('Closed Stock Orders' if view == 'closed' else 'All Stock Orders') }}</h2>
         <div style="display: flex; gap: 4px;">

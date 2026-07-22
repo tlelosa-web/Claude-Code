@@ -169,6 +169,15 @@ a:hover { color: var(--brand-primary); }
     box-shadow: var(--shadow);
     overflow: hidden;
 }
+/* List-page cards freeze their table headers on scroll (Batch 35). A
+   sticky <th> resolves against its nearest scroll-container ancestor, so
+   the default .card `overflow: hidden` (which IS a scroll container) pins
+   the header to the card instead of the viewport — defeating the freeze.
+   `overflow: clip` still clips content to the card's rounded corners but is
+   NOT a scroll container, so the header freezes below the topbar instead. */
+.card.card-sticky-head {
+    overflow: clip;
+}
 .card-header {
     display: flex;
     justify-content: space-between;

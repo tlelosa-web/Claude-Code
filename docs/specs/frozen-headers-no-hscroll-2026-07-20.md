@@ -166,3 +166,37 @@ JS/CSS/template-only batch — same convention as Batches 26/31):
 CSS → JS → 4 templates → tests → full suite → commit.
 Orchestrator then live-verifies in Tebello's real Chrome (the environment
 that reproduces the bug) before closing the batch.
+
+## Post-merge fix — headers were still not freezing (2026-07-22)
+
+Orchestrator live-verification (in Tebello's real Chrome, after commit
+`76e33cc`) found acceptance criterion #2 was **not** met: horizontal
+scroll and the hidden-first-row paint bug were both fixed, but the column
+headers still scrolled away instead of freezing.
+
+**Second root cause (missed in the original spec):** removing the
+`overflow-x: auto` wrapper was necessary but not sufficient. The list
+`<table>` also sits inside `<div class="card">`, and `.card` has
+`overflow: hidden` (main.css) to clip content to its rounded corners.
+`overflow: hidden` **is itself a scroll container**, so it — not the
+viewport — became the sticky `<th>`'s scrollport, pinning the header to
+the card (which scrolls with the page) rather than below the topbar.
+
+Empirically confirmed live at `scrollY = 800` (Sales Orders, 41 rows):
+
+| `.card` overflow | header `<th>` viewport-top | frozen? |
+|------------------|---------------------------|---------|
+| `hidden` (was)   | −649px (scrolled off)     | no      |
+| `visible`        | 56px (below 56px topbar)  | yes     |
+| `clip`           | 56px (below 56px topbar)  | yes     |
+
+**Fix:** scoped, not global. Added a `card-sticky-head` modifier class to
+the 4 list-page cards and a rule `.card.card-sticky-head { overflow: clip; }`.
+`clip` still clips to the card's rounded corners (unlike `visible`, which
+would let the table's square corners poke out) but is **not** a scroll
+container, so the sticky header freezes against the viewport. Scoped to the
+4 list cards rather than changing the global `.card` rule, so detail/other
+pages' behavior is untouched. The 4 wiring tests each gained a
+`card-sticky-head` presence assertion. Verified live afterward: at
+`scrollY = 800` the topbar occupies 0–56px and the header row 56–118px,
+both frozen and stacked.

@@ -796,3 +796,36 @@ in `docs/specs/sales-order-report-excel-export-2026-07-17.md`.
 - Blockers: None.
 - Commits: `76e33cc` (build), `c81243d` (freeze fix). Spec committed with
   each.
+
+## STO edit — preserve & allow editing per-line FM/Job number (2026-07-23)
+- Tebello: "Check the Job numbers related to the STO, fm4247 is not there."
+  Diagnosed STO0027 (built from SO4756): its 14 lines had `job_number=NULL`
+  though the 14 source SO lines all carry `FM4247` (fan lines FM4248/49/50
+  became WO0026/27/28 correctly). STO `job_numbers` is derived live from its
+  own lines (`models.py:180`), so the display was empty.
+- Root cause — a second, active bug: the STO **edit** flow silently wiped all
+  line job numbers on every save. `edit.html` had no FM column and dropped
+  `job_number` from its `lines_json`; `edit_order` POST deletes+recreates
+  lines without `job_number` (`routes/stock_orders.py:452`). STO0027 was
+  edited (Open→Released), which is how FM4247 was lost. Build-time snapshot
+  (`sales_orders.py:457`) is correct and unchanged.
+- Data remediation: backfilled STO0027's 14 lines to `FM4247` from their
+  source SO lines. DB backed up first →
+  `instance/sops.db.pre-fm4247-backfill-20260723-072539`.
+- Fix (design chosen by Tebello: editable column): new editable **FM / Job
+  No.** column on the STO edit screen — `routes/stock_orders.py` carries
+  `job_number` through the recreate; `templates/stock_orders/edit.html` adds
+  the header/input/add-row/`syncJSON` wiring; 4 regression tests in
+  `tests/test_stock_orders.py` (preserve / set-blank / clear-to-null / GET
+  renders input). Spec:
+  `docs/specs/sto-edit-preserve-job-number-2026-07-23.md`.
+- Commit-history note: a concurrent print-consolidation session's `git add`
+  swept the in-progress `routes/stock_orders.py` + `tests/test_stock_orders.py`
+  edits into commit `dca9ee4` ("Consolidate matching item lines…"), leaving
+  HEAD briefly inconsistent (the GET-render test asserted a `job-input`
+  column that `edit.html` didn't yet have). This commit adds the remaining
+  `edit.html` + spec + this todo entry, restoring consistency. Full suite
+  339 green.
+- Note: STO0027 only *displays* FM4247 after any running dev server restarts
+  (a concurrent chat's server was serving pre-backfill SQLAlchemy state).
+- Blockers: None.

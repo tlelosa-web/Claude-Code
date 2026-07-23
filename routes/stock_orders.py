@@ -99,6 +99,42 @@ def view_order(order_id):
                            can_complete=can_complete_stock_order(stock_order),
                            line_extras=_line_extras(stock_order))
 
+def _consolidate_print_lines(stock_order):
+    """Group Stock Order lines by item_code for the printed STO, summing qty
+    and joining distinct notes. Blank item_codes are never merged — each such
+    line stays its own row. Print-only: stored StockOrderLine rows, picking,
+    and stock deduction are unaffected. Row order follows each item_code's
+    first appearance. Returns a list of dicts (item_code/description/qty/notes)
+    the print template iterates instead of the raw StockOrderLine rows."""
+    consolidated = []
+    index_by_code = {}
+    for line in stock_order.lines:
+        code = (line.item_code or '').strip()
+        if code and code in index_by_code:
+            row = consolidated[index_by_code[code]]
+            row['qty'] += (line.qty or 0.0)
+            note = (line.notes or '').strip()
+            if note and note not in row['_notes']:
+                row['_notes'].append(note)
+            if not row['description'] and line.description:
+                row['description'] = line.description
+        else:
+            note = (line.notes or '').strip()
+            row = {
+                'item_code': line.item_code,
+                'description': line.description,
+                'qty': (line.qty or 0.0),
+                '_notes': [note] if note else [],
+            }
+            consolidated.append(row)
+            if code:
+                index_by_code[code] = len(consolidated) - 1
+    for row in consolidated:
+        row['notes'] = '; '.join(row['_notes'])
+        del row['_notes']
+    return consolidated
+
+
 @stock_orders_bp.route('/stock-orders/<int:order_id>/print')
 def print_order(order_id):
     """Render print-friendly Stock Order document."""
@@ -116,7 +152,8 @@ def print_order(order_id):
                         'status', 'Open', 'Released')
         db.session.commit()
 
-    return render_template('stock_orders/print.html', stock_order=stock_order, so=so)
+    return render_template('stock_orders/print.html', stock_order=stock_order, so=so,
+                           print_lines=_consolidate_print_lines(stock_order))
 
 @stock_orders_bp.route('/stock-orders/<int:order_id>/pick', methods=['POST'])
 def pick_lines(order_id):
@@ -417,7 +454,11 @@ def edit_order(order_id):
                 item_code=str(ld.get('item_code', '')).strip(),
                 description=str(ld.get('description', '')).strip(),
                 qty=qty,
-                notes=str(ld.get('notes', '')).strip()
+                notes=str(ld.get('notes', '')).strip(),
+                # Carry the per-line FM/Job number through the delete-recreate
+                # cycle. Without this, any edit silently wipes job numbers to
+                # NULL -- see docs/specs/sto-edit-preserve-job-number-2026-07-23.md
+                job_number=str(ld.get('job_number', '')).strip() or None
             )
             db.session.add(line)
 

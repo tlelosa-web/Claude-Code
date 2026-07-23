@@ -2,6 +2,7 @@
 import pytest
 from datetime import datetime, timezone
 from models import db, SalesOrder, StockOrder, StockOrderLine, Item, StockMovement, StatusChangeLog
+from routes.stock_orders import _consolidate_print_lines
 
 
 class TestStockOrders:
@@ -838,3 +839,165 @@ class TestStockOrdersReleasedFlip:
         assert "Picked" in body
         assert "Pick Qty" in body
         assert "Confirm Picks" in body
+
+
+class TestStockOrderPrintConsolidation:
+    """Print-only consolidation of matching item lines on the STO print view
+    (docs/specs/sto-print-consolidate-matching-items-2026-07-22.md). Stored
+    StockOrderLine rows, picking, and stock deduction are unaffected — these
+    assert display/helper output only."""
+
+    _c = 0
+
+    def _next(self, prefix):
+        TestStockOrderPrintConsolidation._c += 1
+        return f"{prefix}-{TestStockOrderPrintConsolidation._c:03d}"
+
+    def _make_sto(self, session, lines):
+        """Build an Open STO. lines: list of (item_code, description, qty, notes)."""
+        so = SalesOrder(so_number=self._next("SO-STOC"), customer_name="Test Customer",
+                        status="Open", created_at=datetime.now(timezone.utc))
+        session.add(so)
+        session.flush()
+        sto = StockOrder(stock_order_number=self._next("STOC"), so_id=so.id,
+                         status="Open", created_at=datetime.now(timezone.utc))
+        session.add(sto)
+        session.flush()
+        for code, desc, qty, notes in lines:
+            session.add(StockOrderLine(stock_order_id=sto.id, item_code=code,
+                                       description=desc, qty=qty, notes=notes))
+        session.commit()
+        return sto
+
+    def test_duplicate_item_lines_merge_with_summed_qty(self, client, session):
+        """Two lines with the same item_code render as one row, qty summed."""
+        code = self._next("DUP-ITEM")
+        sto = self._make_sto(session, [
+            (code, "Widget", 2.0, ""),
+            (code, "Widget", 3.0, ""),
+        ])
+        body = client.get(f"/stock-orders/{sto.id}/print").get_data(as_text=True)
+        assert body.count(code) == 1   # one printed row for the item
+        assert "5.00" in body          # 2 + 3
+
+    def test_distinct_items_stay_separate(self, client, session):
+        """Different item codes are not merged."""
+        code_a = self._next("ITEM-A")
+        code_b = self._next("ITEM-B")
+        sto = self._make_sto(session, [
+            (code_a, "Alpha", 1.0, ""),
+            (code_b, "Bravo", 1.0, ""),
+        ])
+        body = client.get(f"/stock-orders/{sto.id}/print").get_data(as_text=True)
+        assert code_a in body
+        assert code_b in body
+
+    def test_blank_item_codes_are_not_merged(self, session):
+        """Blank/None item codes each stay their own row (never grouped)."""
+        sto = self._make_sto(session, [
+            ("", "Loose part one", 1.0, ""),
+            ("", "Loose part two", 2.0, ""),
+        ])
+        rows = _consolidate_print_lines(sto)
+        assert len(rows) == 2
+        assert [r["qty"] for r in rows] == [1.0, 2.0]
+
+    def test_distinct_notes_joined_and_duplicates_collapsed(self, session):
+        """Merged group joins distinct notes with '; '; identical notes appear once."""
+        code = self._next("NOTE-ITEM")
+        sto = self._make_sto(session, [
+            (code, "Widget", 1.0, "handle with care"),
+            (code, "Widget", 1.0, "urgent"),
+            (code, "Widget", 1.0, "urgent"),
+        ])
+        rows = _consolidate_print_lines(sto)
+        assert len(rows) == 1
+        assert rows[0]["qty"] == 3.0
+        assert rows[0]["notes"] == "handle with care; urgent"
+
+
+class TestStockOrderEditJobNumber:
+    """Editing an STO must preserve (and allow setting/clearing) per-line
+    FM/Job numbers. Regression for the edit-wipes-job-number bug -- see
+    docs/specs/sto-edit-preserve-job-number-2026-07-23.md."""
+
+    _c = 0
+
+    def _next(self, prefix):
+        TestStockOrderEditJobNumber._c += 1
+        return f"{prefix}-{TestStockOrderEditJobNumber._c:03d}"
+
+    def _make_sto(self, session, lines, status="Open"):
+        """lines: list of (item_code, description, qty, job_number)."""
+        so = SalesOrder(so_number=self._next("SO-STOJ"), customer_name="Test Customer",
+                        status="Open", created_at=datetime.now(timezone.utc))
+        session.add(so)
+        session.flush()
+        sto = StockOrder(stock_order_number=self._next("STOJ"), so_id=so.id,
+                         status=status, created_at=datetime.now(timezone.utc))
+        session.add(sto)
+        session.flush()
+        for code, desc, qty, job in lines:
+            session.add(StockOrderLine(stock_order_id=sto.id, item_code=code,
+                                       description=desc, qty=qty, job_number=job))
+        session.commit()
+        return sto
+
+    def test_edit_get_renders_job_number_input(self, client, session):
+        """The edit screen surfaces each line's FM/Job number as an editable
+        input, so it round-trips instead of being dropped."""
+        code = self._next("JOB-ITEM")
+        sto = self._make_sto(session, [(code, "Silencer", 3.0, "FM4247")])
+        body = client.get(f"/stock-orders/{sto.id}/edit").get_data(as_text=True)
+        assert "job-input" in body
+        assert "FM4247" in body
+
+    def test_edit_post_preserves_job_number(self, client, app, db, session):
+        """A save that carries job_number in lines_json persists it -- the core
+        regression: pre-fix, edit_order() recreated lines without job_number."""
+        import json
+        code = self._next("JOB-ITEM")
+        sto = self._make_sto(session, [(code, "Silencer", 3.0, "FM4247")])
+        lines_json = json.dumps([
+            {"item_code": code, "description": "Silencer", "job_number": "FM4247",
+             "qty": 4.0, "notes": ""}
+        ])
+        resp = client.post(f"/stock-orders/{sto.id}/edit",
+                           data={"lines_json": lines_json}, follow_redirects=True)
+        assert resp.status_code == 200
+        with app.app_context():
+            saved = StockOrderLine.query.filter_by(stock_order_id=sto.id).all()
+            assert len(saved) == 1
+            assert saved[0].job_number == "FM4247"
+            assert saved[0].qty == 4.0  # other edits still apply
+
+    def test_edit_post_can_set_a_previously_blank_job_number(self, client, app, db, session):
+        """A stock line built without an FM number can be assigned one in the
+        edit screen (the only post-build path to do so)."""
+        import json
+        code = self._next("JOB-ITEM")
+        sto = self._make_sto(session, [(code, "Silencer", 2.0, None)])
+        lines_json = json.dumps([
+            {"item_code": code, "description": "Silencer", "job_number": "FM9001",
+             "qty": 2.0, "notes": ""}
+        ])
+        client.post(f"/stock-orders/{sto.id}/edit",
+                    data={"lines_json": lines_json}, follow_redirects=True)
+        with app.app_context():
+            saved = StockOrderLine.query.filter_by(stock_order_id=sto.id).all()
+            assert saved[0].job_number == "FM9001"
+
+    def test_edit_post_blank_job_number_persists_as_none(self, client, app, db, session):
+        """Clearing the FM field stores NULL, not an empty string."""
+        import json
+        code = self._next("JOB-ITEM")
+        sto = self._make_sto(session, [(code, "Silencer", 1.0, "FM4247")])
+        lines_json = json.dumps([
+            {"item_code": code, "description": "Silencer", "job_number": "",
+             "qty": 1.0, "notes": ""}
+        ])
+        client.post(f"/stock-orders/{sto.id}/edit",
+                    data={"lines_json": lines_json}, follow_redirects=True)
+        with app.app_context():
+            saved = StockOrderLine.query.filter_by(stock_order_id=sto.id).all()
+            assert saved[0].job_number is None

@@ -13,6 +13,9 @@
                 </button>
                 <ul class="dropdown-menu">
                     <li><a href="{{ url_for('purchase_orders.print_order', order_id=po.id) }}" target="_blank">Print</a></li>
+                    {% if editable %}
+                    <li><a href="{{ url_for('purchase_orders.edit_order', order_id=po.id) }}">Edit</a></li>
+                    {% endif %}
                     {% if po.status not in ('Received', 'Cancelled') %}
                     <li>
                         <form method="POST" action="{{ url_for('purchase_orders.cancel_order', order_id=po.id) }}" style="display: block;" onsubmit="return confirm('Cancel this Purchase Order?')">

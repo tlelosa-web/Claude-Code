@@ -829,3 +829,48 @@ in `docs/specs/sales-order-report-excel-export-2026-07-17.md`.
 - Note: STO0027 only *displays* FM4247 after any running dev server restarts
   (a concurrent chat's server was serving pre-backfill SQLAlchemy state).
 - Blockers: None.
+
+## PO edit + upload-screen item picker (2026-07-23)
+- Tebello: "Add edit function for PO module, and ability to select item that
+  cannot be parsed on the upload screen." Scope confirmed via AskUserQuestion:
+  PO edit = Draft/Open with **no receipts** → full header + line edit;
+  upload picker = **every** review line gets a catalogue picker (unmatched
+  highlighted), so it both fills unparsed items and corrects wrong auto-matches.
+- Spec: `docs/specs/po-edit-and-upload-item-picker-2026-07-23.md`.
+- Part 1 — PO Edit:
+  - `routes/purchase_orders.py`: `_po_is_editable(po)` guard (status in
+    Draft/Open and no line `qty_received > 0`, same shape as the
+    overwrite/cancel guards); `edit_order` GET/POST route (delete-recreate
+    lines, promotes Draft→Open on save, broad `except`+rollback); `view_order`
+    now passes `editable=`. Extracted `_build_lines_from_json()` (shared with
+    `save_order`) and `_catalogue_payload()` (active-item bom payloads +
+    categories, bulk demand fetch).
+  - `templates/purchase_orders/edit.html` (new): header grid (PO Number
+    read-only) + editable line table with per-row item picker, qty/price/disc
+    inputs, live excl/incl totals, add/remove line, `lines_json` sync.
+  - `templates/purchase_orders/detail.html`: conditional **Edit** action in the
+    Actions dropdown (`{% if editable %}`).
+- Part 2 — Upload item picker:
+  - `static/js/item_picker.js` (new): offline vanilla-JS inline autocomplete
+    over `window.SOPS_ITEMS`; shared by the upload review and edit screens.
+  - `templates/purchase_orders/upload.html`: review table gains a **Catalogue
+    Item** picker column + Matched/Unmatched badge per line; picker onSelect
+    mutates that line's `matched_item_id`/`item_code` in place and re-syncs the
+    hidden `lines_json`. Server-rendered hidden value preserved as no-JS
+    fallback.
+- Tests: `tests/test_purchase_orders.py` — new `TestPurchaseOrderEdit` (6:
+  editable renders form + shows action, Received hides+blocks, Open-with-receipt
+  blocks, header+line replacement, Draft→Open promotion, link previously-
+  unmatched line); fixed the lifecycle `lines_json` scrape regex (id attr now
+  sits between name/value) and swapped a brittle `badge-cancelled` substring
+  assertion for the semantic "could not be auto-matched" warning check. PO
+  module 17 green; full suite 345 green.
+- Verification: browser-verified read-only against a **copy** of the prod DB
+  on port 5001 (prod instance/sops.db never touched; live :5000 server runs
+  pre-change code, 404s on /edit). Confirmed: Edit action on Open PO4046, edit
+  form renders 5 rows with synced lines_json + pickers over 3126 items,
+  autocomplete filters (9 hits for "DDMP"), add/remove line work; upload review
+  renders the picker column + match badges + item_picker.js wiring for both PO
+  fixtures.
+- Not yet committed (awaiting Tebello's go-ahead; on `master`).
+- Blockers: None.

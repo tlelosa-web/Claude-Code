@@ -1,0 +1,227 @@
+{% extends 'base.html' %}
+{% block title %}Edit Purchase Order: {{ po.po_number }} - SOPS{% endblock %}
+{% block page_title %}Edit Purchase Order: {{ po.po_number }}{% endblock %}
+
+{% block extra_head %}
+<style>
+    #po-lines-table td { vertical-align: top; }
+    .po-line-row input { width: 100%; padding: 4px 6px; font-size: 0.85rem; }
+    .item-picker-menu strong { color: var(--text-primary); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="card animate-fade-in" style="margin-bottom: 24px;">
+    <div class="card-header">
+        <h2 class="card-title">Editing {{ po.po_number }}</h2>
+        <div class="alert alert-warning" style="font-size: 0.85rem; margin: 0; padding: 8px 16px;">
+            Editing replaces all line items. Only editable while no stock has been received.
+        </div>
+    </div>
+</div>
+
+<form method="POST" action="{{ url_for('purchase_orders.edit_order', order_id=po.id) }}" id="po-edit-form">
+    <input type="hidden" name="lines_json" id="lines-json" value="[]">
+
+    <!-- Header fields -->
+    <div class="card animate-fade-in" style="margin-bottom: 24px;">
+        <div class="card-header"><h2 class="card-title">Order Details</h2></div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; padding: 8px 0;">
+            <div class="form-group">
+                <label>PO Number</label>
+                <input type="text" value="{{ po.po_number }}" class="form-input" disabled
+                       title="The PO number is the order's unique key — re-import the PDF to change it.">
+            </div>
+            <div class="form-group">
+                <label for="reference">Reference (Job Number)</label>
+                <input type="text" id="reference" name="reference" value="{{ po.reference or '' }}" class="form-input">
+            </div>
+            <div class="form-group">
+                <label for="supplier_name">Supplier Name</label>
+                <input type="text" id="supplier_name" name="supplier_name" value="{{ po.supplier_name or '' }}" class="form-input">
+            </div>
+            <div class="form-group">
+                <label for="supplier_vat">Supplier VAT</label>
+                <input type="text" id="supplier_vat" name="supplier_vat" value="{{ po.supplier_vat or '' }}" class="form-input">
+            </div>
+            <div class="form-group">
+                <label for="po_date">PO Date</label>
+                <input type="date" id="po_date" name="po_date" value="{{ po.po_date.strftime('%Y-%m-%d') if po.po_date else '' }}" class="form-input">
+            </div>
+            <div class="form-group">
+                <label for="due_date">Due Date</label>
+                <input type="date" id="due_date" name="due_date" value="{{ po.due_date.strftime('%Y-%m-%d') if po.due_date else '' }}" class="form-input">
+            </div>
+            <div class="form-group">
+                <label for="overall_discount_pct">Overall Discount %</label>
+                <input type="number" step="0.01" id="overall_discount_pct" name="overall_discount_pct" value="{{ po.overall_discount_pct or 0 }}" class="form-input">
+            </div>
+        </div>
+    </div>
+
+    <!-- Line items -->
+    <div class="card animate-fade-in" style="margin-bottom: 24px;">
+        <div class="card-header">
+            <h2 class="card-title">Line Items</h2>
+            <button type="button" class="btn btn-secondary" onclick="addBlankLine()">+ Add line</button>
+        </div>
+        <div style="overflow-x: auto;">
+            <table class="data-table" id="po-lines-table">
+                <thead>
+                    <tr>
+                        <th style="min-width: 240px;">Item</th>
+                        <th style="min-width: 200px;">Description</th>
+                        <th style="width: 80px;">Qty</th>
+                        <th style="width: 110px;">Excl. Price</th>
+                        <th style="width: 80px;">Disc %</th>
+                        <th style="width: 110px; text-align:right;">Excl. Total</th>
+                        <th style="width: 110px; text-align:right;">Incl. Total</th>
+                        <th style="width: 50px;"></th>
+                    </tr>
+                </thead>
+                <tbody id="po-lines-body">
+                    {% for line in po.lines %}
+                    <tr class="po-line-row {{ '' if line.item_id else 'row-amber' }}"
+                        data-item-id="{{ line.item_id or '' }}"
+                        data-item-code="{{ line.item_code_raw or '' }}"
+                        data-vat-pct="{{ line.vat_pct if line.vat_pct is not none else 15 }}">
+                        <td>
+                            <input type="text" class="item-search form-input"
+                                   placeholder="{{ line.item_code_raw or 'Search item…' }}"
+                                   value="{% if line.item %}{{ line.item.code }} — {{ line.item.description or '' }}{% endif %}">
+                        </td>
+                        <td><input type="text" class="desc-input form-input" value="{{ line.description or '' }}"></td>
+                        <td><input type="number" class="qty-input form-input" value="{{ line.qty_ordered or 0 }}" min="0" step="0.01"></td>
+                        <td><input type="number" class="price-input form-input" value="{{ line.excl_price or 0 }}" min="0" step="0.01"></td>
+                        <td><input type="number" class="disc-input form-input" value="{{ line.disc_pct or 0 }}" min="0" step="0.01"></td>
+                        <td class="excl-total" style="text-align:right;">-</td>
+                        <td class="incl-total" style="text-align:right;">-</td>
+                        <td><button type="button" class="btn btn-danger btn-sm" onclick="removeLine(this)">✕</button></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <div id="empty-state" style="padding: 24px; text-align: center; color: var(--text-muted); display: none;">
+            No line items. Use “+ Add line” to add one.
+        </div>
+    </div>
+
+    <div style="display: flex; gap: 12px; justify-content: flex-end;">
+        <a href="{{ url_for('purchase_orders.view_order', order_id=po.id) }}" class="btn btn-secondary">Cancel</a>
+        <button type="submit" class="btn btn-primary">Save Changes</button>
+    </div>
+</form>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{{ url_for('static', filename='js/item_picker.js') }}"></script>
+<script>
+window.SOPS_ITEMS = {{ catalogue | tojson | safe }};
+
+(function () {
+    'use strict';
+    var items = window.SOPS_ITEMS || [];
+
+    function num(el, cls) {
+        return parseFloat(el.querySelector(cls).value) || 0;
+    }
+
+    function recomputeRow(row) {
+        var qty = num(row, '.qty-input');
+        var price = num(row, '.price-input');
+        var disc = num(row, '.disc-input');
+        var vat = parseFloat(row.getAttribute('data-vat-pct')) || 0;
+        var exclTotal = qty * price * (1 - disc / 100);
+        var inclTotal = exclTotal * (1 + vat / 100);
+        row.querySelector('.excl-total').textContent = exclTotal.toFixed(2);
+        row.querySelector('.incl-total').textContent = inclTotal.toFixed(2);
+        return { exclTotal: exclTotal, inclTotal: inclTotal, qty: qty, price: price, disc: disc, vat: vat };
+    }
+
+    function syncJSON() {
+        var rows = document.querySelectorAll('#po-lines-body .po-line-row');
+        var data = [];
+        for (var i = 0; i < rows.length; i++) {
+            var totals = recomputeRow(rows[i]);
+            var idAttr = rows[i].getAttribute('data-item-id');
+            data.push({
+                matched_item_id: idAttr ? parseInt(idAttr, 10) : null,
+                item_code: rows[i].getAttribute('data-item-code') || '',
+                description: rows[i].querySelector('.desc-input').value.trim(),
+                qty: totals.qty,
+                excl_price: totals.price,
+                disc_pct: totals.disc,
+                vat_pct: totals.vat,
+                excl_total: totals.exclTotal,
+                incl_total: totals.inclTotal
+            });
+        }
+        document.getElementById('lines-json').value = JSON.stringify(data);
+
+        var emptyEl = document.getElementById('empty-state');
+        var tableEl = document.getElementById('po-lines-table');
+        if (emptyEl) emptyEl.style.display = rows.length === 0 ? '' : 'none';
+        if (tableEl) tableEl.style.display = rows.length === 0 ? 'none' : '';
+    }
+
+    function bindRow(row) {
+        var inputs = row.querySelectorAll('.qty-input, .price-input, .disc-input, .desc-input');
+        for (var i = 0; i < inputs.length; i++) {
+            inputs[i].addEventListener('input', syncJSON);
+        }
+        var search = row.querySelector('.item-search');
+        ItemPicker.attach(search, {
+            items: items,
+            onSelect: function (item) {
+                if (item) {
+                    row.setAttribute('data-item-id', item.id);
+                    row.setAttribute('data-item-code', item.code);
+                    row.classList.remove('row-amber');
+                    var descEl = row.querySelector('.desc-input');
+                    if (!descEl.value.trim()) descEl.value = item.description || '';
+                } else {
+                    row.setAttribute('data-item-id', '');
+                    row.classList.add('row-amber');
+                }
+                syncJSON();
+            }
+        });
+    }
+
+    window.removeLine = function (btn) {
+        var row = btn.closest('tr');
+        if (row) { row.remove(); syncJSON(); }
+    };
+
+    window.addBlankLine = function () {
+        var body = document.getElementById('po-lines-body');
+        var tr = document.createElement('tr');
+        tr.className = 'po-line-row row-amber';
+        tr.setAttribute('data-item-id', '');
+        tr.setAttribute('data-item-code', '');
+        tr.setAttribute('data-vat-pct', '15');
+        tr.innerHTML =
+            '<td><input type="text" class="item-search form-input" placeholder="Search item…"></td>' +
+            '<td><input type="text" class="desc-input form-input" value=""></td>' +
+            '<td><input type="number" class="qty-input form-input" value="0" min="0" step="0.01"></td>' +
+            '<td><input type="number" class="price-input form-input" value="0" min="0" step="0.01"></td>' +
+            '<td><input type="number" class="disc-input form-input" value="0" min="0" step="0.01"></td>' +
+            '<td class="excl-total" style="text-align:right;">-</td>' +
+            '<td class="incl-total" style="text-align:right;">-</td>' +
+            '<td><button type="button" class="btn btn-danger btn-sm" onclick="removeLine(this)">✕</button></td>';
+        body.appendChild(tr);
+        bindRow(tr);
+        syncJSON();
+    };
+
+    document.addEventListener('DOMContentLoaded', function () {
+        var rows = document.querySelectorAll('#po-lines-body .po-line-row');
+        for (var i = 0; i < rows.length; i++) { bindRow(rows[i]); }
+        syncJSON();
+    });
+
+    document.getElementById('po-edit-form').addEventListener('submit', syncJSON);
+})();
+</script>
+{% endblock %}

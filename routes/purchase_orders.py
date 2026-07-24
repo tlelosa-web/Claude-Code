@@ -8,9 +8,72 @@ from models import db, PurchaseOrder, POLine, Item
 from services.po_parser import parse_purchase_order_pdf, split_item_code
 from services.stock_service import receipt as stock_receipt
 from services.order_filters import PO_ACTIVE
-from services.demand import get_qty_on_order_bulk, get_qty_committed_bulk
+from services.demand import (
+    get_qty_on_order_bulk, get_qty_committed_bulk, get_next_po_due_bulk,
+)
 
 purchase_orders_bp = Blueprint('purchase_orders', __name__)
+
+
+def _po_is_editable(po):
+    """A PO may be edited only while it's a Draft or Open order with no
+    receipts recorded yet. Once any stock has been received (which also
+    means status has moved to Partially Received / Received), the line set
+    is locked to protect the receipt audit trail — same guard shape as the
+    overwrite/cancel blocks."""
+    return (po.status in ('Draft', 'Open')
+            and not any((line.qty_received or 0) > 0 for line in po.lines))
+
+
+def _build_lines_from_json(po_id, lines_json):
+    """Build POLine objects from the review/edit form's lines_json string.
+
+    Shared by save_order() and edit_order() so the two stay in lock-step.
+    Tolerant float-coercion mirrors the original inline block: a bad line
+    payload raises, letting the caller flash a warning rather than 500.
+    """
+    lines_data = json.loads(lines_json)
+    lines = []
+    for ld in lines_data:
+        lines.append(POLine(
+            po_id=po_id,
+            item_id=ld.get('matched_item_id'),
+            item_code_raw=ld.get('item_code', ''),
+            description=ld.get('description', ''),
+            qty_ordered=float(ld.get('qty', 0) or 0),
+            excl_price=float(ld.get('excl_price', 0) or 0),
+            disc_pct=float(ld.get('disc_pct', 0) or 0),
+            vat_pct=float(ld.get('vat_pct', 0) or 0),
+            excl_total=float(ld.get('excl_total', 0) or 0),
+            incl_total=float(ld.get('incl_total', 0) or 0),
+        ))
+    return lines
+
+
+def _catalogue_payload():
+    """Active-item catalogue as item_to_bom_json payloads, plus the distinct
+    category list — the shape both the upload picker and the edit screen feed
+    to static/js/item_picker.js. Bulk-fetches demand figures once."""
+    from routes.sales_orders import item_to_bom_json
+    items = Item.query.filter_by(active=True).order_by(Item.category, Item.code).all()
+    item_ids = [item.id for item in items]
+    qty_on_order_map = get_qty_on_order_bulk(item_ids=item_ids)
+    qty_committed_map = get_qty_committed_bulk(item_ids=item_ids)
+    next_po_due_map = get_next_po_due_bulk(item_ids=item_ids)
+    payload = [
+        item_to_bom_json(
+            item,
+            qty_on_order=qty_on_order_map.get(item.id, 0.0),
+            qty_committed=qty_committed_map.get(item.id, 0.0),
+            next_po_due=next_po_due_map.get(item.id),
+        )
+        for item in items
+    ]
+    categories = db.session.query(Item.category).filter(
+        Item.active == True, Item.category != None
+    ).distinct().order_by(Item.category).all()
+    categories = [c[0] for c in categories if c[0]]
+    return payload, categories
 
 
 @purchase_orders_bp.route('/purchase-orders')
@@ -86,10 +149,13 @@ def upload_order():
                     "warning"
                 )
 
+            catalogue, categories = _catalogue_payload()
             return render_template('purchase_orders/upload.html',
                                    parsed=parsed,
                                    matched_lines=matched_lines,
-                                   existing_po=existing_po)
+                                   existing_po=existing_po,
+                                   catalogue=catalogue,
+                                   categories=categories)
 
         except Exception as e:
             flash(f"Error processing PDF: {str(e)}", "error")
@@ -147,20 +213,7 @@ def save_order():
 
         lines_json = request.form.get('lines_json', '[]')
         try:
-            lines_data = json.loads(lines_json)
-            for ld in lines_data:
-                line = POLine(
-                    po_id=po.id,
-                    item_id=ld.get('matched_item_id'),
-                    item_code_raw=ld.get('item_code', ''),
-                    description=ld.get('description', ''),
-                    qty_ordered=float(ld.get('qty', 0) or 0),
-                    excl_price=float(ld.get('excl_price', 0) or 0),
-                    disc_pct=float(ld.get('disc_pct', 0) or 0),
-                    vat_pct=float(ld.get('vat_pct', 0) or 0),
-                    excl_total=float(ld.get('excl_total', 0) or 0),
-                    incl_total=float(ld.get('incl_total', 0) or 0),
-                )
+            for line in _build_lines_from_json(po.id, lines_json):
                 db.session.add(line)
         except (json.JSONDecodeError, ValueError, TypeError) as e:
             flash(f"Warning: Could not parse all line items: {str(e)}", "warning")
@@ -178,7 +231,69 @@ def save_order():
 @purchase_orders_bp.route('/purchase-orders/<int:order_id>')
 def view_order(order_id):
     po = PurchaseOrder.query.get_or_404(order_id)
-    return render_template('purchase_orders/detail.html', po=po)
+    return render_template('purchase_orders/detail.html', po=po,
+                           editable=_po_is_editable(po))
+
+
+@purchase_orders_bp.route('/purchase-orders/<int:order_id>/edit', methods=['GET', 'POST'])
+def edit_order(order_id):
+    """Edit header fields and line items of a Draft/Open Purchase Order that
+    has no receipts recorded yet. Editing replaces the entire line set
+    (delete-recreate), mirroring the Stock Order edit flow."""
+    po = PurchaseOrder.query.get_or_404(order_id)
+
+    if not _po_is_editable(po):
+        flash(
+            f"Cannot edit {po.po_number}: it is {po.status}"
+            + (" and has receipts recorded against it." if any((l.qty_received or 0) > 0 for l in po.lines)
+               else "."),
+            "error"
+        )
+        return redirect(url_for('purchase_orders.view_order', order_id=order_id))
+
+    if request.method == 'GET':
+        catalogue, categories = _catalogue_payload()
+        return render_template('purchase_orders/edit.html',
+                               po=po, catalogue=catalogue, categories=categories)
+
+    # POST — update header, then replace all lines
+    try:
+        po_date = None
+        due_date = None
+        po_date_str = request.form.get('po_date', '').strip()
+        due_date_str = request.form.get('due_date', '').strip()
+        if po_date_str:
+            po_date = datetime.strptime(po_date_str, '%Y-%m-%d').date()
+        if due_date_str:
+            due_date = datetime.strptime(due_date_str, '%Y-%m-%d').date()
+
+        po.reference = request.form.get('reference', '').strip()
+        po.supplier_name = request.form.get('supplier_name', '').strip()
+        po.supplier_vat = request.form.get('supplier_vat', '').strip()
+        po.po_date = po_date
+        po.due_date = due_date
+        po.overall_discount_pct = float(request.form.get('overall_discount_pct') or 0)
+
+        # A Draft (e.g. auto-created from a reorder shortfall) becomes a real
+        # Open order once edited and saved — consistent with save_order.
+        if po.status == 'Draft':
+            po.status = 'Open'
+
+        POLine.query.filter_by(po_id=po.id).delete()
+        db.session.flush()
+
+        lines_json = request.form.get('lines_json', '[]')
+        for line in _build_lines_from_json(po.id, lines_json):
+            db.session.add(line)
+
+        db.session.commit()
+        flash(f"Purchase Order {po.po_number} updated successfully.", "success")
+        return redirect(url_for('purchase_orders.view_order', order_id=po.id))
+
+    except Exception as e:
+        db.session.rollback()
+        flash(f"Error updating Purchase Order: {str(e)}", "error")
+        return redirect(url_for('purchase_orders.edit_order', order_id=order_id))
 
 
 @purchase_orders_bp.route('/purchase-orders/<int:order_id>/print')

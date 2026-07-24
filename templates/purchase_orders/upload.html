@@ -49,7 +49,7 @@
     </div>
     {% endif %}
 
-    <form method="POST" action="{{ url_for('purchase_orders.save_order') }}">
+    <form method="POST" action="{{ url_for('purchase_orders.save_order') }}" id="po-upload-form">
         <input type="hidden" name="raw_pdf_text" value="{{ parsed.raw_pdf_text or '' }}">
 
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
@@ -86,12 +86,13 @@
         <h3 style="margin-top: 24px; margin-bottom: 12px; color: var(--text-primary);">Line Items</h3>
         {% if matched_lines %}
         <div style="overflow-x: auto;">
-            <table class="data-table">
+            <table class="data-table" id="po-upload-table">
                 <thead>
                     <tr>
                         <th>#</th>
-                        <th>Item Code</th>
+                        <th style="min-width: 240px;">Catalogue Item</th>
                         <th>Match</th>
+                        <th>Parsed Code</th>
                         <th>Description</th>
                         <th>Qty</th>
                         <th>Excl. Price</th>
@@ -99,18 +100,22 @@
                         <th>Incl. Total</th>
                     </tr>
                 </thead>
-                <tbody>
+                <tbody id="po-upload-body">
                     {% for line in matched_lines %}
-                    <tr class="{{ 'row-amber' if not line.matched_item_id else '' }}">
+                    <tr data-idx="{{ loop.index0 }}" class="{{ 'row-amber' if not line.matched_item_id else '' }}">
                         <td>{{ loop.index }}</td>
-                        <td>{{ line.item_code or '-' }}</td>
                         <td>
-                            {% if line.matched_item_id %}
-                            <span class="badge badge-complete">Matched</span>
-                            {% else %}
-                            <span class="badge badge-cancelled">Unmatched</span>
-                            {% endif %}
+                            <input type="text" class="item-search form-input"
+                                   placeholder="{{ line.item_code or 'Search item…' }}"
+                                   value="{{ line.matched_item_code or '' }}"
+                                   style="width: 100%; padding: 4px 6px; font-size: 0.85rem;">
                         </td>
+                        <td>
+                            <span class="match-status badge {{ 'badge-complete' if line.matched_item_id else 'badge-cancelled' }}">
+                                {{ 'Matched' if line.matched_item_id else 'Unmatched' }}
+                            </span>
+                        </td>
+                        <td>{{ line.item_code or '-' }}</td>
                         <td>{{ line.description or '' }}</td>
                         <td>{{ line.qty }}</td>
                         <td>{{ currency_symbol }} {{ "%.2f"|format(line.excl_price) }}</td>
@@ -122,13 +127,15 @@
             </table>
         </div>
         <p style="color: var(--text-muted); margin-top: 8px;">
-            Unmatched lines are saved without a linked catalogue item — link them from the Purchase Order detail page before receiving.
+            Use the <strong>Catalogue Item</strong> box to link an unmatched line or re-point a wrong auto-match before saving.
+            Any line left unmatched is saved without a linked catalogue item — it can still be linked from the detail page before receiving.
         </p>
         {% else %}
         <p style="color: var(--text-muted);">No line items were parsed.</p>
         {% endif %}
 
-        <input type="hidden" name="lines_json" value='{{ matched_lines | tojson | safe if matched_lines else "[]" }}'>
+        <input type="hidden" name="lines_json" id="lines-json"
+               value='{{ matched_lines | tojson | safe if matched_lines else "[]" }}'>
 
         <div class="form-actions" style="margin-top: 24px;">
             <button type="submit" class="btn btn-primary">Save Purchase Order</button>
@@ -136,5 +143,68 @@
         </div>
     </form>
 </div>
+{% endif %}
+{% endblock %}
+
+{% block extra_scripts %}
+{% if matched_lines %}
+<script src="{{ url_for('static', filename='js/item_picker.js') }}"></script>
+<script>
+window.SOPS_UPLOAD_LINES = {{ matched_lines | tojson | safe }};
+window.SOPS_ITEMS = {{ catalogue | tojson | safe }};
+
+(function () {
+    'use strict';
+    var lines = window.SOPS_UPLOAD_LINES || [];
+    var items = window.SOPS_ITEMS || [];
+
+    function sync() {
+        var el = document.getElementById('lines-json');
+        if (el) el.value = JSON.stringify(lines);
+    }
+
+    function setStatus(row, matched) {
+        var badge = row.querySelector('.match-status');
+        if (matched) {
+            badge.textContent = 'Matched';
+            badge.className = 'match-status badge badge-complete';
+            row.classList.remove('row-amber');
+        } else {
+            badge.textContent = 'Unmatched';
+            badge.className = 'match-status badge badge-cancelled';
+            row.classList.add('row-amber');
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        var rows = document.querySelectorAll('#po-upload-body tr');
+        for (var i = 0; i < rows.length; i++) {
+            (function (row) {
+                var idx = parseInt(row.getAttribute('data-idx'), 10);
+                var search = row.querySelector('.item-search');
+                ItemPicker.attach(search, {
+                    items: items,
+                    onSelect: function (item) {
+                        if (!lines[idx]) return;
+                        if (item) {
+                            lines[idx].matched_item_id = item.id;
+                            lines[idx].item_code = item.code;
+                            setStatus(row, true);
+                        } else {
+                            lines[idx].matched_item_id = null;
+                            setStatus(row, false);
+                        }
+                        sync();
+                    }
+                });
+            })(rows[i]);
+        }
+        sync();
+    });
+
+    var form = document.getElementById('po-upload-form');
+    if (form) form.addEventListener('submit', sync);
+})();
+</script>
 {% endif %}
 {% endblock %}

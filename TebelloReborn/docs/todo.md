@@ -1,6 +1,6 @@
 # Task Queue — TebelloReborn (Career Engine)
 
-> Updated: 2026-07-26 (Phase 6 complete — steps 44-49 done; Phase 7 CLI Wiring & Integration next)
+> Updated: 2026-07-26 (Phase 7 CLI wiring done — steps 50-51 done; integration test (step 52) next)
 
 ---
 
@@ -120,8 +120,8 @@
 - [x] 49. [GREEN] `src/review/cli.py` (`1ed2fca`) — also enables `PRAGMA foreign_keys = ON` in `review/db.py`
 
 ### Phase 7 — CLI Wiring & Integration
-- [ ] 50. [RED] `tests/unit/test_main.py`
-- [ ] 51. [GREEN] `src/main.py`
+- [x] 50. [RED] `tests/unit/test_main.py`
+- [x] 51. [GREEN] `src/main.py`
 - [ ] 52. `tests/integration/test_full_pipeline.py` (offline end-to-end)
 
 ### Phase 8 — Docs Closeout

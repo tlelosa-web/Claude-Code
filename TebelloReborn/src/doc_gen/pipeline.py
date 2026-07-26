@@ -85,6 +85,8 @@ def run_doc_gen(
         ):
             update_vacancy_status(vacancy_conn, vacancy.id, "asset_ready")
             vacancy.status = "asset_ready"
+            vacancy.cv_text = cv_result.content
+            vacancy.cover_letter_text = cl_result.content
     finally:
         vacancy_conn.close()
         doc_gen_conn.close()

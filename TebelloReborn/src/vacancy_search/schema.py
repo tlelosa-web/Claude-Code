@@ -25,6 +25,13 @@ class Vacancy:
     strengths: Optional[list[str]] = None
     weaknesses: Optional[list[str]] = None
     recommendation: Optional[str] = None
+    # Transient, in-memory only — NOT persisted to SQLite (the PDF export is
+    # already the durable artifact; storing full text again would be pure
+    # bloat). Set by run_doc_gen() so main.py's `run` command can hand the
+    # exact generated text to the human review gate without a second
+    # generation round-trip. No migration needed — see doc_gen/pipeline.py.
+    cv_text: Optional[str] = None
+    cover_letter_text: Optional[str] = None
 
     def __post_init__(self):
         for f in REQUIRED_FIELDS:

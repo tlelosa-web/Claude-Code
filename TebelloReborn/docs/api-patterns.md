@@ -132,25 +132,36 @@ Base URL: `https://api.apify.com/v2/acts/<actor>/run-sync-get-dataset-items`
 
 Auth: `Authorization: Bearer $APIFY_API_KEY`
 
-Two dedicated actors, one call each per `fetch_vacancies()`:
+Two dedicated actors, one call per search title per `fetch_vacancies()`:
 
 - Indeed: `misceres~indeed-scraper`
 - LinkedIn Jobs: `bebity~linkedin-jobs-scraper`
 
-> **Unconfirmed placeholders.** These actor slugs are recorded nowhere else
-> in this project as confirmed — `src/vacancy_search/apify_client.py`'s own
-> module comment and `docs/todo.md`'s Known Issues both flag them as
-> needing verification against the live Apify Store before the first real
-> (non-`OFFLINE_MODE`) `fetch-vacancies` run. PNet and Careers24 have no
-> dedicated actor at all (ADR-002) — deferred.
+> **Confirmed 2026-07-26.** Both slugs verified live, published, and active
+> on the Apify Store (API IDs use `~` where the store URL uses `/`). PNet
+> and Careers24 have no dedicated actor at all (ADR-002) — deferred.
 
-Pattern: `fetch_vacancies(limit)` calls both actors in sequence (Indeed then
-LinkedIn), normalizes each actor's item shape into a `Vacancy` via
-`_normalize_indeed()`/`_normalize_linkedin()`, then dedupes on
-`(company, title, url)` across both platforms combined and truncates to
-`limit`. A `requests.RequestException` or unparseable JSON from either actor
-is swallowed per-actor (`except (requests.RequestException, ValueError): pass`)
-so one platform's failure doesn't block the other's results.
+Search parameters: `apify_client.py`'s `SEARCH_TITLES` module constant
+(sourced from `profile_seed.json`'s `target_titles` — "Operations
+Foreman/Manager", "Project Engineer (Mechanical)") and `SEARCH_LOCATION`
+("Gauteng, South Africa"), per `docs/architecture.md`'s Stage 2 input spec.
+`fetch_vacancies(limit)` runs one Indeed + one LinkedIn call per title in
+`SEARCH_TITLES` (`position`/`location`/`maxItemsPerSearch` for Indeed;
+`title`/`location`/`rows` for LinkedIn — each actor's own required-field
+names, not a shared shape), normalizes each actor's item shape into a
+`Vacancy` via `_normalize_indeed()`/`_normalize_linkedin()`, then dedupes on
+`(company, title, url)` across all calls combined and truncates to `limit`.
+A `requests.RequestException` or unparseable JSON from either actor is
+swallowed per-call (`except (requests.RequestException, ValueError): pass`)
+so one platform's or title's failure doesn't block the rest.
+
+> **Corrected 2026-07-26 (found while confirming the slugs above):** the
+> original implementation sent `{"maxItems": limit}` as the entire request
+> body to both actors — not a valid field for either, and neither actor had
+> a search title/location to work from. Because HTTP errors are swallowed
+> per-call by design (previous paragraph), this failed silently: a real run
+> would have returned zero results from both actors with no visible error.
+> See `docs/todo.md`'s Resolved Items for the full fix.
 
 Rate-limited via `src/shared/rate_limiter.py`'s `RateLimiter`
 (`APIFY_RATE_LIMIT_PER_MIN`, default **30/min**), one `.acquire()` call

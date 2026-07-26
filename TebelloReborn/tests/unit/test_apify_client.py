@@ -5,7 +5,11 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from src.vacancy_search.apify_client import FIXTURE_VACANCIES, fetch_vacancies
+from src.vacancy_search.apify_client import (
+    FIXTURE_VACANCIES,
+    SEARCH_TITLES,
+    fetch_vacancies,
+)
 from src.vacancy_search.schema import Vacancy
 
 
@@ -54,17 +58,50 @@ class TestRealCallPath:
         monkeypatch.delenv("OFFLINE_MODE", raising=False)
         mock_post.return_value = _mock_response([])
 
-        with patch(
-            "src.vacancy_search.apify_client._limiter.acquire"
-        ) as mock_acquire:
+        with patch("src.vacancy_search.apify_client._limiter.acquire") as mock_acquire:
             fetch_vacancies(limit=25)
 
-        assert mock_acquire.call_count == 2  # one per actor: Indeed + LinkedIn
+        # one Indeed + one LinkedIn call per search title
+        assert mock_acquire.call_count == len(SEARCH_TITLES) * 2
+
+    @patch("src.vacancy_search.apify_client.requests.post")
+    def test_sends_correct_actor_payload_fields(self, mock_post, monkeypatch):
+        """Regression test: fetch_vacancies() used to send {"maxItems": limit}
+        to both actors, which isn't a valid field for either — Indeed needs
+        position/location/maxItemsPerSearch, LinkedIn requires
+        title/location/rows. HTTP errors from the wrong payload were being
+        silently swallowed, so a real run returned zero results with no
+        visible failure."""
+        monkeypatch.setenv("APIFY_API_KEY", "test-key")
+        monkeypatch.delenv("OFFLINE_MODE", raising=False)
+        monkeypatch.setattr(
+            "src.vacancy_search.apify_client.SEARCH_TITLES", ["Operations Foreman"]
+        )
+        mock_post.return_value = _mock_response([])
+
+        fetch_vacancies(limit=10)
+
+        indeed_call, linkedin_call = mock_post.call_args_list
+        indeed_payload = indeed_call.kwargs["json"]
+        linkedin_payload = linkedin_call.kwargs["json"]
+
+        assert indeed_payload["position"] == "Operations Foreman"
+        assert indeed_payload["location"]
+        assert indeed_payload["maxItemsPerSearch"] == 10
+        assert "maxItems" not in indeed_payload
+
+        assert linkedin_payload["title"] == "Operations Foreman"
+        assert linkedin_payload["location"]
+        assert linkedin_payload["rows"] == 10
+        assert "maxItems" not in linkedin_payload
 
     @patch("src.vacancy_search.apify_client.requests.post")
     def test_normalizes_indeed_and_linkedin_results(self, mock_post, monkeypatch):
         monkeypatch.setenv("APIFY_API_KEY", "test-key")
         monkeypatch.delenv("OFFLINE_MODE", raising=False)
+        monkeypatch.setattr(
+            "src.vacancy_search.apify_client.SEARCH_TITLES", ["Operations Foreman"]
+        )
 
         indeed_items = [
             {
@@ -103,6 +140,9 @@ class TestRealCallPath:
     def test_dedupes_by_company_title_url(self, mock_post, monkeypatch):
         monkeypatch.setenv("APIFY_API_KEY", "test-key")
         monkeypatch.delenv("OFFLINE_MODE", raising=False)
+        monkeypatch.setattr(
+            "src.vacancy_search.apify_client.SEARCH_TITLES", ["Operations Foreman"]
+        )
 
         duplicate_item = {
             "company": "Acme Engineering",
@@ -120,9 +160,14 @@ class TestRealCallPath:
         assert len(results) == 1
 
     @patch("src.vacancy_search.apify_client.requests.post")
-    def test_request_error_on_one_actor_still_returns_other(self, mock_post, monkeypatch):
+    def test_request_error_on_one_actor_still_returns_other(
+        self, mock_post, monkeypatch
+    ):
         monkeypatch.setenv("APIFY_API_KEY", "test-key")
         monkeypatch.delenv("OFFLINE_MODE", raising=False)
+        monkeypatch.setattr(
+            "src.vacancy_search.apify_client.SEARCH_TITLES", ["Operations Foreman"]
+        )
 
         import requests as _requests
 

@@ -7,18 +7,20 @@ from src.shared.rate_limiter import RateLimiter
 
 from .schema import Vacancy
 
-# NOTE: exact actor slugs unconfirmed — CLAUDE.md/architecture.md record that
-# dedicated Indeed + LinkedIn Jobs actors exist on the Apify Store, but no
-# specific slug is recorded anywhere in this project yet. These are
-# placeholders to be confirmed against the Apify Store before the first
-# real (non-OFFLINE_MODE) fetch-vacancies run.
+# Actor slugs confirmed live on the Apify Store 2026-07-26 (misceres/indeed-scraper,
+# bebity/linkedin-jobs-scraper — API IDs use "~" where the store URL uses "/").
 INDEED_ACTOR_URL = (
     "https://api.apify.com/v2/acts/misceres~indeed-scraper/run-sync-get-dataset-items"
 )
-LINKEDIN_ACTOR_URL = (
-    "https://api.apify.com/v2/acts/bebity~linkedin-jobs-scraper/run-sync-get-dataset-items"
-)
+LINKEDIN_ACTOR_URL = "https://api.apify.com/v2/acts/bebity~linkedin-jobs-scraper/run-sync-get-dataset-items"
 TIMEOUT = 60
+
+# One search per target title from profile_seed.json's target_titles, run
+# against both actors. Indeed requires "position"/"location" to have anything
+# to search; LinkedIn requires "title"/"location"/"rows" — neither accepts a
+# bare item-count field on its own (see the maxItems bug note below).
+SEARCH_TITLES = ["Operations Foreman/Manager", "Project Engineer (Mechanical)"]
+SEARCH_LOCATION = "Gauteng, South Africa"
 
 RATE_LIMIT_PER_MIN = int(os.environ.get("APIFY_RATE_LIMIT_PER_MIN", "30"))
 _limiter = RateLimiter(rate=RATE_LIMIT_PER_MIN, period=60.0)
@@ -109,30 +111,39 @@ def fetch_vacancies(limit: int = 25) -> list[Vacancy]:
     headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
     results: list[Vacancy] = []
 
-    _limiter.acquire()
-    try:
-        resp = requests.post(
-            INDEED_ACTOR_URL,
-            headers=headers,
-            json={"maxItems": limit},
-            timeout=TIMEOUT,
-        )
-        resp.raise_for_status()
-        results.extend(_normalize_indeed(item) for item in resp.json())
-    except (requests.RequestException, ValueError):
-        pass
+    for title in SEARCH_TITLES:
+        _limiter.acquire()
+        try:
+            resp = requests.post(
+                INDEED_ACTOR_URL,
+                headers=headers,
+                json={
+                    "position": title,
+                    "location": SEARCH_LOCATION,
+                    "maxItemsPerSearch": limit,
+                },
+                timeout=TIMEOUT,
+            )
+            resp.raise_for_status()
+            results.extend(_normalize_indeed(item) for item in resp.json())
+        except (requests.RequestException, ValueError):
+            pass
 
-    _limiter.acquire()
-    try:
-        resp = requests.post(
-            LINKEDIN_ACTOR_URL,
-            headers=headers,
-            json={"maxItems": limit},
-            timeout=TIMEOUT,
-        )
-        resp.raise_for_status()
-        results.extend(_normalize_linkedin(item) for item in resp.json())
-    except (requests.RequestException, ValueError):
-        pass
+        _limiter.acquire()
+        try:
+            resp = requests.post(
+                LINKEDIN_ACTOR_URL,
+                headers=headers,
+                json={
+                    "title": title,
+                    "location": SEARCH_LOCATION,
+                    "rows": limit,
+                },
+                timeout=TIMEOUT,
+            )
+            resp.raise_for_status()
+            results.extend(_normalize_linkedin(item) for item in resp.json())
+        except (requests.RequestException, ValueError):
+            pass
 
     return _dedupe(results)[:limit]

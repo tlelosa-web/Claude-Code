@@ -22,7 +22,6 @@
 ## Known Issues
 
 - [ ] No dedicated Apify actor exists for PNet or Careers24 — MVP vacancy fetch covers Indeed + LinkedIn only (see planned ADR-002).
-- [ ] `src/vacancy_search/apify_client.py`'s `INDEED_ACTOR_URL`/`LINKEDIN_ACTOR_URL` actor slugs (`misceres~indeed-scraper`, `bebity~linkedin-jobs-scraper`) are unconfirmed placeholders — no exact actor slug is recorded anywhere in this project's docs, only that "dedicated actors exist on the Apify Store." Tests mock `requests.post` so the suite passes regardless; confirm the real slugs against the Apify Store before the first non-`OFFLINE_MODE` `fetch-vacancies` run.
 
 ---
 
@@ -157,6 +156,24 @@
       via `vacancy_search/migrations.py` (versions 1-4) rather than editing the committed baseline
       `CREATE TABLE`, consistent with the migration-file convention above. ADR-003 itself is left
       unedited (historical record of the decision as accepted); this note is the correction.
+- [x] Apify actor slugs verified against the live Apify Store (2026-07-26): `misceres~indeed-scraper`
+      and `bebity~linkedin-jobs-scraper` are both live, published, active actors — slugs match exactly
+      (API IDs use `~` where the store URL uses `/`). **Verification also surfaced a real bug, fixed
+      in the same pass:** `fetch_vacancies()` was sending `{"maxItems": limit}` as the entire request
+      body to both actors — not a valid field for either. Indeed needs `position`/`location` to have
+      anything to search (the item-count field is `maxItemsPerSearch`, not `maxItems`); LinkedIn
+      requires `title`/`location`/`rows`. Because HTTP errors were swallowed by the existing
+      `except (requests.RequestException, ValueError): pass`, a real (non-`OFFLINE_MODE`) run would
+      have silently returned zero results from both actors, with no visible failure — no unit test
+      caught it because every test mocks `requests.post` directly rather than exercising a real
+      payload against either actor's input schema. Fixed: `fetch_vacancies()` now loops over a new
+      `SEARCH_TITLES` module constant (sourced from `profile_seed.json`'s `target_titles`: "Operations
+      Foreman/Manager", "Project Engineer (Mechanical)") against `SEARCH_LOCATION` ("Gauteng, South
+      Africa"), sending the correct field names per actor — matches `docs/architecture.md`'s Stage 2
+      input spec ("search parameters: titles, locations, keywords, limit"), which the original
+      implementation never actually followed. New regression test `test_sends_correct_actor_payload_fields`
+      added (`tests/unit/test_apify_client.py`) — asserts the exact payload shape per actor so this
+      class of bug can't silently regress. All 182 tests pass.
 
 ---
 

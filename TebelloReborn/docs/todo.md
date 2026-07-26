@@ -1,6 +1,6 @@
 # Task Queue — TebelloReborn (Career Engine)
 
-> Updated: 2026-07-26 (Phase 7 CLI wiring done — steps 50-51 done; integration test (step 52) next)
+> Updated: 2026-07-26 (Phase 7 complete — steps 50-52 done; Phase 8 docs closeout next)
 
 ---
 
@@ -122,7 +122,17 @@
 ### Phase 7 — CLI Wiring & Integration
 - [x] 50. [RED] `tests/unit/test_main.py`
 - [x] 51. [GREEN] `src/main.py`
-- [ ] 52. `tests/integration/test_full_pipeline.py` (offline end-to-end)
+- [x] 52. `tests/integration/test_full_pipeline.py` (offline end-to-end)
+
+> **Bug found by step 52 (not by any unit test):** every prior unit test mocks
+> `export_cv_pdf`/`export_cover_letter_pdf` entirely, so none of them ever
+> rendered real generated content through fpdf2. The new offline integration
+> test does, and hit `FPDFException: Not enough horizontal space to render a
+> single character` — `multi_cell(0, ...)` calls in `pdf_export.py` left the
+> cursor at the right margin (fpdf2's default `new_x=XPos.RIGHT`), so two
+> non-blank lines in a row (e.g. a `## ` heading directly followed by body
+> text) starved the next line of width. Fixed by passing
+> `new_x=XPos.LMARGIN, new_y=YPos.NEXT` on all three `multi_cell` calls.
 
 ### Phase 8 — Docs Closeout
 - [ ] 53. `docs/api-patterns.md` — must document **Ollama** (matching) and **headless Claude Code** (document generation), not OpenRouter (ADR-003)

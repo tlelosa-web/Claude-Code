@@ -2,6 +2,7 @@ import re
 from pathlib import Path
 
 from fpdf import FPDF
+from fpdf.enums import XPos, YPos
 
 from src.vacancy_search.schema import Vacancy
 
@@ -42,18 +43,20 @@ def _render_markdown_pdf(content: str) -> FPDF:
             pdf.ln(4)
         elif stripped.startswith("## "):
             pdf.set_font("Helvetica", "B", 14)
-            pdf.multi_cell(0, 8, stripped[3:])
+            pdf.multi_cell(0, 8, stripped[3:], new_x=XPos.LMARGIN, new_y=YPos.NEXT)
         elif stripped.startswith("# "):
             pdf.set_font("Helvetica", "B", 18)
-            pdf.multi_cell(0, 10, stripped[2:])
+            pdf.multi_cell(0, 10, stripped[2:], new_x=XPos.LMARGIN, new_y=YPos.NEXT)
         else:
             pdf.set_font("Helvetica", "", 11)
-            pdf.multi_cell(0, 6, stripped)
+            pdf.multi_cell(0, 6, stripped, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
 
     return pdf
 
 
-def _export(vacancy: Vacancy, content: str, doc_type: str, output_dir: str | Path) -> Path:
+def _export(
+    vacancy: Vacancy, content: str, doc_type: str, output_dir: str | Path
+) -> Path:
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 

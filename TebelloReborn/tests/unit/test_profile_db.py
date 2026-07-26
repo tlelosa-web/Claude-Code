@@ -77,13 +77,11 @@ class TestUpsertAndGetProfile:
 class TestMalformedData:
     def test_corrupt_json_column_raises(self, tmp_path):
         conn = init_db(tmp_path / "career.db")
-        conn.execute(
-            """
+        conn.execute("""
             INSERT INTO candidate_profile
                 (id, name, region, skills, experience, target_titles, industries, salary_floor)
             VALUES (1, 'Broken', 'Gauteng', 'not-json', '[]', '[]', '[]', NULL)
-            """
-        )
+            """)
         conn.commit()
 
         with pytest.raises(ValueError, match="candidate_profile"):

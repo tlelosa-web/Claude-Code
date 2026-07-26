@@ -31,7 +31,9 @@ class TestExportCvPdf:
             assert f.read(5) == b"%PDF-"
 
     def test_filename_includes_company_and_vacancy_id(self, tmp_path):
-        output_path = export_cv_pdf(_vacancy(company="Acme Engineering", id=42), _CONTENT, output_dir=tmp_path)
+        output_path = export_cv_pdf(
+            _vacancy(company="Acme Engineering", id=42), _CONTENT, output_dir=tmp_path
+        )
 
         assert "Acme_Engineering" in output_path.name
         assert "42" in output_path.name

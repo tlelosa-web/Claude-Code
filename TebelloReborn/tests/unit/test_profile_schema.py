@@ -39,7 +39,9 @@ class TestCandidateProfileValidation:
             experience=_experience(),
             target_titles=[
                 TitleLane(title="Operations Foreman/Manager", primary=True, weight=1.0),
-                TitleLane(title="Project Engineer (Mechanical)", primary=False, weight=0.6),
+                TitleLane(
+                    title="Project Engineer (Mechanical)", primary=False, weight=0.6
+                ),
             ],
             industries=["Manufacturing"],
         )
@@ -135,7 +137,9 @@ class TestTitleLaneValidation:
 class TestExperienceEntryValidation:
     def test_missing_company_raises(self):
         with pytest.raises(ValueError):
-            ExperienceEntry(title="Operations Foreman", company="", start_date="2025-10")
+            ExperienceEntry(
+                title="Operations Foreman", company="", start_date="2025-10"
+            )
 
     def test_missing_start_date_raises(self):
         with pytest.raises(ValueError):
@@ -161,7 +165,11 @@ class TestCandidateProfileFromDict:
             ],
             "target_titles": [
                 {"title": "Operations Foreman/Manager", "primary": True, "weight": 1.0},
-                {"title": "Project Engineer (Mechanical)", "primary": False, "weight": 0.6},
+                {
+                    "title": "Project Engineer (Mechanical)",
+                    "primary": False,
+                    "weight": 0.6,
+                },
             ],
             "industries": ["Manufacturing"],
             "salary_floor": 45000,

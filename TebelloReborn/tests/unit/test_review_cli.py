@@ -13,7 +13,12 @@ import pytest
 from src.review.cli import run_review_gate
 from src.review.db import get_approval_by_vacancy_id, init_db as init_review_db
 from src.review.schema import Decision
-from src.vacancy_search.db import get_by_id, init_db, insert_vacancy, update_vacancy_status
+from src.vacancy_search.db import (
+    get_by_id,
+    init_db,
+    insert_vacancy,
+    update_vacancy_status,
+)
 from src.vacancy_search.schema import Vacancy
 
 CV_TEXT = "# Tebello Lelosa — CV"
@@ -47,7 +52,11 @@ class TestApprove:
         vacancy_id, vacancy = _seeded_vacancy(db_path)
 
         result = run_review_gate(
-            vacancy, CV_TEXT, COVER_LETTER_TEXT, input_fn=_fake_input(["a"]), db_path=db_path
+            vacancy,
+            CV_TEXT,
+            COVER_LETTER_TEXT,
+            input_fn=_fake_input(["a"]),
+            db_path=db_path,
         )
 
         assert result.decision == Decision.APPROVED
@@ -70,7 +79,11 @@ class TestReject:
         vacancy_id, vacancy = _seeded_vacancy(db_path)
 
         result = run_review_gate(
-            vacancy, CV_TEXT, COVER_LETTER_TEXT, input_fn=_fake_input(["r"]), db_path=db_path
+            vacancy,
+            CV_TEXT,
+            COVER_LETTER_TEXT,
+            input_fn=_fake_input(["r"]),
+            db_path=db_path,
         )
 
         assert result.decision == Decision.REJECTED
@@ -95,7 +108,11 @@ class TestEdit:
         vacancy_id, vacancy = _seeded_vacancy(db_path)
 
         result = run_review_gate(
-            vacancy, CV_TEXT, COVER_LETTER_TEXT, input_fn=_fake_input(["e"]), db_path=db_path
+            vacancy,
+            CV_TEXT,
+            COVER_LETTER_TEXT,
+            input_fn=_fake_input(["e"]),
+            db_path=db_path,
         )
 
         assert result.decision == Decision.EDITED
@@ -127,7 +144,11 @@ class TestQuit:
 
         with pytest.raises(SystemExit) as exc_info:
             run_review_gate(
-                vacancy, CV_TEXT, COVER_LETTER_TEXT, input_fn=_fake_input(["q"]), db_path=db_path
+                vacancy,
+                CV_TEXT,
+                COVER_LETTER_TEXT,
+                input_fn=_fake_input(["q"]),
+                db_path=db_path,
             )
 
         assert exc_info.value.code == 0
@@ -138,13 +159,19 @@ class TestQuit:
 
 class TestInvalidTransition:
     @patch("src.review.cli.save_approval")
-    def test_vacancy_not_yet_scored_raises_with_zero_writes(self, mock_save_approval, tmp_path):
+    def test_vacancy_not_yet_scored_raises_with_zero_writes(
+        self, mock_save_approval, tmp_path
+    ):
         db_path = tmp_path / "career.db"
         vacancy_id, vacancy = _seeded_vacancy(db_path, status="new")
 
         with pytest.raises(ValueError, match="Invalid transition"):
             run_review_gate(
-                vacancy, CV_TEXT, COVER_LETTER_TEXT, input_fn=_fake_input(["a"]), db_path=db_path
+                vacancy,
+                CV_TEXT,
+                COVER_LETTER_TEXT,
+                input_fn=_fake_input(["a"]),
+                db_path=db_path,
             )
 
         mock_save_approval.assert_not_called()
@@ -154,22 +181,32 @@ class TestInvalidTransition:
         assert reloaded.status == "new"
 
     @patch("src.review.cli.save_approval")
-    def test_already_approved_vacancy_raises_with_zero_writes(self, mock_save_approval, tmp_path):
+    def test_already_approved_vacancy_raises_with_zero_writes(
+        self, mock_save_approval, tmp_path
+    ):
         db_path = tmp_path / "career.db"
         vacancy_id, vacancy = _seeded_vacancy(db_path, status="approved")
 
         with pytest.raises(ValueError, match="Invalid transition"):
             run_review_gate(
-                vacancy, CV_TEXT, COVER_LETTER_TEXT, input_fn=_fake_input(["a"]), db_path=db_path
+                vacancy,
+                CV_TEXT,
+                COVER_LETTER_TEXT,
+                input_fn=_fake_input(["a"]),
+                db_path=db_path,
             )
 
         mock_save_approval.assert_not_called()
 
     @patch("src.review.cli.save_approval")
-    def test_missing_vacancy_raises_with_zero_writes(self, mock_save_approval, tmp_path):
+    def test_missing_vacancy_raises_with_zero_writes(
+        self, mock_save_approval, tmp_path
+    ):
         db_path = tmp_path / "career.db"
         init_db(db_path)  # ensure table exists, no vacancy inserted
-        missing_vacancy = Vacancy(id=999, company="Ghost", title="Nobody", url="https://x")
+        missing_vacancy = Vacancy(
+            id=999, company="Ghost", title="Nobody", url="https://x"
+        )
 
         with pytest.raises(ValueError, match="not found"):
             run_review_gate(
@@ -190,14 +227,20 @@ class TestFailureOrdering:
     vacancy with no recorded decision."""
 
     @patch("src.review.cli.save_approval")
-    def test_save_approval_failure_leaves_status_unchanged(self, mock_save_approval, tmp_path):
+    def test_save_approval_failure_leaves_status_unchanged(
+        self, mock_save_approval, tmp_path
+    ):
         mock_save_approval.side_effect = RuntimeError("disk full")
         db_path = tmp_path / "career.db"
         vacancy_id, vacancy = _seeded_vacancy(db_path)
 
         with pytest.raises(RuntimeError):
             run_review_gate(
-                vacancy, CV_TEXT, COVER_LETTER_TEXT, input_fn=_fake_input(["a"]), db_path=db_path
+                vacancy,
+                CV_TEXT,
+                COVER_LETTER_TEXT,
+                input_fn=_fake_input(["a"]),
+                db_path=db_path,
             )
 
         conn = init_db(db_path)
@@ -215,7 +258,11 @@ class TestFailureOrdering:
 
         with pytest.raises(RuntimeError):
             run_review_gate(
-                vacancy, CV_TEXT, COVER_LETTER_TEXT, input_fn=_fake_input(["a"]), db_path=db_path
+                vacancy,
+                CV_TEXT,
+                COVER_LETTER_TEXT,
+                input_fn=_fake_input(["a"]),
+                db_path=db_path,
             )
 
         conn = init_db(db_path)

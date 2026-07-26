@@ -46,7 +46,9 @@ class TestInitDb:
 
         conn = init_db(db_path)
 
-        columns = {row["name"] for row in conn.execute("PRAGMA table_info(generation_log)")}
+        columns = {
+            row["name"] for row in conn.execute("PRAGMA table_info(generation_log)")
+        }
         assert "quality_flag" not in columns
         conn.close()
 

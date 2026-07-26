@@ -9,7 +9,12 @@ from src.doc_gen.db import get_by_vacancy_id, init_db as init_doc_gen_db
 from src.doc_gen.pipeline import run_doc_gen
 from src.doc_gen.schema import GenerationResult, GenerationStatus
 from src.profile.schema import CandidateProfile, ExperienceEntry, TitleLane
-from src.vacancy_search.db import get_by_id, init_db, insert_vacancy, update_vacancy_status
+from src.vacancy_search.db import (
+    get_by_id,
+    init_db,
+    insert_vacancy,
+    update_vacancy_status,
+)
 from src.vacancy_search.schema import Vacancy
 
 
@@ -41,7 +46,9 @@ def _seeded_vacancy(db_path, status="scored"):
 
 
 def _success_result(doc_type, content="content"):
-    return GenerationResult(status=GenerationStatus.SUCCESS, doc_type=doc_type, content=content)
+    return GenerationResult(
+        status=GenerationStatus.SUCCESS, doc_type=doc_type, content=content
+    )
 
 
 def _throttled_result(doc_type):

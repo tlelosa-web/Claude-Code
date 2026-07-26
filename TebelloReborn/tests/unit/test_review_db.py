@@ -39,7 +39,9 @@ class TestSaveApprovalPersistsAcrossConnections:
         vacancy_id = _seed_vacancy(db_path)
 
         conn = init_db(db_path)
-        save_approval(conn, ReviewResult(vacancy_id=vacancy_id, decision=Decision.APPROVED))
+        save_approval(
+            conn, ReviewResult(vacancy_id=vacancy_id, decision=Decision.APPROVED)
+        )
         conn.close()
 
         fresh_conn = init_db(db_path)
@@ -88,8 +90,12 @@ class TestSaveApprovalPersistsAcrossConnections:
         vacancy_id = _seed_vacancy(db_path)
 
         conn = init_db(db_path)
-        save_approval(conn, ReviewResult(vacancy_id=vacancy_id, decision=Decision.REJECTED))
-        save_approval(conn, ReviewResult(vacancy_id=vacancy_id, decision=Decision.APPROVED))
+        save_approval(
+            conn, ReviewResult(vacancy_id=vacancy_id, decision=Decision.REJECTED)
+        )
+        save_approval(
+            conn, ReviewResult(vacancy_id=vacancy_id, decision=Decision.APPROVED)
+        )
         conn.close()
 
         fresh_conn = init_db(db_path)

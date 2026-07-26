@@ -66,7 +66,7 @@ class TestCallOllamaHappyPath:
     def test_strips_think_block_from_response(self, mock_post, monkeypatch):
         mock_post.return_value = _mock_response(
             json_data={
-                "response": "<think>reasoning about the vacancy</think>{\"score\": 80}"
+                "response": '<think>reasoning about the vacancy</think>{"score": 80}'
             }
         )
 

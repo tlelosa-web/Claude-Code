@@ -119,9 +119,7 @@ class TestGenerateCvOnline:
 
 class TestGenerateCoverLetterOffline:
     def test_offline_mode_returns_stub_without_runner_call(self):
-        with patch(
-            "src.doc_gen.cover_letter_generator.run_claude_code"
-        ) as mock_runner:
+        with patch("src.doc_gen.cover_letter_generator.run_claude_code") as mock_runner:
             result = generate_cover_letter(_profile(), _vacancy())
 
         mock_runner.assert_not_called()

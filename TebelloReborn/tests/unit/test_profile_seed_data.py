@@ -34,7 +34,10 @@ class TestProfileSeedData:
         profile = _load_profile()
 
         primary = profile.primary_title
-        assert "Operations Foreman" in primary.title or "Operations Manager" in primary.title
+        assert (
+            "Operations Foreman" in primary.title
+            or "Operations Manager" in primary.title
+        )
 
     def test_project_engineer_present_as_secondary_lane(self):
         profile = _load_profile()

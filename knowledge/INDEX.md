@@ -9,3 +9,4 @@ searching further — a matching row means the answer is already captured.
 | `nameplatetool.md` | NamePlateTool (Fan Movement work project): stack, frontend/backend/PDF payload contract, uvicorn-supervisor kill gotcha, open Excel-import bug, testing status | 2026-07-23 |
 | `cratetracker.md` | CrateTracker PWA (F1 Clash premium-crate predictor): structure, deploy steps, service-worker cache-busting, crate-cycle model | 2026-07-23 |
 | `pitwall-companion.md` | Pitwall Companion / F1 Clash Resource Sheet PWA: structure, localStorage schema, cache-busting, modeling notes (boost scaling, live loadouts, Series-0 legendaries) | 2026-07-23 |
+| `pappa-t.md` | Pappa T (personal machine): what it is vs. Operations, no live remote-environment bridge (git sync only), Pappa T-only items (codex-gate, TebelloReborn gap) | 2026-07-26 |

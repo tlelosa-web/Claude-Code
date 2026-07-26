@@ -1,6 +1,6 @@
 # Task Queue — TebelloReborn (Career Engine)
 
-> Updated: 2026-07-26 (Phase 7 complete — steps 50-52 done; Phase 8 docs closeout next)
+> Updated: 2026-07-26 (MVP build complete — all 54 Build Queue steps done, Phases 0-8)
 
 ---
 
@@ -135,8 +135,8 @@
 > `new_x=XPos.LMARGIN, new_y=YPos.NEXT` on all three `multi_cell` calls.
 
 ### Phase 8 — Docs Closeout
-- [ ] 53. `docs/api-patterns.md` — must document **Ollama** (matching) and **headless Claude Code** (document generation), not OpenRouter (ADR-003)
-- [ ] 54. `docs/session-log.md`
+- [x] 53. `docs/api-patterns.md` — must document **Ollama** (matching) and **headless Claude Code** (document generation), not OpenRouter (ADR-003)
+- [x] 54. `docs/session-log.md`
 
 ---
 

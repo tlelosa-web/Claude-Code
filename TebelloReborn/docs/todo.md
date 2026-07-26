@@ -1,6 +1,6 @@
 # Task Queue — TebelloReborn (Career Engine)
 
-> Updated: 2026-07-21 (Phase 6 in progress — steps 44-47 done; 48-49 need Reviewer sign-off before execution)
+> Updated: 2026-07-26 (Phase 6 complete — steps 44-49 done; Phase 7 CLI Wiring & Integration next)
 
 ---
 
@@ -111,13 +111,13 @@
 > the reduced tool scope. ADR-003 itself is left unedited (historical record of the decision as
 > accepted); this note is the correction, mirroring the match-result migration note above.
 
-### Phase 6 — Stage 5: Human Review (offline) — **steps 48–49 require Reviewer sign-off BEFORE execution, not just before merge**
+### Phase 6 — Stage 5: Human Review (offline) — **steps 48–49 required Reviewer sign-off BEFORE execution, not just before merge**
 - [x] 44. [RED] `tests/unit/test_review_schema.py`
 - [x] 45. [GREEN] `src/review/schema.py`
 - [x] 46. [RED] `tests/unit/test_review_db.py`
 - [x] 47. [GREEN] `src/review/db.py` + `src/review/migrations.py`
-- [ ] 48. [RED] `tests/unit/test_review_cli.py` — **REVIEWER SIGN-OFF REQUIRED FIRST**
-- [ ] 49. [GREEN] `src/review/cli.py` — **REVIEWER SIGN-OFF REQUIRED FIRST**
+- [x] 48. [RED] `tests/unit/test_review_cli.py` (`b2734b8`)
+- [x] 49. [GREEN] `src/review/cli.py` (`1ed2fca`) — also enables `PRAGMA foreign_keys = ON` in `review/db.py`
 
 ### Phase 7 — CLI Wiring & Integration
 - [ ] 50. [RED] `tests/unit/test_main.py`

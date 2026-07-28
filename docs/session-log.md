@@ -3,31 +3,6 @@
 One entry per hub-level session, most recent last. `/continue`'s Step 1
 reads only the final entry.
 
-## 2026-07-28 — Fixed /continue's machine-bound-task blind spot
-
-This session offered the Pappa T vault survey (`docs/todo.md` #1) as
-pickable via `AskUserQuestion`, and Tebello confirmed it — only to
-discover it's not runnable from a cloud Claude-Code-on-the-web session
-(no filesystem access to Pappa T; git is the only sync channel per
-`knowledge/pappa-t.md`). Drafted a standalone survey prompt for Tebello to
-run in a local Pappa T session instead, mirroring the Operations vault
-survey approach from `docs/session-log.md`'s earlier entry.
-
-Then fixed the root gap in `.claude/commands/continue.md`: added Step 2.5
-("Flag Machine-Bound Tasks"), which checks candidate next-tasks against
-this session's actual environment before Step 3 reports them, and marks
-any machine-bound-and-unreachable item with a ⚠️ note in both the resume
-report and its `AskUserQuestion` option — so Tebello sees the access gap
-before picking, not after confirming.
-
-**Last completed:** `/continue` machine-bound-task check added (this entry).
-**Next task:** Pappa T vault survey — still queued in `docs/todo.md` #1,
-to be run by Tebello directly in a local Pappa T session (prompt drafted
-this session, not saved to a file — see this entry for where to regenerate
-it if needed).
-**Known risks:** None new.
-**Blockers:** None.
-
 ## 2026-07-28 — Cross-project status survey + hub setup
 
 Surveyed all 5 GitHub repos (`Claude-Code`, `tlelosa-claude-config`,
@@ -170,5 +145,103 @@ work picks up next session.
 (previous entry).
 **Next task:** Pappa T vault survey — see `docs/todo.md` #1. Run first,
 before anything else.
+**Known risks:** None new.
+**Blockers:** None.
+
+## 2026-07-28 — Pappa T vault survey (concurrent second pass)
+
+Ran the same day as the session-end entry above, from a separate Pappa T
+session — surveyed that machine for projects not yet tracked here, mirroring
+the Operations vault survey pattern.
+
+Actions taken:
+- Resolved the `Claude-Code/` "untracked nested repo, unclear origin" flag
+  raised by an earlier Pappa T `/continue` run: it's this repo — a
+  deliberate, already-pushed sibling folder inside the Pappa T vault
+  directory, not a submodule, not stray work.
+- Superseded the inline TebelloReborn note the concurrent hub-setup session
+  had added to `knowledge/pappa-t.md` with a dedicated
+  `knowledge/tebelloreborn.md`, written from a direct read of that project's
+  own `CLAUDE.md`/`docs/architecture.md`/`docs/todo.md` — resolves the
+  original note's "[scraping specifics unclear from the summary]" gap
+  (PNet/Careers24 simply have no dedicated Apify actor yet, per ADR-002) and
+  adds the ADR-003 inference-provider-split detail, the doc-gen
+  prompt-injection security fix, and the fpdf2/Apify build-time gotchas.
+- Added four more Pappa T sub-project knowledge files — none of Pappa T's
+  five sub-projects are independent git repos, so none had a dedicated file
+  yet: `ai-outreach-agency.md` (surfaced two open items, now in
+  `docs/todo.md`), `mims-app.md`, `iq-signal-generator.md`, `tenders-sa.md`.
+- Confirmed no other dev-root folder exists on the Pappa T machine. Noted
+  `~/OneDrive/` and `~/Documents/Codex/` as data-only (no dedicated file),
+  `~/python-sdk/` as a downloaded runtime rather than a project, and the
+  extra `~/Downloads/tlelosa-claude-config/` clone as already covered by its
+  existing entry (same remote, skipped per the dedupe rule).
+
+Ran concurrently with, and unaware of, the "Session end" entry above that
+queued this same survey — both landed on separate branches and are
+reconciled in this merge entry below.
+
+**Last completed:** This survey.
+**Next task:** Unchanged from the entry above — Fix the Excel-import bug in
+NamePlateTool (`docs/todo.md` #1) [later confirmed fixed — see the next
+entry].
+**Known risks:** None new.
+**Blockers:** None.
+
+## 2026-07-28 — Fixed /continue's machine-bound-task blind spot
+
+This session offered the Pappa T vault survey (`docs/todo.md` #1) as
+pickable via `AskUserQuestion`, and Tebello confirmed it — only to
+discover it's not runnable from a cloud Claude-Code-on-the-web session
+(no filesystem access to Pappa T; git is the only sync channel per
+`knowledge/pappa-t.md`). Drafted a standalone survey prompt for Tebello to
+run in a local Pappa T session instead, mirroring the Operations vault
+survey approach from this log's earlier entry — not aware at the time that
+the concurrent Pappa T session above had already completed that survey on
+its own branch.
+
+Then fixed the root gap in `.claude/commands/continue.md`: added Step 2.5
+("Flag Machine-Bound Tasks"), which checks candidate next-tasks against
+this session's actual environment before Step 3 reports them, and marks
+any machine-bound-and-unreachable item with a ⚠️ note in both the resume
+report and its `AskUserQuestion` option — so Tebello sees the access gap
+before picking, not after confirming.
+
+**Last completed:** `/continue` machine-bound-task check added (this entry).
+**Next task:** Pappa T vault survey — still queued in `docs/todo.md` #1,
+to be run by Tebello directly in a local Pappa T session (prompt drafted
+this session, not saved to a file — see this entry for where to regenerate
+it if needed).
+**Known risks:** None new.
+**Blockers:** None.
+
+## 2026-07-28 — Merged the Pappa T vault survey into main
+
+The Pappa T vault survey (previous-but-one entry) had landed on a separate
+branch (`claude/cloud-env-overview-setup-ymv1vd`) that diverged from `main`
+before the Operations vault survey, NamePlateTool bug-fix confirmation, and
+Step 2.5 machine-bound-task check were added — so merging it produced six
+real conflicts (`.claude/commands/continue.md`, `docs/todo.md`,
+`docs/session-log.md`, `knowledge/INDEX.md`, `knowledge/nameplatetool.md`,
+`knowledge/pappa-t.md`), all from genuine concurrent work on both sides, not
+duplicate edits. Resolved each as a real union rather than picking one side:
+kept `origin/main`'s newer `continue.md` (Step 2.5) and `nameplatetool.md`
+(clean superseded-chain for the bug fix); combined both branches' `docs/todo.md`
+"Next up" items (codex-gate, NamePlateTool tests, TebelloReborn, the two new
+ai-outreach-agency items, and the two SOPS items) and moved the now-completed
+Pappa T survey to "Done"; combined `knowledge/INDEX.md` into one 14-row table;
+kept the Pappa T-survey-completed status on the TebelloReborn note in
+`pappa-t.md`. Also reordered this file into genuine chronological order —
+the previous `main` history had the "Fixed /continue's machine-bound-task
+blind spot" entry sitting first instead of last, which meant `/continue`'s
+Step 1 (reads only the final entry) was picking up a stale "next task"
+pointer; entries above are now in the order they actually happened, oldest
+first, per this file's own header convention. PR #6, merged via GitHub API
+merge (not local push to `main`).
+
+**Last completed:** Pappa T vault survey merge (this entry).
+**Next task:** Close out the codex-gate rollout (`tlelosa-claude-config`) —
+see `docs/todo.md` #1 — currently left open per Tebello's direction pending
+further instruction.
 **Known risks:** None new.
 **Blockers:** None.

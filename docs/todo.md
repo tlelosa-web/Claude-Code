@@ -13,33 +13,36 @@ Per DCOE: update after every completed task; one task = one commit.
 
 ## Next up (priority order, set 2026-07-28)
 
-1. [ ] **Pappa T vault survey** — mirror the Operations vault survey
-      (2026-07-28): enumerate every project folder on Pappa T not yet in
-      `knowledge/INDEX.md`, pull outstanding items and reusable facts into
-      the hub's knowledge cache, and fold any genuinely new cross-project
-      tasks into this queue. Run before any other continuation work picks
-      up. Detail: `knowledge/pappa-t.md` for what's already known about the
-      machine; use the Operations survey prompt/approach as the template.
-2. [ ] **Close out the codex-gate rollout** (`tlelosa-claude-config`) — three
+1. [ ] **Close out the codex-gate rollout** (`tlelosa-claude-config`) — three
       items outstanding: install + network-off smoke-test on Pappa T, copy
       the drafted ADR into the Operations hub's `docs/decisions/`, and get
       Fan Movement IT to confirm OpenAI-egress coverage for Operations
       (codex-gate stays Pappa T-only until then). Detail:
       `tlelosa-claude-config/docs/todo.md`, `knowledge/tlelosa-claude-config.md`.
-3. [ ] **NamePlateTool: add a real automated test suite** — not urgent;
+2. [ ] **NamePlateTool: add a real automated test suite** — not urgent;
       `tests/` is ad-hoc manual-check scripts only.
-4. [ ] **TebelloReborn: decide on post-MVP scope** — Playwright auto-submit,
+3. [ ] **TebelloReborn: decide on post-MVP scope** — Playwright auto-submit,
       recruiter/cold-outreach revival, and a doc-gen volume-cap/scheduler
       are all undecided backlog items, no urgency behind them yet. Detail:
-      `knowledge/pappa-t.md`.
-5. [ ] **SOPS: give the go-ahead to run the AvgMovement migration against
+      `knowledge/tebelloreborn.md` (supersedes the pointer to `pappa-t.md`
+      this item previously had — see that project's own dedicated file now).
+4. [ ] **ai-outreach-agency: top up OpenRouter credits** — `asset_gen` has
+      been blocked on HTTP 402 since 2026-07-04; unblocks real (non-offline)
+      batch runs until its headless-Claude-Code migration (Build Queue A)
+      lands. Detail: `knowledge/ai-outreach-agency.md`.
+5. [ ] **ai-outreach-agency: bump Ollama `READ_TIMEOUT` 60s→120s + add
+      `keep_alive: "30m"`** to `/api/generate` — local generation sits close
+      to the current timeout ceiling on cold-load calls, risking
+      intermittent false-positive errors on a real batch. Small, single-file
+      fix. Detail: `knowledge/ai-outreach-agency.md`.
+6. [ ] **SOPS: give the go-ahead to run the AvgMovement migration against
       `instance/sops.db`** — Supplier/Lead-Time + AMU/Min-Max logic ported
       and fully tested (Batch 32/33, commits `fe06eaa`/`112e321`), held for
       Tebello per SOPS's standing schema-change convention. This is the
       blocking step before `8. AvgMovement` (already Retired in the
       Operations hub project index) can be decommissioned. Detail:
       `2. SOPS/docs/todo.md`, `knowledge/sops.md`.
-6. [ ] **SOPS: Payment Status data-migration review** — a batch of
+7. [ ] **SOPS: Payment Status data-migration review** — a batch of
       historical Sales Orders need human review of migrated/backfilled
       payment-status values before being treated as fully validated.
       Detail: `2. SOPS/docs/todo.md` (2026-07-14 entry onward),
@@ -54,6 +57,22 @@ Per DCOE: update after every completed task; one task = one commit.
 
 ## Done
 
+- [x] **2026-07-28** — Pappa T vault survey (second pass, from a Pappa T
+      session running concurrently with the hub-setup work above): resolved
+      the `Claude-Code/` folder's earlier "untracked nested repo" flag from
+      a Pappa T `/continue` run (it's this repo itself — deliberate, not
+      stray work); replaced the inline TebelloReborn note in
+      `knowledge/pappa-t.md` with a dedicated `knowledge/tebelloreborn.md`
+      (more detail, and resolves that note's "[scraping specifics unclear]"
+      gap); added four more Pappa T sub-project knowledge files
+      (`ai-outreach-agency.md`, `mims-app.md`, `iq-signal-generator.md`,
+      `tenders-sa.md`) — none of Pappa T's five sub-projects are independent
+      git repos, so none had ever been individually tracked here. Confirmed
+      no other dev-root exists on the Pappa T machine; noted `~/OneDrive/`
+      and `~/Documents/Codex/` as data-only, `~/python-sdk/` as a runtime
+      download, and the extra `~/Downloads/tlelosa-claude-config/` clone as
+      already covered by its existing entry. Surfaced two new tasks from the
+      survey (ai-outreach-agency credits + Ollama timeout, above).
 - [x] **2026-07-28** — Added a machine-bound-task check to `/continue`
       (Step 2.5 in `.claude/commands/continue.md`): before reporting,
       flag candidate next-tasks that need local access on a specific

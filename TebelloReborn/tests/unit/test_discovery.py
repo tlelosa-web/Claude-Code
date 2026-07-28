@@ -8,11 +8,13 @@ call #1), and gates PNet behind a manual-verification config, falling back
 to the pre-existing data/crawler_seed_urls.json for PNet only.
 """
 
+import json
 from unittest.mock import patch
 
 from src.vacancy_search.discovery import (
     build_search_url,
     discover_job_urls,
+    get_job_urls,
     parse_job_urls_from_listing,
 )
 
@@ -145,3 +147,85 @@ class TestDiscoverJobUrlsCareers24:
         assert len(urls) >= 1
         assert all(u["_source_mode"] == "fixture" for u in urls)
         assert all(u["url"] for u in urls)
+
+
+class TestGetJobUrls:
+    """get_job_urls(platform, limit) — the single entry point
+    apify_client.py::fetch_vacancies() calls for both platforms. Careers24
+    has no gate (always discover_job_urls). PNet branches on
+    data/discovery_config.json's mode: "manual_pending_verification" falls
+    back to the pre-existing data/crawler_seed_urls.json unchanged, "auto"
+    calls discover_job_urls("pnet", limit) instead — one function, branching
+    on config, no `if platform == "pnet"` special-casing in any consumer."""
+
+    @patch("src.vacancy_search.discovery.discover_job_urls")
+    def test_careers24_always_calls_discover_job_urls(self, mock_discover, tmp_path):
+        mock_discover.return_value = [
+            {"url": "https://example.co.za/careers24-1", "_source_mode": "live"}
+        ]
+        config_path = tmp_path / "discovery_config.json"
+        config_path.write_text(
+            json.dumps(
+                {
+                    "pnet": {"mode": "manual_pending_verification"},
+                    "careers24": {"mode": "manual_pending_verification"},
+                }
+            )
+        )
+
+        urls = get_job_urls(
+            "careers24", limit=25, discovery_config_path=str(config_path)
+        )
+
+        mock_discover.assert_called_once_with("careers24", 25)
+        assert urls == ["https://example.co.za/careers24-1"]
+
+    @patch("src.vacancy_search.discovery.discover_job_urls")
+    @patch("src.vacancy_search.discovery.build_search_url")
+    def test_pnet_manual_pending_verification_falls_back_to_seed_urls(
+        self, mock_build_search_url, mock_discover, tmp_path
+    ):
+        config_path = tmp_path / "discovery_config.json"
+        config_path.write_text(
+            json.dumps(
+                {
+                    "pnet": {"mode": "manual_pending_verification"},
+                    "careers24": {"mode": "auto"},
+                }
+            )
+        )
+        seed_path = tmp_path / "crawler_seed_urls.json"
+        seed_path.write_text(
+            json.dumps({"pnet": ["https://example.co.za/pnet-seed-1"]})
+        )
+
+        urls = get_job_urls(
+            "pnet",
+            limit=25,
+            discovery_config_path=str(config_path),
+            seed_urls_path=str(seed_path),
+        )
+
+        mock_discover.assert_not_called()
+        mock_build_search_url.assert_not_called()
+        assert urls == ["https://example.co.za/pnet-seed-1"]
+
+    @patch("src.vacancy_search.discovery.discover_job_urls")
+    def test_pnet_auto_mode_calls_discover_job_urls(self, mock_discover, tmp_path):
+        mock_discover.return_value = [
+            {"url": "https://example.co.za/pnet-discovered-1", "_source_mode": "live"}
+        ]
+        config_path = tmp_path / "discovery_config.json"
+        config_path.write_text(
+            json.dumps(
+                {
+                    "pnet": {"mode": "auto"},
+                    "careers24": {"mode": "auto"},
+                }
+            )
+        )
+
+        urls = get_job_urls("pnet", limit=25, discovery_config_path=str(config_path))
+
+        mock_discover.assert_called_once_with("pnet", 25)
+        assert urls == ["https://example.co.za/pnet-discovered-1"]

@@ -21,7 +21,7 @@
 
 ## Known Issues
 
-- [ ] No dedicated Apify actor exists for PNet or Careers24 — MVP vacancy fetch covers Indeed + LinkedIn only (see planned ADR-002).
+_(none active — the PNet/Careers24 gap below is now a scheduled, spec-backed build, not an open issue)_
 
 ---
 
@@ -137,6 +137,27 @@
 - [x] 53. `docs/api-patterns.md` — must document **Ollama** (matching) and **headless Claude Code** (document generation), not OpenRouter (ADR-003)
 - [x] 54. `docs/session-log.md`
 
+### Phase 9–14 — PNet/Careers24 Vacancy Coverage (see `docs/specs/pnet-careers24-coverage.md` for full detail: inputs, outputs, verification, per-step agent; Codex-reviewed and amended 2026-07-29 — **PRIORITY**, per hub `docs/todo.md`)
+
+- [x] 55. [RED] `tests/unit/test_ollama_client.py` — import path update to `src.shared.ollama_client`
+- [x] 56. [GREEN] Move `src/matching/ollama_client.py` → `src/shared/ollama_client.py`; update `scorer.py` import
+- [x] 57. Update `CLAUDE.md`'s External Client Patterns table + Directory Structure for the move
+- [ ] 58. [RED] `tests/unit/test_vacancy_schema.py` — `pnet`/`careers24` platform cases
+- [ ] 59. [GREEN] `src/vacancy_search/schema.py` — `VALID_PLATFORMS` addition (no migration — Python-validation only)
+- [ ] 60. `data/crawler_seed_urls.json` — generic placeholder seed-URL config (job-detail pages only, per Amendment)
+- [ ] 61. [RED] `tests/unit/test_crawler_client.py` — OFFLINE_MODE fixture, rate limiter, graceful-degradation convention, `_source_mode` tagging (per Amendment)
+- [ ] 62. [GREEN] `src/vacancy_search/crawler_client.py` — Apify `website-content-crawler` client
+- [ ] 63. [RED] `tests/unit/test_vacancy_extraction.py` — extraction prompt + parse/validate, empty-string required-field rejection (per Amendment)
+- [ ] 64. [GREEN] `src/vacancy_search/extraction_prompt.py`
+- [ ] 65. [GREEN] `src/vacancy_search/extractor.py` — `VacancyExtractionError`, consumes `src/shared/ollama_client.py`
+- [ ] 66. [RED] `tests/unit/test_apify_client.py` — fold pnet/careers24 into `fetch_vacancies()`, `normalize_url()` dedupe fix, degraded-mode warning log (per Amendment)
+- [ ] 67. [GREEN] `src/vacancy_search/apify_client.py` — integration
+- [ ] 68. `docs/decisions/ADR-002-apify-job-scraping.md` — dated amendment section
+- [ ] 69. `docs/api-patterns.md` — new crawler/extraction section, Ollama section path update, job-detail-page-only seed-URL note (per Amendment)
+- [ ] 70. `.env.example` — `CRAWLER_RATE_LIMIT_PER_MIN=30`
+- [ ] 71. `CLAUDE.md` — External Client Patterns table + Directory Structure update
+- [ ] 72. `docs/todo.md` — this section supersedes the old Known-Issues/Future PNet/Careers24 lines (done, see above); add Future items for discovery-stage/site-specific-parser/raw-artifact-audit follow-ups (per Amendment's "Not folded in" note)
+
 ---
 
 ## Resolved Items
@@ -181,6 +202,15 @@
 
 - [ ] Phase 6 (post-MVP numbering — original 7-phase plan): Playwright-based auto-fill/submit, paused before final submission.
 - [ ] Phase 7 (post-MVP numbering): tracking dashboard (applications, match-score distribution, response rate).
-- [ ] PNet/Careers24 coverage via generic Apify crawler + LLM extraction.
 - [ ] Decide whether recruiter cold-outreach (in `data/legacy_reference/`, not part of the original 7-phase plan) gets revived as a later phase.
 - [ ] Volume-cap / scheduler layer for document generation (ADR-003 §6, open judgment call #1) — only if Tebello confirms a controlled-batch need; would need its own spec + ADR, and likely a `PRAGMA user_version` migration via the `src/doc_gen/migrations.py` stub (step 34).
+- [ ] Search-page discovery stage (`discover_job_urls`/`fetch_job_pages` split) for PNet/Careers24 —
+      needed if real seed URLs turn out to be search-result pages rather than direct job-detail links
+      once Tebello supplies them (flagged by Codex review of `pnet-careers24-coverage.md`, not built
+      in that spec — current spec requires job-detail-page seed URLs only).
+- [ ] Site-specific lightweight HTML parsers for PNet/Careers24, LLM extraction as fallback only —
+      alternative to full-LLM extraction flagged by Codex review; cheaper/more reliable if either
+      site's HTML structure turns out to be stable enough to parse deterministically.
+- [ ] Store raw crawler artifacts (snapshots or normalized JSON) under `data/` during non-offline
+      PNet/Careers24 runs, for extraction-error debugging and prompt tuning — flagged by Codex review,
+      not built in the current spec.

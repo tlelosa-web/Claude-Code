@@ -120,7 +120,7 @@ Agents live in `.claude/agents/`. Invoke by name or let Claude delegate.
 
 **As of ADR-003 (2026-07-19), TebelloReborn has no OpenRouter call sites at all** — this isn't a partial migration, OpenRouter is dropped entirely from the project's inference stack. The two inference-bearing pipeline stages each route to a fixed local backend, chosen by workload shape (mirrors the *pattern* — not the code — of `ai-outreach-agency`'s own ADR-004 / ADR-003 split):
 
-- **AI Matching** (`matching/scorer.py`) calls a **local Ollama daemon** (`qwen3:8b`, native `POST /api/generate`, no API key) via `matching/ollama_client.py`. This is a single fixed model — there is no "effort tier" or model-routing concept here, the same shape as `ai-outreach-agency`'s Ollama-routed `research` stage.
+- **AI Matching** (`matching/scorer.py`) calls a **local Ollama daemon** (`qwen3:8b`, native `POST /api/generate`, no API key) via `shared/ollama_client.py` (promoted from `matching/ollama_client.py` in Phase 9 once it gained a second consumer, ADR-003 §Alternatives.D). This is a single fixed model — there is no "effort tier" or model-routing concept here, the same shape as `ai-outreach-agency`'s Ollama-routed `research` stage.
 - **Document Generation** (`doc_gen/cv_generator.py` + `cover_letter_generator.py`) shells out to **headless Claude Code** (`claude -p ... --allowedTools "Read,Write" --output-format json`) as a local subprocess under Tebello's own Claude subscription — $0 marginal cost, no API key. Also a fixed invocation, not a model/effort-routing table.
 
 Neither backend has an "Opus escalation" concept — there is no OpenRouter model tier left to escalate within, and no per-token cost/pricing-deadline concern (both run at flat cost against local resources). Full reasoning: `docs/decisions/ADR-003-inference-provider-split.md`.
@@ -168,12 +168,12 @@ The rate-limited network clients share the token-bucket rate limiter pattern fro
 
 | Client                              | Source                         | Default rate | Env override                  |
 |--------------------------------------|---------------------------------|---------------|--------------------------------|
-| `matching/ollama_client.py`          | Mirrors `research/ollama_client.py` pattern (ADR-003) | 120 / min | `OLLAMA_RATE_LIMIT_PER_MIN` |
+| `shared/ollama_client.py`            | Mirrors `research/ollama_client.py` pattern (ADR-003); promoted from `matching/ollama_client.py` in Phase 9 once it gained a second consumer (ADR-003 §Alternatives.D) — now shared by `matching/scorer.py` and (Phase 12, not yet built) the future `vacancy_search/extractor.py` | 120 / min | `OLLAMA_RATE_LIMIT_PER_MIN` |
 | `vacancy_search/apify_client.py`     | Mirrors `research/apify_client.py` pattern | 30 / min | `APIFY_RATE_LIMIT_PER_MIN`      |
 
 The `doc_gen/` runner is **not** in this table — it is a local subprocess under a flat-cost subscription, not a rate-limited HTTP client, so no token-bucket applies to it (same distinction `ai-outreach-agency` draws between its handoff runner and its rate-limited clients).
 
-- **Local Ollama**: real inference for matching (`matching/scorer.py`) via `matching/ollama_client.py`, native `POST {OLLAMA_BASE_URL}/api/generate` against `qwen3:8b`, no API key (local daemon). Fails loudly — `OllamaUnreachableError` on connection-refused/connect-timeout ("is it running?"), `OllamaError` on read-timeout ("model may be slow/cold-loading") — distinct exception types for distinct causes, never collapsed into one message. No silent fallback (and after ADR-003 there is no OpenRouter left to fall back to anyway). See ADR-003 and `docs/api-patterns.md`.
+- **Local Ollama**: real inference for matching (`matching/scorer.py`) via `shared/ollama_client.py`, native `POST {OLLAMA_BASE_URL}/api/generate` against `qwen3:8b`, no API key (local daemon). Fails loudly — `OllamaUnreachableError` on connection-refused/connect-timeout ("is it running?"), `OllamaError` on read-timeout ("model may be slow/cold-loading") — distinct exception types for distinct causes, never collapsed into one message. No silent fallback (and after ADR-003 there is no OpenRouter left to fall back to anyway). See ADR-003 and `docs/api-patterns.md`.
 - **Headless Claude Code**: real document generation (`doc_gen/cv_generator.py` + `cover_letter_generator.py`) via a `src/doc_gen/` runner that shells out to `claude -p ... --allowedTools "Read,Write" --output-format json` as a local subprocess, under Tebello's own Claude subscription ($0 marginal cost, no API key). This is a **local runtime dependency, not an HTTP client** — the `claude` binary must be on `PATH` and authenticated on whatever machine runs it, which is not pip-installable or CI-verifiable and surfaces as a runtime error, not an import-time failure. Failures are data, not exceptions: the runner returns `throttled`/`error` as result fields so a throttle mid-`run-all` doesn't crash the batch; only a genuinely unexpected condition (`claude` missing from `PATH`) propagates. See ADR-003.
 - **Apify**: two dedicated job-board actors (Indeed scraper, LinkedIn Jobs scraper) confirmed available on the Apify Store. **PNet and Careers24 have no dedicated actor** — deferred; could later use the generic `website-content-crawler` actor (same one `ai-outreach-agency` already uses) plus LLM-based extraction. `OFFLINE_MODE` fixture returns 2–3 fake vacancies, matching the `apify_client.FIXTURE` convention.
 
@@ -284,10 +284,10 @@ TebelloReborn/
 └── src/
     ├── main.py                   ← CLI runner
     ├── config.py                 ← Settings via python-dotenv
-    ├── shared/                   ← rate_limiter.py
+    ├── shared/                   ← rate_limiter.py, ollama_client.py (ADR-003; promoted from matching/ in Phase 9)
     ├── profile/                  ← CandidateProfile schema + db
     ├── vacancy_search/           ← Vacancy schema + apify_client.py + db
-    ├── matching/                 ← prompt_builder.py + scorer.py + ollama_client.py (ADR-003)
+    ├── matching/                 ← prompt_builder.py + scorer.py (ADR-003)
     ├── doc_gen/                  ← runner.py, schema.py, db.py, migrations.py (ADR-003) + cv_generator.py, cover_letter_generator.py, pdf_export.py
     └── review/                   ← approval gate CLI
 ```
@@ -308,6 +308,7 @@ TebelloReborn/
 10. **If acceptance criteria are unclear → STOP and ask** before implementing.
 11. **Update docs/todo.md** after every completed task.
 12. **Never delete the `_archive_qwen_prototype/` contents** without explicit user confirmation — it's the only copy of some historical records.
+13. **Run `/codex-review` on every spec in `docs/specs/` before dispatching an Executor** — advisory cross-family second opinion, appended to the spec, never blocking. Fold the strongest points (buried assumptions, missing acceptance criteria, real failure modes) back into the spec as a dated Amendment section before build starts. Standard procedure for every spec, not optional. The `reviewer` agent still holds sole APPROVE/BLOCK authority — Codex is advisory only.
 
 ---
 

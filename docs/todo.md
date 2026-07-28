@@ -9,10 +9,16 @@
 
 ## In Progress
 
-- [ ] **PRIORITY** — `TebelloReborn`: PNet/Careers24 Vacancy Coverage build (spec:
-      `TebelloReborn/docs/specs/pnet-careers24-coverage.md`, Codex-reviewed and amended
-      2026-07-29, Build Queue steps 55–72, Phases 9–14). Tebello has explicitly prioritized
-      this over the `ai-outreach-agency` items below — those resume once this is up and running.
+- [ ] **PRIORITY, PAUSED FOR REDESIGN** — `TebelloReborn`: PNet/Careers24 Vacancy Coverage build
+      (spec: `TebelloReborn/docs/specs/pnet-careers24-coverage.md`). Phases 9–11 (steps 55–62)
+      built and committed; Phase 12+ paused 2026-07-29 — Tebello caught objective drift: the
+      spec's static manually-curated seed-URL config contradicts the project's actual goal
+      (fully automated vacancy discovery, human review only at the final approval gate).
+      Needs a fresh Domain → Planner redesign pass for automated discovery (search-URL
+      construction from `SEARCH_TITLES`/`SEARCH_LOCATION`, mirroring Indeed/LinkedIn's
+      approach) before build resumes. See `TebelloReborn/docs/todo.md`'s Phase 9–14 section
+      for full detail. Still prioritized over the `ai-outreach-agency` items below once
+      redesign + build resumes.
 
 ## Next up
 

@@ -147,16 +147,34 @@ _(none active — the PNet/Careers24 gap below is now a scheduled, spec-backed b
 - [x] 60. `data/crawler_seed_urls.json` — generic placeholder seed-URL config (job-detail pages only, per Amendment)
 - [x] 61. [RED] `tests/unit/test_crawler_client.py` — OFFLINE_MODE fixture, rate limiter, graceful-degradation convention, `_source_mode` tagging (per Amendment)
 - [x] 62. [GREEN] `src/vacancy_search/crawler_client.py` — Apify `website-content-crawler` client
-- [ ] 63. [RED] `tests/unit/test_vacancy_extraction.py` — extraction prompt + parse/validate, empty-string required-field rejection (per Amendment)
-- [ ] 64. [GREEN] `src/vacancy_search/extraction_prompt.py`
-- [ ] 65. [GREEN] `src/vacancy_search/extractor.py` — `VacancyExtractionError`, consumes `src/shared/ollama_client.py`
-- [ ] 66. [RED] `tests/unit/test_apify_client.py` — fold pnet/careers24 into `fetch_vacancies()`, `normalize_url()` dedupe fix, degraded-mode warning log (per Amendment)
-- [ ] 67. [GREEN] `src/vacancy_search/apify_client.py` — integration
-- [ ] 68. `docs/decisions/ADR-002-apify-job-scraping.md` — dated amendment section
-- [ ] 69. `docs/api-patterns.md` — new crawler/extraction section, Ollama section path update, job-detail-page-only seed-URL note (per Amendment)
-- [ ] 70. `.env.example` — `CRAWLER_RATE_LIMIT_PER_MIN=30`
-- [ ] 71. `CLAUDE.md` — External Client Patterns table + Directory Structure update
-- [ ] 72. `docs/todo.md` — this section supersedes the old Known-Issues/Future PNet/Careers24 lines (done, see above); add Future items for discovery-stage/site-specific-parser/raw-artifact-audit follow-ups (per Amendment's "Not folded in" note)
+
+> **PAUSED 2026-07-29 — objective drift caught before Phase 12.** The spec's static
+> `data/crawler_seed_urls.json` (Phase 10, step 60) requires Tebello to manually find and
+> paste individual job-detail-page URLs — that's manual job-search labor at the discovery
+> stage, which contradicts this project's actual goal: the pipeline *continuously finds*
+> vacancies automatically (like Indeed/LinkedIn's `SEARCH_TITLES`/`SEARCH_LOCATION`-driven
+> search), and Tebello's manual involvement is supposed to be **only** the human-approval
+> gate at the end. Steps 63–72 below are NOT being built against the current design.
+> Redesign required first: an automated discovery stage (construct a search-results URL
+> from `SEARCH_TITLES`/`SEARCH_LOCATION`, crawl it, extract job-detail links, then
+> crawl+extract each detail page) replacing the manual seed-URL approach. Phases 9–11
+> (steps 55–62, all committed) remain valid and reusable — `ollama_client.py`'s promotion,
+> `VALID_PLATFORMS`, and `crawler_client.py`'s raw-fetch mechanics (rate limiting,
+> OFFLINE_MODE, `_source_mode` tagging) are all still needed by the redesigned flow.
+> `data/crawler_seed_urls.json` (step 60) will likely be replaced or repurposed, not just
+> extended — see the redesign session prompt for full context. A fresh Domain → Planner
+> pass against `docs/specs/pnet-careers24-coverage.md` is queued next.
+
+- [ ] 63. [RED] `tests/unit/test_vacancy_extraction.py` — extraction prompt + parse/validate, empty-string required-field rejection (per Amendment) — **BLOCKED on discovery redesign above**
+- [ ] 64. [GREEN] `src/vacancy_search/extraction_prompt.py` — **BLOCKED on discovery redesign above**
+- [ ] 65. [GREEN] `src/vacancy_search/extractor.py` — `VacancyExtractionError`, consumes `src/shared/ollama_client.py` — **BLOCKED on discovery redesign above**
+- [ ] 66. [RED] `tests/unit/test_apify_client.py` — fold pnet/careers24 into `fetch_vacancies()`, `normalize_url()` dedupe fix, degraded-mode warning log (per Amendment) — **BLOCKED on discovery redesign above**
+- [ ] 67. [GREEN] `src/vacancy_search/apify_client.py` — integration — **BLOCKED on discovery redesign above**
+- [ ] 68. `docs/decisions/ADR-002-apify-job-scraping.md` — dated amendment section — **BLOCKED on discovery redesign above**
+- [ ] 69. `docs/api-patterns.md` — new crawler/extraction section, Ollama section path update, job-detail-page-only seed-URL note (per Amendment) — **BLOCKED on discovery redesign above**
+- [ ] 70. `.env.example` — `CRAWLER_RATE_LIMIT_PER_MIN=30` — **BLOCKED on discovery redesign above**
+- [ ] 71. `CLAUDE.md` — External Client Patterns table + Directory Structure update — **BLOCKED on discovery redesign above**
+- [ ] 72. `docs/todo.md` — this section supersedes the old Known-Issues/Future PNet/Careers24 lines (done, see above); add Future items for discovery-stage/site-specific-parser/raw-artifact-audit follow-ups (per Amendment's "Not folded in" note) — **BLOCKED on discovery redesign above**
 
 ---
 

@@ -35,8 +35,28 @@ class TestVacancyValidation:
                 company="Acme",
                 title="Operations Foreman",
                 url="https://example.com",
-                platform="pnet",
+                platform="glassdoor",
             )
+
+    def test_pnet_platform_accepted(self):
+        vacancy = Vacancy(
+            company="Acme",
+            title="Operations Foreman",
+            url="https://www.pnet.co.za/jobs/123",
+            platform="pnet",
+        )
+
+        assert vacancy.platform == "pnet"
+
+    def test_careers24_platform_accepted(self):
+        vacancy = Vacancy(
+            company="Acme",
+            title="Operations Foreman",
+            url="https://www.careers24.com/jobs/123",
+            platform="careers24",
+        )
+
+        assert vacancy.platform == "careers24"
 
     def test_invalid_status_raises(self):
         with pytest.raises(ValueError, match="status"):

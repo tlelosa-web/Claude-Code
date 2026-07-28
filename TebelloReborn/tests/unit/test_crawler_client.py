@@ -14,6 +14,7 @@ import pytest
 
 from src.vacancy_search.crawler_client import (
     CRAWLER_ACTOR_URL,
+    fetch_raw_page,
     fetch_raw_pages,
 )
 
@@ -192,3 +193,128 @@ class TestRealCallPath:
         results = fetch_raw_pages("glassdoor", limit=25, seed_urls_path=str(seed_path))
 
         assert results == []
+
+
+class TestFetchRawPage:
+    """fetch_raw_page(url) — new single-URL primitive (Amendment, judgment
+    call #2): fetch_raw_pages() is refactored (step 64) to call this once
+    per seed URL instead of duplicating the POST/timeout/_source_mode/
+    exception-handling block. discovery.py (Phase 12b) composes on top of
+    this same primitive for listing-page and job-detail-page fetches."""
+
+    def test_offline_mode_returns_single_fixture_page(self, monkeypatch):
+        monkeypatch.setenv("OFFLINE_MODE", "true")
+
+        page = fetch_raw_page("https://example.co.za/any-url")
+
+        assert {"url", "title", "text_content", "_source_mode"} <= page.keys()
+        assert page["_source_mode"] == "fixture"
+
+    @patch("src.vacancy_search.crawler_client.requests.post")
+    def test_real_call_returns_live_tagged_page(self, mock_post, monkeypatch):
+        monkeypatch.setenv("APIFY_API_KEY", "test-key")
+        monkeypatch.delenv("OFFLINE_MODE", raising=False)
+        mock_post.return_value = _mock_response(
+            [{"url": "https://example.co.za/job1", "title": "Title", "text": "Body"}]
+        )
+
+        page = fetch_raw_page("https://example.co.za/job1")
+
+        assert page["_source_mode"] == "live"
+        assert page["url"] == "https://example.co.za/job1"
+        assert page["title"] == "Title"
+        assert page["text_content"] == "Body"
+
+    @patch("src.vacancy_search.crawler_client.requests.post")
+    def test_request_error_returns_none(self, mock_post, monkeypatch):
+        import requests as _requests
+
+        monkeypatch.setenv("APIFY_API_KEY", "test-key")
+        monkeypatch.delenv("OFFLINE_MODE", raising=False)
+        mock_post.side_effect = _requests.ConnectionError("crawler unreachable")
+
+        page = fetch_raw_page("https://example.co.za/job1")
+
+        assert page is None
+
+
+class TestFetchRawPagesRegressionAfterRefactor:
+    """Regression lock (step 63): fetch_raw_pages()'s existing outward
+    behavior (steps 61/62) must be unchanged once refactored to call
+    fetch_raw_page() internally per seed URL."""
+
+    @patch("src.vacancy_search.crawler_client.fetch_raw_page")
+    def test_fetch_raw_pages_calls_fetch_raw_page_per_seed_url(
+        self, mock_fetch_raw_page, monkeypatch, tmp_path
+    ):
+        monkeypatch.setenv("APIFY_API_KEY", "test-key")
+        monkeypatch.delenv("OFFLINE_MODE", raising=False)
+        mock_fetch_raw_page.side_effect = [
+            {
+                "url": "https://example.co.za/pnet-job-1",
+                "title": "t1",
+                "text_content": "body1",
+                "_source_mode": "live",
+            },
+            {
+                "url": "https://example.co.za/pnet-job-2",
+                "title": "t2",
+                "text_content": "body2",
+                "_source_mode": "live",
+            },
+        ]
+
+        seed_path = tmp_path / "seed_urls.json"
+        seed_path.write_text(
+            json.dumps(
+                {
+                    "pnet": [
+                        "https://example.co.za/pnet-job-1",
+                        "https://example.co.za/pnet-job-2",
+                    ]
+                }
+            )
+        )
+
+        results = fetch_raw_pages("pnet", limit=25, seed_urls_path=str(seed_path))
+
+        assert mock_fetch_raw_page.call_count == 2
+        mock_fetch_raw_page.assert_any_call("https://example.co.za/pnet-job-1")
+        mock_fetch_raw_page.assert_any_call("https://example.co.za/pnet-job-2")
+        assert [p["url"] for p in results] == [
+            "https://example.co.za/pnet-job-1",
+            "https://example.co.za/pnet-job-2",
+        ]
+
+    @patch("src.vacancy_search.crawler_client.fetch_raw_page")
+    def test_fetch_raw_pages_skips_none_results(
+        self, mock_fetch_raw_page, monkeypatch, tmp_path
+    ):
+        monkeypatch.setenv("APIFY_API_KEY", "test-key")
+        monkeypatch.delenv("OFFLINE_MODE", raising=False)
+        mock_fetch_raw_page.side_effect = [
+            None,
+            {
+                "url": "https://example.co.za/pnet-job-2",
+                "title": "t2",
+                "text_content": "body2",
+                "_source_mode": "live",
+            },
+        ]
+
+        seed_path = tmp_path / "seed_urls.json"
+        seed_path.write_text(
+            json.dumps(
+                {
+                    "pnet": [
+                        "https://example.co.za/pnet-job-1",
+                        "https://example.co.za/pnet-job-2",
+                    ]
+                }
+            )
+        )
+
+        results = fetch_raw_pages("pnet", limit=25, seed_urls_path=str(seed_path))
+
+        assert len(results) == 1
+        assert results[0]["url"] == "https://example.co.za/pnet-job-2"

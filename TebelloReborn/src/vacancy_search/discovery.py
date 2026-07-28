@@ -1,7 +1,11 @@
+import json
 import os
 import re
 
 from src.vacancy_search import crawler_client
+
+DEFAULT_DISCOVERY_CONFIG_PATH = "data/discovery_config.json"
+DEFAULT_SEED_URLS_PATH = "data/crawler_seed_urls.json"
 
 # Deterministic listing-page URL-extraction, not an LLM call (Amendment —
 # Automated Discovery Redesign, judgment call #1): listing pages have a
@@ -104,3 +108,36 @@ def discover_job_urls(platform: str, limit: int) -> list[dict]:
     job_urls = parse_job_urls_from_listing(listing_page["text_content"], platform)
     source_mode = listing_page["_source_mode"]
     return [{"url": u, "_source_mode": source_mode} for u in job_urls][:limit]
+
+
+def _load_discovery_config(discovery_config_path: str) -> dict:
+    with open(discovery_config_path, encoding="utf-8") as f:
+        return json.load(f)
+
+
+def get_job_urls(
+    platform: str,
+    limit: int,
+    discovery_config_path: str = DEFAULT_DISCOVERY_CONFIG_PATH,
+    seed_urls_path: str = DEFAULT_SEED_URLS_PATH,
+) -> list[str]:
+    """Single entry point apify_client.py::fetch_vacancies() calls for both
+    "pnet" and "careers24" — branches internally on discovery_config.json's
+    per-platform mode (judgment call #3, Amendment — Automated Discovery
+    Redesign) so no consumer ever special-cases PNet.
+
+    Careers24 has no gate: always discover_job_urls("careers24", limit).
+    PNet: "manual_pending_verification" (default, until Tebello confirms the
+    bare-path URL renders a usable page) falls back to the URLs already
+    present in data/crawler_seed_urls.json's "pnet" list, unchanged; "auto"
+    calls discover_job_urls("pnet", limit) instead.
+    """
+    if platform == "careers24":
+        return [d["url"] for d in discover_job_urls(platform, limit)]
+
+    config = _load_discovery_config(discovery_config_path)
+    mode = config.get(platform, {}).get("mode", "manual_pending_verification")
+    if mode == "auto":
+        return [d["url"] for d in discover_job_urls(platform, limit)]
+
+    return crawler_client._load_seed_urls(platform, seed_urls_path)

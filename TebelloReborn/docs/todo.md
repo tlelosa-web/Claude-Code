@@ -142,9 +142,9 @@ _(none active — the PNet/Careers24 gap below is now a scheduled, spec-backed b
 - [x] 55. [RED] `tests/unit/test_ollama_client.py` — import path update to `src.shared.ollama_client`
 - [x] 56. [GREEN] Move `src/matching/ollama_client.py` → `src/shared/ollama_client.py`; update `scorer.py` import
 - [x] 57. Update `CLAUDE.md`'s External Client Patterns table + Directory Structure for the move
-- [ ] 58. [RED] `tests/unit/test_vacancy_schema.py` — `pnet`/`careers24` platform cases
-- [ ] 59. [GREEN] `src/vacancy_search/schema.py` — `VALID_PLATFORMS` addition (no migration — Python-validation only)
-- [ ] 60. `data/crawler_seed_urls.json` — generic placeholder seed-URL config (job-detail pages only, per Amendment)
+- [x] 58. [RED] `tests/unit/test_vacancy_schema.py` — `pnet`/`careers24` platform cases
+- [x] 59. [GREEN] `src/vacancy_search/schema.py` — `VALID_PLATFORMS` addition (no migration — Python-validation only)
+- [x] 60. `data/crawler_seed_urls.json` — generic placeholder seed-URL config (job-detail pages only, per Amendment)
 - [ ] 61. [RED] `tests/unit/test_crawler_client.py` — OFFLINE_MODE fixture, rate limiter, graceful-degradation convention, `_source_mode` tagging (per Amendment)
 - [ ] 62. [GREEN] `src/vacancy_search/crawler_client.py` — Apify `website-content-crawler` client
 - [ ] 63. [RED] `tests/unit/test_vacancy_extraction.py` — extraction prompt + parse/validate, empty-string required-field rejection (per Amendment)

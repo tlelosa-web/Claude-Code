@@ -1,0 +1,5 @@
+{
+  "_comment": "Placeholder seed URLs only. Replace with real seed URLs before any non-OFFLINE_MODE crawl of the corresponding platform (see docs/specs/pnet-careers24-coverage.md, step 60). HARD CONTRACT (Amendment - Codex Review Follow-up, 2026-07-29): every seed URL listed here, for pnet and careers24 alike, MUST be an individual job-detail-page URL (one vacancy per page) - NEVER a search-results or listing page. crawler_client.py and extractor.py (Phase 11/12) assume one raw page = one Vacancy; pointing a seed URL at a listing page will silently under-count real listings, not produce multiple vacancies.",
+  "pnet": ["https://example.co.za/pnet-placeholder"],
+  "careers24": ["https://example.co.za/careers24-placeholder"]
+}

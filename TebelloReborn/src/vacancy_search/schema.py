@@ -2,7 +2,13 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Optional
 
-VALID_PLATFORMS = {"indeed", "linkedin"}
+# Python-level dataclass validation set only — NOT a DB constraint. The
+# `vacancies.platform` column in db.py is plain TEXT NOT NULL with no CHECK
+# constraint, so extending this set changes what Python accepts before a row
+# is ever written; it does not alter the table definition or require a
+# migrations.py entry (see docs/specs/pnet-careers24-coverage.md's Migration
+# Note, step 59).
+VALID_PLATFORMS = {"indeed", "linkedin", "pnet", "careers24"}
 VALID_STATUSES = {"new", "scored", "asset_ready", "approved", "rejected"}
 REQUIRED_FIELDS = ("company", "title", "url")
 

@@ -47,6 +47,31 @@ class TestBuildSearchUrlCareers24:
         assert "kw-project-engineer-(mechanical)" in url
 
 
+class TestBuildSearchUrlPnet:
+    """PNet's live robots.txt (User-agent: *) includes
+    "Disallow: /jobs/*?*" — the query-string shape
+    (?radius=30&searchOrigin=...) the site itself redirects a browser search
+    onto is explicitly disallowed for generic crawlers, confirmed live
+    2026-07-29. build_search_url("pnet", ...) must return ONLY the bare
+    path-only shape (no "?"), under every input — this is asserted
+    structurally below, not just by convention."""
+
+    def test_returns_bare_path_only_shape(self):
+        url = build_search_url("pnet", "Operations Foreman", "Gauteng")
+
+        assert url == "https://www.pnet.co.za/jobs/operations-foreman/in-gauteng"
+
+    def test_never_contains_a_query_string_character(self):
+        for title, location in [
+            ("Operations Foreman", "Gauteng"),
+            ("Project Engineer (Mechanical)?", "Gauteng, South Africa"),
+            ("weird & title", "Cape Town"),
+        ]:
+            url = build_search_url("pnet", title, location)
+
+            assert "?" not in url
+
+
 class TestParseJobUrlsFromListingCareers24:
     def test_extracts_individual_job_detail_urls(self):
         urls = parse_job_urls_from_listing(CAREERS24_LISTING_FIXTURE, "careers24")

@@ -3,6 +3,31 @@
 One entry per hub-level session, most recent last. `/continue`'s Step 1
 reads only the final entry.
 
+## 2026-07-28 — Fixed /continue's machine-bound-task blind spot
+
+This session offered the Pappa T vault survey (`docs/todo.md` #1) as
+pickable via `AskUserQuestion`, and Tebello confirmed it — only to
+discover it's not runnable from a cloud Claude-Code-on-the-web session
+(no filesystem access to Pappa T; git is the only sync channel per
+`knowledge/pappa-t.md`). Drafted a standalone survey prompt for Tebello to
+run in a local Pappa T session instead, mirroring the Operations vault
+survey approach from `docs/session-log.md`'s earlier entry.
+
+Then fixed the root gap in `.claude/commands/continue.md`: added Step 2.5
+("Flag Machine-Bound Tasks"), which checks candidate next-tasks against
+this session's actual environment before Step 3 reports them, and marks
+any machine-bound-and-unreachable item with a ⚠️ note in both the resume
+report and its `AskUserQuestion` option — so Tebello sees the access gap
+before picking, not after confirming.
+
+**Last completed:** `/continue` machine-bound-task check added (this entry).
+**Next task:** Pappa T vault survey — still queued in `docs/todo.md` #1,
+to be run by Tebello directly in a local Pappa T session (prompt drafted
+this session, not saved to a file — see this entry for where to regenerate
+it if needed).
+**Known risks:** None new.
+**Blockers:** None.
+
 ## 2026-07-28 — Cross-project status survey + hub setup
 
 Surveyed all 5 GitHub repos (`Claude-Code`, `tlelosa-claude-config`,

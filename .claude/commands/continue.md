@@ -98,6 +98,32 @@ Is the next task:
   brain's Hard Rules still apply, but stack-specific conventions must be
   confirmed with Tebello (Domain agent territory) rather than assumed.
 
+## Step 2.5 — Flag Machine-Bound Tasks
+
+Before reporting, check whether the candidate next task(s) (the `todo.md`
+"Next task" plus any other open items you're about to surface) actually
+need local filesystem/machine access this session doesn't have — e.g. a
+vault/folder survey on Pappa T or Operations from a cloud
+Claude-Code-on-the-web session, or any task whose description says "on
+Pappa T"/"on Operations"/similar when the current session's environment
+isn't that machine.
+
+- Compare the task's stated machine against this session's actual
+  environment (cloud sandbox vs. a specific named machine — check
+  `knowledge/pappa-t.md` / `knowledge/operations-hub.md` if unsure which
+  machine a task means).
+- If a candidate task is machine-bound and this session can't reach that
+  machine, don't drop it from the list — still surface it, but mark it
+  clearly (e.g. "⚠️ requires local access on Pappa T — can't run from this
+  session") in both the Step 3 report and its `AskUserQuestion` option
+  description, so Tebello isn't offered it as if it were runnable here.
+- This is a labeling check only — don't skip the task, don't silently
+  reorder the queue, and don't try to work around the access gap (e.g. by
+  guessing at the other machine's folder structure) without Tebello asking
+  for that explicitly.
+
+Then proceed to Step 3.
+
 ## Step 3 — Report State
 
 Tell Tebello:
@@ -118,10 +144,10 @@ Format:
 
 **Scope:** [Hub-level | <project folder name>]
 **Last completed:** [task name]
-**Next task:** [task name from todo.md]
+**Next task:** [task name from todo.md — if machine-bound and unreachable from this session, say so here: "⚠️ requires local access on <machine> — not runnable from this session"]
 **Spec:** [exists at docs/specs/<name>.md | MISSING — must write spec before building | N/A]
 **Known risks:** [none new | OneDrive/git fix still pending, see docs/todo.md]
-**Blockers:** [none | description]
+**Blockers:** [none | description — include any machine-access gap from Step 2.5 here too]
 
 Ready to proceed? Confirm and I'll start.
 ```
@@ -133,7 +159,9 @@ Build the option list from every open item surfaced in this step: the
 `todo.md` "Next task," plus any other still-open items mentioned in the
 report (cross-project backlog items, a session flagged as possibly
 duplicating work, etc.). Each option is one concrete item with a short
-description of what picking it means. This was requested twice
+description of what picking it means — for any item flagged machine-bound
+in Step 2.5, lead the description with the same ⚠️ access-gap note so it's
+clear before Tebello picks it, not after. This was requested twice
 independently (2026-07-17, two separate sessions) — treat it as a standing
 preference, not a one-off.
 

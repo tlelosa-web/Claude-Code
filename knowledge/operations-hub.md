@@ -1,3 +1,34 @@
+## 2026-07-28 — Operations ↔ cloud-environment git-sync bridge confirmed
+**Source:** Operations hub session (work PC)
+**Status:** active
+
+Set up Operations (work PC) as a DCOE hub client of this repo, mirroring
+the Pappa T setup (see `knowledge/pappa-t.md`). Same architecture: git
+push/pull is the only sync channel, no live remote-environment bridge.
+
+- Clone path on this machine: `C:\Dev\Claude-Code` — a sibling of
+  `C:\Dev\Operations`, not nested inside it. Deliberately kept separate:
+  the Operations hub's own root `CLAUDE.md` hard rule 2 says
+  `C:\Dev\Operations` itself doesn't become a git repo without a
+  standalone deliberate decision, and this setup doesn't trigger that —
+  `Claude-Code` is a different repo in a different folder.
+- Repo was already cloned and on `main` when this session started (not a
+  fresh clone) — confirmed clean working tree, then `git fetch origin` +
+  `git pull origin main` pulled 8 files of genuinely new upstream work
+  (`.claude/commands/continue.md`, updated root `CLAUDE.md`,
+  `docs/session-log.md`, `docs/todo.md`, `knowledge/pappa-t.md`,
+  `knowledge/tlelosa-claude-config.md`, `knowledge/nameplatetool.md`,
+  `knowledge/INDEX.md`) — i.e. this pull was not a no-op, unlike the
+  bridge-check pattern used for Pappa T.
+- `git push origin main --dry-run` confirmed "Everything up-to-date"
+  immediately after the pull — push side of the bridge verified working
+  with nothing to push yet.
+
+**Reusable takeaway:** confirming this bridge on a second machine doesn't
+require the pull to be a no-op — a real fast-forward that applies cleanly
+with no conflicts is just as valid a confirmation, arguably a stronger one
+since it exercises the merge path, not just the network round-trip.
+
 ## 2026-07-24 — OneDrive-synced folders corrupt `.git` internals; fix is relocate + junction, not just `.gitignore`
 **Source:** Operations hub (Fan Movement work PC) — SOPS project's own `docs/todo.md` Batch 14/22 entries (2026-07-08 onward)
 **Status:** active

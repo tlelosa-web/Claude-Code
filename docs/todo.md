@@ -42,6 +42,13 @@ Per DCOE: update after every completed task; one task = one commit.
 
 ## Done
 
+- [x] **2026-07-28** — Set up Operations (work PC) as a DCOE hub client of
+      this repo, mirroring the Pappa T setup: confirmed already cloned at
+      `C:\Dev\Claude-Code` (sibling of `C:\Dev\Operations`, on `main`),
+      confirmed the git-sync bridge end to end (`fetch` + `pull` pulled a
+      real fast-forward of 8 files, `push --dry-run` confirmed clean),
+      read root `CLAUDE.md` + `knowledge/INDEX.md`, and recorded the
+      confirmation in `knowledge/operations-hub.md`.
 - [x] **2026-07-28** — Cross-project status survey: cloned and checked
       live GitHub state for all 5 repos, merged `tlelosa-claude-config` PR
       #9, closed this repo's stale/conflicting PR #1, confirmed the

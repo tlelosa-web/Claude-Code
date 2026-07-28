@@ -34,3 +34,25 @@ Actions taken:
 **Known risks:** None new. OneDrive/git corruption fix (Operations) already
 holding, see `knowledge/operations-hub.md`.
 **Blockers:** None.
+
+## 2026-07-28 — Operations set up as a DCOE hub client
+
+Ran the Operations-side setup prompt (mirrors the Pappa T setup already on
+file): confirmed this repo was already cloned on the Operations work PC at
+`C:\Dev\Claude-Code` (sibling of `C:\Dev\Operations`, not nested inside
+it — keeps `C:\Dev\Operations` itself out of scope for its own hard rule
+against becoming a git repo without a separate deliberate decision).
+Confirmed clean working tree on `main`, then exercised the sync bridge for
+real: `git fetch origin` + `git pull origin main` fast-forwarded 8 files
+of genuinely new upstream work (this session's own prior commits — CORE.md
+read instruction, `docs/todo.md`, `docs/session-log.md`,
+`knowledge/pappa-t.md`, etc.), and `git push origin main --dry-run`
+confirmed the push side is clean with nothing outstanding. Read root
+`CLAUDE.md` and `knowledge/INDEX.md` per session-start convention. Recorded
+the confirmation in `knowledge/operations-hub.md` (new dated entry) and
+bumped its `INDEX.md` row.
+
+**Last completed:** Operations DCOE hub-client setup (this entry).
+**Next task:** Fix the Excel-import bug in NamePlateTool — see `docs/todo.md` #1.
+**Known risks:** None new.
+**Blockers:** None.

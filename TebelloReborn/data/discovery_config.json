@@ -1,0 +1,5 @@
+{
+  "_comment": "careers24 is always automated (mode is ignored/treated as 'auto' for this platform — no robots.txt blocker, confirmed 2026-07-29). pnet stays 'manual_pending_verification' until Tebello manually opens the bare-path URL (https://www.pnet.co.za/jobs/operations-foreman/in-gauteng, no '?' query string) once in an ordinary browser and confirms it renders a usable results page (see docs/specs/pnet-careers24-coverage.md Amendment, Open Item 4). Flip pnet.mode to 'auto' only then. If it never renders usably, leave this value at 'manual_pending_verification' permanently and pnet continues sourcing from data/crawler_seed_urls.json indefinitely — a supported, intentional end state, not a stopgap.",
+  "pnet": { "mode": "manual_pending_verification" },
+  "careers24": { "mode": "auto" }
+}

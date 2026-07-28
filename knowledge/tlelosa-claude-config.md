@@ -1,3 +1,26 @@
+## 2026-07-28 — Rollout PR merged; codex-gate + IT question still open
+**Source:** session (cross-project status survey)
+**Status:** active
+
+PR #9 ("Mark marketplace validation and plugin rollouts complete") merged
+into `main` — marketplace validation, dcoe-roster 3.3.0, document-skills,
+and Context7 are all confirmed installed on both Operations and Pappa T.
+The hourly watch-loop that had been polling this PR since 2026-07-26 was
+stopped (trigger deleted) once it merged clean with nothing further to act
+on.
+
+Still open, per `docs/todo.md`'s "Open" section (not touched by PR #9):
+- codex-gate install + network-off smoke-test on Pappa T
+- copying the drafted codex-gate ADR into the Operations hub's
+  `docs/decisions/`
+- Fan Movement IT confirmation on whether OpenAI egress from Operations is
+  covered (codex-gate stays Pappa T-only until then)
+
+`dcoe-roster/CORE.md` is at **Core version 1.0** as of this check — DCOE
+architecture (Domain → Context → Orchestrate → Execute), 9-agent roster,
+Sonnet-5-medium default with evidence-based Opus escalation, reviewer
+permanently on Opus.
+
 ## 2026-07-23 — Repo purpose & structure
 **Source:** tlelosa-claude-config README.md, CLAUDE.md
 **Status:** active

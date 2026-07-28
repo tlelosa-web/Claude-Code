@@ -1,5 +1,51 @@
 # Session Log
 
+## 2026-07-28
+
+- **Pappa T vault survey** (mirroring the Operations vault survey pattern): surveyed
+  this machine's dev locations for any project not yet tracked in the shared
+  `Claude-Code/knowledge/INDEX.md` cache. Checked home directory, Desktop, Documents,
+  Downloads, and OneDrive — confirmed no `~/Dev`/`~/Projects`/similar dev-root exists
+  on this machine; `Pappa T/` is the only project folder on Desktop.
+- Found and resolved the `Claude-Code/` folder flagged as an "untracked nested repo,
+  unclear origin" by an earlier `/continue` run this session: it's `knowledge/`, a
+  separate, deliberate, already-committed-and-pushed git repo (remote
+  `tlelosa-web/Claude-Code`) that serves as a cross-machine knowledge cache shared
+  between Pappa T and Operations. It sits physically inside the Pappa T vault folder
+  but is intentionally its own repo, not a submodule — nothing to clean up.
+- Read that cache's `knowledge/INDEX.md` and found none of Pappa T's five sub-projects
+  (TebelloReborn, ai-outreach-agency, MIMS App, IQ, Tenders) had a dedicated entry —
+  only the vault itself (`pappa-t.md`) did, which had already flagged TebelloReborn as
+  a known gap to fill. Wrote all five as new knowledge files, respecting the cache's
+  no-company-data rule (public-repo-level detail only):
+  - `tebelloreborn.md` — Career Engine pipeline, ADR-003 inference split, the
+    doc-gen prompt-injection fix (untrusted job-posting text → headless Claude Code),
+    fpdf2 `multi_cell` gotcha, Apify payload-shape bug.
+  - `ai-outreach-agency.md` — pipeline shape, ADR-004, the two still-open items below,
+    two wiring bugs caught only by integration tests (not unit tests).
+  - `mims-app.md` — Next.js/Supabase MRP app; noted it's driven by `GEMINI.md` rather
+    than `CLAUDE.md`, unlike every other sub-project here; Shop Floor stage in progress.
+  - `iq-signal-generator.md` — regime-filtered trading-signal CLI, ADX/RSI/Stochastic
+    logic and hardcoded risk-management stops.
+  - `tenders-sa.md` — SA tender-monitoring automation; confirmed the `tenders-sa`
+    submodule resolution from the 2026-07-18 session is intact; noted a dormant
+    tender-bid-package folder structurally only (no bid content).
+- Updated `pappa-t.md` with a dated entry recording this survey's findings, and
+  `knowledge/INDEX.md` with rows for all five new files.
+- Noted `~/OneDrive/` (personal CVs/spreadsheets/scans) and `~/Documents/Codex/`
+  (empty) as data-only, no dedicated file needed; `~/python-sdk/` is a downloaded
+  Python runtime, not a project. `~/Downloads/tlelosa-claude-config/` (+ a `.zip`)
+  is a redundant extra clone of the already-tracked marketplace repo — skipped per
+  the remote-match dedupe rule.
+- Surfaced two open items from `ai-outreach-agency`'s own `docs/todo.md` up to this
+  hub's `docs/todo.md` "Next up" (same pattern as the Operations survey adding
+  SOPS's two items): topping up OpenRouter credits (blocks `asset_gen` batch runs,
+  HTTP 402 since 2026-07-04) and a small Ollama read-timeout/keep-alive fix
+  (mitigates intermittent false-positive timeouts on real batches).
+- Committed and pushed the `Claude-Code` knowledge-cache changes; committed the
+  `docs/todo.md`/`docs/session-log.md` changes in this repo (no remote configured
+  here, so no push).
+
 ## 2026-07-18
 
 - Imported the Master Vault structure into this repo — strategic docs, CVs,

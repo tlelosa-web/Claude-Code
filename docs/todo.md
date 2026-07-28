@@ -11,6 +11,17 @@
 
 _(none — awaiting next task selection)_
 
+## Next up
+
+- [ ] Top up OpenRouter credits (openrouter.ai/settings/credits) — `ai-outreach-agency`'s
+      `asset_gen` stage has been blocked on HTTP 402 since 2026-07-04; unblocks real
+      (non-offline) batch runs until Build Queue A (headless Claude Code migration) lands.
+- [ ] `ai-outreach-agency`: bump `research/ollama_client.py`'s `READ_TIMEOUT` 60s → 120s and
+      add `"keep_alive": "30m"` to the `/api/generate` payload — local Ollama generation is
+      sitting close to the current timeout ceiling on cold-load calls, which risks
+      intermittent false-positive `OllamaError`s on an otherwise-healthy daemon during a
+      real batch. Small, single-file, RED/GREEN-able in one commit.
+
 ## Backlog
 
 _(none — all backlog items from the 2026-07-18 cleanup pass are complete)_
@@ -38,3 +49,12 @@ _(none — all backlog items from the 2026-07-18 cleanup pass are complete)_
       accordingly instead of deleting the files (`d7bf782`)
 - [x] Resolved `Tenders/4_Scripts/tenders-sa/` — registered as a proper git
       submodule pointing at `alfa-rsa/tenders-sa` (`d6da4c3`)
+- [x] Pappa T vault survey — surveyed this machine for projects not yet tracked
+      in the `Claude-Code/knowledge/INDEX.md` cache (mirrors the Operations vault
+      survey pattern). Resolved the `Claude-Code/` "untracked nested repo" flag
+      from an earlier `/continue` run (it's a deliberate, already-pushed sibling
+      repo, not stray work). Filled TebelloReborn's previously-flagged knowledge
+      gap and added 4 more sub-project knowledge files (`ai-outreach-agency`,
+      `mims-app`, `iq-signal-generator`, `tenders-sa`). Noted `~/OneDrive/` and
+      `~/Documents/Codex/` as data-only (no dedicated file); confirmed no other
+      dev-root folders exist on this machine. See `session-log.md` for full detail.

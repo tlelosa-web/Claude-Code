@@ -7,6 +7,8 @@
 
 ---
 
+## 2026-07-29 — codex-review pnet-careers24-coverage.md: ran
+
 ## 2026-07-26 — MVP build complete (Phases 0–7)
 
 All 54 Build Queue steps in `docs/specs/mvp-pipeline-build.md` are done —

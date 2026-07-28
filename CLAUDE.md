@@ -163,6 +163,12 @@ git cherry-pick <commit-hash>
 ```
 1. /plan → Domain confirms scope → Planner writes spec to docs/specs/<feature>.md
 2. Review spec → approve or iterate
+2.5. /codex-review docs/specs/<feature>.md → advisory cross-family second opinion,
+     appended to the spec (never blocks). Fold the strongest points (buried
+     assumptions, missing acceptance criteria, real failure modes) back into the
+     spec as a dated Amendment section before build — standard procedure for every
+     spec in every project, not optional. Reviewer agent still holds sole
+     APPROVE/BLOCK authority; Codex is advisory only.
 3. /build docs/specs/<feature>.md → Orchestrator spawns Executors in worktrees
 4. Each Executor: implement → test → commit → done
 5. Reviewer agent audits → merge to main

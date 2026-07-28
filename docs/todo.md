@@ -9,9 +9,14 @@
 
 ## In Progress
 
-_(none — awaiting next task selection)_
+- [ ] **PRIORITY** — `TebelloReborn`: PNet/Careers24 Vacancy Coverage build (spec:
+      `TebelloReborn/docs/specs/pnet-careers24-coverage.md`, Codex-reviewed and amended
+      2026-07-29, Build Queue steps 55–72, Phases 9–14). Tebello has explicitly prioritized
+      this over the `ai-outreach-agency` items below — those resume once this is up and running.
 
 ## Next up
+
+_(deprioritized until the TebelloReborn item above is up and running — do not start without checking with Tebello first)_
 
 - [ ] Top up OpenRouter credits (openrouter.ai/settings/credits) — `ai-outreach-agency`'s
       `asset_gen` stage has been blocked on HTTP 402 since 2026-07-04; unblocks real
@@ -24,7 +29,12 @@ _(none — awaiting next task selection)_
 
 ## Backlog
 
-_(none — all backlog items from the 2026-07-18 cleanup pass are complete)_
+- [ ] Propagate the "Codex-review + fold strongest points into spec before build" standard
+      procedure (added 2026-07-29 to hub `CLAUDE.md` Pattern 1 and `TebelloReborn/CLAUDE.md`
+      Hard Rule #13) to `ai-outreach-agency/CLAUDE.md` (self-governing, needs its own edit) and
+      consider proposing it for the shared `CORE.md` template (separate repo, would make it
+      universal across every machine/project). Low priority — deferred until the TebelloReborn
+      PNet/Careers24 work above is complete, per Tebello's explicit prioritization.
 
 ## Completed
 

@@ -164,7 +164,7 @@ class TestOfflineIsolation:
         def _fail_claude_code(*args, **kwargs):
             raise AssertionError("Real subprocess spawned for headless Claude Code")
 
-        monkeypatch.setattr("src.matching.ollama_client.requests.post", _fail_ollama)
+        monkeypatch.setattr("src.shared.ollama_client.requests.post", _fail_ollama)
         monkeypatch.setattr("src.doc_gen.runner.subprocess.run", _fail_claude_code)
 
         vacancy_id = _import_and_fetch(tmp_path, db_path)

@@ -1,7 +1,7 @@
 import json
 import os
 
-from src.matching.ollama_client import call_ollama
+from src.shared.ollama_client import call_ollama
 from src.matching.prompt_builder import build_match_prompt
 from src.profile.schema import CandidateProfile
 from src.vacancy_search.schema import Vacancy

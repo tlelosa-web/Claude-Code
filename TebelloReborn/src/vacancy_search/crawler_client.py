@@ -41,6 +41,59 @@ def _load_seed_urls(platform: str, seed_urls_path: str) -> list[str]:
     return config.get(platform, [])
 
 
+def fetch_raw_page(url: str) -> dict | None:
+    """Fetch raw page content for a single URL via Apify's generic
+    website-content-crawler actor. Returns a raw page dict ("url", "title",
+    "text_content", "_source_mode") or None if the real call fails.
+
+    This is the single-URL primitive extracted from fetch_raw_pages()'s old
+    per-seed-URL loop body (Amendment — Automated Discovery Redesign,
+    judgment call #2) — fetch_raw_pages() calls it once per seed URL below,
+    and discovery.py composes on top of it for listing-page and
+    job-detail-page fetches, so the POST/timeout/_source_mode/
+    exception-handling logic lives in exactly one place.
+    """
+    if os.environ.get("OFFLINE_MODE", "").lower() in ("1", "true"):
+        return {**FIXTURE_RAW_PAGES[0], "_source_mode": "fixture"}
+
+    api_key = os.environ.get("APIFY_API_KEY", "")
+    if not api_key:
+        warnings.warn(
+            "APIFY_API_KEY not set — falling back to fixture raw pages. "
+            "Set APIFY_API_KEY or OFFLINE_MODE=true to suppress this warning."
+        )
+        return {**FIXTURE_RAW_PAGES[0], "_source_mode": "fixture"}
+
+    headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
+    _limiter.acquire()
+    try:
+        resp = requests.post(
+            CRAWLER_ACTOR_URL,
+            headers=headers,
+            json={
+                "startUrls": [{"url": url}],
+                "maxCrawlPages": 1,
+                "maxCrawlDepth": 0,
+            },
+            timeout=TIMEOUT,
+        )
+        resp.raise_for_status()
+        items = resp.json()
+    except (requests.RequestException, ValueError):
+        return None
+
+    if not items or not isinstance(items, list):
+        return None
+
+    first = items[0]
+    return {
+        "url": first.get("url", url),
+        "title": first.get("title", ""),
+        "text_content": first.get("text", first.get("text_content", "")),
+        "_source_mode": "live",
+    }
+
+
 def fetch_raw_pages(
     platform: str,
     limit: int,
@@ -66,38 +119,11 @@ def fetch_raw_pages(
         return _fixture_raw_pages(limit)
 
     seed_urls = _load_seed_urls(platform, seed_urls_path)
-    headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
     results: list[dict] = []
 
     for seed_url in seed_urls:
-        _limiter.acquire()
-        try:
-            resp = requests.post(
-                CRAWLER_ACTOR_URL,
-                headers=headers,
-                json={
-                    "startUrls": [{"url": seed_url}],
-                    "maxCrawlPages": 1,
-                    "maxCrawlDepth": 0,
-                },
-                timeout=TIMEOUT,
-            )
-            resp.raise_for_status()
-            items = resp.json()
-        except (requests.RequestException, ValueError):
-            continue
-
-        if not items or not isinstance(items, list):
-            continue
-
-        first = items[0]
-        results.append(
-            {
-                "url": first.get("url", seed_url),
-                "title": first.get("title", ""),
-                "text_content": first.get("text", first.get("text_content", "")),
-                "_source_mode": "live",
-            }
-        )
+        page = fetch_raw_page(seed_url)
+        if page is not None:
+            results.append(page)
 
     return results[:limit]

@@ -29,17 +29,36 @@ def _slugify(value: str) -> str:
     return re.sub(r"\s+", "-", value.strip().lower())
 
 
+def _pnet_slug(value: str) -> str:
+    """Stricter slug for PNet URLs only: lowercase, spaces -> hyphens, then
+    strip any character that isn't alphanumeric or a hyphen. PNet's live
+    robots.txt (User-agent: *) includes "Disallow: /jobs/*?*" (confirmed
+    2026-07-29) — this makes the disallowed query-string shape structurally
+    unreachable from build_search_url("pnet", ...), rather than just avoided
+    by convention: no character sequence in `title`/`location` can produce a
+    "?" (or any other character requests wouldn't need for a bare path) in
+    the returned URL. There is no parameter or code path below that appends
+    a query string for the pnet branch."""
+    return re.sub(r"[^a-z0-9-]", "", _slugify(value))
+
+
 def build_search_url(platform: str, title: str, location: str) -> str:
     """Constructs a search-results/listing URL for a platform from a target
     title and location. Confirmed live shapes (2026-07-29):
       careers24: https://www.careers24.com/jobs/lc-<location>/kw-<title>/rmt-incl/
-      pnet:      https://www.pnet.co.za/jobs/<title>/in-<location>
+      pnet:      https://www.pnet.co.za/jobs/<title>/in-<location> (bare path
+                 only — see _pnet_slug's docstring on why no "?" is ever
+                 reachable here)
     """
-    title_slug = _slugify(title)
-    location_slug = _slugify(location)
-
     if platform == "careers24":
+        title_slug = _slugify(title)
+        location_slug = _slugify(location)
         return f"https://www.careers24.com/jobs/lc-{location_slug}/kw-{title_slug}/rmt-incl/"
+
+    if platform == "pnet":
+        title_slug = _pnet_slug(title)
+        location_slug = _pnet_slug(location)
+        return f"https://www.pnet.co.za/jobs/{title_slug}/in-{location_slug}"
 
     raise ValueError(f"Unsupported platform for search URL: {platform}")
 

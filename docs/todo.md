@@ -13,33 +13,26 @@ Per DCOE: update after every completed task; one task = one commit.
 
 ## Next up (priority order, set 2026-07-28)
 
-1. [ ] **Fix the Excel-import bug in NamePlateTool** — `/api/nameplate/from-excel`
-      crashes on a non-serializable `datetime`, and separately checks for a
-      sheet name (`"Table 1"`) that doesn't exist in the real workbook. Open
-      since 2026-07-17, one reverted fix attempt (regressed to all-blank
-      fields). The only active, user-facing defect across all tracked
-      projects. Detail: `NamePlateTool/docs/todo.md`, `knowledge/nameplatetool.md`.
-2. [ ] **Close out the codex-gate rollout** (`tlelosa-claude-config`) — three
+1. [ ] **Close out the codex-gate rollout** (`tlelosa-claude-config`) — three
       items outstanding: install + network-off smoke-test on Pappa T, copy
       the drafted ADR into the Operations hub's `docs/decisions/`, and get
       Fan Movement IT to confirm OpenAI-egress coverage for Operations
       (codex-gate stays Pappa T-only until then). Detail:
       `tlelosa-claude-config/docs/todo.md`, `knowledge/tlelosa-claude-config.md`.
-3. [ ] **NamePlateTool: add a real automated test suite** — not urgent;
-      `tests/` is ad-hoc manual-check scripts only. Bundle with the
-      Excel-import fix once that's underway.
-4. [ ] **TebelloReborn: decide on post-MVP scope** — Playwright auto-submit,
+2. [ ] **NamePlateTool: add a real automated test suite** — not urgent;
+      `tests/` is ad-hoc manual-check scripts only.
+3. [ ] **TebelloReborn: decide on post-MVP scope** — Playwright auto-submit,
       recruiter/cold-outreach revival, and a doc-gen volume-cap/scheduler
       are all undecided backlog items, no urgency behind them yet. Detail:
       `knowledge/pappa-t.md`.
-5. [ ] **SOPS: give the go-ahead to run the AvgMovement migration against
+4. [ ] **SOPS: give the go-ahead to run the AvgMovement migration against
       `instance/sops.db`** — Supplier/Lead-Time + AMU/Min-Max logic ported
       and fully tested (Batch 32/33, commits `fe06eaa`/`112e321`), held for
       Tebello per SOPS's standing schema-change convention. This is the
       blocking step before `8. AvgMovement` (already Retired in the
       Operations hub project index) can be decommissioned. Detail:
       `2. SOPS/docs/todo.md`, `knowledge/sops.md`.
-6. [ ] **SOPS: Payment Status data-migration review** — a batch of
+5. [ ] **SOPS: Payment Status data-migration review** — a batch of
       historical Sales Orders need human review of migrated/backfilled
       payment-status values before being treated as fully validated.
       Detail: `2. SOPS/docs/todo.md` (2026-07-14 entry onward),
@@ -54,6 +47,14 @@ Per DCOE: update after every completed task; one task = one commit.
 
 ## Done
 
+- [x] **2026-07-28** — Confirmed NamePlateTool's Excel-import bug (former
+      #1 priority) was fixed in a separate session (commit `777be76`):
+      datetime crash and dead `"Table 1"` sheet check both resolved.
+      Discovered while syncing repo state across all 5 tracked repos after
+      the Operations vault survey — only NamePlateTool had new activity.
+      Updated `knowledge/nameplatetool.md`, removed the item from this
+      queue. Not yet manually re-verified against a generated PDF from this
+      session — worth a spot-check.
 - [x] **2026-07-28** — Operations vault survey: enumerated every project
       folder on the Operations machine, confirmed no new project roots
       beyond the already-tracked ones plus three gaps (SOPS,

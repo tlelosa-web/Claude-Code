@@ -103,3 +103,30 @@ doesn't need to re-verify it.
 **Next task:** Fix the Excel-import bug in NamePlateTool — see `docs/todo.md` #1.
 **Known risks:** None new.
 **Blockers:** None.
+
+## 2026-07-28 — Full repo sync-up (get-up-to-speed pass)
+
+After the Operations vault survey, checked all 5 tracked GitHub repos for
+activity since the last check. `tlelosa-claude-config`, `cratetracker`, and
+`pitwall-companion` are unchanged (same head commits as the earlier
+cross-project survey). `NamePlateTool` had one new commit, `777be76`,
+pushed 2026-07-28 18:51 UTC in a session outside this hub — it fixes the
+Excel-import bug that was this queue's #1 priority: the `datetime`
+serialization crash and the dead `"Table 1"` sheet-name check are both
+resolved, and root-causes why the 2026-07-17 attempt regressed to blank
+fields. Updated `knowledge/nameplatetool.md` (new entry, old open-bug
+entries marked superseded) and removed the item from `docs/todo.md`,
+renumbering the rest.
+
+Remote Control setup on Operations (started earlier this session) and
+Pappa T is deliberately deferred to the weekend per Tebello's direction —
+not part of this pass.
+
+**Last completed:** Full repo sync-up (this entry) — NamePlateTool bug
+confirmed fixed.
+**Next task:** Close out the codex-gate rollout (`tlelosa-claude-config`) —
+see `docs/todo.md` #1. Remote Control setup on Operations/Pappa T deferred
+to the weekend.
+**Known risks:** None new.
+**Blockers:** None. One open follow-up: NamePlateTool fix not yet manually
+spot-checked against a generated PDF from this session.

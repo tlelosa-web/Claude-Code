@@ -13,26 +13,33 @@ Per DCOE: update after every completed task; one task = one commit.
 
 ## Next up (priority order, set 2026-07-28)
 
-1. [ ] **Close out the codex-gate rollout** (`tlelosa-claude-config`) — three
+1. [ ] **Pappa T vault survey** — mirror the Operations vault survey
+      (2026-07-28): enumerate every project folder on Pappa T not yet in
+      `knowledge/INDEX.md`, pull outstanding items and reusable facts into
+      the hub's knowledge cache, and fold any genuinely new cross-project
+      tasks into this queue. Run before any other continuation work picks
+      up. Detail: `knowledge/pappa-t.md` for what's already known about the
+      machine; use the Operations survey prompt/approach as the template.
+2. [ ] **Close out the codex-gate rollout** (`tlelosa-claude-config`) — three
       items outstanding: install + network-off smoke-test on Pappa T, copy
       the drafted ADR into the Operations hub's `docs/decisions/`, and get
       Fan Movement IT to confirm OpenAI-egress coverage for Operations
       (codex-gate stays Pappa T-only until then). Detail:
       `tlelosa-claude-config/docs/todo.md`, `knowledge/tlelosa-claude-config.md`.
-2. [ ] **NamePlateTool: add a real automated test suite** — not urgent;
+3. [ ] **NamePlateTool: add a real automated test suite** — not urgent;
       `tests/` is ad-hoc manual-check scripts only.
-3. [ ] **TebelloReborn: decide on post-MVP scope** — Playwright auto-submit,
+4. [ ] **TebelloReborn: decide on post-MVP scope** — Playwright auto-submit,
       recruiter/cold-outreach revival, and a doc-gen volume-cap/scheduler
       are all undecided backlog items, no urgency behind them yet. Detail:
       `knowledge/pappa-t.md`.
-4. [ ] **SOPS: give the go-ahead to run the AvgMovement migration against
+5. [ ] **SOPS: give the go-ahead to run the AvgMovement migration against
       `instance/sops.db`** — Supplier/Lead-Time + AMU/Min-Max logic ported
       and fully tested (Batch 32/33, commits `fe06eaa`/`112e321`), held for
       Tebello per SOPS's standing schema-change convention. This is the
       blocking step before `8. AvgMovement` (already Retired in the
       Operations hub project index) can be decommissioned. Detail:
       `2. SOPS/docs/todo.md`, `knowledge/sops.md`.
-5. [ ] **SOPS: Payment Status data-migration review** — a batch of
+6. [ ] **SOPS: Payment Status data-migration review** — a batch of
       historical Sales Orders need human review of migrated/backfilled
       payment-status values before being treated as fully validated.
       Detail: `2. SOPS/docs/todo.md` (2026-07-14 entry onward),

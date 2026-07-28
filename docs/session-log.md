@@ -130,3 +130,20 @@ to the weekend.
 **Known risks:** None new.
 **Blockers:** None. One open follow-up: NamePlateTool fix not yet manually
 spot-checked against a generated PDF from this session.
+
+## 2026-07-28 — Session end: Pappa T vault survey queued first
+
+Ending this session. Added a Pappa T vault survey as the new #1 priority in
+`docs/todo.md`, ahead of the codex-gate item — mirrors the Operations vault
+survey done earlier this session (same approach: enumerate project folders
+not yet in `knowledge/INDEX.md`, pull reusable facts + outstanding items
+into the knowledge cache, fold any genuinely new cross-project tasks into
+this queue). Explicit instruction: run this before any other continuation
+work picks up next session.
+
+**Last completed:** Full repo sync-up + NamePlateTool bug confirmation
+(previous entry).
+**Next task:** Pappa T vault survey — see `docs/todo.md` #1. Run first,
+before anything else.
+**Known risks:** None new.
+**Blockers:** None.

@@ -395,3 +395,193 @@ validation and is left as the existing "Extraction reliability at scale" open it
 parsers instead of LLM extraction) and Alternative #5 (storing raw crawler artifacts for audit) are
 reasonable but represent a larger scope change than "fold the strongest points" — both are added to
 `docs/todo.md`'s Future section (step 72) as flagged follow-ups, not built in this spec.
+
+---
+
+## Amendment — Automated Discovery Redesign (2026-07-29)
+
+### Why this amendment exists
+
+The build paused before Phase 12 (step 63) because the original design (Phases 9–11 above, plus the
+now-superseded Phases 12–14 at steps 63–72) requires Tebello to manually find and paste individual
+real job-detail-page URLs into `data/crawler_seed_urls.json` before a crawl of PNet or Careers24
+returns anything. That is manual job-search labor performed at the discovery stage — it contradicts
+this project's actual goal (`CLAUDE.md`'s Pipeline Stages section: the pipeline "continuously finds
+job vacancies," and the Hard Rule that the **only** mandatory human-involvement point is the Stage 5
+approval gate, not vacancy discovery). Indeed/LinkedIn already achieve fully automated discovery via
+`apify_client.py`'s `SEARCH_TITLES`/`SEARCH_LOCATION` module constants driving a dedicated Apify actor
+with zero manual URL input per search. This amendment redesigns PNet/Careers24 discovery to mirror
+that pattern instead of relying on hand-pasted seed URLs.
+
+**What is preserved, unchanged, from history:** Phases 9–11 (steps 55–62) are already built and
+committed and are **not** re-planned here — `src/shared/ollama_client.py`'s promotion, the
+`VALID_PLATFORMS` addition, and `crawler_client.py`'s raw-fetch mechanics (rate limiting,
+`OFFLINE_MODE` fixture, `_source_mode` tagging from the Codex Review Follow-up amendment above) are
+all still needed by the redesigned flow and are reused, not rewritten.
+
+**What is superseded:** the original Phases 12–14 task sequence at **steps 63–72** (LLM extraction,
+fold-into-`fetch_vacancies()`, and docs closeout, as originally specced against a static
+`data/crawler_seed_urls.json` populated by hand) is **replaced in full** by the new step sequence
+below, continuing numbering from **63 onward** again (the old 63–72 rows above are historical record
+of the first plan and are never built as written — `docs/todo.md`'s own "BLOCKED on discovery
+redesign" annotations against steps 63–72 reflect this). The extraction and fold-in *logic* from the
+original Phases 12–13 is not thrown away — it is carried forward essentially unchanged in Phase 13/14
+below, fed by a different, automated URL *source* instead of a hand-maintained config file. This is
+called out per-step below.
+
+### Research this amendment is built on (confirmed live, 2026-07-29 — not guesswork)
+
+- **PNet**: search-results URLs are predictable and parameterizable from `SEARCH_TITLES`/
+  `SEARCH_LOCATION` — confirmed live shape `https://www.pnet.co.za/jobs/<title-slug>/in-<location-slug>`
+  (e.g. `pnet.co.za/jobs/operations-foreman/in-gauteng`), which the site itself redirects a query-based
+  search onto with `?radius=30&searchOrigin=Homepage_top-search` appended. PNet's live `robots.txt`
+  `User-agent: *` block includes `Disallow: /jobs/*?*` — the exact query-string shape is explicitly
+  disallowed for generic crawlers. The **bare path-only** shape (no `?`) is not covered by that rule,
+  but this session could not confirm live whether it actually renders a working results page —
+  repeated automated navigation to pnet.co.za began being denied partway through testing (an
+  operational-fragility signal independent of robots.txt compliance).
+- **Careers24**: confirmed live shape `https://www.careers24.com/jobs/lc-<location-slug>/kw-<keyword-slug>/rmt-incl/`
+  (e.g. `careers24.com/jobs/lc-gauteng/kw-operations-foreman/rmt-incl/`). Careers24's `robots.txt` has
+  no blanket `User-agent: *` rule — it names specific known scraper user-agents (Scrapy, assorted
+  SEO/SEM bots, Baiduspider, etc.) and disallows `/` only for those. A generic crawler UA (Apify's
+  `website-content-crawler` presents a standard browser UA) is not named, so it is not technically
+  blocked, though the site's evident intent is anti-scraping.
+- **Both URLs are search-results/listing pages** (potentially many jobs), not job-detail pages — this
+  confirms the existing "one raw page = one `Vacancy`" hard contract (the `HARD CONTRACT` comment
+  already in `data/crawler_seed_urls.json`, and the Codex Review Follow-up amendment's point 1 above)
+  is architecturally incompatible with automated discovery as currently built. A genuine **discovery**
+  sub-stage — parse the listing page, extract individual job-detail-page URLs, then crawl+extract each
+  one — is required. This is Codex's own "Architectural Alternative #2" ("split discovery from
+  extraction") from the second-opinion review above, which the prior amendment explicitly deferred to
+  a Future item rather than building. That deferral is now reversed: this amendment builds it.
+
+**Tebello's explicit decision this session (fixed input, not re-litigated):** "Respect Disallow, scope
+down" —
+
+- Careers24 gets full automated discovery (no robots.txt blocker).
+- PNet's query-string shape (`?radius=...`) must **never** be constructed or crawled — explicitly
+  robots.txt-disallowed.
+- PNet's bare-path shape is unverified and gated behind a one-time **manual browser check** by Tebello
+  (opening the URL once in an ordinary browser — not the per-vacancy manual URL-pasting labor this
+  redesign exists to eliminate) before any build step relies on it working.
+- **If the bare-path shape doesn't return a usable results page, PNet falls back to the original
+  Phase 10 seed-URL design** (`data/crawler_seed_urls.json`, already built) for PNet only, while
+  Careers24 stays fully automated. This is a legitimate per-platform fallback, wired in now via a
+  config-driven branch rather than requiring a second redesign pass later.
+
+### New judgment calls this amendment resolves (Planner's call, justified inline, same convention as the ollama_client.py promotion above)
+
+1. **Listing-page URL-extraction is a deterministic parse, not an LLM call.** `parse_job_urls_from_listing()`
+   (step 66) uses a plain regex/anchor-tag extraction over the raw listing page's `text_content`/HTML,
+   not `src/shared/ollama_client.py::call_ollama()`. Reasoning: listing pages have a repeated,
+   predictable anchor structure per platform (harvesting URLs is a structural task), whereas the
+   existing Phase 13 extraction step (job-detail *field* extraction — company/title/description/salary
+   from unstructured body text) is exactly the kind of unstructured-text task Ollama is already
+   justified for in this spec. Using the LLM for URL harvesting would add `qwen3:8b`'s latency and
+   reliability risk (ADR-003) to a job better solved deterministically, and was never asked for by
+   Tebello.
+2. **`crawler_client.py` gains a small refactor, not a duplicate fetch path.** The existing
+   `fetch_raw_pages(platform, limit, seed_urls_path)` only knows how to crawl seed URLs pre-configured
+   per platform in a JSON file — it has no way to crawl an arbitrary, freshly-constructed listing URL
+   or a freshly-discovered job-detail URL. Rather than writing a second, parallel Apify-call block in
+   `discovery.py` (copy-pasting the POST/timeout/`_source_mode`/exception-handling logic a second
+   time), this amendment extracts the existing per-seed-URL fetch logic already inside
+   `fetch_raw_pages`'s loop into a new `fetch_raw_page(url) -> dict` primitive (steps 63–64), which
+   `fetch_raw_pages()` itself now calls internally (pure refactor, byte-identical outward behavior —
+   regression-locked by the existing step-61/62 tests still passing unmodified). `discovery.py` then
+   composes on top of that same primitive for both the listing-page fetch and each discovered
+   job-detail-page fetch — "reuse the existing crawler_client.py raw-fetch mechanics," per this
+   session's instruction, achieved via composition rather than duplication.
+3. **The PNet manual-verification gate and fallback are config, not a code fork.** A new
+   `data/discovery_config.json` (step 69) holds a `mode` per platform (`"auto"` or
+   `"manual_pending_verification"`). `discovery.py::get_job_urls(platform, limit)` is the **single**
+   entry point `apify_client.py::fetch_vacancies()` calls for both PNet and Careers24 — it branches
+   internally on the config value, so no `if platform == "pnet"` special-casing exists in
+   `apify_client.py`'s control flow (satisfies this session's explicit "config-driven branch, not a
+   code fork" instruction). Careers24 has no gate (`mode` is irrelevant/always treated as `"auto"` for
+   that platform — Careers24's `_comment` in the config documents this).
+
+### New/changed step sequence — supersedes original steps 63–72 in full
+
+Legend unchanged: **[RED]**/**[GREEN]** as above. **Network**: `none` / `Apify` / `Ollama`.
+
+#### Phase 12 (redesigned) — Automated Discovery (Careers24 full-auto, PNet gated + fallback)
+
+| # | Description | Agent | Input | Output | Verification | Network |
+|---|---|---|---|---|---|---|
+| 63 | **[RED]** `tests/unit/test_crawler_client.py` — add `fetch_raw_page(url)` case: given a single URL, returns one raw-page dict (`{"url", "title", "text_content", "_source_mode"}`, same shape as one item of `fetch_raw_pages()`'s existing return), `OFFLINE_MODE` fixture branch, real-call path mocks `requests.post`; add a regression case asserting `fetch_raw_pages(platform, limit, seed_urls_path)`'s existing outward behavior (from step 61/62) is unchanged once refactored to call `fetch_raw_page()` internally. | tester | `src/vacancy_search/crawler_client.py` (current, step 62) | `tests/unit/test_crawler_client.py` (updated) | `python -m pytest tests/unit/test_crawler_client.py` fails on the new `fetch_raw_page` assertions only — existing step 61/62 assertions still pass unmodified against current code (RED confirmed for the new function only) | none |
+| 64 | **[GREEN]** `src/vacancy_search/crawler_client.py` — extract the existing per-seed-URL POST/timeout/`_source_mode`/exception-handling block out of `fetch_raw_pages()`'s loop into `fetch_raw_page(url) -> dict`; `fetch_raw_pages()` now calls it once per seed URL — pure refactor, no behavior change (judgment call #2 above). | executor | `tests/unit/test_crawler_client.py` (step 63) | `src/vacancy_search/crawler_client.py` (updated) | `python -m pytest tests/unit/test_crawler_client.py` passes fully, including the pre-existing step 61/62 tests unmodified | Apify (real calls only; tests offline) |
+| 65 | **[RED]** `tests/unit/test_discovery.py` (new file) — `build_search_url("careers24", title, location)` returns the confirmed live shape `https://www.careers24.com/jobs/lc-<location-slug>/kw-<keyword-slug>/rmt-incl/` for a given `SEARCH_TITLES`/`SEARCH_LOCATION` pair (slugification: lowercase, spaces→hyphens); `parse_job_urls_from_listing(raw_text, platform="careers24")` extracts a list of individual job-detail-page URLs from a fixture listing-page text/HTML blob (fixture authored as test input, mirroring this project's existing fixture conventions — not live-scraped content); `discover_job_urls("careers24", limit)` calls `crawler_client.fetch_raw_page()` on the constructed listing URL (mocked), then `parse_job_urls_from_listing()` on its `text_content`, returning up to `limit` job-detail URLs tagged with the listing fetch's own `_source_mode`; `OFFLINE_MODE` returns a deterministic fixture list without any fetch call. | tester | `src/vacancy_search/crawler_client.py::fetch_raw_page` (step 64), `src/vacancy_search/apify_client.py`'s `SEARCH_TITLES`/`SEARCH_LOCATION` (pattern reference) | `tests/unit/test_discovery.py` | Fails with `ModuleNotFoundError` (RED confirmed) | none |
+| 66 | **[GREEN]** `src/vacancy_search/discovery.py` (new) — `build_search_url(platform, title, location)`, `parse_job_urls_from_listing(raw_text, platform)` (deterministic regex/anchor parse — judgment call #1 above, no `call_ollama` import), `discover_job_urls(platform, limit)` for `"careers24"`; no PNet logic yet (added step 68). | executor | `tests/unit/test_discovery.py` (step 65) | `src/vacancy_search/discovery.py` | `python -m pytest tests/unit/test_discovery.py -k careers24` (or equivalent subset) passes | Apify (via `fetch_raw_page`; real calls only; tests offline) |
+| 67 | **[RED]** `tests/unit/test_discovery.py` — extend: `build_search_url("pnet", title, location)` returns **only** the bare path-only shape `https://www.pnet.co.za/jobs/<title-slug>/in-<location-slug>` — assert the returned string contains no `"?"` character under any input; a docstring/comment on the function names the specific rule being avoided (`PNet robots.txt: "Disallow: /jobs/*?*"`, confirmed live 2026-07-29) so a future editor can't reintroduce the disallowed query-string shape without seeing why it's forbidden. | tester | Live-read PNet `robots.txt` (this session's research, cited above) | `tests/unit/test_discovery.py` (updated) | Fails — `build_search_url("pnet", ...)` doesn't exist yet (RED confirmed) | none |
+| 68 | **[GREEN]** `src/vacancy_search/discovery.py` (same file, extended) — `build_search_url("pnet", ...)` added (bare-path shape only; the function has no parameter or code path capable of appending a query string — the disallowed shape is structurally unreachable, not just avoided by convention). | executor | `tests/unit/test_discovery.py` (step 67) | `src/vacancy_search/discovery.py` (updated) | `python -m pytest tests/unit/test_discovery.py` passes fully; `grep -n "?" src/vacancy_search/discovery.py` shows no query-string construction for the `pnet` branch | none |
+| 69 | `data/discovery_config.json` (new) — `{"pnet": {"mode": "manual_pending_verification"}, "careers24": {"mode": "auto"}}` with a top-level `"_comment"` explaining: `careers24` is always automated (no robots.txt blocker, confirmed 2026-07-29); `pnet` stays `"manual_pending_verification"` until Tebello manually opens the bare-path URL (see the new Open Item below) in an ordinary browser once and confirms it renders a usable results page — flip to `"auto"` only then; if it never renders usably, leave this value as `"manual_pending_verification"` permanently and `pnet` continues sourcing from `data/crawler_seed_urls.json` (already built, step 60) indefinitely — a supported, intentional end state, not a stopgap. | data-agent | This amendment's decision record (above) | `data/discovery_config.json` | `python -c "import json; json.load(open('data/discovery_config.json'))"` parses cleanly; keys `"pnet"`/`"careers24"` present, each with a `"mode"` field | none |
+| 70 | **[RED]** `tests/unit/test_discovery.py` — extend: `get_job_urls("careers24", limit)` always calls `discover_job_urls("careers24", limit)` regardless of `discovery_config.json`'s content (no gate for this platform); `get_job_urls("pnet", limit)` with `discovery_config.json`'s `pnet.mode` set to `"manual_pending_verification"` returns the URLs already present in `data/crawler_seed_urls.json`'s `"pnet"` list **unchanged**, without calling `build_search_url`/`discover_job_urls` at all (the fallback path); `get_job_urls("pnet", limit)` with `pnet.mode` set to `"auto"` (test overrides the config file path to a fixture config) calls `discover_job_urls("pnet", limit)` instead. One function, branching on config — not two call sites in a future consumer. | tester | `data/discovery_config.json` (step 69), `data/crawler_seed_urls.json` (step 60, already built) | `tests/unit/test_discovery.py` (updated) | Fails — `get_job_urls` doesn't exist yet (RED confirmed) | none |
+| 71 | **[GREEN]** `src/vacancy_search/discovery.py` (same file, extended) — `get_job_urls(platform, limit, discovery_config_path="data/discovery_config.json", seed_urls_path="data/crawler_seed_urls.json")`: the single entry point `apify_client.py::fetch_vacancies()` (Phase 14 below) will call for **both** `"pnet"` and `"careers24"`; reads `discovery_config.json`, branches per the step 70 contract. This is the "config-driven branch, not a code fork" mechanism (judgment call #3 above) — `apify_client.py` never special-cases PNet. | executor | `tests/unit/test_discovery.py` (step 70) | `src/vacancy_search/discovery.py` (updated) | `python -m pytest tests/unit/test_discovery.py` passes fully | none |
+
+#### Phase 13 — LLM Extraction (**preserved from the original Phase 12, steps 63–65 — content unchanged, only renumbered; input source changes from a static seed-URL config entry to a discovered/gated job-detail URL from Phase 12 above**)
+
+| # | Description | Agent | Input | Output | Verification | Network |
+|---|---|---|---|---|---|---|
+| 72 | **[RED]** `tests/unit/test_vacancy_extraction.py` — identical scope to the original spec's step 63 (`build_extraction_prompt`, `extract_vacancy_fields`, `VacancyExtractionError` on missing/empty required fields per the Codex Review Follow-up amendment's validation tightening, `OFFLINE_MODE` fixture) — **no new assertions from this redesign**; the only conceptual change is that the raw page handed to `extract_vacancy_fields` now originates from a discovered/gated URL (Phase 12), not a hand-maintained seed URL, which is invisible to this function's own contract. | tester | `src/vacancy_search/schema.py`'s `REQUIRED_FIELDS`, `src/matching/scorer.py`'s `MatchParseError` (pattern reference only) | `tests/unit/test_vacancy_extraction.py` | Fails with `ModuleNotFoundError` (RED confirmed) | none |
+| 73 | **[GREEN]** `src/vacancy_search/extraction_prompt.py` — identical to the original spec's step 64, unchanged. | executor | `tests/unit/test_vacancy_extraction.py` (step 72) | `src/vacancy_search/extraction_prompt.py` | `python -m pytest tests/unit/test_vacancy_extraction.py -k prompt` passes | none |
+| 74 | **[GREEN]** `src/vacancy_search/extractor.py` — identical to the original spec's step 65, unchanged (`VacancyExtractionError`, consumes `src.shared.ollama_client.call_ollama`). | executor | `tests/unit/test_vacancy_extraction.py` (step 72), `src/vacancy_search/extraction_prompt.py` (step 73), `src/shared/ollama_client.py` (step 56) | `src/vacancy_search/extractor.py` | `python -m pytest tests/unit/test_vacancy_extraction.py` passes fully | Ollama (via `call_ollama`; real calls only; tests offline) |
+
+#### Phase 14 — Fold into `fetch_vacancies()` (**preserved from the original Phase 13, steps 66–67, renumbered — the integration point changes from `crawler_client.fetch_raw_pages(platform, limit)` reading a static config directly, to `discovery.get_job_urls(platform, limit)` supplying URLs, each fetched via `crawler_client.fetch_raw_page(url)`**)
+
+| # | Description | Agent | Input | Output | Verification | Network |
+|---|---|---|---|---|---|---|
+| 75 | **[RED]** `tests/unit/test_apify_client.py` — extend: `fetch_vacancies(limit)` now, for `"pnet"` and `"careers24"`, calls `discovery.get_job_urls(platform, limit)` to obtain job-detail URLs, then `crawler_client.fetch_raw_page(url)` per URL, then `extractor.extract_vacancy_fields` per raw page, folding resulting `Vacancy` objects into the existing combined dedupe-and-truncate flow (all four sources deduped together, same as the original contract) — this replaces the original step 66 assertion that called `crawler_client.fetch_raw_pages(platform, limit)` directly; add a case asserting the PNet fallback path is exercised: with `discovery_config.json`'s `pnet.mode` set to `"manual_pending_verification"`, `fetch_vacancies()` still returns PNet vacancies sourced from `data/crawler_seed_urls.json`'s existing entries (via `get_job_urls`'s fallback), proving the fallback path works end-to-end through the real integration point, not just in isolation (step 70 already unit-tests `get_job_urls` alone). A `VacancyExtractionError` per page is still caught and skipped (logged), same as originally specced. | tester | `src/vacancy_search/apify_client.py` (current), `src/vacancy_search/discovery.py` (step 71), `src/vacancy_search/crawler_client.py` (step 64), `src/vacancy_search/extractor.py` (step 74) | `tests/unit/test_apify_client.py` (updated) | Fails — new discovery-integration and PNet-fallback assertions don't yet pass (RED confirmed) | none |
+| 76 | **[GREEN]** `src/vacancy_search/apify_client.py` — `fetch_vacancies()` calls `discovery.get_job_urls("pnet", limit)` / `discovery.get_job_urls("careers24", limit)`, fetches each returned URL via `crawler_client.fetch_raw_page(url)`, runs each raw page through `extractor.extract_vacancy_fields`, catches `VacancyExtractionError` per-page (skip + continue), and combines resulting `Vacancy` objects with Indeed/LinkedIn results before the existing shared `_dedupe(...)[:limit]` call — **no `if platform == "pnet"` branching in this file**; both platforms go through the identical `get_job_urls` → `fetch_raw_page` → `extract_vacancy_fields` pipeline, satisfying this amendment's config-driven-branch requirement (judgment call #3). | executor | `tests/unit/test_apify_client.py` (step 75) | `src/vacancy_search/apify_client.py` (updated) | `python -m pytest tests/unit/test_apify_client.py` passes fully, including the new PNet-fallback case | Apify + Ollama (real calls only; tests offline) |
+
+#### Phase 15 — Docs Closeout (**supersedes the original Phase 14, steps 68–72 — same topics, updated content to reflect discovery instead of static seed-URL-only sourcing**)
+
+| # | Description | Agent | Input | Output | Verification | Network |
+|---|---|---|---|---|---|---|
+| 77 | Append a **second dated amendment section** (`## Amendment — 2026-07-29 (Automated Discovery)`) to `docs/decisions/ADR-002-apify-job-scraping.md` — additive to, not a replacement of, the amendment step 68 already specced above (that one documents crawler+extraction existing at all; this one documents that PNet/Careers24 discovery is now automated via constructed search URLs + listing-page parsing, with PNet gated behind a manual one-time verification and a documented static-seed-URL fallback). Original Decision/Consequences sections remain untouched. | architect | This amendment, ADR-002 (original + step-68 amendment) | `docs/decisions/ADR-002-apify-job-scraping.md` (amended again) | Read-check: both prior sections byte-identical above this new amendment marker; new amendment present, dated, self-contained | none |
+| 78 | Update `docs/api-patterns.md`'s "PNet/Careers24 (Generic Crawler + Local LLM Extraction)" section (already added at the original step 69) — add a new "Automated Discovery" subsection documenting `discovery.py` (`build_search_url`, `parse_job_urls_from_listing`, `discover_job_urls`, `get_job_urls`), the `data/discovery_config.json` gate, and the PNet fallback behavior; note `crawler_client.py` gained `fetch_raw_page(url)` as a reusable single-URL primitive. | doc-writer | `src/vacancy_search/discovery.py`, `src/vacancy_search/crawler_client.py`, `data/discovery_config.json` | `docs/api-patterns.md` (updated) | Read-check: matches actual implemented function signatures, no invented endpoints | none |
+| 79 | Update `CLAUDE.md`'s "🌐 External Client Patterns" table and Directory Structure tree — add `vacancy_search/discovery.py` (new module, no independent rate limit — reuses `crawler_client.py`'s `CRAWLER_RATE_LIMIT_PER_MIN` via `fetch_raw_page`); `data/` gains `discovery_config.json` alongside `crawler_seed_urls.json`. | doc-writer | `src/vacancy_search/discovery.py`, `data/discovery_config.json` | `CLAUDE.md` (updated) | Read-check: table and directory tree match actual post-build file layout | none |
+| 80 | `docs/todo.md` — replace the existing `[ ]`/"BLOCKED on discovery redesign" steps 63–72 block with this amendment's new Build Queue section, steps 63–80, cross-referencing this amendment; move the "Real seed URLs for PNet/Careers24" line in this spec's own Open Items (below) to reflect it is now PNet-only-and-conditional; add the new manual bare-URL verification item (below) as an explicit open task for Tebello, not folded silently into an existing line. | doc-writer | This amendment (all steps 63–80) | `docs/todo.md` (updated) | Read-check: new Build Queue phase present with correct step numbers/descriptions; no duplicate tracking of the superseded original steps 63–72 in two places | none |
+
+No task above touches more than 2 files (Output column governs the count, same convention as the
+rest of this spec — e.g. step 64 and step 66/68/71 each touch only `discovery.py` or
+`crawler_client.py`, one file; test-only RED steps count as 1).
+
+### New Acceptance Criteria (additive to the original Acceptance Criteria section above)
+
+- **No request is ever sent to a robots.txt-disallowed URL shape.** Specifically: no code path may
+  construct or crawl a PNet URL containing a `?` query string (violates PNet's live `robots.txt`
+  `User-agent: *` → `Disallow: /jobs/*?*` rule, confirmed 2026-07-29) — enforced structurally in
+  `build_search_url("pnet", ...)` (step 68: the function has no code path capable of appending a query
+  string) and tested explicitly (step 67).
+- **The PNet fallback-to-manual-seed-URL path is exercised by at least one test** — `test_discovery.py`
+  (step 70, isolated) and `test_apify_client.py` (step 75, end-to-end through `fetch_vacancies()`) both
+  assert that `pnet.mode = "manual_pending_verification"` in `data/discovery_config.json` causes PNet
+  vacancies to be sourced from `data/crawler_seed_urls.json`'s existing entries, not from
+  `discover_job_urls`/`build_search_url` at all.
+- Careers24 discovery is exercised by at least one test asserting a listing-page fixture containing
+  multiple job-detail anchors yields multiple discovered URLs (not the one-page-one-vacancy contract
+  from the Codex Review Follow-up amendment — that contract still applies one level down, to
+  `extract_vacancy_fields` on a single job-detail page, not to `parse_job_urls_from_listing` on a
+  listing page, which is expected and required to return multiple URLs).
+
+### Open Items Flagged for Architect / User (additive — updates item 1 from the original Open Items section, adds a new item 4)
+
+1. **(Updated, was: "Real seed URLs for PNet/Careers24")** — Careers24 no longer needs this: discovery
+   is fully automated from `SEARCH_TITLES`/`SEARCH_LOCATION`, no manual seed URL required. This item
+   now applies **to PNet only, and only if the manual bare-URL check below fails** — if it fails,
+   Tebello must supply real PNet job-detail seed URLs in `data/crawler_seed_urls.json` the same way the
+   original spec described, as the permanent (not temporary) PNet sourcing path.
+2. Extraction reliability at scale — unchanged from the original Open Items item 2.
+3. `CRAWLER_RATE_LIMIT_PER_MIN` default of 30 — unchanged from the original Open Items item 3; this
+   amendment adds no new rate-limit constant (`discovery.py` reuses `crawler_client.py`'s limiter via
+   `fetch_raw_page`).
+4. **New — manual bare-URL verification (blocks flipping `pnet.mode` to `"auto"`).** Tebello: open
+   `https://www.pnet.co.za/jobs/operations-foreman/in-gauteng` (the bare path-only shape, no `?`
+   query string) once in an ordinary browser, and confirm whether it renders a working PNet
+   results/listing page or an error/redirect/block page. Record the result by editing
+   `data/discovery_config.json`'s `pnet.mode` directly: set it to `"auto"` if the page works, or leave
+   it at `"manual_pending_verification"` (with a one-line note added to the file's `_comment`, e.g.
+   "checked 2026-0X-XX, bare URL does not render a usable results page — permanent fallback") if it
+   doesn't. This is a one-time check, not a recurring task, and is not the same as the per-vacancy
+   manual URL-pasting labor this redesign was written to eliminate.

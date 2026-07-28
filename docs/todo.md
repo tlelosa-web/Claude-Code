@@ -54,6 +54,14 @@ Per DCOE: update after every completed task; one task = one commit.
 
 ## Done
 
+- [x] **2026-07-28** — Added a machine-bound-task check to `/continue`
+      (Step 2.5 in `.claude/commands/continue.md`): before reporting,
+      flag candidate next-tasks that need local access on a specific
+      machine (Pappa T, Operations) this session can't reach, and surface
+      that in both the Step 3 report and the `AskUserQuestion` option
+      descriptions. Prompted by this session offering the Pappa T vault
+      survey as pickable from a cloud session where it wasn't actually
+      runnable.
 - [x] **2026-07-28** — Confirmed NamePlateTool's Excel-import bug (former
       #1 priority) was fixed in a separate session (commit `777be76`):
       datetime crash and dead `"Table 1"` sheet check both resolved.

@@ -10,9 +10,6 @@ from motor_fla_lookup import lookup_fla_safe
 from pathing import resolve_paths
 
 
-def _norm(s: str) -> str:
-    return "".join(str(s).strip().lower().split())
-
 def _speed_to_poles(speed: str) -> str:
     try:
         v = int(float(str(speed).strip()))
@@ -81,18 +78,6 @@ def _resolve_motor_pdf_path() -> Path | None:
     return None
 
 
-def _read_block_by_labels(ws, label_col: str, value_col: str) -> dict:
-    out = {}
-    for r in range(1, 250):
-        lab = ws[f"{label_col}{r}"].value
-        if lab is None:
-            continue
-        key = _norm(lab)
-        val = ws[f"{value_col}{r}"].value
-        out[key] = "" if val is None else str(val).strip()
-    return out
-
-
 def _to_float(s: str):
     try:
         return float(str(s).strip())
@@ -129,42 +114,7 @@ def read_nameplate_from_excel(xlsx_path: str) -> dict:
 
     try:
         wb = openpyxl.load_workbook(tmp, data_only=True)
-        if "Table 1" in wb.sheetnames:
-            ws = wb["Table 1"]
-
-            left = _read_block_by_labels(ws, "G", "H")
-            right = _read_block_by_labels(ws, "J", "K")
-
-            def pick(d: dict, *labels: str, default: str = "") -> str:
-                for lab in labels:
-                    k = _norm(lab)
-                    if k in d and d[k] != "":
-                        return d[k]
-                for lab in labels:
-                    k = _norm(lab)
-                    if k in d:
-                        return d[k]
-                return default
-
-            series = pick(left, "Series")
-            class_pitch = pick(left, "Class/Pitch", "Class Pitch", "Pitch", "Class")
-            motor_kw_str = pick(left, "Motor")
-            voltage_str = pick(left, "Voltage")
-            pole_str = pick(left, "Pole", "Poles")
-            fla_str = pick(left, "F.L.A", "F.L.A.", "FLA")
-            op_temp = pick(left, "Op Temp", default="20")
-            serial_no = pick(left, "Serial No")
-
-            size = pick(right, "Size")
-            op_speed = pick(right, "Op Speed")
-            max_speed = op_speed
-            phase = pick(right, "Phase")
-            frequency = pick(right, "Frequency", default="50")
-            connection = pick(right, "Conn", "Connection")
-            date_of_manuf = pick(right, "Date of Manuf", "Date of Manufacture")
-            customer_name = ""
-            relube_interval = "N/A"
-        elif "Info+Data Entry Form" in wb.sheetnames:
+        if "Info+Data Entry Form" in wb.sheetnames:
             ws = wb["Info+Data Entry Form"]
             series = _find_labeled_value(ws, "Fan Series")
             size = _find_labeled_value(ws, "Fan Size")
@@ -180,7 +130,7 @@ def read_nameplate_from_excel(xlsx_path: str) -> dict:
             phase = _find_labeled_value(ws, "Phase")
             frequency = _find_labeled_value(ws, "Frequency")
             connection = _find_labeled_value(ws, "Connection") or _find_labeled_value(ws, "Conn") or _find_labeled_value(ws, "Connetion")
-            date_of_manuf = _find_labeled_value(ws, "Date")
+            date_of_manuf = _fmt_month_year(_find_labeled_value(ws, "Date"))
             customer_name = _find_labeled_value(ws, "Customer Name") or ""
             relube_interval = _find_labeled_value(ws, "Re-Lubrication Int") or "N/A"
             max_speed = op_speed

@@ -10,21 +10,6 @@
 
 ## Next up
 
-- [ ] **`/api/nameplate/from-excel` crashes** with `"Object of type datetime
-      is not JSON serializable"` (found 2026-07-17 while verifying the dirty-
-      tree cleanup below, against the real `NAME PLATE PROCEDURE.xlsx`).
-      Pre-existing in committed code, unrelated to today's cleanup —
-      `date_of_manuf` comes back as a Python `datetime` from the
-      `Info+Data Entry Form` sheet read path and isn't stringified before
-      `JSONResponse`. Also worth fixing while in there: the primary sheet
-      check in `excel_source.py` looks for `"Table 1"`, which doesn't exist
-      in the real workbook (`NamePlateProc` is the actual sheet name) — the
-      endpoint currently only works by accident, falling through to the
-      `Info+Data Entry Form` branch. A same-day attempt to fix the sheet-name
-      check regressed to all-blank fields (verified, discarded — see Done
-      below) — the correct fix needs the `NamePlateProc` branch's
-      label-reading logic actually adapted to that sheet's real layout, not
-      just a renamed condition.
 - [ ] Consider a real automated test suite (pytest for backend, a JS test
       runner for frontend) — `tests/` currently holds ad-hoc manual-check
       scripts only, not a gated suite. Not urgent; flagged in `CLAUDE.md` §
@@ -39,6 +24,19 @@
 
 ## Done
 
+- [x] **2026-07-28** — `/api/nameplate/from-excel` datetime crash fixed.
+      `date_of_manuf` in `excel_source.py`'s `"Info+Data Entry Form"` branch
+      is now formatted via `_fmt_month_year()` before returning (was a raw
+      `datetime`, unlike the `else` branch which already formatted it).
+      Confirmed by direct inspection why the 2026-07-17 attempt regressed:
+      `NamePlateProc` is a static instructions/reference sheet with no real
+      per-job data — `"Info+Data Entry Form"` is the correct data source and
+      stays the effective primary. Also dropped the dead, unreachable
+      `"Table 1"` primary-sheet check (never matches the real workbook) and
+      the now-orphaned `_read_block_by_labels`/`_norm` helpers. Spec:
+      `docs/specs/2026-07-28-excel-import-datetime-and-sheet-check.md`.
+      Verified against the real `NAME PLATE PROCEDURE.xlsx` both directly
+      and via a live `uvicorn` server (`200`, populated fields, no crash).
 - [x] **2026-07-17** — Dirty working tree (flagged by the 2026-07-17
       hub-level cross-project status pass) reviewed and resolved. Read every
       file's actual diff before acting, per the pre-commit review discipline:

@@ -281,3 +281,42 @@ idea, not urgent.
 § Next up item (automated test suite, not urgent). The unrelated
 `/api/speed` uncommitted change in `main.py` is still waiting on a
 decision from Tebello (§ Backlog).
+
+-----
+
+## 2026-07-28 — Excel-import datetime crash fix
+
+**Domain:** Backend (FastAPI)
+
+**What happened:**
+- Fixed the open `/api/nameplate/from-excel` bug (crashing with `"Object of
+  type datetime is not JSON serializable"`, open since 2026-07-17, one
+  reverted fix attempt).
+- Spec written first per project rule (`docs/specs/2026-07-28-excel-import-
+  datetime-and-sheet-check.md`), confirming root cause by loading the real
+  `NAME PLATE PROCEDURE.xlsx` directly: `Info+Data Entry Form!C4` ("Date")
+  is a raw `datetime.datetime`, and `excel_source.py`'s `"Info+Data Entry
+  Form"` branch returned it unformatted, unlike the `else` branch which
+  already calls `_fmt_month_year()`.
+- Confirmed why the 2026-07-17 attempt regressed: it swapped the dead
+  `"Table 1"` primary-sheet check for `"NamePlateProc"`, but `NamePlateProc`
+  is a static instructions/reference sheet (every "value" cell is
+  boilerplate procedure text, e.g. `Motor` → `"As per Sales Order or
+  Supplier Order"`), not real per-job data — routing reads through it can
+  only produce blanks. `"Info+Data Entry Form"` is the real data sheet and
+  was already the effective (fallback) source; that didn't change.
+- Fix: wrapped `date_of_manuf` in `_fmt_month_year()` in the `"Info+Data
+  Entry Form"` branch; dropped the dead, unreachable `"Table 1"` branch
+  (never matches the real workbook) and made `"Info+Data Entry Form"` the
+  primary check — no runtime behavior change beyond the date fix, just
+  removes a misleading dead condition. Also removed `_read_block_by_labels`/
+  `_norm`, orphaned by dropping their only caller.
+- Verified: direct `read_nameplate_from_excel()` call against the real
+  workbook returns `date_of_manuf: "MAY.2026"` (`str`) with all fields
+  populated; live `uvicorn` + `GET /api/nameplate/from-excel` returns `200`
+  with no crash.
+
+**Blockers:** None.
+
+**Next:** Automated test suite (`docs/todo.md` § Next up) — not urgent,
+unchanged from prior session.

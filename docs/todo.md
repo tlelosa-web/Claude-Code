@@ -32,6 +32,18 @@ Per DCOE: update after every completed task; one task = one commit.
       recruiter/cold-outreach revival, and a doc-gen volume-cap/scheduler
       are all undecided backlog items, no urgency behind them yet. Detail:
       `knowledge/pappa-t.md`.
+5. [ ] **SOPS: give the go-ahead to run the AvgMovement migration against
+      `instance/sops.db`** — Supplier/Lead-Time + AMU/Min-Max logic ported
+      and fully tested (Batch 32/33, commits `fe06eaa`/`112e321`), held for
+      Tebello per SOPS's standing schema-change convention. This is the
+      blocking step before `8. AvgMovement` (already Retired in the
+      Operations hub project index) can be decommissioned. Detail:
+      `2. SOPS/docs/todo.md`, `knowledge/sops.md`.
+6. [ ] **SOPS: Payment Status data-migration review** — a batch of
+      historical Sales Orders need human review of migrated/backfilled
+      payment-status values before being treated as fully validated.
+      Detail: `2. SOPS/docs/todo.md` (2026-07-14 entry onward),
+      `knowledge/sops.md`.
 
 ## Backlog / ideas (not committed)
 
@@ -42,6 +54,15 @@ Per DCOE: update after every completed task; one task = one commit.
 
 ## Done
 
+- [x] **2026-07-28** — Operations vault survey: enumerated every project
+      folder on the Operations machine, confirmed no new project roots
+      beyond the already-tracked ones plus three gaps (SOPS,
+      delivery-note-system, Daily Sales Order Files — `8. AvgMovement`
+      folded into `sops.md` as a note, not a separate file, since it's
+      Retired and its logic was ported into SOPS). Wrote
+      `knowledge/sops.md`, `knowledge/delivery-note-system.md`,
+      `knowledge/daily-sales-order-files.md`; updated `knowledge/INDEX.md`;
+      added two new outstanding items (#5, #6 above) to this queue.
 - [x] **2026-07-28** — Set up Operations (work PC) as a DCOE hub client of
       this repo, mirroring the Pappa T setup: confirmed already cloned at
       `C:\Dev\Claude-Code` (sibling of `C:\Dev\Operations`, on `main`),

@@ -56,3 +56,50 @@ bumped its `INDEX.md` row.
 **Next task:** Fix the Excel-import bug in NamePlateTool — see `docs/todo.md` #1.
 **Known risks:** None new.
 **Blockers:** None.
+
+## 2026-07-28 — Operations vault survey
+
+Ran a full survey of the Operations vault (`C:\Dev\Operations`) to find any
+project not yet in `knowledge/INDEX.md`. Enumerated every folder under
+`C:\Dev\Operations` and `C:\Dev` directly — confirmed `3. Nameplate & Test
+Sheet` is the already-tracked NamePlateTool (same GitHub remote), confirmed
+the remaining data-only folders (`4. Casing Analysis`, `Inventory Management
+& Reports`, `Sage Inventory Report`, `Stock Report Reference`, `Workshop
+Stock - *`, `FM Planning & Stock Control`, `General - Info`, `IDE`) hold no
+code, and found three genuinely new projects: `2. SOPS`, `7. DELIVERY
+NOTE/delivery-note-system`, and `1. Daily Sales Order Files`.
+
+For each, read its own `CLAUDE.md`/`README.md`/`docs/todo.md` (or
+`1_Documentation/USER_GUIDE.md` for the pipeline project) for outstanding
+items and reusable technical facts, respecting the no-company-data rule.
+Also checked `8. AvgMovement` (already known Retired) — confirmed via
+`3_Live_Reports/` timestamps it hasn't produced a report since 2026-05-13;
+folded it into `knowledge/sops.md` as a note rather than giving it its own
+file, since its logic was ported into SOPS (Batch 32/33) and it has no
+independent facts left to track.
+
+Wrote `knowledge/sops.md` (stack/TDD/held-migration convention, stale-dev-
+server gotcha, git-worktree/OneDrive history, concurrent-session git
+contamination pattern — this last one matches a hazard already on file in
+Operations's own project memory, cross-confirming it's a real recurring
+risk), `knowledge/delivery-note-system.md` (Next.js 16/Prisma 7 stack,
+Prisma-7 driver-adapter gotcha, Turbopack+Windows-junction workaround,
+DN-number generation fix), and `knowledge/daily-sales-order-files.md`
+(5-stage pipeline shape, load-bearing folder layout, external OneDrive
+dependencies, self-correcting filename resolution — healthy project, no
+outstanding items). Updated `knowledge/INDEX.md` with all three.
+
+Added two new items to this hub's own `docs/todo.md`: SOPS's held
+AvgMovement-migration go-ahead (blocks formally decommissioning
+`8. AvgMovement`) and SOPS's Payment Status data-migration review — both
+live-data/human-decision items, not code-completion items. Note: SOPS's own
+`docs/todo.md` had one stale entry (PO-edit work marked "not yet committed"
+as of 2026-07-23) — verified live via `git log`/`git status` that it
+actually shipped as commit `46c9acb` (2026-07-24); not carried forward as
+an outstanding item, and flagged in `knowledge/sops.md` so a future session
+doesn't need to re-verify it.
+
+**Last completed:** Operations vault survey (this entry).
+**Next task:** Fix the Excel-import bug in NamePlateTool — see `docs/todo.md` #1.
+**Known risks:** None new.
+**Blockers:** None.

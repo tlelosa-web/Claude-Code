@@ -42,6 +42,15 @@ Fix used here: capture the **root** process IDs at launch
 (`Start-Process -PassThru` → `5_Archive_and_Debug/pipeline.pids`,
 gitignored) and `taskkill /PID <root> /T /F` to kill the whole tree.
 
+## 2026-07-28 — Bug still unfixed, no new attempt since revert
+**Source:** session (cross-project status survey), `docs/todo.md`
+**Status:** active
+
+As of this check, the Excel-import bug below is still open and untouched
+since the 2026-07-17 reverted attempt — it's the only active defect across
+all 5 tracked repos and the top cross-project priority. No GitHub issue
+tracks it; it lives only in this project's `docs/todo.md`.
+
 ## 2026-07-23 — Known open bug: Excel-import datetime + wrong sheet-name check
 **Source:** tlelosa-web/NamePlateTool docs/todo.md
 **Status:** active

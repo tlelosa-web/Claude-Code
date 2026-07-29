@@ -245,3 +245,41 @@ see `docs/todo.md` #1 — currently left open per Tebello's direction pending
 further instruction.
 **Known risks:** None new.
 **Blockers:** None.
+
+## 2026-07-29 — Hub process review: fix, improve, prevent
+
+Reviewed the knowledge cache and hub process end-to-end for issues to fix,
+improve, and prevent, per Tebello's request, then implemented what was
+actionable from this session (cloud environment, `tlelosa-web/claude-code`
+repo only — no filesystem access to Operations or Pappa T).
+
+**Fixed:**
+- Promoted the NamePlateTool Excel-import fix (`777be76`) spot-check from a
+  buried prose caveat to a real tracked `docs/todo.md` item (#1), so it
+  can't get lost. Still machine-bound (Operations) — flagged as such.
+- Resolved the idle numbering-backlog question: kept fixed numbering
+  (renumbered 1-9 after inserting the NamePlateTool item), since the
+  2026-07-28 priority set hasn't cleared — closed out rather than left
+  open indefinitely.
+
+**Prevented (root-cause fix, not just a patch):** `session-log.md` shows
+two real merge conflicts already, both from concurrent sessions
+(Operations/Pappa T/cloud) editing `docs/todo.md`, `session-log.md`, or
+`knowledge/INDEX.md` from a stale local `main`. Added `CLAUDE.md` Hard
+Rule 6 and `/continue` Step 1.75 ("Sync Check") — fetch + pull `origin/main`
+before editing any of the three contention files, and resolve any
+resulting conflict as a real union, never a pick-one-side overwrite.
+
+**Not actionable from this session (flagged, not fixed):** every other
+open item in `docs/todo.md` (#2-9) is either awaiting Tebello's direct
+decision (SOPS migration go-ahead, Payment Status review, TebelloReborn
+scope) or requires local access to a machine/repo this cloud session can't
+reach (codex-gate on Pappa T, OpenRouter credits, NamePlateTool test
+suite). These weren't touched — surfaced in the resume report instead of
+guessed at.
+
+**Last completed:** Hub process review (this entry).
+**Next task:** NamePlateTool Excel-import spot-check (`docs/todo.md` #1) —
+⚠️ requires local access on Operations, not runnable from this session.
+**Known risks:** None new.
+**Blockers:** None.

@@ -13,36 +13,42 @@ Per DCOE: update after every completed task; one task = one commit.
 
 ## Next up (priority order, set 2026-07-28)
 
-1. [ ] **Close out the codex-gate rollout** (`tlelosa-claude-config`) — three
+1. [ ] **NamePlateTool: spot-check the Excel-import fix** — commit
+      `777be76` fixed the datetime crash + dead sheet-name check
+      (2026-07-28), but no session has manually verified the fix against a
+      real generated PDF yet. Machine-bound (NamePlateTool lives on
+      Operations) — run from an Operations session. Detail:
+      `knowledge/nameplatetool.md`.
+3. [ ] **Close out the codex-gate rollout** (`tlelosa-claude-config`) — three
       items outstanding: install + network-off smoke-test on Pappa T, copy
       the drafted ADR into the Operations hub's `docs/decisions/`, and get
       Fan Movement IT to confirm OpenAI-egress coverage for Operations
       (codex-gate stays Pappa T-only until then). Detail:
       `tlelosa-claude-config/docs/todo.md`, `knowledge/tlelosa-claude-config.md`.
-2. [ ] **NamePlateTool: add a real automated test suite** — not urgent;
+4. [ ] **NamePlateTool: add a real automated test suite** — not urgent;
       `tests/` is ad-hoc manual-check scripts only.
-3. [ ] **TebelloReborn: decide on post-MVP scope** — Playwright auto-submit,
+5. [ ] **TebelloReborn: decide on post-MVP scope** — Playwright auto-submit,
       recruiter/cold-outreach revival, and a doc-gen volume-cap/scheduler
       are all undecided backlog items, no urgency behind them yet. Detail:
       `knowledge/tebelloreborn.md` (supersedes the pointer to `pappa-t.md`
       this item previously had — see that project's own dedicated file now).
-4. [ ] **ai-outreach-agency: top up OpenRouter credits** — `asset_gen` has
+6. [ ] **ai-outreach-agency: top up OpenRouter credits** — `asset_gen` has
       been blocked on HTTP 402 since 2026-07-04; unblocks real (non-offline)
       batch runs until its headless-Claude-Code migration (Build Queue A)
       lands. Detail: `knowledge/ai-outreach-agency.md`.
-5. [ ] **ai-outreach-agency: bump Ollama `READ_TIMEOUT` 60s→120s + add
+7. [ ] **ai-outreach-agency: bump Ollama `READ_TIMEOUT` 60s→120s + add
       `keep_alive: "30m"`** to `/api/generate` — local generation sits close
       to the current timeout ceiling on cold-load calls, risking
       intermittent false-positive errors on a real batch. Small, single-file
       fix. Detail: `knowledge/ai-outreach-agency.md`.
-6. [ ] **SOPS: give the go-ahead to run the AvgMovement migration against
+8. [ ] **SOPS: give the go-ahead to run the AvgMovement migration against
       `instance/sops.db`** — Supplier/Lead-Time + AMU/Min-Max logic ported
       and fully tested (Batch 32/33, commits `fe06eaa`/`112e321`), held for
       Tebello per SOPS's standing schema-change convention. This is the
       blocking step before `8. AvgMovement` (already Retired in the
       Operations hub project index) can be decommissioned. Detail:
       `2. SOPS/docs/todo.md`, `knowledge/sops.md`.
-7. [ ] **SOPS: Payment Status data-migration review** — a batch of
+9. [ ] **SOPS: Payment Status data-migration review** — a batch of
       historical Sales Orders need human review of migrated/backfilled
       payment-status values before being treated as fully validated.
       Detail: `2. SOPS/docs/todo.md` (2026-07-14 entry onward),
@@ -50,13 +56,20 @@ Per DCOE: update after every completed task; one task = one commit.
 
 ## Backlog / ideas (not committed)
 
-- [ ] Decide whether to fold this hub's `docs/todo.md` numbering back into
-      a flat checklist once the current priority set clears — numbering
-      is a point-in-time snapshot (set 2026-07-28), not a permanent
-      convention.
+- [ ] None currently.
 
 ## Done
 
+- [x] **2026-07-29** — Hub process review: promoted the NamePlateTool
+      Excel-import spot-check (previously just a prose caveat in
+      `session-log.md`) to a tracked `docs/todo.md` item; resolved the
+      numbering-backlog question by keeping fixed numbering (renumbered
+      1-9) since the priority set hasn't cleared yet and the "fold to flat
+      checklist" question only mattered once it does; added `CLAUDE.md`
+      Hard Rule 6 and `/continue` Step 1.75 ("Sync Check") to fix the root
+      cause of the two real merge conflicts already hit on
+      `docs/todo.md`/`session-log.md`/`knowledge/INDEX.md` — pull
+      `origin/main` before editing any of the three contention files.
 - [x] **2026-07-28** — Pappa T vault survey (second pass, from a Pappa T
       session running concurrently with the hub-setup work above): resolved
       the `Claude-Code/` folder's earlier "untracked nested repo" flag from

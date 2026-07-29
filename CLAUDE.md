@@ -77,3 +77,12 @@ These add to `CORE.md`'s Universal Hard Rules — they never relax them.
    project's own repo — same discipline as `tlelosa-claude-config`.
 5. Update `docs/todo.md` and `docs/session-log.md` after every hub-level
    task, same discipline as the knowledge-cache update rule above.
+6. **Pull before you edit a contention file.** `docs/todo.md`,
+   `docs/session-log.md`, and `knowledge/INDEX.md` get written by nearly
+   every hub-level session — with Operations, Pappa T, and cloud sessions
+   all able to run concurrently, stale-base edits to these three files have
+   already caused two real merge conflicts (see `docs/session-log.md`,
+   2026-07-28 entries). Before editing any of them, `git fetch origin` +
+   `git pull origin main` (or merge/rebase onto latest `main`) first. If a
+   conflict still happens anyway, resolve it as a real union of both
+   sides' changes — never pick one branch and discard the other's work.

@@ -87,6 +87,27 @@ the update automatically, and don't let it block orienting or reporting.
 If the marketplace clone doesn't exist on this machine at all, note that
 plainly too rather than silently skipping the check.
 
+## Step 1.75 — Sync Check (prevents contention-file conflicts)
+
+`docs/todo.md`, `docs/session-log.md`, and `knowledge/INDEX.md` are edited
+by nearly every hub-level session, and this hub can have Operations,
+Pappa T, and cloud sessions running concurrently. Editing any of these
+three from a stale local `main` has already caused two real merge
+conflicts (see `docs/session-log.md`, 2026-07-28 entries) — this step
+exists to stop a third.
+
+```
+git fetch origin main --quiet
+git -C . rev-list HEAD..origin/main --count
+```
+
+If the count is > 0, `git pull origin main` before doing anything else in
+this session (Step 0-1's reads above are safe either way; this just makes
+sure any *edit* later in the session starts from a current base). If the
+pull produces conflicts on the three contention files, resolve as a real
+union per `CLAUDE.md` Hard Rule 6 — never pick one side and drop the
+other's work.
+
 ## Step 2 — Identify Scope
 
 Is the next task:
@@ -117,6 +138,14 @@ isn't that machine.
   clearly (e.g. "⚠️ requires local access on Pappa T — can't run from this
   session") in both the Step 3 report and its `AskUserQuestion` option
   description, so Tebello isn't offered it as if it were runnable here.
+- If a candidate task **is** machine-bound but this session **is** that
+  machine (e.g. running on Pappa T and the task says "Pappa T only"), check
+  `docs/todo.md` for a linked spec under `docs/specs/`. If one exists, say
+  so plainly in the Step 3 report ("Spec ready: docs/specs/<name>.md — no
+  further research needed, can start immediately") — this is the common
+  case now that machine-bound queue items get specs written ahead of time
+  from cloud sessions (started 2026-07-29). Don't re-derive a plan from
+  scratch if a ready spec already exists.
 - This is a labeling check only — don't skip the task, don't silently
   reorder the queue, and don't try to work around the access gap (e.g. by
   guessing at the other machine's folder structure) without Tebello asking

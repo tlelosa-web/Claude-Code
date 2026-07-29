@@ -245,3 +245,88 @@ see `docs/todo.md` #1 — currently left open per Tebello's direction pending
 further instruction.
 **Known risks:** None new.
 **Blockers:** None.
+
+## 2026-07-29 — Hub process review: fix, improve, prevent
+
+Reviewed the knowledge cache and hub process end-to-end for issues to fix,
+improve, and prevent, per Tebello's request, then implemented what was
+actionable from this session (cloud environment, `tlelosa-web/claude-code`
+repo only — no filesystem access to Operations or Pappa T).
+
+**Fixed:**
+- Promoted the NamePlateTool Excel-import fix (`777be76`) spot-check from a
+  buried prose caveat to a real tracked `docs/todo.md` item (#1), so it
+  can't get lost. Still machine-bound (Operations) — flagged as such.
+- Resolved the idle numbering-backlog question: kept fixed numbering
+  (renumbered 1-9 after inserting the NamePlateTool item), since the
+  2026-07-28 priority set hasn't cleared — closed out rather than left
+  open indefinitely.
+
+**Prevented (root-cause fix, not just a patch):** `session-log.md` shows
+two real merge conflicts already, both from concurrent sessions
+(Operations/Pappa T/cloud) editing `docs/todo.md`, `session-log.md`, or
+`knowledge/INDEX.md` from a stale local `main`. Added `CLAUDE.md` Hard
+Rule 6 and `/continue` Step 1.75 ("Sync Check") — fetch + pull `origin/main`
+before editing any of the three contention files, and resolve any
+resulting conflict as a real union, never a pick-one-side overwrite.
+
+**Not actionable from this session (flagged, not fixed):** every other
+open item in `docs/todo.md` (#2-9) is either awaiting Tebello's direct
+decision (SOPS migration go-ahead, Payment Status review, TebelloReborn
+scope) or requires local access to a machine/repo this cloud session can't
+reach (codex-gate on Pappa T, OpenRouter credits, NamePlateTool test
+suite). These weren't touched — surfaced in the resume report instead of
+guessed at.
+
+**Last completed:** Hub process review (this entry).
+**Next task:** NamePlateTool Excel-import spot-check (`docs/todo.md` #1) —
+⚠️ requires local access on Operations, not runnable from this session.
+**Known risks:** None new.
+**Blockers:** None.
+
+## 2026-07-29 — Ready-to-execute specs for every machine-bound queue item
+
+Tebello asked to have "something ready to go at each machine when continue
+is run." Wrote 8 dated spec files under `docs/specs/` (following the
+existing `tlelosa-claude-config` ADR-draft naming convention,
+`YYYY-MM-DD-<slug>.md`), one per machine-bound `docs/todo.md` item:
+
+- `2026-07-29-nameplatetool-excel-spotcheck.md` (Operations)
+- `2026-07-29-nameplatetool-test-suite.md` (Operations, starter scope)
+- `2026-07-29-codex-gate-pappa-t-smoketest.md` (Pappa T)
+- `2026-07-29-codex-gate-operations-adr-copy.md` (Operations)
+- `2026-07-29-tebelloreborn-scope-decision.md` (Pappa T, decision brief)
+- `2026-07-29-ollama-timeout-fix.md` (Pappa T)
+- `2026-07-29-sops-avgmovement-migration.md` (Operations, gated — not
+  cleared to run without an explicit in-session go-ahead)
+- `2026-07-29-sops-payment-status-review.md` (Operations, human review)
+
+Each spec is self-contained: goal, steps, definition of done, and the hub
+bookkeeping to close out afterward (pull `origin/main` first per Hard Rule
+6, update the relevant `knowledge/*.md`, remove the item from `docs/todo.md`
+and renumber, log in `session-log.md`).
+
+Rewrote `docs/todo.md`'s "Next up" block to link each item to its spec and
+tag it with which machine it needs. Split the old 3-part "close out
+codex-gate" item into 3 numbered items (Pappa T smoke-test, Operations ADR
+copy, and the IT-confirmation sub-item, which has no spec since it's a
+pending external answer, not an executable task) — the three don't share a
+machine so bundling them under one checkbox was hiding that only 2 of the
+3 are independently actionable right now. Also fixed a numbering gap
+(item "3" had been skipped in the 2026-07-29 renumbering).
+
+Added a new bullet to `/continue`'s Step 2.5: when a machine-bound task's
+target machine *is* the current session's machine, check for a linked spec
+under `docs/specs/` and say so plainly in the resume report — don't
+re-derive a plan from scratch when one's already been prepared.
+
+**Last completed:** Ready-to-execute specs for all machine-bound items
+(this entry).
+**Next task:** Whichever queue item matches the machine a session next
+opens on — Pappa T sessions should pick up the Ollama timeout fix,
+codex-gate smoke-test, or TebelloReborn scope decision; Operations sessions
+should pick up the NamePlateTool spot-check, codex-gate ADR copy, or one of
+the two SOPS items (AvgMovement gated on explicit go-ahead).
+**Known risks:** None new.
+**Blockers:** SOPS AvgMovement migration spec is intentionally not
+actionable without Tebello's explicit go-ahead given in that session.

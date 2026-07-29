@@ -1,3 +1,16 @@
+## 2026-07-29 — OpenRouter credits top-up: dropped as a dead end
+**Source:** session (Tebello's direction)
+**Status:** active
+
+Tebello decided not to pursue topping up the OpenRouter account (open item
+below) — treated as a dead end, removed from `docs/todo.md`. `asset_gen`
+stays blocked on OpenRouter (HTTP 402 since 2026-07-04) until Build Queue A
+(headless-Claude-Code migration, mirroring TebelloReborn's ADR-003) lands
+instead — that migration was already the stated alternative path, now the
+only one being pursued. No code change needed on this decision by itself;
+it just deprioritizes a manual credits top-up in favor of the migration
+that was already planned.
+
 ## 2026-07-28 — What it is, stack, open items
 **Source:** Pappa T session (cross-project status survey), ai-outreach-agency's own CLAUDE.md/docs/todo.md/docs/architecture.md
 **Status:** active

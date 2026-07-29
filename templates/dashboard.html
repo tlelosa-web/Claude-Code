@@ -32,38 +32,128 @@
 <div class="stats-grid animate-fade-in" style="margin-bottom: 24px;">
     <!-- Open WOs -->
     <div class="card stat-card" style="--accent: var(--brand-primary);">
-        <div class="stat-label">Active Works Orders</div>
+        <div class="stat-card-head">
+            <div class="stat-label">Active Works Orders</div>
+            <div class="stat-icon">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+            </div>
+        </div>
         <div class="stat-val">{{ open_wos }}</div>
-        <div style="font-size: 0.85rem; color: var(--text-secondary);">Orders in production</div>
+        <div class="stat-context">Orders in production</div>
     </div>
-    
+
     <!-- Completed WOs -->
     <div class="card stat-card" style="--accent: var(--brand-success);">
-        <div class="stat-label">Completed Orders</div>
+        <div class="stat-card-head">
+            <div class="stat-label">Completed Orders</div>
+            <div class="stat-icon">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+            </div>
+        </div>
         <div class="stat-val">{{ completed_wos }}</div>
-        <div style="font-size: 0.85rem; color: var(--text-secondary);">Historically completed WOs</div>
+        <div class="stat-context">Historically completed WOs</div>
     </div>
-    
+
     <!-- Pending Sales Orders -->
     <div class="card stat-card" style="--accent: var(--brand-secondary);">
-        <div class="stat-label">Inbound Sales Orders</div>
+        <div class="stat-card-head">
+            <div class="stat-label">Inbound Sales Orders</div>
+            <div class="stat-icon">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+            </div>
+        </div>
         <div class="stat-val">{{ pending_sos }}</div>
-        <div style="font-size: 0.85rem; color: var(--text-secondary);">Uploaded Draft SOs awaiting WOs</div>
+        <div class="stat-context">Uploaded Draft SOs awaiting WOs</div>
     </div>
-    
+
     <!-- Low Stock count -->
     <div class="card stat-card" style="--accent: var(--brand-danger);">
-        <div class="stat-label">Low Stock Warnings</div>
+        <div class="stat-card-head">
+            <div class="stat-label">Low Stock Warnings</div>
+            <div class="stat-icon">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+            </div>
+        </div>
         <div class="stat-val">{{ low_stock_count }}</div>
-        <div style="font-size: 0.85rem; color: var(--text-secondary);">Items with <= 10 units remaining</div>
+        <div class="stat-context">Items with &lt;= 10 units remaining</div>
     </div>
 
     <!-- Below Reorder Point -->
     <a href="{{ url_for('reports.stock') }}" class="card stat-card" style="--accent: var(--brand-secondary); text-decoration: none; color: inherit;">
-        <div class="stat-label">Below Reorder Point</div>
+        <div class="stat-card-head">
+            <div class="stat-label">Below Reorder Point</div>
+            <div class="stat-icon">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
+            </div>
+        </div>
         <div class="stat-val">{{ reorder_count }}</div>
-        <div style="font-size: 0.85rem; color: var(--text-secondary);">Items needing replenishment</div>
+        <div class="stat-context">Items needing replenishment</div>
     </a>
+</div>
+
+<!-- Charts Row -->
+<div class="chart-row animate-fade-in" style="margin-bottom: 24px;">
+    <!-- WO Trend Area Chart -->
+    <div class="card">
+        <div class="card-header">
+            <h2 class="card-title">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+                Works Orders — Last 7 Days
+            </h2>
+            <span class="area-chart-total">{{ wo_trend.total }} total</span>
+        </div>
+        <div class="chart-card-body">
+            <svg class="area-chart-svg" viewBox="0 0 {{ wo_trend.width }} {{ wo_trend.height }}" preserveAspectRatio="none" role="img" aria-label="Works orders created per day over the last 7 days">
+                <defs>
+                    <linearGradient id="areaChartGradient" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stop-color="var(--fm-blue)" stop-opacity="0.35"></stop>
+                        <stop offset="100%" stop-color="var(--fm-blue)" stop-opacity="0"></stop>
+                    </linearGradient>
+                </defs>
+                {% for gy in wo_trend.gridlines %}
+                <line class="area-chart-gridline" x1="0" y1="{{ gy }}" x2="{{ wo_trend.width }}" y2="{{ gy }}"></line>
+                {% endfor %}
+                <path class="area-chart-fill" d="{{ wo_trend.area_path }}"></path>
+                <path class="area-chart-line" d="{{ wo_trend.line_path }}"></path>
+                {% for p in wo_trend.points %}
+                <circle class="area-chart-point" cx="{{ p.x }}" cy="{{ p.y }}" r="4">
+                    <title>{{ p.label }}: {{ p.count }} works order{{ '' if p.count == 1 else 's' }}</title>
+                </circle>
+                <text class="area-chart-label" x="{{ p.x }}" y="{{ wo_trend.height }}" text-anchor="middle">{{ p.label }}</text>
+                {% endfor %}
+            </svg>
+        </div>
+    </div>
+
+    <!-- WO Status Rings -->
+    <div class="card">
+        <div class="card-header">
+            <h2 class="card-title">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="4"></circle></svg>
+                Works Order Status
+            </h2>
+        </div>
+        <div class="chart-card-body status-rings-wrap">
+            <svg class="status-rings-svg" viewBox="0 0 180 180" role="img" aria-label="Works orders broken down by status">
+                {% for ring in wo_status_rings.rings %}
+                <circle class="status-ring-track" cx="90" cy="90" r="{{ ring.radius }}"></circle>
+                {% if ring.pct > 0 %}
+                <circle class="status-ring-value" cx="90" cy="90" r="{{ ring.radius }}" pathLength="100" stroke-dasharray="{{ ring.pct }}, 100" style="stroke: {{ ring.color }};"></circle>
+                {% endif %}
+                {% endfor %}
+            </svg>
+            <ul class="status-rings-legend">
+                {% for ring in wo_status_rings.rings %}
+                <li>
+                    <span class="legend-dot" style="background: {{ ring.color }};"></span>
+                    <span class="legend-label">{{ ring.status }}</span>
+                    <span class="legend-count">{{ ring.count }}</span>
+                    <span class="legend-pct">{{ ring.pct }}%</span>
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
 </div>
 
 <!-- Total Sales Value (Draft + Open SOs) -->

@@ -72,10 +72,16 @@ runs on the right machine)
       the documentation sub-item — done via git directly from a cloud
       session (no Operations machine access needed, since this hub repo
       is git-synced there, not filesystem-only). Discovered `docs/decisions/`
-      didn't exist yet and neither ADR-007 nor ADR-008 are actually
-      recorded there despite being referenced from `tlelosa-claude-config`
-      — flagged as a follow-up, not fixed (out of this task's scope).
+      didn't exist yet and neither ADR-007 nor ADR-008 were actually
+      recorded there despite being referenced from `tlelosa-claude-config`.
       codex-gate install itself stays Pappa T-only, unaffected by this.
+- [x] **2026-07-29** — Wrote up `ADR-007-core-md-read-not-import.md` and
+      `ADR-008-hub-template-promotion.md` in this hub's `docs/decisions/`,
+      closing the gap found above — both reconstructed from what's
+      documented across `tlelosa-claude-config` (CORE.md's own
+      distribution note, README, `HUB-CHECKLIST.md`), not from source
+      commits (this session doesn't have `tlelosa-claude-config`'s git
+      history). ADR-008's date is approximate.
 - [x] **2026-07-29** — Wrote a ready-to-execute spec for every machine-bound
       item in this queue (`docs/specs/2026-07-29-*.md`, 8 files: NamePlateTool
       spot-check + test suite, codex-gate Pappa T smoke-test + Operations

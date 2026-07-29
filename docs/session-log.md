@@ -394,3 +394,39 @@ on explicit go-ahead). Also worth surfacing: the ADR-007/008
 gap found above.
 **Known risks:** None new.
 **Blockers:** None.
+
+## 2026-07-29 — Wrote up ADR-007 and ADR-008 (closing the gap from the codex-gate ADR copy)
+
+Tebello confirmed writing up the two missing ADRs flagged above.
+Reconstructed both from what's actually documented in
+`tlelosa-claude-config` (added to this session's repo scope, cloned
+read-only) since this session has no access to that repo's commit
+history — content is accurate to what's on file there, not re-derived
+from git log:
+
+- `docs/decisions/ADR-007-core-md-read-not-import.md` — dated 2026-07-18
+  per `dcoe-roster/CORE.md`'s own top-of-file note ("confirmed
+  2026-07-18"): why `CORE.md` is distributed to opted-in projects via a
+  plain read instruction in each project's own `CLAUDE.md`, not a Claude
+  Code `@import` (`@import` doesn't resolve absolute paths outside the
+  importing project's tree, so a plugin-distributed file can't be reached
+  that way).
+- `docs/decisions/ADR-008-hub-template-promotion.md` — dated 2026-07-21
+  (approximate, tied to the `hub-template/` addition, not independently
+  re-verified against commit dates): why the hub-and-spoke `/continue`
+  pattern piloted on Operations was extracted into
+  `tlelosa-claude-config/hub-template/` as a vault-agnostic `continue.md`
+  + `HUB-CHECKLIST.md` reconciliation checklist, once it proved out here.
+
+Both ADRs are now recorded, closing the cross-reference gap — every
+"ADR-007"/"ADR-008 in the Operations hub's `docs/decisions/`" citation
+across `tlelosa-claude-config` now points at a real file. Updated
+`docs/todo.md` and `knowledge/tlelosa-claude-config.md`/`INDEX.md`.
+
+**Last completed:** ADR-007 and ADR-008 written up (this entry).
+**Next task:** Unchanged — whichever machine-bound queue item matches the
+next session's machine (Pappa T: codex-gate smoke-test, TebelloReborn
+scope decision, Ollama timeout fix; Operations: NamePlateTool spot-check,
+NamePlateTool test suite, or one of the two SOPS items).
+**Known risks:** None new.
+**Blockers:** None.

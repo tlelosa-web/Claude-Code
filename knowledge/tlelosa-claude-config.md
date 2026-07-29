@@ -11,14 +11,23 @@ assumption (009). Content unchanged from the draft — no cross-reference
 needed updating since the draft already pointed at the correct final
 location.
 
-**Gap discovered while doing this:** `docs/decisions/` didn't exist in this
-hub repo before this task — despite `tlelosa-claude-config`'s own README,
-`CORE.md`, and `HUB-CHECKLIST.md` all referencing "ADR-007" and "ADR-008 in
-the Operations hub's `docs/decisions/`" as if they were already recorded
-there. Neither ADR-007 nor ADR-008 files exist here. Not fixed as part of
-this task (out of scope — the spec only covered ADR-009), but worth a
-follow-up: either those two decisions need to actually be written up and
-recorded, or the cross-references pointing at them should be corrected.
+**Gap discovered while doing this, now closed:** `docs/decisions/` didn't
+exist in this hub repo before this task — despite `tlelosa-claude-config`'s
+own README, `CORE.md`, and `HUB-CHECKLIST.md` all referencing "ADR-007" and
+"ADR-008 in the Operations hub's `docs/decisions/`" as if they were already
+recorded there. Wrote both up from what's actually documented across
+`tlelosa-claude-config` (CORE.md's top-of-file distribution note, the
+README's `dcoe-roster`/`hub-template` sections, `HUB-CHECKLIST.md`):
+- `docs/decisions/ADR-007-core-md-read-not-import.md` — why `CORE.md` is
+  distributed via a plain read instruction in each project's `CLAUDE.md`,
+  not a Claude Code `@import` (confirmed 2026-07-18: `@import` doesn't
+  resolve absolute paths outside the project tree).
+- `docs/decisions/ADR-008-hub-template-promotion.md` — why the
+  hub-and-spoke `/continue` pattern was extracted into
+  `tlelosa-claude-config/hub-template/` as a vault-agnostic skeleton +
+  reconciliation checklist, once it proved out on Operations. Date is
+  approximate (dated to the `hub-template/` addition, not independently
+  re-verified against commit history this session).
 
 codex-gate itself stays **Pappa T-only regardless** — this copy only closes
 the documentation sub-item, not the install. Still open, per

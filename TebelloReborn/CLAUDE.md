@@ -133,7 +133,7 @@ Neither backend has an "Opus escalation" concept — there is no OpenRouter mode
 
 Core pipeline logic (profile import, schema validation, approval gate, local data transforms) must work fully offline. Only these stages require network:
 
-- Vacancy fetch (Apify — Indeed + LinkedIn actors)
+- Vacancy fetch (Apify — Indeed + LinkedIn actors, and the generic crawler + local LLM extraction for PNet/Careers24)
 - AI matching / scoring (local Ollama)
 - Document generation (headless Claude Code)
 
@@ -168,14 +168,17 @@ The rate-limited network clients share the token-bucket rate limiter pattern fro
 
 | Client                              | Source                         | Default rate | Env override                  |
 |--------------------------------------|---------------------------------|---------------|--------------------------------|
-| `shared/ollama_client.py`            | Mirrors `research/ollama_client.py` pattern (ADR-003); promoted from `matching/ollama_client.py` in Phase 9 once it gained a second consumer (ADR-003 §Alternatives.D) — now shared by `matching/scorer.py` and (Phase 12, not yet built) the future `vacancy_search/extractor.py` | 120 / min | `OLLAMA_RATE_LIMIT_PER_MIN` |
+| `shared/ollama_client.py`            | Mirrors `research/ollama_client.py` pattern (ADR-003); promoted from `matching/ollama_client.py` in Phase 9 once it gained a second consumer (ADR-003 §Alternatives.D) — shared by `matching/scorer.py` and `vacancy_search/extractor.py` | 120 / min | `OLLAMA_RATE_LIMIT_PER_MIN` |
 | `vacancy_search/apify_client.py`     | Mirrors `research/apify_client.py` pattern | 30 / min | `APIFY_RATE_LIMIT_PER_MIN`      |
+| `vacancy_search/crawler_client.py`   | Mirrors `research/apify_client.py`'s generic-crawler pattern; Apify's `website-content-crawler` actor, used for PNet/Careers24 | 30 / min | `CRAWLER_RATE_LIMIT_PER_MIN` |
+
+`vacancy_search/discovery.py` (PNet/Careers24 search-URL discovery, see below) has **no rate limiter of its own** — it reuses `crawler_client.py`'s limiter transitively via `fetch_raw_page()`.
 
 The `doc_gen/` runner is **not** in this table — it is a local subprocess under a flat-cost subscription, not a rate-limited HTTP client, so no token-bucket applies to it (same distinction `ai-outreach-agency` draws between its handoff runner and its rate-limited clients).
 
-- **Local Ollama**: real inference for matching (`matching/scorer.py`) via `shared/ollama_client.py`, native `POST {OLLAMA_BASE_URL}/api/generate` against `qwen3:8b`, no API key (local daemon). Fails loudly — `OllamaUnreachableError` on connection-refused/connect-timeout ("is it running?"), `OllamaError` on read-timeout ("model may be slow/cold-loading") — distinct exception types for distinct causes, never collapsed into one message. No silent fallback (and after ADR-003 there is no OpenRouter left to fall back to anyway). See ADR-003 and `docs/api-patterns.md`.
+- **Local Ollama**: real inference for matching (`matching/scorer.py`) and PNet/Careers24 field extraction (`vacancy_search/extractor.py`) via `shared/ollama_client.py`, native `POST {OLLAMA_BASE_URL}/api/generate` against `qwen3:8b`, no API key (local daemon). Fails loudly — `OllamaUnreachableError` on connection-refused/connect-timeout ("is it running?"), `OllamaError` on read-timeout ("model may be slow/cold-loading") — distinct exception types for distinct causes, never collapsed into one message. No silent fallback (and after ADR-003 there is no OpenRouter left to fall back to anyway). See ADR-003 and `docs/api-patterns.md`.
 - **Headless Claude Code**: real document generation (`doc_gen/cv_generator.py` + `cover_letter_generator.py`) via a `src/doc_gen/` runner that shells out to `claude -p ... --allowedTools "Read,Write" --output-format json` as a local subprocess, under Tebello's own Claude subscription ($0 marginal cost, no API key). This is a **local runtime dependency, not an HTTP client** — the `claude` binary must be on `PATH` and authenticated on whatever machine runs it, which is not pip-installable or CI-verifiable and surfaces as a runtime error, not an import-time failure. Failures are data, not exceptions: the runner returns `throttled`/`error` as result fields so a throttle mid-`run-all` doesn't crash the batch; only a genuinely unexpected condition (`claude` missing from `PATH`) propagates. See ADR-003.
-- **Apify**: two dedicated job-board actors (Indeed scraper, LinkedIn Jobs scraper) confirmed available on the Apify Store. **PNet and Careers24 have no dedicated actor** — deferred; could later use the generic `website-content-crawler` actor (same one `ai-outreach-agency` already uses) plus LLM-based extraction. `OFFLINE_MODE` fixture returns 2–3 fake vacancies, matching the `apify_client.FIXTURE` convention.
+- **Apify**: two dedicated job-board actors (Indeed scraper, LinkedIn Jobs scraper). **PNet and Careers24 have no dedicated actor** (ADR-002) — covered instead via the generic `website-content-crawler` actor (`crawler_client.py`) plus local-Ollama field extraction (`extractor.py`), fed by automated search-URL discovery (`discovery.py`), not deferred any more — see ADR-002's 2026-07-29 amendment and `docs/api-patterns.md`. `OFFLINE_MODE` fixture returns 2–3 fake vacancies per client, matching the `FIXTURE` convention.
 
 See @docs/api-patterns.md for full detail.
 
@@ -205,7 +208,7 @@ No Gmail integration in the MVP (no email-sending stage) — may be added if/whe
 > Keep this section current. It overrides assumptions from training data.
 
 - **ADR-001**: SQLite is the source of truth for profile + vacancy data (mirrors `ai-outreach-agency` ADR-001).
-- **ADR-002**: Job-board scraping via Apify (Indeed + LinkedIn actors) for MVP; PNet/Careers24 deferred — no dedicated Apify actor exists for either as of this decision.
+- **ADR-002**: Job-board scraping via Apify (Indeed + LinkedIn actors) for MVP; PNet/Careers24 covered via the generic crawler + local LLM extraction + automated discovery (2026-07-29 amendment) — no dedicated Apify actor exists for either.
 - **ADR-003**: OpenRouter dropped entirely — AI Matching routes to local Ollama (`qwen3:8b`), Document Generation routes to headless Claude Code (`claude -p`), $0 marginal cost on both, no scheduler/volume-cap machinery adopted (no documented need). See `docs/decisions/ADR-003-inference-provider-split.md`.
 - **DB access**: SQLite via `sqlite3`. No schema change without a migration file.
 - **Config**: `src/config.py` `Settings` via `python-dotenv`. Never hardcode. Never commit `.env`.
@@ -267,6 +270,8 @@ TebelloReborn/
 ├── data/
 │   ├── profile_seed.json         ← structured candidate profile (to be authored)
 │   ├── Tebello_Lelosa_Master_CV_2026.md   ← source CV, copied forward for reference
+│   ├── crawler_seed_urls.json    ← PNet fallback seed URLs (job-detail pages only) + Careers24 placeholders
+│   ├── discovery_config.json     ← PNet manual-verification gate (mode: auto | manual_pending_verification)
 │   └── legacy_reference/         ← old tracker + recruiter DB, read-only history
 ├── _archive_qwen_prototype/      ← everything from the old hand-built prototype, preserved
 ├── docs/
@@ -274,7 +279,7 @@ TebelloReborn/
 │   ├── architecture.md
 │   ├── api-patterns.md
 │   ├── session-log.md
-│   └── decisions/                ← ADR-001, ADR-002
+│   └── decisions/                ← ADR-001, ADR-002 (+ 2026-07-29 discovery amendment), ADR-003
 ├── .claude/
 │   ├── agents/                   ← DCOE agent definitions
 │   └── commands/
@@ -286,7 +291,8 @@ TebelloReborn/
     ├── config.py                 ← Settings via python-dotenv
     ├── shared/                   ← rate_limiter.py, ollama_client.py (ADR-003; promoted from matching/ in Phase 9)
     ├── profile/                  ← CandidateProfile schema + db
-    ├── vacancy_search/           ← Vacancy schema + apify_client.py + db
+    ├── vacancy_search/           ← Vacancy schema + db + apify_client.py + crawler_client.py +
+    │                                discovery.py + extraction_prompt.py + extractor.py (PNet/Careers24)
     ├── matching/                 ← prompt_builder.py + scorer.py (ADR-003)
     ├── doc_gen/                  ← runner.py, schema.py, db.py, migrations.py (ADR-003) + cv_generator.py, cover_letter_generator.py, pdf_export.py
     └── review/                   ← approval gate CLI

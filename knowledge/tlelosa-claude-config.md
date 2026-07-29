@@ -1,6 +1,44 @@
+## 2026-07-29 — codex-gate ADR copied into this hub's docs/decisions/
+**Source:** session (Operations ADR copy, via git — no local Operations
+machine access needed since it was a straight file write through this
+repo's own remote)
+**Status:** active
+
+Copied `tlelosa-claude-config/docs/specs/2026-07-21-codex-gate-adr-draft.md`
+(content below its divider) into this hub's own `docs/decisions/` as
+`ADR-009-codex-second-opinion-gate.md`, per the draft's own numbering
+assumption (009). Content unchanged from the draft — no cross-reference
+needed updating since the draft already pointed at the correct final
+location.
+
+**Gap discovered while doing this, now closed:** `docs/decisions/` didn't
+exist in this hub repo before this task — despite `tlelosa-claude-config`'s
+own README, `CORE.md`, and `HUB-CHECKLIST.md` all referencing "ADR-007" and
+"ADR-008 in the Operations hub's `docs/decisions/`" as if they were already
+recorded there. Wrote both up from what's actually documented across
+`tlelosa-claude-config` (CORE.md's top-of-file distribution note, the
+README's `dcoe-roster`/`hub-template` sections, `HUB-CHECKLIST.md`):
+- `docs/decisions/ADR-007-core-md-read-not-import.md` — why `CORE.md` is
+  distributed via a plain read instruction in each project's `CLAUDE.md`,
+  not a Claude Code `@import` (confirmed 2026-07-18: `@import` doesn't
+  resolve absolute paths outside the project tree).
+- `docs/decisions/ADR-008-hub-template-promotion.md` — why the
+  hub-and-spoke `/continue` pattern was extracted into
+  `tlelosa-claude-config/hub-template/` as a vault-agnostic skeleton +
+  reconciliation checklist, once it proved out on Operations. Date is
+  approximate (dated to the `hub-template/` addition, not independently
+  re-verified against commit history this session).
+
+codex-gate itself stays **Pappa T-only regardless** — this copy only closes
+the documentation sub-item, not the install. Still open, per
+`docs/todo.md`:
+- codex-gate install + network-off smoke-test on Pappa T
+- Fan Movement IT confirmation on whether OpenAI egress from Operations is
+  covered (codex-gate stays Pappa T-only until then)
+
 ## 2026-07-28 — Rollout PR merged; codex-gate + IT question still open
 **Source:** session (cross-project status survey)
-**Status:** active
+**Status:** superseded
 
 PR #9 ("Mark marketplace validation and plugin rollouts complete") merged
 into `main` — marketplace validation, dcoe-roster 3.3.0, document-skills,

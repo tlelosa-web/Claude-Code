@@ -36,10 +36,15 @@ app with session-management enabled.
 
 Then proceed to Step 0.5.
 
-## Step 0.5 — Detect Superseded Sessions (ADR-005)
+## Step 0.5 — Detect Superseded or Stale Sessions (ADR-005, broadened 2026-07-29)
 
-Check for sessions whose task has clearly been completed or made obsolete by
-later work on the same project, and propose archiving them:
+Originally this step only caught sessions clearly superseded by later work
+in the *same* project — a narrow bar that let plain-old-idle sessions pile
+up unarchived even when nothing about them was ambiguous. It now checks
+two independent categories each run; a session only needs to match one:
+
+**A. Superseded** — task completed or made obsolete by later work on the
+same project:
 
 1. Group the `list_sessions` results (already fetched in Step 0) by `cwd`
    (project folder).
@@ -55,10 +60,35 @@ later work on the same project, and propose archiving them:
 3. For each session judged superseded, propose it to Tebello by name/title
    with a one-line reason (e.g. "`Cont-\"Batch 25 resume: Edit Item
    modals\"` — that PR merged in a later session, this one's task is done").
-4. **Never call `archive_session` speculatively.** Only archive a session
-   Tebello has explicitly confirmed in this turn, one at a time.
-5. If nothing looks superseded, say so briefly and move on — this step
-   should not turn into an interrogation when the session list is clean.
+
+**B. Stale/idle** — nothing to do with whether the task is superseded,
+just whether the session is plainly dead weight:
+
+1. Using `list_sessions`' last-activity timestamp for each other session,
+   flag any session with **no activity in 7+ days**.
+2. For each flagged session, read enough of its transcript with
+   `list_events` to sanity-check it's actually dead, not just quiet
+   because it's mid-wait on something external (e.g. blocked on Tebello's
+   go-ahead per a spec, waiting on IT, watching a PR). A session with a
+   real open thread stays off the list even if it's old — staleness is
+   about abandonment, not age alone.
+3. Also flag single-exchange sessions with no follow-up task (the same
+   condition Step 0 point 4 uses to skip renaming) once they're past the
+   7-day mark — a `Continuation` session nobody ever gave a real task to
+   is the clearest case of dead weight there is.
+4. For each session flagged stale, propose it to Tebello by name/title
+   with a one-line reason (e.g. "`Cont-\"Draft outreach copy edits\"` —
+   last activity 2026-07-14, no open thread, nothing pending").
+
+**Both categories:**
+
+- **Never call `archive_session` speculatively.** Only archive a session
+  Tebello has explicitly confirmed in this turn, one at a time.
+- Present superseded and stale candidates together as one combined list so
+  Tebello isn't asked twice in the same run.
+- If nothing looks superseded or stale, say so briefly and move on — this
+  step should not turn into an interrogation when the session list is
+  clean.
 
 Then proceed to Step 1.
 

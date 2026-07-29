@@ -11,44 +11,58 @@ Per DCOE: update after every completed task; one task = one commit.
 
 - [ ] None currently.
 
-## Next up (priority order, set 2026-07-28)
+## Next up (priority order, set 2026-07-28; specs added 2026-07-29 so each
+machine-bound item is ready to hand to an executor the moment `/continue`
+runs on the right machine)
 
 1. [ ] **NamePlateTool: spot-check the Excel-import fix** — commit
       `777be76` fixed the datetime crash + dead sheet-name check
       (2026-07-28), but no session has manually verified the fix against a
-      real generated PDF yet. Machine-bound (NamePlateTool lives on
-      Operations) — run from an Operations session. Detail:
+      real generated PDF yet. ⚠️ Operations only. Spec (ready):
+      `docs/specs/2026-07-29-nameplatetool-excel-spotcheck.md`. Detail:
       `knowledge/nameplatetool.md`.
-2. [ ] **Close out the codex-gate rollout** (`tlelosa-claude-config`) — three
-      items outstanding: install + network-off smoke-test on Pappa T, copy
-      the drafted ADR into the Operations hub's `docs/decisions/`, and get
-      Fan Movement IT to confirm OpenAI-egress coverage for Operations
-      (codex-gate stays Pappa T-only until then). Detail:
-      `tlelosa-claude-config/docs/todo.md`, `knowledge/tlelosa-claude-config.md`.
+2. [ ] **codex-gate: Pappa T install + network-off smoke-test.** ⚠️ Pappa T
+      only. Spec (ready):
+      `docs/specs/2026-07-29-codex-gate-pappa-t-smoketest.md`.
+3. [ ] **codex-gate: copy drafted ADR into the Operations hub's
+      `docs/decisions/`.** ⚠️ Operations only. Spec (ready):
+      `docs/specs/2026-07-29-codex-gate-operations-adr-copy.md`.
+      codex-gate itself stays Pappa T-only regardless — Fan Movement IT
+      still needs to confirm OpenAI-egress coverage for Operations before
+      install there (no spec for this one — it's a pending external
+      answer, not a task any session can execute). Detail:
+      `knowledge/tlelosa-claude-config.md`.
 4. [ ] **NamePlateTool: add a real automated test suite** — not urgent;
-      `tests/` is ad-hoc manual-check scripts only.
+      `tests/` is ad-hoc manual-check scripts only. ⚠️ Operations only.
+      Spec (ready, starter scope — confirm before building):
+      `docs/specs/2026-07-29-nameplatetool-test-suite.md`.
 5. [ ] **TebelloReborn: decide on post-MVP scope** — Playwright auto-submit,
       recruiter/cold-outreach revival, and a doc-gen volume-cap/scheduler
-      are all undecided backlog items, no urgency behind them yet. Detail:
-      `knowledge/tebelloreborn.md` (supersedes the pointer to `pappa-t.md`
-      this item previously had — see that project's own dedicated file now).
+      are all undecided backlog items, no urgency behind them yet. ⚠️
+      Pappa T only. Spec (ready, decision brief — not a build spec):
+      `docs/specs/2026-07-29-tebelloreborn-scope-decision.md`. Detail:
+      `knowledge/tebelloreborn.md`.
 6. [ ] **ai-outreach-agency: bump Ollama `READ_TIMEOUT` 60s→120s + add
-      `keep_alive: "30m"`** to `/api/generate` — local generation sits close
-      to the current timeout ceiling on cold-load calls, risking
-      intermittent false-positive errors on a real batch. Small, single-file
-      fix. Detail: `knowledge/ai-outreach-agency.md`.
+      `keep_alive: "30m"`** to `/api/generate`. Small, single-file fix. ⚠️
+      Pappa T only. Spec (ready):
+      `docs/specs/2026-07-29-ollama-timeout-fix.md`. Detail:
+      `knowledge/ai-outreach-agency.md`.
 7. [ ] **SOPS: give the go-ahead to run the AvgMovement migration against
       `instance/sops.db`** — Supplier/Lead-Time + AMU/Min-Max logic ported
       and fully tested (Batch 32/33, commits `fe06eaa`/`112e321`), held for
       Tebello per SOPS's standing schema-change convention. This is the
       blocking step before `8. AvgMovement` (already Retired in the
-      Operations hub project index) can be decommissioned. Detail:
+      Operations hub project index) can be decommissioned. ⚠️ Operations
+      only. Spec (ready, but gated — do not run without explicit
+      in-session go-ahead):
+      `docs/specs/2026-07-29-sops-avgmovement-migration.md`. Detail:
       `2. SOPS/docs/todo.md`, `knowledge/sops.md`.
 8. [ ] **SOPS: Payment Status data-migration review** — a batch of
       historical Sales Orders need human review of migrated/backfilled
-      payment-status values before being treated as fully validated.
-      Detail: `2. SOPS/docs/todo.md` (2026-07-14 entry onward),
-      `knowledge/sops.md`.
+      payment-status values before being treated as fully validated. ⚠️
+      Operations only. Spec (ready):
+      `docs/specs/2026-07-29-sops-payment-status-review.md`. Detail:
+      `2. SOPS/docs/todo.md` (2026-07-14 entry onward), `knowledge/sops.md`.
 
 ## Backlog / ideas (not committed)
 
@@ -56,6 +70,18 @@ Per DCOE: update after every completed task; one task = one commit.
 
 ## Done
 
+- [x] **2026-07-29** — Wrote a ready-to-execute spec for every machine-bound
+      item in this queue (`docs/specs/2026-07-29-*.md`, 8 files: NamePlateTool
+      spot-check + test suite, codex-gate Pappa T smoke-test + Operations
+      ADR copy, TebelloReborn scope decision, ai-outreach-agency Ollama
+      timeout, SOPS AvgMovement migration (gated) + Payment Status review)
+      — so the moment `/continue` runs on Pappa T or Operations, the next
+      task on that machine already has exact steps, no fresh research
+      needed. Linked each spec from its `docs/todo.md` item and split the
+      3-part codex-gate item into 3 numbered items (2 machine-bound specs +
+      1 externally-gated item with no spec) since they don't share a
+      machine. Fixed a numbering gap (item "3" had been skipped since the
+      2026-07-29 renumbering).
 - [x] **2026-07-29** — Removed the "ai-outreach-agency: top up OpenRouter
       credits" item per Tebello's direction — treated as a dead end, not
       pursued. `asset_gen` stays blocked on OpenRouter until the

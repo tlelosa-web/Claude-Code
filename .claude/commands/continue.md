@@ -138,6 +138,14 @@ isn't that machine.
   clearly (e.g. "⚠️ requires local access on Pappa T — can't run from this
   session") in both the Step 3 report and its `AskUserQuestion` option
   description, so Tebello isn't offered it as if it were runnable here.
+- If a candidate task **is** machine-bound but this session **is** that
+  machine (e.g. running on Pappa T and the task says "Pappa T only"), check
+  `docs/todo.md` for a linked spec under `docs/specs/`. If one exists, say
+  so plainly in the Step 3 report ("Spec ready: docs/specs/<name>.md — no
+  further research needed, can start immediately") — this is the common
+  case now that machine-bound queue items get specs written ahead of time
+  from cloud sessions (started 2026-07-29). Don't re-derive a plan from
+  scratch if a ready spec already exists.
 - This is a labeling check only — don't skip the task, don't silently
   reorder the queue, and don't try to work around the access gap (e.g. by
   guessing at the other machine's folder structure) without Tebello asking

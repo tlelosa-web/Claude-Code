@@ -430,3 +430,49 @@ scope decision, Ollama timeout fix; Operations: NamePlateTool spot-check,
 NamePlateTool test suite, or one of the two SOPS items).
 **Known risks:** None new.
 **Blockers:** None.
+
+## 2026-07-29 — NamePlateTool Excel-import spot-check (Operations)
+
+Ran on Operations per `/continue`'s machine-identity check (hostname/whoami
+cross-referenced against `knowledge/operations-hub.md`). Picked up the sole
+Operations-runnable ready spec,
+`docs/specs/2026-07-29-nameplatetool-excel-spotcheck.md`.
+
+Pulling `origin/main` on the NamePlateTool sub-repo (`C:\Dev\Operations\3.
+Nameplate & Test Sheet`) to obtain commit `777be76` (the datetime-crash
+fix under test) was blocked by uncommitted prior-session work
+(`docs/todo.md` changes + a new untracked `docs/bugs/` file from an earlier
+bug-hunt pass). Preserved it via `git stash push -u`, pulled cleanly
+(`f8341b4..777be76`), then `git stash pop` produced a genuine merge
+conflict in `docs/todo.md` — resolved as a real union (all three bug-hunt
+findings kept, the fix's own Done-section entry kept, only the now-stale
+duplicate "still open" bug line dropped). Staged (`git add`) but **left
+uncommitted** per standing policy (never commit without being asked) — this
+is flagged for Tebello, not yet committed.
+
+With the fix pulled, ran the actual spot-check: launched the backend
+directly via its venv's `uvicorn` on port 8811, hit
+`GET /api/nameplate/from-excel` against the real `NAME PLATE
+PROCEDURE.xlsx` — `200`, no `datetime is not JSON serializable` crash,
+`date_of_manuf: "MAY.2026"` correctly formatted. Fed that response into
+`POST /api/generate-pdf` and extracted the resulting PDF's text with
+`pdfplumber`: `Date of Manuf.: MAY.2026` plus every other Excel-sourced
+field (Series, Size, Motor, Voltage, F.L.A, Op Temp, Conn, Serial No)
+populated and non-blank. Killed the test `uvicorn` process tree
+(root+worker PIDs, per the known `--reload` supervisor gotcha) afterward.
+
+Fix is fully verified end-to-end — no new bug found. Updated
+`knowledge/nameplatetool.md`'s 2026-07-28 entry with the verification
+result, removed the spot-check item from this hub's `docs/todo.md` and
+renumbered the remaining queue (1-6).
+
+**Last completed:** NamePlateTool Excel-import fix spot-check (this entry)
+— confirmed correct, no new bug.
+**Next task:** Whichever machine-bound queue item matches the next
+session's machine (Pappa T: codex-gate smoke-test, TebelloReborn scope
+decision, Ollama timeout fix; Operations: NamePlateTool test suite, or one
+of the two SOPS items).
+**Known risks:** None new.
+**Blockers:** NamePlateTool sub-repo has staged-but-uncommitted changes
+(`docs/todo.md` merge resolution + `docs/bugs/connection-lookup-no-manual-
+override.md`) awaiting Tebello's go-ahead to commit.

@@ -15,13 +15,7 @@ Per DCOE: update after every completed task; one task = one commit.
 machine-bound item is ready to hand to an executor the moment `/continue`
 runs on the right machine)
 
-1. [ ] **NamePlateTool: spot-check the Excel-import fix** — commit
-      `777be76` fixed the datetime crash + dead sheet-name check
-      (2026-07-28), but no session has manually verified the fix against a
-      real generated PDF yet. ⚠️ Operations only. Spec (ready):
-      `docs/specs/2026-07-29-nameplatetool-excel-spotcheck.md`. Detail:
-      `knowledge/nameplatetool.md`.
-2. [ ] **codex-gate: Pappa T install + network-off smoke-test.** ⚠️ Pappa T
+1. [ ] **codex-gate: Pappa T install + network-off smoke-test.** ⚠️ Pappa T
       only. Spec (ready):
       `docs/specs/2026-07-29-codex-gate-pappa-t-smoketest.md`.
       codex-gate itself stays Pappa T-only regardless — Fan Movement IT
@@ -29,22 +23,22 @@ runs on the right machine)
       install there (no spec for this one — it's a pending external
       answer, not a task any session can execute). Detail:
       `knowledge/tlelosa-claude-config.md`.
-3. [ ] **NamePlateTool: add a real automated test suite** — not urgent;
+2. [ ] **NamePlateTool: add a real automated test suite** — not urgent;
       `tests/` is ad-hoc manual-check scripts only. ⚠️ Operations only.
       Spec (ready, starter scope — confirm before building):
       `docs/specs/2026-07-29-nameplatetool-test-suite.md`.
-4. [ ] **TebelloReborn: decide on post-MVP scope** — Playwright auto-submit,
+3. [ ] **TebelloReborn: decide on post-MVP scope** — Playwright auto-submit,
       recruiter/cold-outreach revival, and a doc-gen volume-cap/scheduler
       are all undecided backlog items, no urgency behind them yet. ⚠️
       Pappa T only. Spec (ready, decision brief — not a build spec):
       `docs/specs/2026-07-29-tebelloreborn-scope-decision.md`. Detail:
       `knowledge/tebelloreborn.md`.
-5. [ ] **ai-outreach-agency: bump Ollama `READ_TIMEOUT` 60s→120s + add
+4. [ ] **ai-outreach-agency: bump Ollama `READ_TIMEOUT` 60s→120s + add
       `keep_alive: "30m"`** to `/api/generate`. Small, single-file fix. ⚠️
       Pappa T only. Spec (ready):
       `docs/specs/2026-07-29-ollama-timeout-fix.md`. Detail:
       `knowledge/ai-outreach-agency.md`.
-6. [ ] **SOPS: give the go-ahead to run the AvgMovement migration against
+5. [ ] **SOPS: give the go-ahead to run the AvgMovement migration against
       `instance/sops.db`** — Supplier/Lead-Time + AMU/Min-Max logic ported
       and fully tested (Batch 32/33, commits `fe06eaa`/`112e321`), held for
       Tebello per SOPS's standing schema-change convention. This is the
@@ -54,7 +48,7 @@ runs on the right machine)
       in-session go-ahead):
       `docs/specs/2026-07-29-sops-avgmovement-migration.md`. Detail:
       `2. SOPS/docs/todo.md`, `knowledge/sops.md`.
-7. [ ] **SOPS: Payment Status data-migration review** — a batch of
+6. [ ] **SOPS: Payment Status data-migration review** — a batch of
       historical Sales Orders need human review of migrated/backfilled
       payment-status values before being treated as fully validated. ⚠️
       Operations only. Spec (ready):
@@ -67,6 +61,19 @@ runs on the right machine)
 
 ## Done
 
+- [x] **2026-07-29** — NamePlateTool Excel-import spot-check completed
+      (Operations session): ran a live `uvicorn` backend against the real
+      `NAME PLATE PROCEDURE.xlsx`, confirmed `GET /api/nameplate/from-excel`
+      returns `200` with no datetime-serialization crash and a correctly
+      formatted `date_of_manuf`, then fed that data through
+      `POST /api/generate-pdf` and confirmed the generated PDF has every
+      Excel-sourced field populated and non-blank. Commit `777be76`'s fix
+      is fully verified — see `knowledge/nameplatetool.md`. Also: pulling
+      `origin/main` on the NamePlateTool sub-repo to obtain that fix
+      surfaced an unrelated uncommitted merge-conflict situation (prior
+      session's bug-hunt findings vs. the pulled fix), resolved as a real
+      union and staged but left uncommitted per standing policy — flagged
+      to Tebello, not committed automatically.
 - [x] **2026-07-29** — codex-gate: copied the drafted ADR into this hub's
       `docs/decisions/` (`ADR-009-codex-second-opinion-gate.md`), closing
       the documentation sub-item — done via git directly from a cloud

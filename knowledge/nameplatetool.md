@@ -56,8 +56,16 @@ attempt regressed to blank fields: it swapped in a `"NamePlateProc"` check,
 but that sheet is a static instructions/reference sheet, not per-job data —
 the real fix needed the `Info+Data Entry Form` branch's existing
 label-reading logic, not a renamed condition string on the wrong sheet.
-Manual PDF-output verification against this fix not yet confirmed from this
-hub session — worth a spot-check before treating it as fully closed.
+
+**2026-07-29 spot-check confirmed the fix end-to-end** from an Operations
+session: ran a live `uvicorn` backend against the real `NAME PLATE
+PROCEDURE.xlsx`. `GET /api/nameplate/from-excel` returned `200`, no
+serialization crash, `date_of_manuf: "MAY.2026"` (correctly formatted, not
+a raw datetime). Fed that response into `POST /api/generate-pdf` and
+extracted the resulting PDF's text: `Date of Manuf.: MAY.2026` plus every
+other Excel-sourced field (Series, Size, Motor, Voltage, F.L.A, Op Temp,
+Conn, Serial No) populated and non-blank. Fix is fully closed — no further
+verification needed.
 
 ## 2026-07-28 — Bug was still unfixed as of this check (superseded same day)
 **Source:** session (cross-project status survey), `docs/todo.md`

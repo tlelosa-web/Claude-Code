@@ -19,7 +19,7 @@ Per DCOE: update after every completed task; one task = one commit.
       real generated PDF yet. Machine-bound (NamePlateTool lives on
       Operations) — run from an Operations session. Detail:
       `knowledge/nameplatetool.md`.
-3. [ ] **Close out the codex-gate rollout** (`tlelosa-claude-config`) — three
+2. [ ] **Close out the codex-gate rollout** (`tlelosa-claude-config`) — three
       items outstanding: install + network-off smoke-test on Pappa T, copy
       the drafted ADR into the Operations hub's `docs/decisions/`, and get
       Fan Movement IT to confirm OpenAI-egress coverage for Operations
@@ -32,23 +32,19 @@ Per DCOE: update after every completed task; one task = one commit.
       are all undecided backlog items, no urgency behind them yet. Detail:
       `knowledge/tebelloreborn.md` (supersedes the pointer to `pappa-t.md`
       this item previously had — see that project's own dedicated file now).
-6. [ ] **ai-outreach-agency: top up OpenRouter credits** — `asset_gen` has
-      been blocked on HTTP 402 since 2026-07-04; unblocks real (non-offline)
-      batch runs until its headless-Claude-Code migration (Build Queue A)
-      lands. Detail: `knowledge/ai-outreach-agency.md`.
-7. [ ] **ai-outreach-agency: bump Ollama `READ_TIMEOUT` 60s→120s + add
+6. [ ] **ai-outreach-agency: bump Ollama `READ_TIMEOUT` 60s→120s + add
       `keep_alive: "30m"`** to `/api/generate` — local generation sits close
       to the current timeout ceiling on cold-load calls, risking
       intermittent false-positive errors on a real batch. Small, single-file
       fix. Detail: `knowledge/ai-outreach-agency.md`.
-8. [ ] **SOPS: give the go-ahead to run the AvgMovement migration against
+7. [ ] **SOPS: give the go-ahead to run the AvgMovement migration against
       `instance/sops.db`** — Supplier/Lead-Time + AMU/Min-Max logic ported
       and fully tested (Batch 32/33, commits `fe06eaa`/`112e321`), held for
       Tebello per SOPS's standing schema-change convention. This is the
       blocking step before `8. AvgMovement` (already Retired in the
       Operations hub project index) can be decommissioned. Detail:
       `2. SOPS/docs/todo.md`, `knowledge/sops.md`.
-9. [ ] **SOPS: Payment Status data-migration review** — a batch of
+8. [ ] **SOPS: Payment Status data-migration review** — a batch of
       historical Sales Orders need human review of migrated/backfilled
       payment-status values before being treated as fully validated.
       Detail: `2. SOPS/docs/todo.md` (2026-07-14 entry onward),
@@ -60,6 +56,11 @@ Per DCOE: update after every completed task; one task = one commit.
 
 ## Done
 
+- [x] **2026-07-29** — Removed the "ai-outreach-agency: top up OpenRouter
+      credits" item per Tebello's direction — treated as a dead end, not
+      pursued. `asset_gen` stays blocked on OpenRouter until the
+      headless-Claude-Code migration (Build Queue A) lands instead; see
+      `knowledge/ai-outreach-agency.md` for the superseded entry.
 - [x] **2026-07-29** — Hub process review: promoted the NamePlateTool
       Excel-import spot-check (previously just a prose caveat in
       `session-log.md`) to a tracked `docs/todo.md` item; resolved the

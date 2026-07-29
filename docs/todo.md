@@ -24,30 +24,27 @@ runs on the right machine)
 2. [ ] **codex-gate: Pappa T install + network-off smoke-test.** ⚠️ Pappa T
       only. Spec (ready):
       `docs/specs/2026-07-29-codex-gate-pappa-t-smoketest.md`.
-3. [ ] **codex-gate: copy drafted ADR into the Operations hub's
-      `docs/decisions/`.** ⚠️ Operations only. Spec (ready):
-      `docs/specs/2026-07-29-codex-gate-operations-adr-copy.md`.
       codex-gate itself stays Pappa T-only regardless — Fan Movement IT
       still needs to confirm OpenAI-egress coverage for Operations before
       install there (no spec for this one — it's a pending external
       answer, not a task any session can execute). Detail:
       `knowledge/tlelosa-claude-config.md`.
-4. [ ] **NamePlateTool: add a real automated test suite** — not urgent;
+3. [ ] **NamePlateTool: add a real automated test suite** — not urgent;
       `tests/` is ad-hoc manual-check scripts only. ⚠️ Operations only.
       Spec (ready, starter scope — confirm before building):
       `docs/specs/2026-07-29-nameplatetool-test-suite.md`.
-5. [ ] **TebelloReborn: decide on post-MVP scope** — Playwright auto-submit,
+4. [ ] **TebelloReborn: decide on post-MVP scope** — Playwright auto-submit,
       recruiter/cold-outreach revival, and a doc-gen volume-cap/scheduler
       are all undecided backlog items, no urgency behind them yet. ⚠️
       Pappa T only. Spec (ready, decision brief — not a build spec):
       `docs/specs/2026-07-29-tebelloreborn-scope-decision.md`. Detail:
       `knowledge/tebelloreborn.md`.
-6. [ ] **ai-outreach-agency: bump Ollama `READ_TIMEOUT` 60s→120s + add
+5. [ ] **ai-outreach-agency: bump Ollama `READ_TIMEOUT` 60s→120s + add
       `keep_alive: "30m"`** to `/api/generate`. Small, single-file fix. ⚠️
       Pappa T only. Spec (ready):
       `docs/specs/2026-07-29-ollama-timeout-fix.md`. Detail:
       `knowledge/ai-outreach-agency.md`.
-7. [ ] **SOPS: give the go-ahead to run the AvgMovement migration against
+6. [ ] **SOPS: give the go-ahead to run the AvgMovement migration against
       `instance/sops.db`** — Supplier/Lead-Time + AMU/Min-Max logic ported
       and fully tested (Batch 32/33, commits `fe06eaa`/`112e321`), held for
       Tebello per SOPS's standing schema-change convention. This is the
@@ -57,7 +54,7 @@ runs on the right machine)
       in-session go-ahead):
       `docs/specs/2026-07-29-sops-avgmovement-migration.md`. Detail:
       `2. SOPS/docs/todo.md`, `knowledge/sops.md`.
-8. [ ] **SOPS: Payment Status data-migration review** — a batch of
+7. [ ] **SOPS: Payment Status data-migration review** — a batch of
       historical Sales Orders need human review of migrated/backfilled
       payment-status values before being treated as fully validated. ⚠️
       Operations only. Spec (ready):
@@ -70,6 +67,15 @@ runs on the right machine)
 
 ## Done
 
+- [x] **2026-07-29** — codex-gate: copied the drafted ADR into this hub's
+      `docs/decisions/` (`ADR-009-codex-second-opinion-gate.md`), closing
+      the documentation sub-item — done via git directly from a cloud
+      session (no Operations machine access needed, since this hub repo
+      is git-synced there, not filesystem-only). Discovered `docs/decisions/`
+      didn't exist yet and neither ADR-007 nor ADR-008 are actually
+      recorded there despite being referenced from `tlelosa-claude-config`
+      — flagged as a follow-up, not fixed (out of this task's scope).
+      codex-gate install itself stays Pappa T-only, unaffected by this.
 - [x] **2026-07-29** — Wrote a ready-to-execute spec for every machine-bound
       item in this queue (`docs/specs/2026-07-29-*.md`, 8 files: NamePlateTool
       spot-check + test suite, codex-gate Pappa T smoke-test + Operations

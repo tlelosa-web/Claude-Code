@@ -20,6 +20,11 @@
         .items-table td { padding: 8px 6px; border-bottom: 1px solid #ccc; }
         .items-table tfoot td { font-weight: 700; padding: 8px 6px; border-top: 2px solid #1A2332; }
         .status-badge { display: inline-block; padding: 3px 10px; border: 2px solid #16A34A; color: #16A34A; font-weight: 700; font-size: 10pt; }
+        .status-badge-draft { border-color: #F59E0B; color: #F59E0B; }
+        .status-badge-open { border-color: #2563EB; color: #2563EB; }
+        .status-badge-partially-received { border-color: #E8610A; color: #E8610A; }
+        .status-badge-received { border-color: #16A34A; color: #16A34A; }
+        .status-badge-cancelled { border-color: #9CA3AF; color: #9CA3AF; }
         .footer-note { margin-top: 30px; font-size: 7pt; color: #666; text-align: center; border-top: 1px solid #ccc; padding-top: 8px; }
         .logo-placeholder { font-size: 14pt; font-weight: 700; color: #1A2332; }
         .logo-placeholder span { color: #E8610A; }
@@ -38,7 +43,7 @@
         <div style="text-align: right;">
             <div class="doc-title">PURCHASE ORDER</div>
             <div class="doc-number">{{ po.po_number }}</div>
-            <div style="margin-top: 6px;"><span class="status-badge">{{ po.status }}</span></div>
+            <div style="margin-top: 6px;"><span class="status-badge status-badge-{{ po.status.lower().replace(' ', '-') }}">{{ po.status }}</span></div>
         </div>
     </div>
 

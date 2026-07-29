@@ -195,7 +195,16 @@
 
     {% if open_sales_orders %}
         <div style="overflow-x: auto;">
-            <table style="width: 100%; border-collapse: collapse; text-align: left;">
+            <table style="width: 100%; table-layout: fixed; border-collapse: collapse; text-align: left;">
+                <colgroup>
+                    <col style="width: 14%;">
+                    <col style="width: 13%;">
+                    <col style="width: 20%;">
+                    <col style="width: 14%;">
+                    <col style="width: 13%;">
+                    <col style="width: 13%;">
+                    <col style="width: 13%;">
+                </colgroup>
                 <thead>
                     <tr style="border-bottom: 2px solid var(--border-color); color: var(--text-secondary); font-size: 0.85rem; text-transform: uppercase;">
                         <th style="padding: 12px;">FM / Job Number</th>
@@ -210,13 +219,13 @@
                 <tbody>
                     {% for so in open_sales_orders %}
                         <tr style="border-bottom: 1px solid var(--border-color); font-size: 0.95rem;">
-                            <td style="padding: 16px; color: var(--text-secondary); vertical-align: middle;">
+                            <td style="padding: 16px; color: var(--text-secondary); vertical-align: middle; overflow-wrap: break-word;">
                                 {{ so.job_numbers or '-' }}
                             </td>
                             <td style="padding: 16px; font-weight: 600; color: var(--brand-primary); vertical-align: middle;">
                                 {{ so.so_number }}
                             </td>
-                            <td style="padding: 16px; vertical-align: middle;">{{ so.customer_name or '-' }}</td>
+                            <td style="padding: 16px; vertical-align: middle; overflow-wrap: break-word;">{{ so.customer_name or '-' }}</td>
                             <td style="padding: 16px; color: var(--text-secondary); vertical-align: middle;">
                                 {{ so.delivery_date | dmy or '-' }}
                             </td>
@@ -260,12 +269,23 @@
 
     {% if recent_wos %}
         <div style="overflow-x: auto;">
-            <table style="width: 100%; border-collapse: collapse; text-align: left;">
+            <table style="width: 100%; table-layout: fixed; border-collapse: collapse; text-align: left;">
+                <colgroup>
+                    <col style="width: 12%;">
+                    <col style="width: 10%;">
+                    <col style="width: 10%;">
+                    <col style="width: 18%;">
+                    <col style="width: 12%;">
+                    <col style="width: 14%;">
+                    <col style="width: 12%;">
+                    <col style="width: 12%;">
+                </colgroup>
                 <thead>
                     <tr style="border-bottom: 2px solid var(--border-color); color: var(--text-secondary); font-size: 0.85rem; text-transform: uppercase;">
+                        <th style="padding: 12px;">FM Number</th>
+                        <th style="padding: 12px;">SO Number</th>
                         <th style="padding: 12px;">WO Number</th>
-                        <th style="padding: 12px;">Sales Order</th>
-                        <th style="padding: 12px;">Type</th>
+                        <th style="padding: 12px;">Customer</th>
                         <th style="padding: 12px;">Issued By</th>
                         <th style="padding: 12px;">Created Date</th>
                         <th style="padding: 12px;">Status</th>
@@ -275,20 +295,19 @@
                 <tbody>
                     {% for wo in recent_wos %}
                         <tr style="border-bottom: 1px solid var(--border-color); font-size: 0.95rem;">
-                            <td style="padding: 16px; font-weight: 600; color: var(--brand-primary);">
-                                {{ wo.wo_number }}
+                            <td style="padding: 16px; color: var(--text-secondary); overflow-wrap: break-word;">
+                                {{ wo.sales_order.job_numbers or '-' }}
                             </td>
-                            <td style="padding: 16px;">
+                            <td style="padding: 16px; overflow-wrap: break-word;">
                                 <a href="{{ url_for('sales_orders.view_order', order_id=wo.so_id) }}" style="color: var(--brand-secondary); text-decoration: none;">
                                     {{ wo.sales_order.so_number }}
                                 </a>
                             </td>
-                            <td style="padding: 16px;">
-                                <span class="badge" style="background: rgba(255,255,255,0.05); color: var(--text-primary);">
-                                    {{ wo.order_type }}
-                                </span>
+                            <td style="padding: 16px; font-weight: 600; color: var(--brand-primary); overflow-wrap: break-word;">
+                                {{ wo.wo_number }}
                             </td>
-                            <td style="padding: 16px;">{{ wo.issued_by }}</td>
+                            <td style="padding: 16px; overflow-wrap: break-word;">{{ wo.sales_order.customer_name or '-' }}</td>
+                            <td style="padding: 16px; overflow-wrap: break-word;">{{ wo.issued_by }}</td>
                             <td style="padding: 16px; color: var(--text-secondary);">
                                 {{ wo.created_at.strftime('%Y-%m-%d %H:%M') }}
                             </td>

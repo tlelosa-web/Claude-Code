@@ -10,6 +10,57 @@
 
 ## Next up
 
+- [ ] **Save Nameplate silently blocks connection override** — `main.py`'s
+      `api_generate_pdf()` (lines 353-357) computes `conn` only from
+      `suggest_connection()` with **no fallback to `payload.connection`**,
+      unlike its sibling `api_test_record_sheet_from_nameplate()` (lines
+      479-485) which does have that fallback. Reachable through normal UI
+      use, not just an edge case: `FormFields.jsx` line 92 populates the
+      Motor kW dropdown per-pole only, not filtered by voltage, so a user
+      can pick a legitimate-looking combo (e.g. 4-pole/525V/5.5kW) that has
+      no STAR/DELTA rule in `connection_lookup.py`'s `DELTA_RULES_MAX`
+      (capped at 4.0kW for 525V/4-pole) — Save Nameplate then fails with
+      "A valid connection (STAR or DELTA) could not be determined..." even
+      after the user manually selects DELTA in the dropdown, because that
+      selection is discarded server-side. Verified reproducible directly
+      against `connection_lookup.py` and the real motor performance PDF.
+      Full repro, root cause, and a failing test case are in
+      `docs/bugs/connection-lookup-no-manual-override.md`.
+      **Fix plan for next session:**
+      1. In `api_generate_pdf()`, mirror the existing FLA-fallback pattern:
+         if `suggest_connection()` returns no STAR/DELTA, fall back to
+         `_clean(payload.connection)` before erroring — same shape as
+         `api_test_record_sheet_from_nameplate()` already uses. This alone
+         unblocks the manual override.
+      2. Optional UX follow-up: filter `motors_by_pole` in
+         `_options_cached()` by voltage too (key by `(voltage, pole)`,
+         only include kW values with *some* STAR/DELTA rule) so incompatible
+         combos aren't offered in the first place. Not required if (1) is
+         done, but avoids ever needing the override for the common case.
+      3. While in the area, fix the same datetime-not-JSON-serializable
+         defect pattern in `excel_source.py`'s `read_test_sheet_from_excel()`
+         (line 288, raw `datetime` from `_cell(ws, 1, 21)`) alongside the
+         already-logged `from-excel` bug below — same root cause, currently
+         dead code path but will resurface if that field gets wired up.
+      Per this project's CLAUDE.md hard rule 1 (payload-shape contract),
+      touching `main.py`'s connection logic doesn't require touching
+      `App.jsx`/`pdf_generator.py` here since the fallback only changes
+      which value populates the existing `conn` variable — no shape change.
+      Verify by re-running the failing test case in the bug report doc.
+- [ ] Decide fate of orphaned `POST /api/reports/test-record-sheet` endpoint
+      (`main.py` lines 381-438) — a second, unused copy of the
+      `TestLinePayload` array contract, superseded by the quantity-driven
+      `/api/reports/test-record-sheet/from-nameplate` flow (2026-07-15
+      rework, see Done below) but never removed. Not a live bug, but it's a
+      second fragile payload-shape contract sitting unused — pick remove vs.
+      keep-for-future-per-fan-editing deliberately rather than leaving two
+      to drift. Found during the 2026-07-29 bug-hunt pass.
+- [ ] Cosmetic: `pdf_generator.py`'s `_render_test_sheet_direct()` only
+      guards text overflow/auto-shrink for Row 2 fields (line 156); longer
+      free-text fields like `customer_name` and `motor_desc` have no
+      equivalent length guard and can visually overflow their bordered box.
+      No crash/data loss, layout only. Found during the 2026-07-29 bug-hunt
+      pass.
 - [ ] Consider a real automated test suite (pytest for backend, a JS test
       runner for frontend) — `tests/` currently holds ad-hoc manual-check
       scripts only, not a gated suite. Not urgent; flagged in `CLAUDE.md` §

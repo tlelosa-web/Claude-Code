@@ -24,6 +24,19 @@ def _mock_response(json_data):
     return resp
 
 
+@pytest.fixture(autouse=True)
+def _no_crawler_platforms_by_default(monkeypatch):
+    """Stops fetch_vacancies()'s pnet/careers24 fold-in (Phase 14) from
+    touching the real discovery/crawler/extraction pipeline — and therefore
+    real network — in tests below that don't explicitly exercise it. Tests
+    that do apply their own `@patch("...apify_client.get_job_urls")`
+    decorator, which overrides this stub for their own duration."""
+    monkeypatch.setattr(
+        "src.vacancy_search.apify_client.get_job_urls",
+        lambda platform, limit, **kwargs: [],
+    )
+
+
 class TestOfflineMode:
     def test_offline_mode_returns_fixture_vacancies(self, monkeypatch):
         monkeypatch.setenv("OFFLINE_MODE", "true")
@@ -300,7 +313,7 @@ class TestPnetCareers24DiscoveryIntegration:
         )
         mock_post.return_value = _mock_response([])
 
-        def _get_job_urls_side_effect(platform, limit):
+        def _get_job_urls_side_effect(platform, limit, **_kwargs):
             if platform == "pnet":
                 return ["https://example.co.za/pnet-job-1"]
             if platform == "careers24":
@@ -370,7 +383,7 @@ class TestPnetCareers24DiscoveryIntegration:
         )
         mock_post.return_value = _mock_response([])
 
-        def _get_job_urls_side_effect(platform, limit):
+        def _get_job_urls_side_effect(platform, limit, **_kwargs):
             if platform == "pnet":
                 return [
                     "https://example.co.za/pnet-job-1",
@@ -410,15 +423,32 @@ class TestPnetCareers24DiscoveryIntegration:
         companies = {v.company for v in results}
         assert companies == {"PNet Employer 2"}
 
+    @patch("src.vacancy_search.apify_client.extract_vacancy_fields")
+    @patch("src.vacancy_search.apify_client.fetch_raw_page")
+    @patch("src.vacancy_search.apify_client.get_job_urls")
+    @patch("src.vacancy_search.apify_client.requests.post")
     def test_pnet_fallback_path_works_end_to_end_through_fetch_vacancies(
-        self, monkeypatch, tmp_path
+        self,
+        mock_post,
+        mock_get_job_urls,
+        mock_fetch_raw_page,
+        mock_extract_vacancy_fields,
+        monkeypatch,
+        tmp_path,
     ):
         """discovery_config.json's pnet.mode = "manual_pending_verification"
         must still return PNet vacancies sourced from
-        data/crawler_seed_urls.json's existing entries, through the real
-        fetch_vacancies() integration point (not just get_job_urls in
-        isolation, already covered by test_discovery.py)."""
-        monkeypatch.setenv("OFFLINE_MODE", "true")
+        data/crawler_seed_urls.json's existing entries, exercised through
+        the real (unmocked) discovery.get_job_urls() config-driven branch —
+        not just re-asserted in isolation (already covered by
+        test_discovery.py) but proven to actually get called and threaded
+        through by fetch_vacancies() itself."""
+        monkeypatch.setenv("APIFY_API_KEY", "test-key")
+        monkeypatch.delenv("OFFLINE_MODE", raising=False)
+        monkeypatch.setattr(
+            "src.vacancy_search.apify_client.SEARCH_TITLES", ["Operations Foreman"]
+        )
+        mock_post.return_value = _mock_response([])
 
         discovery_config_path = tmp_path / "discovery_config.json"
         discovery_config_path.write_text(
@@ -434,13 +464,44 @@ class TestPnetCareers24DiscoveryIntegration:
             json.dumps({"pnet": ["https://example.co.za/pnet-seed-job"]})
         )
 
-        with patch(
-            "src.vacancy_search.apify_client.DISCOVERY_CONFIG_PATH",
-            str(discovery_config_path),
-        ), patch("src.vacancy_search.apify_client.SEED_URLS_PATH", str(seed_urls_path)):
-            results = fetch_vacancies(limit=25)
+        # Real get_job_urls for "pnet" only — exercises the actual
+        # config-driven fallback branch against the fixture files above.
+        # "careers24" is short-circuited to [] here purely to keep this test
+        # offline (careers24 has no gate and would otherwise attempt a real
+        # listing-page discovery fetch) — that path is covered separately by
+        # the "folds pnet and careers24" test above.
+        from src.vacancy_search.discovery import get_job_urls as _real_get_job_urls
+
+        def _get_job_urls_side_effect(platform, limit, **_kwargs):
+            if platform == "pnet":
+                return _real_get_job_urls(
+                    "pnet",
+                    limit,
+                    discovery_config_path=str(discovery_config_path),
+                    seed_urls_path=str(seed_urls_path),
+                )
+            return []
+
+        mock_get_job_urls.side_effect = _get_job_urls_side_effect
+        mock_fetch_raw_page.return_value = {
+            "url": "https://example.co.za/pnet-seed-job",
+            "title": "t",
+            "text_content": "body",
+            "_source_mode": "live",
+        }
+        mock_extract_vacancy_fields.return_value = {
+            "company": "PNet Fallback Employer",
+            "title": "Operations Foreman",
+            "description": "desc",
+            "url": "https://example.co.za/pnet-seed-job",
+            "salary": None,
+            "deadline": None,
+        }
+
+        results = fetch_vacancies(limit=25)
 
         assert any(v.platform == "pnet" for v in results)
+        assert any(v.company == "PNet Fallback Employer" for v in results)
 
 
 class TestFixtureModeDegradedWarning:
@@ -463,7 +524,7 @@ class TestFixtureModeDegradedWarning:
             "src.vacancy_search.apify_client.SEARCH_TITLES", ["Operations Foreman"]
         )
         mock_post.return_value = _mock_response([])
-        mock_get_job_urls.side_effect = lambda platform, limit: (
+        mock_get_job_urls.side_effect = lambda platform, limit, **_kwargs: (
             ["https://example.co.za/pnet-job-1"] if platform == "pnet" else []
         )
         mock_fetch_raw_page.return_value = {

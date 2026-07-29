@@ -1,11 +1,30 @@
+import logging
 import os
 import warnings
+from urllib.parse import urlsplit, urlunsplit
 
 import requests
 
 from src.shared.rate_limiter import RateLimiter
 
+from .crawler_client import fetch_raw_page
+from .discovery import get_job_urls
+from .extractor import VacancyExtractionError, extract_vacancy_fields
 from .schema import Vacancy
+
+logger = logging.getLogger(__name__)
+
+# Platforms sourced via the generic crawler + local LLM extraction pipeline
+# (discovery.get_job_urls -> crawler_client.fetch_raw_page ->
+# extractor.extract_vacancy_fields), as opposed to Indeed/LinkedIn's
+# dedicated Apify actors below. Looping over this tuple (rather than
+# `if platform == "pnet"` special-casing) is what keeps the PNet
+# manual-verification gate a config-driven branch inside discovery.py,
+# never a code fork here (Amendment, judgment call #3).
+CRAWLER_PLATFORMS = ("pnet", "careers24")
+
+DISCOVERY_CONFIG_PATH = "data/discovery_config.json"
+SEED_URLS_PATH = "data/crawler_seed_urls.json"
 
 # Actor slugs confirmed live on the Apify Store 2026-07-26 (misceres/indeed-scraper,
 # bebity/linkedin-jobs-scraper — API IDs use "~" where the store URL uses "/").
@@ -56,11 +75,22 @@ FIXTURE_VACANCIES = [
 ]
 
 
+def normalize_url(url: str) -> str:
+    """Strips query string, fragment, and trailing slash before building
+    the dedupe key — two vacancies whose URLs differ only by a UTM query
+    string or trailing slash are otherwise treated as distinct (Codex Review
+    Follow-up amendment). Used by all four sources (Indeed, LinkedIn, PNet,
+    Careers24) via the shared _dedupe() below."""
+    parts = urlsplit(url)
+    path = parts.path.rstrip("/") if len(parts.path) > 1 else parts.path
+    return urlunsplit((parts.scheme, parts.netloc, path, "", ""))
+
+
 def _dedupe(vacancies: list[Vacancy]) -> list[Vacancy]:
     seen = set()
     deduped = []
     for v in vacancies:
-        key = (v.company, v.title, v.url)
+        key = (v.company, v.title, normalize_url(v.url))
         if key in seen:
             continue
         seen.add(key)
@@ -94,6 +124,51 @@ def _normalize_linkedin(item: dict) -> Vacancy:
         salary=item.get("salary"),
         deadline=item.get("expireAt"),
     )
+
+
+def _fetch_crawler_platform_vacancies(
+    platform: str, limit: int
+) -> tuple[list[Vacancy], int, int]:
+    """One pass of the PNet/Careers24 pipeline for a single platform:
+    discovery.get_job_urls() -> crawler_client.fetch_raw_page() ->
+    extractor.extract_vacancy_fields(). A VacancyExtractionError on one page
+    is caught and that page is skipped (logged), never aborting the batch —
+    mirrors the per-call swallow convention already used for Indeed/LinkedIn
+    HTTP errors below. Returns (vacancies, live_page_count, fixture_page_count)
+    so fetch_vacancies() can log a single combined degraded-mode summary.
+    """
+    urls = get_job_urls(
+        platform,
+        limit,
+        discovery_config_path=DISCOVERY_CONFIG_PATH,
+        seed_urls_path=SEED_URLS_PATH,
+    )
+
+    vacancies: list[Vacancy] = []
+    live_count = 0
+    fixture_count = 0
+
+    for url in urls:
+        raw_page = fetch_raw_page(url)
+        if raw_page is None:
+            continue
+
+        if raw_page.get("_source_mode") == "fixture":
+            fixture_count += 1
+        else:
+            live_count += 1
+
+        try:
+            fields = extract_vacancy_fields(raw_page, platform)
+        except VacancyExtractionError as exc:
+            logger.warning(
+                "Skipping %s page %s — extraction failed: %s", platform, url, exc
+            )
+            continue
+
+        vacancies.append(Vacancy(platform=platform, **fields))
+
+    return vacancies, live_count, fixture_count
 
 
 def fetch_vacancies(limit: int = 25) -> list[Vacancy]:
@@ -145,5 +220,23 @@ def fetch_vacancies(limit: int = 25) -> list[Vacancy]:
             results.extend(_normalize_linkedin(item) for item in resp.json())
         except (requests.RequestException, ValueError):
             pass
+
+    total_pages = 0
+    fixture_pages = 0
+    for platform in CRAWLER_PLATFORMS:
+        platform_vacancies, live_count, fixture_count = (
+            _fetch_crawler_platform_vacancies(platform, limit)
+        )
+        results.extend(platform_vacancies)
+        total_pages += live_count + fixture_count
+        fixture_pages += fixture_count
+
+    if fixture_pages:
+        logger.warning(
+            "%d of %d vacancy-source pages returned fixture data — check "
+            "APIFY_API_KEY / network",
+            fixture_pages,
+            total_pages,
+        )
 
     return _dedupe(results)[:limit]

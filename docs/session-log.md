@@ -330,3 +330,30 @@ the two SOPS items (AvgMovement gated on explicit go-ahead).
 **Known risks:** None new.
 **Blockers:** SOPS AvgMovement migration spec is intentionally not
 actionable without Tebello's explicit go-ahead given in that session.
+
+## 2026-07-29 — Broadened session-archival rule to catch stale sessions
+
+Tebello flagged a backlog of unarchived sessions despite `/continue`
+Step 0.5 (ADR-005) already existing. Root cause: the rule only proposed
+archiving sessions *superseded* by later work in the same project —
+sessions that were just old and idle, with no newer session to compare
+against, never got flagged at all.
+
+Broadened `.claude/commands/continue.md` Step 0.5 into two independent
+checks (a session only needs to match one to be proposed):
+- **A. Superseded** — unchanged from the original rule.
+- **B. Stale/idle** (new) — any other session with no activity in 7+ days,
+  sanity-checked against its transcript so a session mid-wait on something
+  external (blocked on Tebello, on IT, watching a PR) isn't flagged just
+  for being old; plus single-exchange `Continuation` sessions past 7 days
+  with no real task ever given.
+
+Both categories are still proposal-only — `archive_session` is never
+called speculatively, and both lists are presented together in one
+combined ask so Tebello isn't interrupted twice per run.
+
+**Last completed:** Session-archival rule broadened (this entry).
+**Next task:** Unchanged — whichever machine-bound queue item matches the
+next session's machine (see prior entry).
+**Known risks:** None new.
+**Blockers:** None.

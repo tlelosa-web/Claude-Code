@@ -1,6 +1,6 @@
 # Task Queue — TebelloReborn (Career Engine)
 
-> Updated: 2026-07-26 (MVP build complete — all 54 Build Queue steps done, Phases 0-8)
+> Updated: 2026-07-29 (PNet/Careers24 Automated Discovery build complete — steps 55-80, Phases 9-15)
 
 ---
 
@@ -148,33 +148,45 @@ _(none active — the PNet/Careers24 gap below is now a scheduled, spec-backed b
 - [x] 61. [RED] `tests/unit/test_crawler_client.py` — OFFLINE_MODE fixture, rate limiter, graceful-degradation convention, `_source_mode` tagging (per Amendment)
 - [x] 62. [GREEN] `src/vacancy_search/crawler_client.py` — Apify `website-content-crawler` client
 
-> **PAUSED 2026-07-29 — objective drift caught before Phase 12.** The spec's static
-> `data/crawler_seed_urls.json` (Phase 10, step 60) requires Tebello to manually find and
-> paste individual job-detail-page URLs — that's manual job-search labor at the discovery
-> stage, which contradicts this project's actual goal: the pipeline *continuously finds*
-> vacancies automatically (like Indeed/LinkedIn's `SEARCH_TITLES`/`SEARCH_LOCATION`-driven
-> search), and Tebello's manual involvement is supposed to be **only** the human-approval
-> gate at the end. Steps 63–72 below are NOT being built against the current design.
-> Redesign required first: an automated discovery stage (construct a search-results URL
-> from `SEARCH_TITLES`/`SEARCH_LOCATION`, crawl it, extract job-detail links, then
-> crawl+extract each detail page) replacing the manual seed-URL approach. Phases 9–11
-> (steps 55–62, all committed) remain valid and reusable — `ollama_client.py`'s promotion,
-> `VALID_PLATFORMS`, and `crawler_client.py`'s raw-fetch mechanics (rate limiting,
-> OFFLINE_MODE, `_source_mode` tagging) are all still needed by the redesigned flow.
-> `data/crawler_seed_urls.json` (step 60) will likely be replaced or repurposed, not just
-> extended — see the redesign session prompt for full context. A fresh Domain → Planner
-> pass against `docs/specs/pnet-careers24-coverage.md` is queued next.
+> **PAUSED 2026-07-29 — objective drift caught before Phase 12, then RESOLVED same day.**
+> The original static `data/crawler_seed_urls.json` design (Phase 10, step 60) required
+> Tebello to manually find and paste individual job-detail-page URLs — manual job-search
+> labor at the discovery stage, contradicting this project's actual goal (the pipeline
+> *continuously finds* vacancies automatically, and Tebello's manual involvement is supposed
+> to be **only** the human-approval gate). The original steps 63–72 (extraction + fold-in +
+> docs, built directly against the static seed-URL design) were never built as originally
+> planned. `docs/specs/pnet-careers24-coverage.md`'s "Amendment — Automated Discovery
+> Redesign" (2026-07-29) replaced them in full with a new step sequence, **also numbered
+> 63–80** (continuing from the same step 62), which **is** what was built — see below.
+> Phases 9–11 (steps 55–62, all committed pre-pause) remain valid and reused unchanged:
+> `ollama_client.py`'s promotion, `VALID_PLATFORMS`, and `crawler_client.py`'s raw-fetch
+> mechanics (rate limiting, OFFLINE_MODE, `_source_mode` tagging).
 
-- [ ] 63. [RED] `tests/unit/test_vacancy_extraction.py` — extraction prompt + parse/validate, empty-string required-field rejection (per Amendment) — **BLOCKED on discovery redesign above**
-- [ ] 64. [GREEN] `src/vacancy_search/extraction_prompt.py` — **BLOCKED on discovery redesign above**
-- [ ] 65. [GREEN] `src/vacancy_search/extractor.py` — `VacancyExtractionError`, consumes `src/shared/ollama_client.py` — **BLOCKED on discovery redesign above**
-- [ ] 66. [RED] `tests/unit/test_apify_client.py` — fold pnet/careers24 into `fetch_vacancies()`, `normalize_url()` dedupe fix, degraded-mode warning log (per Amendment) — **BLOCKED on discovery redesign above**
-- [ ] 67. [GREEN] `src/vacancy_search/apify_client.py` — integration — **BLOCKED on discovery redesign above**
-- [ ] 68. `docs/decisions/ADR-002-apify-job-scraping.md` — dated amendment section — **BLOCKED on discovery redesign above**
-- [ ] 69. `docs/api-patterns.md` — new crawler/extraction section, Ollama section path update, job-detail-page-only seed-URL note (per Amendment) — **BLOCKED on discovery redesign above**
-- [ ] 70. `.env.example` — `CRAWLER_RATE_LIMIT_PER_MIN=30` — **BLOCKED on discovery redesign above**
-- [ ] 71. `CLAUDE.md` — External Client Patterns table + Directory Structure update — **BLOCKED on discovery redesign above**
-- [ ] 72. `docs/todo.md` — this section supersedes the old Known-Issues/Future PNet/Careers24 lines (done, see above); add Future items for discovery-stage/site-specific-parser/raw-artifact-audit follow-ups (per Amendment's "Not folded in" note) — **BLOCKED on discovery redesign above**
+#### Phase 12 (redesigned) — Automated Discovery (Careers24 full-auto, PNet gated + fallback)
+- [x] 63. [RED] `tests/unit/test_crawler_client.py` — `fetch_raw_page(url)` single-URL primitive + refactor regression lock
+- [x] 64. [GREEN] `src/vacancy_search/crawler_client.py` — extract `fetch_raw_page(url)`, `fetch_raw_pages()` composes on it (pure refactor)
+- [x] 65. [RED] `tests/unit/test_discovery.py` (new) — `build_search_url`/`parse_job_urls_from_listing`/`discover_job_urls` for careers24
+- [x] 66. [GREEN] `src/vacancy_search/discovery.py` (new) — careers24 discovery, deterministic listing-page parse (never an LLM call)
+- [x] 67. [RED] `tests/unit/test_discovery.py` — `build_search_url("pnet", ...)` bare-path-only shape, no `?` under any input
+- [x] 68. [GREEN] `src/vacancy_search/discovery.py` — pnet `build_search_url`, structurally no query-string code path
+- [x] 69. `data/discovery_config.json` (new) — pnet gated `manual_pending_verification`, careers24 always `auto`
+- [x] 70. [RED] `tests/unit/test_discovery.py` — `get_job_urls()` single entry point, careers24 no gate, pnet config-driven branch + seed-urls fallback
+- [x] 71. [GREEN] `src/vacancy_search/discovery.py` — `get_job_urls()` implementation
+
+#### Phase 13 — LLM Extraction (preserved unchanged from the original Phase 12 content, renumbered)
+- [x] 72. [RED] `tests/unit/test_vacancy_extraction.py` — extraction prompt + parse/validate, empty-string required-field rejection, one-page-one-vacancy contract test
+- [x] 73. [GREEN] `src/vacancy_search/extraction_prompt.py` — pure prompt builder
+- [x] 74. [GREEN] `src/vacancy_search/extractor.py` — `VacancyExtractionError`, consumes `src/shared/ollama_client.py`
+
+#### Phase 14 — Fold into `fetch_vacancies()` (preserved unchanged from the original Phase 13 content, integration point changed to discovery-sourced URLs)
+- [x] 75. [RED] `tests/unit/test_apify_client.py` — discovery integration, `normalize_url()` dedupe fix, PNet fallback end-to-end case, fixture-mode warning log
+- [x] 76. [GREEN] `src/vacancy_search/apify_client.py` — `fetch_vacancies()` folds pnet/careers24 via `get_job_urls` → `fetch_raw_page` → `extract_vacancy_fields`, no `if platform == "pnet"` branching
+
+#### Phase 15 — Docs Closeout
+- [x] 77. `docs/decisions/ADR-002-apify-job-scraping.md` — second dated amendment (`## Amendment — 2026-07-29 (Automated Discovery)`), additive
+- [x] 78. `docs/api-patterns.md` — PNet/Careers24 section (crawler_client.py + extractor.py + discovery.py subsections), Ollama section path fix
+- [x] 79. `CLAUDE.md` — External Client Patterns table + Directory Structure update for `crawler_client.py`/`discovery.py`/`discovery_config.json`
+- [x] 80. `docs/todo.md` — this section (you are here)
 
 ---
 
@@ -216,16 +228,41 @@ _(none active — the PNet/Careers24 gap below is now a scheduled, spec-backed b
 
 ---
 
+## Open Items (require Tebello — not something an agent should attempt)
+
+- [ ] **Manual PNet bare-URL verification (Amendment, Open Item 4).** Open
+      `https://www.pnet.co.za/jobs/operations-foreman/in-gauteng` (the bare path-only shape, no `?`
+      query string) once in an ordinary browser and confirm whether it renders a working PNet
+      results/listing page or an error/redirect/block page. Record the result by editing
+      `data/discovery_config.json`'s `pnet.mode` directly: `"auto"` if it works, or leave it at
+      `"manual_pending_verification"` (with a one-line dated note added to the file's `_comment`) if it
+      doesn't. One-time check, not a recurring task — this gates whether `discovery.py::get_job_urls`
+      ever calls `discover_job_urls("pnet", ...)` for real, or stays on the seed-urls fallback below.
+- [ ] **Real PNet seed URLs — now PNet-only and conditional (Amendment, updated Open Item 1).**
+      Careers24 no longer needs this at all (fully automated). If the manual bare-URL check above shows
+      the bare-path shape does *not* render a usable page, `data/crawler_seed_urls.json`'s `"pnet"` list
+      needs real job-detail-page URLs supplied by Tebello — this becomes PNet's **permanent** sourcing
+      path in that case, not a temporary placeholder.
+- [ ] Extraction reliability at scale (Amendment, unchanged Open Item 2) — `qwen3:8b`'s known
+      reliability risk applies to messier, more variable job-posting page text than the dedicated-actor
+      JSON payloads. A high real-world `VacancyExtractionError` rate is signal for prompt-tuning or a
+      stronger local model, not evidence the design is wrong — flagged for a future evidence-based
+      revisit, not resolved here.
+- [ ] `CRAWLER_RATE_LIMIT_PER_MIN` default of 30 (Amendment, unchanged Open Item 3) — confirm this is
+      conservative enough once real (non-fallback) crawls are in regular use; easy to override via env
+      either way.
+
+---
+
 ## Future (not yet scheduled)
 
 - [ ] Phase 6 (post-MVP numbering — original 7-phase plan): Playwright-based auto-fill/submit, paused before final submission.
 - [ ] Phase 7 (post-MVP numbering): tracking dashboard (applications, match-score distribution, response rate).
 - [ ] Decide whether recruiter cold-outreach (in `data/legacy_reference/`, not part of the original 7-phase plan) gets revived as a later phase.
 - [ ] Volume-cap / scheduler layer for document generation (ADR-003 §6, open judgment call #1) — only if Tebello confirms a controlled-batch need; would need its own spec + ADR, and likely a `PRAGMA user_version` migration via the `src/doc_gen/migrations.py` stub (step 34).
-- [ ] Search-page discovery stage (`discover_job_urls`/`fetch_job_pages` split) for PNet/Careers24 —
-      needed if real seed URLs turn out to be search-result pages rather than direct job-detail links
-      once Tebello supplies them (flagged by Codex review of `pnet-careers24-coverage.md`, not built
-      in that spec — current spec requires job-detail-page seed URLs only).
+- [x] ~~Search-page discovery stage (`discover_job_urls`/`fetch_job_pages` split) for PNet/Careers24~~ —
+      **built** (steps 65–71, `src/vacancy_search/discovery.py`) by the Automated Discovery Redesign
+      amendment; no longer a future item.
 - [ ] Site-specific lightweight HTML parsers for PNet/Careers24, LLM extraction as fallback only —
       alternative to full-LLM extraction flagged by Codex review; cheaper/more reliable if either
       site's HTML structure turns out to be stable enough to parse deterministically.

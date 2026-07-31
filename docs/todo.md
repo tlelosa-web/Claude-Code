@@ -13,14 +13,18 @@ _(none active at hub level — see Backlog for the one remaining TebelloReborn f
 
 ## Next up
 
-- [ ] Top up OpenRouter credits (openrouter.ai/settings/credits) — `ai-outreach-agency`'s
-      `asset_gen` stage has been blocked on HTTP 402 since 2026-07-04; unblocks real
-      (non-offline) batch runs until Build Queue A (headless Claude Code migration) lands.
 - [ ] `ai-outreach-agency`: bump `research/ollama_client.py`'s `READ_TIMEOUT` 60s → 120s and
       add `"keep_alive": "30m"` to the `/api/generate` payload — local Ollama generation is
       sitting close to the current timeout ceiling on cold-load calls, which risks
       intermittent false-positive `OllamaError`s on an otherwise-healthy daemon during a
       real batch. Small, single-file, RED/GREEN-able in one commit.
+
+## Closed — on hold pending affordability
+
+- `ai-outreach-agency`: OpenRouter credits top-up (openrouter.ai/settings/credits) —
+  `asset_gen` has been blocked on HTTP 402 since 2026-07-04. Closed, not an active task;
+  revisit once affordability improves. Build Queue A (headless Claude Code migration) is
+  the actual planned resolution and doesn't depend on this.
 
 ## Backlog
 

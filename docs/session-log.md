@@ -320,3 +320,35 @@ decision from Tebello (§ Backlog).
 
 **Next:** Automated test suite (`docs/todo.md` § Next up) — not urgent,
 unchanged from prior session.
+
+-----
+
+## 2026-07-31 — `excel_source.py` datetime fix (fix-plan step 3)
+
+**Domain:** Backend (FastAPI)
+
+**What happened:**
+- Closed the last open item from `docs/bugs/connection-lookup-no-manual-
+  override.md`'s fix plan (steps 1 and 2 already fixed earlier the same
+  day — see prior entries): `read_test_sheet_from_excel()`'s `date` field
+  returned a raw `datetime` from `_cell(ws, 1, 21)` instead of formatting
+  it, the same not-JSON-serializable defect pattern already fixed in the
+  nameplate path on 2026-07-28.
+- Single-line, single-file fix — wrapped the cell read in the existing
+  `_fmt_month_year()` helper, matching the established pattern exactly.
+  No spec written (below the project's spec-gate threshold for a one-line
+  change mirroring an already-approved fix).
+- Verified directly: built a synthetic workbook with a `datetime(2026, 3,
+  15)` in that cell, confirmed `read_test_sheet_from_excel()` now returns
+  `"MAR.2026"` and the result round-trips through `json.dumps()` without
+  error (previously a raw `datetime`, which `json.dumps` cannot
+  serialize). Currently a dead code path — nothing wires this field to a
+  response yet — but would have crashed the moment it did.
+- Committed `49645ac`, pushed to `origin/main`.
+
+**Blockers:** None.
+
+**Next:** All three connection-override fix-plan items are now closed.
+Remaining open items are the orphaned `POST /api/reports/test-record-sheet`
+endpoint decision, the `pdf_generator.py` text-overflow cosmetic gap, and
+the automated test suite — all in `docs/todo.md` § Next up, none urgent.

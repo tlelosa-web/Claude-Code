@@ -10,16 +10,6 @@
 
 ## Next up
 
-- [ ] **Save Nameplate connection override — remaining follow-ups.** Step 1
-      of the original fix plan (the actual override-blocking bug) is fixed
-      — see Done below. Step 2 (voltage-filtered motor options) is now also
-      fixed — see Done below. Remaining optional item from
-      `docs/bugs/connection-lookup-no-manual-override.md`:
-      3. While in the area, fix the same datetime-not-JSON-serializable
-         defect pattern in `excel_source.py`'s `read_test_sheet_from_excel()`
-         (line 288, raw `datetime` from `_cell(ws, 1, 21)`) alongside the
-         already-logged `from-excel` bug below — same root cause, currently
-         dead code path but will resurface if that field gets wired up.
 - [ ] Decide fate of orphaned `POST /api/reports/test-record-sheet` endpoint
       (`main.py` lines 381-438) — a second, unused copy of the
       `TestLinePayload` array contract, superseded by the quantity-driven
@@ -48,6 +38,20 @@
 
 ## Done
 
+- [x] **2026-07-31** — `excel_source.py` datetime fix (fix-plan step 3,
+      the last of the connection-override follow-ups): `date` field in
+      `read_test_sheet_from_excel()` now runs `_cell(ws, 1, 21)` through
+      the existing `_fmt_month_year()` helper instead of returning the raw
+      `datetime`, same fix pattern already applied to the nameplate path
+      (2026-07-28). Currently a dead code path (nothing wires this field
+      up yet) but would have crashed JSON serialization the moment it did.
+      Single-line, single-file change — no spec needed. Verified directly:
+      built a synthetic workbook with a `datetime(2026, 3, 15)` in that
+      cell, confirmed `read_test_sheet_from_excel()` returns `"MAR.2026"`
+      and the result round-trips through `json.dumps()` without error (was
+      a raw `datetime` object before, which `json.dumps` cannot serialize).
+      Commit `49645ac`. All three connection-override fix-plan steps are
+      now closed.
 - [x] **2026-07-31** — Voltage-filtered Motor kW options (fix-plan step 2):
       `main.py`'s `_options_cached()` now nests `motors_by_pole` as
       `{pole: {voltage: [kw, ...]}}`, filtering each per-voltage kW list

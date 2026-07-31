@@ -206,10 +206,25 @@ class TestRealCallPath:
 
 
 class TestNormalizeUrl:
-    def test_strips_query_string(self):
+    def test_strips_known_tracking_params(self):
         assert normalize_url(
-            "https://za.indeed.com/viewjob?jk=1&utm_source=x"
-        ) == normalize_url("https://za.indeed.com/viewjob")
+            "https://example.co.za/job1?utm_source=x&utm_medium=email"
+        ) == normalize_url("https://example.co.za/job1")
+
+    def test_preserves_significant_query_params_like_indeed_jk(self):
+        # Codex Review Follow-up (W2): jk is Indeed's canonical job
+        # identifier — stripping the whole query string collapsed the
+        # dedupe key to (company, title) only for Indeed, silently merging
+        # genuinely distinct postings. Only known tracking params should be
+        # stripped, not the entire query string.
+        assert normalize_url(
+            "https://za.indeed.com/viewjob?jk=1"
+        ) != normalize_url("https://za.indeed.com/viewjob?jk=2")
+
+    def test_tracking_param_stripped_alongside_preserved_jk(self):
+        assert normalize_url(
+            "https://za.indeed.com/viewjob?jk=1"
+        ) == normalize_url("https://za.indeed.com/viewjob?jk=1&utm_source=x")
 
     def test_strips_trailing_slash(self):
         assert normalize_url("https://example.co.za/job1/") == normalize_url(

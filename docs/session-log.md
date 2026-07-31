@@ -495,3 +495,191 @@ decision, Ollama timeout fix; Operations: NamePlateTool spot-check,
 NamePlateTool test suite, or one of the two SOPS items). See `docs/todo.md`.
 **Known risks:** None new.
 **Blockers:** None.
+
+## 2026-07-31 — pitwall-companion: polish batch (icon fix, rename, grid layouts)
+
+Follow-up to the Loadouts picker above, same session continuing on
+`pitwall-companion` at Tebello's direction (still not a hub queue item — no
+`docs/todo.md` of its own).
+
+**Header icon + title centering.** Tebello pointed out from a screenshot that
+the header's small icon didn't match the real app icon. Traced it to
+`index.html`'s `<header>`: the small `.logo` box was still rendering a
+leftover inline `<svg>` placeholder (a rounded square with an X) from before
+commit `95834b8` ("Replace app icon with new pit-wall dashboard artwork")
+swapped in the real `icons/icon-192.png` cockpit artwork — that commit only
+ever updated the actual icon files, never the header's own hardcoded markup.
+Replaced the inline SVG with an `<img src="./icons/icon-192.png">`. Also
+centered the header title (was left-aligned next to the icon) by changing
+`.brand` from a flex row to a `1fr minmax(0,auto) 1fr` grid, so the title
+centers on the full header width regardless of the icon/Install-button
+widths — verified truncation/ellipsis still behaves correctly at a 320px
+viewport.
+
+**Renamed the app to "PitWall Companion."** Tebello flagged a copyright
+concern: the app's own name, "F1 Clash Resource Sheet," leaned directly on
+the game's trademark rather than just describing what it tracks. Grepped the
+whole repo for every occurrence and split them into two categories:
+- Renamed (the app's own branding): `<title>`, header text,
+  `apple-mobile-web-app-title` (→ "PitWall", matching manifest
+  `short_name`), `manifest.webmanifest`'s `name`/`short_name`, the
+  exported-backup filename (`f1clash-backup-*.json` → `pitwall-backup-*.json`)
+  and its `app:` tag, the QR code's alt text, `sw.js`'s file-header comment,
+  and `README.md`'s top-level heading.
+- Left alone (nominative/factual, not the app's own branding): mentions of
+  the F1 Clash game itself and the community "F1 Clash 2026 Resource Sheet"
+  workbook the app is built from — already covered by the existing
+  "unofficial fan tool, not affiliated with F1, Formula 1, or Hutch Games"
+  disclaimer. Also left the internal `localStorage` keys
+  (`f1sheet.v1`/`f1sheet.season.v1`/`f1sheet.boosted.v1`/
+  `f1sheet.loadoutAttrs.v1`) and the service-worker `CACHE_VERSION` string
+  untouched — these aren't user-visible, and renaming them would silently
+  wipe every existing user's saved card levels/season data/boosts on their
+  next visit (a new key means `load()` finds nothing under the old name).
+  Flagged this reasoning explicitly rather than silently deciding it.
+
+**Loadouts grid layouts.** Two follow-up screenshots from Tebello showed the
+attribute-toggle buttons and the aggregate stat chips both wrapping unevenly
+(flex-wrap sizing each pill to its own text — "Speed"/"Qualifying" full-width,
+"Cornering"/"Power Unit" narrow). Changed `.lo-attr-bar` (4 buttons) to a
+`1fr 1fr` grid for an equal-size 2x2 layout, and `.lo-aggs` (5 stat chips:
+Speed/Cornering/Power Unit/Qualifying/Pit Time) to the same `1fr 1fr` grid
+for an equal-size 2x3 layout (last cell empty) — both requested explicitly
+as "equal size" grids, not just reflowed.
+
+All three changes verified with headless-Chromium screenshots (playwright,
+served via `python3 -m http.server`) before pushing — icon match, centered
+title at two viewport widths, `document.title`/header text reading "PitWall
+Companion", and both grids rendering as equal-width cells — zero console
+errors in every check.
+
+Pushed to `claude/continuation-8iamwu` as three separate commits, then
+combined into one PR per Tebello's request ("combine all PRs") since none of
+the three had been opened as a PR yet — merged as PR #11
+(tlelosa-web/pitwall-companion). The stat-chip grid fix came as a fourth,
+later request after #11 was already merged, so it shipped as its own PR #12
+rather than being folded in retroactively.
+
+**Last completed:** pitwall-companion header icon fix + "PitWall Companion"
+rename + Loadouts 2x2/2x3 equal-size grids, merged as PR #11 and #12 (this
+entry).
+**Next task:** Unchanged — whichever machine-bound queue item matches the
+next session's machine (Pappa T: codex-gate smoke-test, TebelloReborn scope
+decision, Ollama timeout fix; Operations: NamePlateTool spot-check,
+NamePlateTool test suite, or one of the two SOPS items). See `docs/todo.md`.
+**Known risks:** None new.
+**Blockers:** None.
+
+## 2026-07-31 — pitwall-companion: Loadouts By Track, Suggested Boost, Boosts tab
+
+Same session, continuing on `pitwall-companion` — a substantially bigger
+round than the polish batch above, still at Tebello's direction and still
+not a hub queue item.
+
+**Real F1 2026 calendar research (dead end, kept for context).** Tebello
+asked for a deep web search on 2026 season tracks and stats; WebFetch was
+broadly broken this session (even `example.com` 403'd through the agent
+proxy, unrelated to any specific site), so the audit ran entirely on
+WebSearch's synthesized results instead, publishing a 24-round circuit
+reference artifact with sourced caveats (a genuine "two Spain rounds"
+ambiguity in the sources, Madrid having no race-history stats pre-debut).
+Turned out to be the wrong "tracks" — Tebello meant the F1 Clash **game's**
+in-game circuits, not the real calendar. Pivoted immediately; the real-world
+artifact was informational only, no code impact.
+
+**In-game Track Stats + expanded per-track detail.** Tebello sent 21
+in-game "Track Stats" screenshots (one driver stat + one component stat
+spotlighted per circuit); transcribed them into a new `TRACKS` array and
+shipped as a 4th Tools tab first (PR #13), then — per explicit feedback that
+a separate tab duplicated Loadouts at lower detail — moved into Loadouts
+itself as a **mode switch** ("By Attribute" / "By Track", `loadoutMode`
+state). By Track adds a 21-circuit dropdown (`loadoutTrack`, persisted); for
+the selected track it shows the best 2 owned drivers for the driver stat in
+a 1x2 grid (per an approved mockup screenshot before building), and the same
+full Loadouts-style card as before for the component stat. Extracted
+`loadoutCardHTML()` so both modes render identical card markup.
+
+**Suggested Boost.** Added a third element to the By Track card stack,
+between the driver grid and the loadout card: the top 3 *owned* consumable
+Boosts (`boostOwned[name] > 0`), ranked by the track's driver stat first and
+its component stat as tiebreak (Tebello's explicit scoring rule — "top
+driver then track, give top 3" — not the sum-of-both-stats approach
+initially proposed). Verified the ranking logic against real data
+(Eclipse/Skull tied on Overtaking, correctly tiebroken alphabetically ahead
+of Full Send and excluding zero-Overtaking Champion).
+
+**Boosts-ownership tab + New Boost custom entries.** The app had Boosts
+*data* (65 named consumable boosts, flat bonuses) but no ownership tracking
+at all — Suggested Boost needed it. New 4th Tools tab "Boosts": a dropdown
+picker (not a 65-row scroll, per explicit feedback) shows one boost's stats
++ a quantity-owned input at a time. Added a **New Boost** form since "the
+game keeps adding boosts" faster than any static list can track — full
+13-stat vocabulary exposed per Tebello's "all attributes need to be
+available" requirement, blocked from colliding with a built-in boost's name
+(re-adding an existing custom name edits it instead), and merged with the
+built-in list via `allBoosts()` so custom entries compete in Suggested Boost
+rankings exactly like built-in ones — this was an explicit yes from Tebello,
+not assumed.
+
+**4 newly-discovered boosts.** Tebello sent 8 more screenshots of their own
+Boosts collection ("add any new boosts you discover... do not seed my
+quantities"). Cross-referenced all names against the existing 65 and found
+4 genuinely new: Livewire Plus, Midnight, Mushroom, Succession. Decoded
+their stat values by building an icon-shape legend from ~15 already-known
+boosts in the same screenshots (icon shape is consistent across boosts;
+background color varies per-boost and isn't semantically tied to a stat) —
+high confidence on 3, but flagged Mushroom's Impact/Recharge assignment as
+uncertain (both use a visually similar "bolt + small accent" icon, only one
+reference example each to cross-check against). Tebello confirmed via an
+in-game screenshot of the Mushroom card that the guess was exactly right
+(Power Unit +25, Impact +10, Recharge Rate +15) — no changes needed. Added
+all 4 to the built-in `BOOSTS` array only; deliberately did not seed any
+owned quantities, per explicit instruction.
+
+**README overhaul.** Before merging, Tebello asked for a completeness audit
+("this is a big update"). Found README had gone stale across the last few
+merges — still described single-mode Loadouts, no mention of the Boosts tab
+or Track Spec at all, and undercounted boosts at 65 instead of 69. Rewrote
+the Loadouts/Tools section, added the 3 new localStorage keys
+(`f1sheet.loadoutAttrs.v1` extended with mode/track, `f1sheet.boostOwned.v1`,
+`f1sheet.customBoosts.v1`) to the storage-keys list, and added data-notes
+entries documenting that Track Stats and the 4 newest boosts are hand-
+transcribed from in-game screens, independent of either workbook version.
+Also ran a full regression pass across every tab (Drivers, Parts, Season,
+Rewards, all 4 Tools sub-tabs) before considering the audit done — zero
+console errors, confirmed empty-states render properly.
+
+**Real merge conflict on `git merge` (not just a stale-base warning this
+time).** PR #14 hit an actual GitHub merge conflict — the branch's merge-base
+with `main` was `140da68`, several merges behind (PRs #11/#12/#13 were
+squash-merged into `main` as new commits the branch never rebased onto,
+since each round just kept pushing to the same long-lived branch instead of
+restarting from `main` after every individual merge). Resolving it surfaced
+a real bug, not just textual noise: git's 3-way merge silently
+**resurrected** the old, already-deleted standalone Tracks-tab code
+(duplicate `const TRACKS` / `function tracksHTML` declarations) without
+flagging it as a conflict, because the diff hunks didn't textually overlap
+even though they were semantically contradictory (my branch's deletion vs.
+`main`'s still-present copy from the already-merged PR #13). A plain
+`git diff`/visual check wouldn't have caught this — it was only visible by
+actually trying to execute the merged file: `node --input-type=module -e
+"new Function(scriptContents)"` threw `SyntaxError: Identifier 'TRACKS' has
+already been declared`. Removed the resurrected block, re-ran the full
+regression suite to confirm the final merged file matched pre-conflict
+behavior, then completed the merge commit. Worth remembering for next time a
+long-lived branch survives multiple squash-merges of its own prior PRs:
+either restart it from `main` after each merge, or run an executability
+check on any conflict resolution before trusting a "no conflict markers
+left" visual pass.
+
+Merged as PR #14 (tlelosa-web/pitwall-companion), squash commit `3c940ae`.
+
+**Last completed:** pitwall-companion Loadouts → By Track + Suggested Boost +
+Boosts-ownership tab + 4 new boosts + README overhaul, merged as PR #14
+(this entry).
+**Next task:** Unchanged — whichever machine-bound queue item matches the
+next session's machine (Pappa T: codex-gate smoke-test, TebelloReborn scope
+decision, Ollama timeout fix; Operations: NamePlateTool spot-check,
+NamePlateTool test suite, or one of the two SOPS items). See `docs/todo.md`.
+**Known risks:** None new.
+**Blockers:** None.

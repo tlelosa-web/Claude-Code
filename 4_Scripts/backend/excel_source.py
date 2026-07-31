@@ -235,7 +235,7 @@ def read_test_sheet_from_excel(xlsx_path: str, *, series_hint: str | None = None
         make = _join_nonempty(_cell(ws, 5, 20), _cell(ws, 5, 22), _cell(ws, 5, 24))
 
         return {
-            "date": _cell(ws, 1, 21),
+            "date": _fmt_month_year(_cell(ws, 1, 21)),
             "contract_no": _cell(ws, 2, 4),
             "fan_series": _cell(ws, 2, 10),
             "fan_size": _cell(ws, 2, 16),

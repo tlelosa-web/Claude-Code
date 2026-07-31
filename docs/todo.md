@@ -67,6 +67,23 @@ runs on the right machine)
 
 ## Done
 
+- [x] **2026-07-31** — pitwall-companion: made the Loadouts → By Track
+      loadout customizable, matching By Attribute — merged as PR #15 (final
+      pitwall-companion change of the day; the app was then shared to
+      Tebello's Discord for a trusted-tester trial week). The loadout card
+      was previously locked to the track's single official component stat;
+      it now has its own attribute toggle bar (independent of By Attribute
+      mode's selection), defaulting to the track's stat but adjustable from
+      there, and resetting to that default whenever the track changes. The
+      driver ranking and Suggested Boost stay tied to the track's official
+      stats by design — only the loadout became customizable. Hit the same
+      class of merge-conflict issue as PR #14 (long-lived branch, several of
+      its own prior PRs squash-merged into `main` without the branch ever
+      restarting from it) — resolved the same way: keep the branch's newer
+      code, then verify with an executability check + full regression pass
+      rather than trusting a clean "no conflict markers" diff alone. Not its
+      own queue item for the same reason as the entries below. See
+      `docs/session-log.md` for full detail.
 - [x] **2026-07-31** — pitwall-companion: Loadouts → By Track, Suggested
       Boost, and a Boosts-ownership tab — merged as PR #14 (after resolving a
       real merge conflict that briefly resurrected already-superseded code;

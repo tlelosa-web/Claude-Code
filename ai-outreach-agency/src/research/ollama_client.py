@@ -8,7 +8,7 @@ from src.shared.rate_limiter import RateLimiter
 DEFAULT_BASE_URL = "http://localhost:11434"
 DEFAULT_MODEL = "qwen3:8b"
 CONNECT_TIMEOUT = 3
-READ_TIMEOUT = 60
+READ_TIMEOUT = 120
 
 RATE_LIMIT_PER_MIN = int(os.environ.get("OLLAMA_RATE_LIMIT_PER_MIN", "120"))
 _limiter = RateLimiter(rate=RATE_LIMIT_PER_MIN, period=60.0)
@@ -44,6 +44,10 @@ def call_ollama(
         "prompt": prompt,
         "stream": False,
         "think": False,
+        # Keep the model resident for 30 minutes so gaps between leads in a
+        # real batch don't trigger Ollama's default 5-minute idle-unload and
+        # force a repeat cold-load mid-batch (see docs/todo.md Known Issues).
+        "keep_alive": "30m",
     }
 
     _limiter.acquire()

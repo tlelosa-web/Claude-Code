@@ -3,6 +3,7 @@ from unittest.mock import patch, MagicMock
 import pytest
 import requests
 
+from src.research import ollama_client
 from src.research.ollama_client import (
     call_ollama,
     OllamaError,
@@ -70,6 +71,30 @@ class TestCallOllamaHappyPath:
 
         assert "reasoning" not in result
         assert result.strip() == "Clean summary text."
+
+    def test_read_timeout_is_120s(self):
+        assert ollama_client.READ_TIMEOUT == 120
+
+    @patch("src.research.ollama_client.requests.post")
+    def test_request_uses_120s_read_timeout(self, mock_post, monkeypatch):
+        mock_post.return_value = _mock_response(json_data={"response": "ok"})
+
+        call_ollama("test prompt")
+
+        call_args = mock_post.call_args
+        assert call_args.kwargs["timeout"] == (
+            ollama_client.CONNECT_TIMEOUT,
+            120,
+        )
+
+    @patch("src.research.ollama_client.requests.post")
+    def test_payload_includes_keep_alive_30m(self, mock_post, monkeypatch):
+        mock_post.return_value = _mock_response(json_data={"response": "ok"})
+
+        call_ollama("test prompt")
+
+        payload = mock_post.call_args.kwargs["json"]
+        assert payload["keep_alive"] == "30m"
 
     @patch("src.research.ollama_client.requests.post")
     def test_no_api_key_required(self, mock_post, monkeypatch):

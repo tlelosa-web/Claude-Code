@@ -12,6 +12,7 @@ from unittest.mock import patch
 
 import pytest
 
+from src.doc_gen.runner import wrap_untrusted_text
 from src.vacancy_search.extraction_prompt import build_extraction_prompt
 from src.vacancy_search.extractor import VacancyExtractionError, extract_vacancy_fields
 
@@ -45,6 +46,17 @@ class TestBuildExtractionPrompt:
 
         assert "Operations Foreman" in prompt
         assert "Acme Engineering" in prompt
+
+    def test_wraps_raw_page_text_in_untrusted_data_delimiters(self):
+        """Defense in depth: raw_page_text is untrusted, scraped job-posting
+        text reaching an LLM prompt — same sink shape as vacancy.description
+        in doc_gen's cv_generator.py/cover_letter_generator.py, so it must
+        be wrapped with the same wrap_untrusted_text() markers before being
+        embedded in the extraction prompt."""
+        prompt = build_extraction_prompt(RAW_PAGE["text_content"], "careers24")
+
+        expected_wrapped = wrap_untrusted_text(RAW_PAGE["text_content"])
+        assert expected_wrapped in prompt
 
 
 class TestExtractVacancyFields:

@@ -157,10 +157,23 @@ Foreman/Manager", "Project Engineer (Mechanical)") and `SEARCH_LOCATION`
 `title`/`location`/`rows` for LinkedIn — each actor's own required-field
 names, not a shared shape), normalizes each actor's item shape into a
 `Vacancy` via `_normalize_indeed()`/`_normalize_linkedin()`, then dedupes on
-`(company, title, url)` across all calls combined and truncates to `limit`.
-A `requests.RequestException` or unparseable JSON from either actor is
-swallowed per-call (`except (requests.RequestException, ValueError): pass`)
-so one platform's or title's failure doesn't block the rest.
+`(company, title, normalize_url(url))` across all calls combined and
+truncates to `limit`. A `requests.RequestException` or unparseable JSON
+from either actor is swallowed per-call
+(`except (requests.RequestException, ValueError): pass`) so one platform's
+or title's failure doesn't block the rest.
+
+`normalize_url(url) -> str` strips trailing slash, fragment, and only a
+fixed **allowlist** of known tracking query params (`utm_source`,
+`utm_medium`, `utm_campaign`, `utm_term`, `utm_content`, `gclid`,
+`fbclid`) — not the entire query string. Codex Review Follow-up (W2): the
+original implementation stripped the whole query string, which fixed
+UTM-differing duplicates but also collapsed every Indeed URL to the same
+bare path, since Indeed's canonical job identity lives in `?jk=<id>` —
+this silently merged genuinely distinct postings (e.g. two reqs from the
+same employer with the same title) into one dedupe key. Significant
+identifier params like `jk` are preserved through normalization; only the
+allowlisted tracking params are removed.
 
 > **Corrected 2026-07-26 (found while confirming the slugs above):** the
 > original implementation sent `{"maxItems": limit}` as the entire request
@@ -295,6 +308,13 @@ No independent rate limit for `discovery.py` — it reuses
 (`extraction_prompt.py`) is a pure function — no network, no DB — that
 builds a JSON-schema-shaped instruction listing the required output keys
 (`company`, `title`, `description`, `url`, `salary`, `deadline`).
+`raw_page_text` is untrusted, scraped job-posting text — the same sink
+shape as `vacancy.description` in doc_gen's Headless Claude Code section
+above — so it is wrapped with `doc_gen/runner.py`'s
+`wrap_untrusted_text()` before being embedded in the prompt (Codex Review
+Follow-up amendment, W1): this is a second sink for equivalent untrusted
+content reaching an LLM, and follows the same defense-in-depth pattern
+rather than a new one.
 
 `extract_vacancy_fields(raw_page, platform) -> dict` (`extractor.py`) calls
 `src.shared.ollama_client.call_ollama()` (its second consumer, see the

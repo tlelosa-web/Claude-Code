@@ -67,6 +67,25 @@ runs on the right machine)
 
 ## Done
 
+- [x] **2026-07-31** — pitwall-companion: Loadouts → By Track, Suggested
+      Boost, and a Boosts-ownership tab — merged as PR #14 (after resolving a
+      real merge conflict that briefly resurrected already-superseded code;
+      see `docs/session-log.md` for how). Loadouts gained a mode switch (By
+      Attribute / By Track); By Track adds a 21-circuit dropdown showing the
+      best 2 owned drivers for the track's driver stat, a Suggested Boost
+      (top 3 owned consumable Boosts ranked by driver stat then component
+      stat), and the same full loadout card as before for the component
+      stat. New 4th Tools tab "Boosts" tracks quantities owned per consumable
+      Boost (dropdown picker, not a 65-item scroll) and includes a New Boost
+      form for boosts the game adds faster than this app can track — custom
+      entries compete in Suggested Boost rankings alongside built-ins. Added
+      4 newly-discovered boosts (Livewire Plus, Midnight, Mushroom,
+      Succession) transcribed from Tebello's own in-game screenshots.
+      Overhauled README.md, which had gone stale across the last several
+      merges (still described single-mode Loadouts, no mention of Boosts tab
+      or Track Spec, undercounted boosts at 65 instead of 69). Not its own
+      queue item for the same reason as the entries below. See
+      `docs/session-log.md` for full detail.
 - [x] **2026-07-31** — pitwall-companion: follow-up polish batch after the
       workbook audit + Loadouts picker (below) — merged as PRs #11 and #12:
       fixed the header's small icon (was still the pre-rename inline-SVG

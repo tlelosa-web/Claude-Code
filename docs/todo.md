@@ -935,4 +935,43 @@ in `docs/specs/sales-order-report-excel-export-2026-07-17.md`.
   live-data items remain open from earlier batches: Batch 24 payment-status
   review (19/22 SOs) and the Batch 32/33 migration + real-data import
   go-ahead.
+
+## Batch 24 Payment-Status Spot-Check (2026-07-31)
+
+- Domain: Ops (Tebello-driven manual review), per the standing guidance in
+  the "Ops — Carried Forward: Batch 24 Payment-Status Review" entry above —
+  a future session should spot-check the guessed-value list against the
+  live DB rather than re-flagging it as neglected. Tebello selected this
+  task explicitly via AskUserQuestion.
+- Read-only verification only — no writes to `instance/sops.db`. First pass:
+  raw `sqlite3` query of `payment_status`/`amount_paid` for all 19 flagged
+  SOs (SO4556, SO4624, SO4661, SO4685, SO4699, SO4702, SO4710, SO4714,
+  SO4717, SO4718, SO4719, SO4722, SO4724, SO4726, SO4728, SO4729, SO4730,
+  SO4731, SO4732) — confirmed all 19 now carry valid new-schema
+  `payment_status` values (none still stuck on legacy `Pending`/`Paid`/
+  `Unpaid` raw values from before the migration).
+- Second pass via the SQLAlchemy ORM (`total_incl` is a computed `@property`,
+  not a real column — raw SQL against it fails with `no such column:
+  total_incl`; must go through `models.SalesOrder` in an app context)
+  cross-checked `amount_paid`/`total_incl`/`status` for the two most
+  divergent-looking rows. `SO4556` (`Cash Sale - Partial`,
+  `amount_paid=180000.0`, `total_incl=251413.01`, `status=Open`) is
+  internally consistent. **`SO4722` flagged as a likely inconsistency**:
+  `Cash Sale - Partial` with `amount_paid=0.0` on an already-`Closed` order
+  (`total_incl=19521.25`) — a Partial status with zero paid on a closed SO
+  doesn't line up and looks like a leftover from the original best-guess
+  migration mapping rather than a confirmed real value.
+- Per Tebello's explicit instruction ("Leave it for me to review on the SO
+  detail page"), **no data was changed** — SO4722 and all other flagged SOs
+  are untouched. This finding is surfaced here for Tebello's own review, not
+  auto-corrected.
+- Verified no stray dev server was left running as a side effect of the
+  `create_app()` ORM check (`netstat` confirmed nothing listening on :5000
+  after the check completed).
+- Next task: none from this spot-check — awaiting Tebello's manual review of
+  SO4722 (and the remaining 18) on the SO detail page. Carried-forward live-
+  data items unchanged: Batch 24 review (19/22 SOs, SO4722 now specifically
+  flagged) and the Batch 32/33 migration + real-data import go-ahead.
+- Blockers: None.
+- Commits: None — read-only session, no code or data changes.
 - Blockers: None.

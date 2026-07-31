@@ -871,3 +871,28 @@
 - Next task: none queued. Carried-forward live-data items unchanged (Batch 24 payment-status review 19/22; Batch 32/33 migration + import go-ahead).
 - Blockers: None.
 - Commits: `76e33cc` (build), `c81243d` (freeze fix).
+
+## 2026-07-29 — Print-Template Status-Badge Color Sweep + Dashboard Redesign
+
+- Domain: Software/AI. Note: this log was already several batches behind `docs/todo.md` before this entry (STO edit FM/job-number fix, PO edit + upload item picker) — not backfilled here (out of scope for this session), same standing pattern as the Batch 31 entry above; `docs/todo.md` has the full detail if this log needs catching up later.
+- **Print-template badge-color fix**: while starting the dashboard work below, applied the `sweep-shared-ui-convention-fix` convention and found the 4 A4 print templates' status-badge colors had drifted out of sync with the live `.badge-{status}` colors used everywhere else a status renders. Fixed all 4 print templates (`purchase_orders/print.html`, `stock_orders/print.html`, `works_orders/picking_list_print.html`, `works_orders/works_order_print.html`) in one sweep rather than just the page originally in view. Committed `b010f59`.
+- **Dashboard redesign**: scope confirmed with Tebello via AskUserQuestion — full visual pass (dashboard + topbar + lighter sidebar) modeled on a reference "Waslet ERP" screenshot; charting via hand-rolled SVG rather than a new vendor dependency, preserving the 100%-offline constraint. `routes/dashboard.py` gained `_build_wo_trend_chart()` (7-day WO-creation trend, precomputed SVG path) and `_build_wo_status_rings()` (WO status breakdown as concentric SVG rings, reusing the existing badge-color palette); `templates/base.html` gained topbar search/notification/avatar; `templates/dashboard.html` gained a restructured stat-card row + new Charts Row with legends (accessible secondary encoding per the `dataviz` skill); `static/css/main.css` gained the lighter sidebar + topbar styles + responsive collapse.
+- Two real SVG bugs found and fixed via browser verification: a stray-dot artifact on zero-pct status rings (round-linecap on a zero-length dash) and edge labels/points clipped by the chart card's `overflow: hidden` (fixed with a `_TREND_PAD_X` horizontal inset).
+- Self-flagged deviation: 4 files touched with no spec written first (this project's own plan-first rule for >2 files) — disclosed to Tebello directly rather than silently skipped; scope had already been confirmed via AskUserQuestion instead of a written spec.
+- Full pytest suite green (345 tests, no regressions) and a pre-commit bug/correctness diff review done across all 4 dashboard files per the global `~/.claude/CLAUDE.md` rule, before either commit.
+- Committed as two separate, surgically-staged commits per Tebello's explicit instruction ("Commit both, separately") — print-template fix first, dashboard redesign second. Both pushed to `origin/master`.
+- Next task: none queued — awaiting Tebello's review. Carried-forward live-data items unchanged (Batch 24 payment-status review 19/22 SOs; Batch 32/33 migration + real-data import go-ahead).
+- Blockers: None.
+- Commits: `b010f59` (print-template fix), `a5f8300` (dashboard redesign). Both pushed.
+
+## 2026-07-31 — Batch 24 Payment-Status Spot-Check
+
+- Domain: Ops. Tebello selected "Batch 24 payment-status review" via AskUserQuestion from a short list of open items. `docs/todo.md`'s own carried-forward entry for this batch explicitly asks a future session to spot-check the 19 flagged SOs against the live DB rather than re-flag the item as neglected — read-only verification, not remediation, was the scoped ask.
+- Checked all 19 flagged SOs (SO4556 through SO4732, full list in `docs/todo.md`) directly against `instance/sops.db`: first a raw `sqlite3` query for `payment_status`/`amount_paid`, confirming none are still stuck on legacy pre-migration raw values; then, for the two most divergent-looking rows, went through the SQLAlchemy ORM (`from app import create_app; from models import SalesOrder`, inside `app.app_context()`) since `total_incl` is a computed `@property`, not a real column, and fails against raw SQL.
+- Found one likely data inconsistency: SO4722 is `Cash Sale - Partial` with `amount_paid=0.0` on an already-`Closed` order (`total_incl=R19,521.25`) — a leftover best-guess from the original migration that doesn't hold up on inspection. Flagged it and asked Tebello whether to fix it now.
+- Tebello's explicit instruction: "Leave it for me to review on the SO detail page." No data was modified — SO4722 and the other 18 SOs are untouched. This was a read-only pass by design.
+- Verified the ORM app-context check didn't leave a stray dev server running (`netstat` clean on :5000 afterward) — a known recurring risk class in this repo's history.
+- Session ended per Tebello's instruction as context approached ~150k tokens, per the hub's context-budget threshold pattern (ADR-005) — `docs/todo.md` and this log both updated before stopping, no further work started this session.
+- Next task: none from this session — awaiting Tebello's manual review of SO4722 (and the remaining 18 flagged SOs) on the SO detail page. Carried-forward live-data items unchanged: Batch 24 review (SO4722 now specifically flagged) and the Batch 32/33 migration + real-data import go-ahead.
+- Blockers: None.
+- Commits: None — read-only session.

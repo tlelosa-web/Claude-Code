@@ -217,14 +217,14 @@ class TestNormalizeUrl:
         # dedupe key to (company, title) only for Indeed, silently merging
         # genuinely distinct postings. Only known tracking params should be
         # stripped, not the entire query string.
-        assert normalize_url(
-            "https://za.indeed.com/viewjob?jk=1"
-        ) != normalize_url("https://za.indeed.com/viewjob?jk=2")
+        assert normalize_url("https://za.indeed.com/viewjob?jk=1") != normalize_url(
+            "https://za.indeed.com/viewjob?jk=2"
+        )
 
     def test_tracking_param_stripped_alongside_preserved_jk(self):
-        assert normalize_url(
-            "https://za.indeed.com/viewjob?jk=1"
-        ) == normalize_url("https://za.indeed.com/viewjob?jk=1&utm_source=x")
+        assert normalize_url("https://za.indeed.com/viewjob?jk=1") == normalize_url(
+            "https://za.indeed.com/viewjob?jk=1&utm_source=x"
+        )
 
     def test_strips_trailing_slash(self):
         assert normalize_url("https://example.co.za/job1/") == normalize_url(

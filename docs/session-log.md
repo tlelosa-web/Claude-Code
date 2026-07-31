@@ -756,3 +756,34 @@ Watch for early feedback from the Discord trial that might reprioritize
 pitwall-companion work above the machine-bound queue next session.
 **Known risks:** None new.
 **Blockers:** None.
+
+## 2026-07-31 — pitwall-companion: added Spa (Belgium) to Track Stats
+
+New session, early Discord-trial feedback territory: Tebello sent an
+in-game "Track Stats" screenshot for Spa, Belgium (Overtaking + Power Unit
+spotlighted) and asked for the track to be added. Confirmed it was missing
+from the 21-circuit `TRACKS` array in `index.html` (added in PR #13, the
+Track Stats/Loadouts-By-Track feature from the previous session's work).
+Added `{n:"Spa", c:"Belgium", ds:"Overtaking", cs:"Power Unit"}`, placed
+between "São Paulo" and "Spielberg" to keep the existing near-alphabetical
+`Sp...`/`São...` grouping intact — the list isn't strictly sorted overall
+(diacritics aren't normalized for ordering) but adjacent entries follow it.
+No other code changes needed since By Track's dropdown, driver ranking,
+Suggested Boost, and loadout card are all data-driven off this single array.
+
+Pushed directly to `claude/repo-update-check-mn1wv2`
+(tlelosa-web/pitwall-companion) — not yet opened as a PR; the branch name
+suggests it may be this hub's own environment-setup branch reused for this
+ad-hoc request rather than a fresh feature branch, worth checking before the
+next pitwall-companion round.
+
+**Last completed:** pitwall-companion: added Spa (Belgium) to the Track
+Stats list (this entry).
+**Next task:** Unchanged — whichever machine-bound queue item matches the
+next session's machine (Pappa T: codex-gate smoke-test, TebelloReborn scope
+decision, Ollama timeout fix; Operations: NamePlateTool spot-check,
+NamePlateTool test suite, or one of the two SOPS items). See `docs/todo.md`.
+Also worth a PR for the Spa addition (and confirming the branch situation
+above) if more Discord-trial feedback isn't already queued.
+**Known risks:** None new.
+**Blockers:** None.

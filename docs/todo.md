@@ -67,6 +67,12 @@ runs on the right machine)
 
 ## Done
 
+- [x] **2026-07-31** — pitwall-companion: added Spa (Belgium) to the `TRACKS`
+      Track Stats list (driver stat Overtaking, component stat Power Unit),
+      transcribed from an in-game screenshot — pushed directly to
+      `claude/repo-update-check-mn1wv2` (not yet opened as a PR). Not its
+      own queue item for the same reason as the entries below. See
+      `docs/session-log.md` for full detail.
 - [x] **2026-07-31** — pitwall-companion: made the Loadouts → By Track
       loadout customizable, matching By Attribute — merged as PR #15 (final
       pitwall-companion change of the day; the app was then shared to

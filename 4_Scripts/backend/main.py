@@ -355,6 +355,8 @@ def api_generate_pdf(payload: NameplatePayload):
         c, _ = suggest_connection(v_f, p_i, m_f)
         if c in ("STAR", "DELTA"):
             conn = c
+    if not conn:
+        conn = _clean(payload.connection)
 
     # Server-side validation to enforce engineering correctness before any PDF is generated
     errors = []

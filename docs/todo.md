@@ -10,43 +10,20 @@
 
 ## Next up
 
-- [ ] **Save Nameplate silently blocks connection override** — `main.py`'s
-      `api_generate_pdf()` (lines 353-357) computes `conn` only from
-      `suggest_connection()` with **no fallback to `payload.connection`**,
-      unlike its sibling `api_test_record_sheet_from_nameplate()` (lines
-      479-485) which does have that fallback. Reachable through normal UI
-      use, not just an edge case: `FormFields.jsx` line 92 populates the
-      Motor kW dropdown per-pole only, not filtered by voltage, so a user
-      can pick a legitimate-looking combo (e.g. 4-pole/525V/5.5kW) that has
-      no STAR/DELTA rule in `connection_lookup.py`'s `DELTA_RULES_MAX`
-      (capped at 4.0kW for 525V/4-pole) — Save Nameplate then fails with
-      "A valid connection (STAR or DELTA) could not be determined..." even
-      after the user manually selects DELTA in the dropdown, because that
-      selection is discarded server-side. Verified reproducible directly
-      against `connection_lookup.py` and the real motor performance PDF.
-      Full repro, root cause, and a failing test case are in
-      `docs/bugs/connection-lookup-no-manual-override.md`.
-      **Fix plan for next session:**
-      1. In `api_generate_pdf()`, mirror the existing FLA-fallback pattern:
-         if `suggest_connection()` returns no STAR/DELTA, fall back to
-         `_clean(payload.connection)` before erroring — same shape as
-         `api_test_record_sheet_from_nameplate()` already uses. This alone
-         unblocks the manual override.
+- [ ] **Save Nameplate connection override — remaining follow-ups.** Step 1
+      of the original fix plan (the actual override-blocking bug) is fixed
+      — see Done below. Remaining optional items from
+      `docs/bugs/connection-lookup-no-manual-override.md`:
       2. Optional UX follow-up: filter `motors_by_pole` in
          `_options_cached()` by voltage too (key by `(voltage, pole)`,
          only include kW values with *some* STAR/DELTA rule) so incompatible
-         combos aren't offered in the first place. Not required if (1) is
-         done, but avoids ever needing the override for the common case.
+         combos aren't offered in the first place. Not required now that (1)
+         is done, but avoids ever needing the override for the common case.
       3. While in the area, fix the same datetime-not-JSON-serializable
          defect pattern in `excel_source.py`'s `read_test_sheet_from_excel()`
          (line 288, raw `datetime` from `_cell(ws, 1, 21)`) alongside the
          already-logged `from-excel` bug below — same root cause, currently
          dead code path but will resurface if that field gets wired up.
-      Per this project's CLAUDE.md hard rule 1 (payload-shape contract),
-      touching `main.py`'s connection logic doesn't require touching
-      `App.jsx`/`pdf_generator.py` here since the fallback only changes
-      which value populates the existing `conn` variable — no shape change.
-      Verify by re-running the failing test case in the bug report doc.
 - [ ] Decide fate of orphaned `POST /api/reports/test-record-sheet` endpoint
       (`main.py` lines 381-438) — a second, unused copy of the
       `TestLinePayload` array contract, superseded by the quantity-driven
@@ -75,6 +52,20 @@
 
 ## Done
 
+- [x] **2026-07-31** — Save Nameplate connection-override fix (fix-plan step
+      1 only): `main.py`'s `api_generate_pdf()` now falls back to
+      `_clean(payload.connection)` when `suggest_connection()` finds no
+      STAR/DELTA rule for the combo, mirroring the existing pattern in
+      `api_test_record_sheet_from_nameplate()`. Spec:
+      `docs/specs/2026-07-31-connection-override-fallback-fix.md`. Bug
+      report: `docs/bugs/connection-lookup-no-manual-override.md`. Verified
+      against a live `uvicorn` server: `POST /api/generate-pdf` with
+      `{motor: "5.5", pole: "4", voltage: "525", connection: "DELTA"}` now
+      returns `200` with a valid PDF (was `400`); confirmed the no-override
+      case (`connection: ""`) still correctly returns `400`, so the fix only
+      rescues a genuine manual override rather than masking real validation
+      failures. Fix-plan steps 2 (voltage-filtered motor options) and 3
+      (`excel_source.py` datetime fix) remain open — see Next up.
 - [x] **2026-07-28** — `/api/nameplate/from-excel` datetime crash fixed.
       `date_of_manuf` in `excel_source.py`'s `"Info+Data Entry Form"` branch
       is now formatted via `_fmt_month_year()` before returning (was a raw

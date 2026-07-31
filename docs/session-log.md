@@ -787,3 +787,55 @@ Also worth a PR for the Spa addition (and confirming the branch situation
 above) if more Discord-trial feedback isn't already queued.
 **Known risks:** None new.
 **Blockers:** None.
+
+## 2026-07-31 — pitwall-companion: added Boosts to the Compare tab
+
+Same session, continuing on `pitwall-companion`: Tebello sent a screenshot
+of Tools → Compare (currently Drivers/Components only) and asked for Boosts
+to be added there too.
+
+`compareHTML()`'s existing scope buttons (Drivers/Components) hoisted to
+render before the kind branch, with a new third "Boosts" button
+(`data-ck="b"`) reusing the same generic scope-switch handler already in
+place (keys off `ck.dataset.ck`, no kind-specific logic needed there or in
+the column-sort handler — both were already generic over any `cmpKind`
+value and `data-cs` key). New `compareBoostsHTML()` lists owned Boosts
+(`allBoosts().filter(qty>0)`, matching the Suggested-Boost/Boosts-tab
+"owned" definition) sorted by Name/Qty/any of the 13 `BOOST_ATTR_NAMES`
+stats/Total — same table markup, `sortable`/`active` header classes, and
+click-to-sort/reverse mechanic as the Drivers/Components tables, so it
+reads as the same feature rather than a bolted-on one. New
+`BOOST_SHORT_LABELS` constant mirrors `BOOST_ATTR_NAMES`' order for column
+headers (Over/Def/Qual/Start/Tyre/Spd/Cor/PU/Pit/OvM/Imp/Dur/Rch). Total is
+computed live as the sum of a Boost's own stat values rather than reusing
+built-in Boosts' precomputed `t` field, since custom user-added Boosts
+don't have one.
+
+Verified with a headless-Chromium test (playwright, `python3 -m
+http.server`): seeded three owned Boosts via `boostOwned`, confirmed
+default Tot-descending sort order (tie-break alphabetical, matching the
+existing Drivers/Components tie-break), confirmed clicking "Tot" again
+reverses to ascending, and confirmed switching back to Drivers/Components
+still renders their original headers unaffected — zero console errors.
+Also ran the same `node -e "new Function(...)"` executability check plus
+the duplicate-top-level-declaration grep from the last couple of
+pitwall-companion rounds before pushing, given this branch's history of
+squash-merge conflicts resurrecting dead code — neither flagged an issue,
+and this branch hadn't been rebased since the previous entry's Spa change,
+so no merge was even needed this time.
+
+Pushed directly to `claude/repo-update-check-mn1wv2`
+(tlelosa-web/pitwall-companion) — same branch as the Spa Track Stats
+addition above, still not opened as a PR.
+
+**Last completed:** pitwall-companion: added a Boosts scope to Tools →
+Compare (this entry).
+**Next task:** Unchanged — whichever machine-bound queue item matches the
+next session's machine (Pappa T: codex-gate smoke-test, TebelloReborn scope
+decision, Ollama timeout fix; Operations: NamePlateTool spot-check,
+NamePlateTool test suite, or one of the two SOPS items). See `docs/todo.md`.
+Also worth opening a PR covering both pitwall-companion changes on this
+branch (Spa + Compare Boosts) if no further Discord-trial feedback is
+queued.
+**Known risks:** None new.
+**Blockers:** None.

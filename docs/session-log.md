@@ -683,3 +683,76 @@ decision, Ollama timeout fix; Operations: NamePlateTool spot-check,
 NamePlateTool test suite, or one of the two SOPS items). See `docs/todo.md`.
 **Known risks:** None new.
 **Blockers:** None.
+
+## 2026-07-31 — pitwall-companion: Loadouts By Track loadout customization + Discord share
+
+Final pitwall-companion round of the day, same session. Tebello asked for
+the By Track loadout to be customizable "the same way the loadout tab
+works" — the loadout card there had been locked to the track's single
+official component stat since PR #14, with no way to tweak it like By
+Attribute mode's toggle buttons allow.
+
+**Design questions asked before building** (three real forks, all answered
+with the recommended option): (1) should the By Track attribute selection
+share state with By Attribute mode, or stay independent — independent won;
+(2) should switching tracks reset the selection to that track's own stat,
+or carry over whatever was picked — reset-per-track won; (3) should the
+driver ranking / Suggested Boost also follow the custom selection, or stay
+tied to the track's real in-game stat regardless — stay-tied won, so only
+the loadout card itself became adjustable, not the parts of By Track that
+reflect actual game data.
+
+**Implementation:** new `trackLoadoutAttrs` Set + `trackLoadoutAttrsFor`
+(records which track the current selection belongs to, so `trackSpecHTML()`
+can detect a track change and reset), both persisted in the same
+`f1sheet.loadoutAttrs.v1` key alongside the existing By Attribute state. New
+toggle bar (`data-tlattr`) reuses the same `LOADOUT_ATTR_NAMES` list and
+`loadoutCardHTML()` helper as By Attribute, so the two modes render
+identically despite separate underlying state. Verified with a headless
+test: Abu Dhabi defaults to just Speed, adding Cornering updates the card
+live, switching to Monaco resets to just Cornering (Monaco's own stat), By
+Attribute's selection stays untouched throughout, and everything persists
+across reload.
+
+**Merge conflict, again — same root cause as PR #14.** PR #15 hit the exact
+same class of conflict: the branch's merge-base with `main` was still
+several squash-merges behind (this branch has now survived 4 of its own
+prior PRs — #11 through #14 — without ever restarting from `main` in
+between). Applied the same fix as last time: resolved each conflicted
+region by keeping the branch's newer code, then didn't stop at "no conflict
+markers left" — ran the same `node --input-type=module` executability
+check, plus a duplicate-top-level-declaration grep this time
+(`grep -oE '^(const|let|function) [A-Za-z_]+' index.html | sort | uniq -c`)
+as a faster way to catch the same resurrected-dead-code failure mode before
+it reaches Tebello. Also diffed the pre-merge-commit tree against the final
+squash commit (`git diff 872b0b1 f01e705 -- index.html README.md`) to
+positively confirm zero content difference despite `git merge-base
+--is-ancestor` reporting false — a reminder that ancestry checks don't
+apply across squash merges (each one creates a brand-new, parentless-in-
+practice commit even when the tree content is identical); a content diff is
+the only way to actually confirm nothing was lost in that situation, not an
+ancestry check. Merged as PR #15, squash commit `f01e705`. Re-verified
+against a fresh `main` checkout (not just the merge commit) with both the
+full regression suite and the feature-specific test before calling it done,
+then reset the local branch to match `origin/main` so the next session
+starts from a clean, unambiguous base instead of another stale long-lived
+branch.
+
+**Discord share.** This was the last pitwall-companion change planned for
+today — Tebello is sharing the app with their Discord server's trusted
+testers for a week-long trial before a wider community launch. Wrote an
+introductory message for the server owner to post, describing the app,
+what's new, and the trial framing (see the message itself for content —
+not duplicated here since it's conversational output, not a finding).
+
+**Last completed:** pitwall-companion Loadouts → By Track loadout
+customization, merged as PR #15 (this entry) — app then shared to Discord
+for a trusted-tester trial week.
+**Next task:** Unchanged — whichever machine-bound queue item matches the
+next session's machine (Pappa T: codex-gate smoke-test, TebelloReborn scope
+decision, Ollama timeout fix; Operations: NamePlateTool spot-check,
+NamePlateTool test suite, or one of the two SOPS items). See `docs/todo.md`.
+Watch for early feedback from the Discord trial that might reprioritize
+pitwall-companion work above the machine-bound queue next session.
+**Known risks:** None new.
+**Blockers:** None.

@@ -67,6 +67,25 @@ runs on the right machine)
 
 ## Done
 
+- [x] **2026-07-31** — pitwall-companion: audited the app against the
+      community "F1 Clash 2026 Resource Sheet" workbook (v1.1, the
+      confirmed source-of-truth version) — no gaps found, driver/part
+      rosters, per-level stats, Series unlocks, and CCData/rewards
+      constants all in sync. Then, per Tebello's direction, replaced the
+      Suggested Loadouts tool's 9 stacked fixed-strategy cards with 4
+      multi-select attribute toggle buttons (Speed/Cornering/Power
+      Unit/Qualifying) rendering a single live card, removing the need to
+      scroll; selection persists via its own localStorage key. Verified
+      with a headless-browser smoke test (single-card render, multi-select
+      combine, last-attribute deselect guard, reload persistence, zero
+      console errors) before pushing. Merged as PR #9
+      (tlelosa-web/pitwall-companion), then updated `README.md`'s Loadouts
+      description to match (PR #10, merged) since it still described the
+      old fixed-strategy list. Not tracked as its own queue item since
+      pitwall-companion isn't part of this hub's machine-bound spec queue
+      and has no `docs/todo.md` of its own — logged here per Hard Rule 5
+      since Tebello asked for the hub log to be updated. See
+      `docs/session-log.md` for full detail.
 - [x] **2026-07-29** — codex-gate: copied the drafted ADR into this hub's
       `docs/decisions/` (`ADR-009-codex-second-opinion-gate.md`), closing
       the documentation sub-item — done via git directly from a cloud

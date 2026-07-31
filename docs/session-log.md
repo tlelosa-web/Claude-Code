@@ -430,3 +430,68 @@ scope decision, Ollama timeout fix; Operations: NamePlateTool spot-check,
 NamePlateTool test suite, or one of the two SOPS items).
 **Known risks:** None new.
 **Blockers:** None.
+
+## 2026-07-31 — pitwall-companion: workbook audit + interactive Loadouts picker
+
+Ran `/continue`; the machine-bound queue items (Operations/Pappa T) weren't
+runnable from this cloud session, so Tebello redirected to project-specific
+work on `pitwall-companion` instead (no queue item, no `docs/todo.md` of its
+own — a fresh ask, not from this hub's backlog).
+
+**Audit:** Compared the app's embedded driver/part/stat/Series/rewards data
+against the community "F1 Clash 2026 Resource Sheet" Google Sheet workbook.
+Two versions existed in Drive — v1.0 (Tebello's own copy, more recently
+edited, 2026-07-16) and v1.1 (a shared copy from the original author,
+2026-05-13, not touched since shared) — confirmed with Tebello that v1.1 is
+the intended source of truth despite the older modified-date. Delegated the
+full cross-check to a background agent (workbook export too large — 230KB+
+— for main-context reading) against `index.html`'s `REF`/`REWARDS`/
+`COMPONENT_GROUPS`/`LOADOUT_STRATS` structures. Result: fully in sync — no
+missing drivers, parts, stats, Series, or CCData/rewards constants. Confirmed
+the workbook has no "Premium Crates" tracker concept at all (a related but
+separate community sheet), so the app isn't missing that; confirmed "Asset
+Trading surplus" is an app-original feature not sourced from the workbook,
+consistent with the README's own framing.
+
+**Feature change:** Tebello wanted the Tools → Loadouts view (screenshot:
+`Loadout SS.png` in Drive) to stop requiring a scroll through 9 stacked
+preset-strategy cards. Since `bestLoadout(strat)` already accepted an
+arbitrary attribute array, this only needed a rendering/state change:
+- Replaced the hardcoded `LOADOUT_STRATS` (9 fixed Speed/Cornering/Power
+  Unit/Qualifying combos) with `LOADOUT_ATTR_NAMES`, a 4-button multi-select
+  toggle bar (Speed, Cornering, Power Unit, Qualifying — Pit Time excluded,
+  it's a lower-is-better stat never used as an optimization target).
+- `suggestLoadoutsHTML()` now renders exactly one `.lo-card` for whatever
+  combination is toggled on, instead of one card per preset.
+- Added a guard so the last selected attribute can't be deselected (always
+  ≥1 selected, so a card always renders).
+- New `LOADOUT_ATTRS_KEY`/`LOADOUT_ATTRS_SCHEMA` localStorage entry
+  (matching the existing `STORAGE_KEY`/`SEASON_KEY`/`BOOST_KEY` schema-guard
+  convention) persists the selection across reloads — confirmed multi-select
+  and persistence both requested explicitly by Tebello over the alternative
+  (single-select, reset-on-reload).
+
+Verified with a headless-Chromium smoke test (playwright, served via
+`python3 -m http.server`, since no project run-skill existed for this static
+PWA): single-card render at all times, multi-select combining correctly
+(Speed+Qualifying → one card with both stats highlighted), the last-attribute
+deselect guard holding, selection surviving a page reload, and zero
+console/page errors. Screenshot confirmed visually.
+
+Pushed to `claude/continuation-8iamwu`, merged as PR #9
+(tlelosa-web/pitwall-companion). Then updated `README.md`'s "Tools tab
+(coach)" Loadouts description and its "Loadouts are computed from your
+collection" design-rationale note to match the new interaction (still
+described the old 9-strategy list) — required restarting the feature branch
+from the newly-merged `main` first (branch had been reused post-merge, per
+this hub's merged-PR convention), force-with-lease pushed since the old
+pre-merge history was already fully merged. Merged as PR #10.
+
+**Last completed:** pitwall-companion workbook audit (in sync, no gaps) +
+interactive Loadouts attribute picker, merged as PR #9 and #10 (this entry).
+**Next task:** Unchanged — whichever machine-bound queue item matches the
+next session's machine (Pappa T: codex-gate smoke-test, TebelloReborn scope
+decision, Ollama timeout fix; Operations: NamePlateTool spot-check,
+NamePlateTool test suite, or one of the two SOPS items). See `docs/todo.md`.
+**Known risks:** None new.
+**Blockers:** None.

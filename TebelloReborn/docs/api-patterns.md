@@ -1,6 +1,6 @@
 # API Patterns — TebelloReborn (Career Engine)
 
-> Updated: 2026-07-26
+> Updated: 2026-07-31
 
 No OpenRouter section here — ADR-003 dropped it from this project's inference
 stack entirely (see `docs/decisions/ADR-003-inference-provider-split.md`).
@@ -153,15 +153,45 @@ Search parameters: `apify_client.py`'s `SEARCH_TITLES` module constant
 Foreman/Manager", "Project Engineer (Mechanical)") and `SEARCH_LOCATION`
 ("Gauteng, South Africa"), per `docs/architecture.md`'s Stage 2 input spec.
 `fetch_vacancies(limit)` runs one Indeed + one LinkedIn call per title in
-`SEARCH_TITLES` (`position`/`location`/`maxItemsPerSearch` for Indeed;
-`title`/`location`/`rows` for LinkedIn — each actor's own required-field
-names, not a shared shape), normalizes each actor's item shape into a
-`Vacancy` via `_normalize_indeed()`/`_normalize_linkedin()`, then dedupes on
-`(company, title, normalize_url(url))` across all calls combined and
-truncates to `limit`. A `requests.RequestException` or unparseable JSON
-from either actor is swallowed per-call
+`SEARCH_TITLES` (`position`/`location`/`country`/`maxItemsPerSearch` for
+Indeed; `title`/`location`/`rows` for LinkedIn — each actor's own
+required-field names, not a shared shape), normalizes each actor's item
+shape into a `Vacancy` via `_normalize_indeed()`/`_normalize_linkedin()`.
+Each source (Indeed, LinkedIn, and each `CRAWLER_PLATFORMS` entry) is
+collected into its own list, then `_interleave()` round-robin combines
+them — one item from each non-empty source in turn, cycling until all are
+exhausted — **before** the shared `_dedupe()` on
+`(company, title, normalize_url(url))` and the final `[:limit]` truncation.
+A `requests.RequestException` or unparseable JSON from either Indeed/
+LinkedIn actor is swallowed per-call
 (`except (requests.RequestException, ValueError): pass`) so one platform's
 or title's failure doesn't block the rest.
+
+> **Corrected 2026-07-31 (found via the first real, non-offline
+> `fetch-vacancies` run):** the Indeed actor's `location` field is a
+> free-text city/locality filter, not a domain selector — without a
+> separate `country` field it silently defaults to the US Indeed site
+> regardless of `location`'s value. The real run returned 10/10 US
+> `indeed.com` postings (Denver/Maui/southeast-US) despite `SEARCH_LOCATION`
+> being `"Gauteng, South Africa"`. Fix: the Indeed request payload now also
+> sends `"country": "ZA"`. Confirmed via the actor's own input-schema docs
+> (`misceres/indeed-scraper`). LinkedIn's actor (`bebity/linkedin-jobs-scraper`)
+> needs no equivalent field — its `location` is plain free-text with no
+> separate country selector, per its own input-schema docs.
+>
+> **Also corrected 2026-07-31, same real run:** `fetch_vacancies()` used to
+> build one flat `results` list by sequential `.extend()` calls (Indeed,
+> then LinkedIn, then each crawler platform in order) and truncate with a
+> single trailing `[:limit]`. Since Indeed is called with
+> `"maxItemsPerSearch": limit`, it alone could fill the entire truncation
+> window before LinkedIn or the crawler platforms' (already paid-for)
+> results were ever appended — real-run evidence: 10/10 results were
+> Indeed, LinkedIn and PNet/Careers24 contributed zero despite real,
+> billed network calls being made. Fix: per-source result lists are now
+> combined via `_interleave()`'s round-robin fair-interleave before
+> `_dedupe(...)[:limit]`, so no single source can starve the others of
+> slots by list position alone. See `docs/todo.md`'s Resolved Items for
+> the full write-up.
 
 `normalize_url(url) -> str` strips trailing slash, fragment, and only a
 fixed **allowlist** of known tracking query params (`utm_source`,

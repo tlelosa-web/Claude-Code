@@ -1,6 +1,6 @@
 # Task Queue — TebelloReborn (Career Engine)
 
-> Updated: 2026-07-29 (PNet/Careers24 Automated Discovery build complete — steps 55-80, Phases 9-15)
+> Updated: 2026-07-31 (real-run Apify bugs fixed — Indeed country/ZA targeting, round-robin fair-interleave truncation; see Resolved Items)
 
 ---
 
@@ -240,6 +240,37 @@ _(none active — the PNet/Careers24 gap below is now a scheduled, spec-backed b
       preserving significant identifier params like `jk` (RED `5ffc010`, GREEN `6068db4`). Both fixes
       built TDD in worktree `agent-a6eb29f112cbc6764`, fast-forward merged to `master` at `9319b5a`
       (232 tests passing, zero regressions). Worktree removed after merge confirmed clean.
+- [x] **Two real-run bugs found and fixed (2026-07-31) — the first non-offline, real (paid) `career-engine
+      fetch-vacancies --limit 10` run against real Apify actors.** Both bugs were invisible to the existing
+      unit test suite because every test mocks `requests.post` directly rather than exercising real actor
+      behavior — the same class of gap flagged the last time this happened (the `maxItems`/actor-slug bug
+      above). **Bug 1 — Indeed defaulting to the US site:** all 10 results came back as `indeed.com` (US
+      domain) postings in Denver/Maui/southeast-US, despite `SEARCH_LOCATION = "Gauteng, South Africa"`
+      being sent. Confirmed via the actor's own input-schema docs (`misceres/indeed-scraper`) that
+      `location` is a free-text city/locality filter only — targeting a specific Indeed domain/region
+      requires a separate `"country"` field, absent from the original payload, so the actor silently fell
+      back to its US default. Fixed: the Indeed request payload now also sends `"country": "ZA"`.
+      LinkedIn's actor (`bebity/linkedin-jobs-scraper`) needs no equivalent fix — confirmed via its own
+      input-schema docs that `location` is plain free-text with no separate country field. **Bug 2 —
+      truncation discarding paid results from other platforms:** `fetch_vacancies()` built one flat
+      `results` list via sequential `.extend()` calls (Indeed, then LinkedIn, then each
+      `CRAWLER_PLATFORMS` entry, in that fixed order) and truncated once at the end with `[:limit]`.
+      Because Indeed is called with `"maxItemsPerSearch": limit`, it alone filled the entire truncation
+      window in the real run before LinkedIn's or PNet/Careers24's already-fetched-and-billed results were
+      ever appended — 10/10 results were Indeed, the other platforms contributed zero despite real network
+      calls being made and paid for. This was a starvation bug by list position, not any relevance or
+      fairness criterion. Fixed: each source's normalized items are now collected into their own list,
+      then combined via a new `_interleave()` helper — round-robin, one item from each non-empty source in
+      turn, cycling until exhausted — before the existing `_dedupe(...)[:limit]` call, so no single source
+      can starve the others of slots. Two new regression tests added to
+      `tests/unit/test_apify_client.py`: `test_indeed_payload_includes_country_za` (asserts the Indeed
+      payload includes `"country": "ZA"`) and
+      `test_other_sources_survive_truncation_when_indeed_alone_exceeds_limit` (constructs a scenario where
+      Indeed's mocked response alone exceeds `limit` while LinkedIn also has distinct real items, and
+      asserts LinkedIn items survive into the final truncated result rather than being fully starved out).
+      `career.db` (containing the 10 real vacancies from the run that surfaced these bugs) was left
+      untouched — no reset, no delete. Baseline was 232 tests before this fix; 234 after (2 new tests,
+      zero regressions). See `docs/api-patterns.md`'s Apify section for the updated documented behavior.
 
 ---
 

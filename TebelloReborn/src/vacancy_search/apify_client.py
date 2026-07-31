@@ -1,6 +1,7 @@
 import logging
 import os
 import warnings
+from itertools import zip_longest
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 import requests
@@ -209,7 +210,8 @@ def fetch_vacancies(limit: int = 25) -> list[Vacancy]:
         return _fixture_vacancies(limit)
 
     headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
-    results: list[Vacancy] = []
+    indeed_results: list[Vacancy] = []
+    linkedin_results: list[Vacancy] = []
 
     for title in SEARCH_TITLES:
         _limiter.acquire()
@@ -220,12 +222,13 @@ def fetch_vacancies(limit: int = 25) -> list[Vacancy]:
                 json={
                     "position": title,
                     "location": SEARCH_LOCATION,
+                    "country": "ZA",
                     "maxItemsPerSearch": limit,
                 },
                 timeout=TIMEOUT,
             )
             resp.raise_for_status()
-            results.extend(_normalize_indeed(item) for item in resp.json())
+            indeed_results.extend(_normalize_indeed(item) for item in resp.json())
         except (requests.RequestException, ValueError):
             pass
 
@@ -242,17 +245,18 @@ def fetch_vacancies(limit: int = 25) -> list[Vacancy]:
                 timeout=TIMEOUT,
             )
             resp.raise_for_status()
-            results.extend(_normalize_linkedin(item) for item in resp.json())
+            linkedin_results.extend(_normalize_linkedin(item) for item in resp.json())
         except (requests.RequestException, ValueError):
             pass
 
     total_pages = 0
     fixture_pages = 0
+    source_lists = [indeed_results, linkedin_results]
     for platform in CRAWLER_PLATFORMS:
         platform_vacancies, live_count, fixture_count = (
             _fetch_crawler_platform_vacancies(platform, limit)
         )
-        results.extend(platform_vacancies)
+        source_lists.append(platform_vacancies)
         total_pages += live_count + fixture_count
         fixture_pages += fixture_count
 
@@ -264,4 +268,18 @@ def fetch_vacancies(limit: int = 25) -> list[Vacancy]:
             total_pages,
         )
 
-    return _dedupe(results)[:limit]
+    return _dedupe(_interleave(source_lists))[:limit]
+
+
+def _interleave(source_lists: list[list[Vacancy]]) -> list[Vacancy]:
+    """Round-robin combine per-source result lists — one item from each
+    non-empty source in turn, cycling until all are exhausted — so a single
+    source (e.g. Indeed alone returning >= limit items) can never fill the
+    entire final [:limit] truncation window and starve out the other,
+    already-fetched-and-paid-for sources by list position alone (real-run
+    bug, 2026-07-31: 10/10 results were Indeed, LinkedIn/PNet/Careers24
+    contributed zero despite real network calls being made)."""
+    combined: list[Vacancy] = []
+    for items in zip_longest(*source_lists, fillvalue=None):
+        combined.extend(item for item in items if item is not None)
+    return combined

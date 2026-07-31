@@ -112,6 +112,29 @@ class TestRealCallPath:
         assert "maxItems" not in linkedin_payload
 
     @patch("src.vacancy_search.apify_client.requests.post")
+    def test_indeed_payload_includes_country_za(self, mock_post, monkeypatch):
+        """Real-run bug (2026-07-31, first non-offline fetch-vacancies run):
+        the Indeed actor's `location` field is a free-text city/locality
+        filter, not a domain selector — without a separate `country` field
+        it defaults to the US Indeed site, regardless of `location`'s
+        value. All 10 results in that real run came back as US indeed.com
+        postings (Denver/Maui/southeast-US) despite SEARCH_LOCATION being
+        "Gauteng, South Africa". Fix: send "country": "ZA" explicitly."""
+        monkeypatch.setenv("APIFY_API_KEY", "test-key")
+        monkeypatch.delenv("OFFLINE_MODE", raising=False)
+        monkeypatch.setattr(
+            "src.vacancy_search.apify_client.SEARCH_TITLES", ["Operations Foreman"]
+        )
+        mock_post.return_value = _mock_response([])
+
+        fetch_vacancies(limit=10)
+
+        indeed_call = mock_post.call_args_list[0]
+        indeed_payload = indeed_call.kwargs["json"]
+
+        assert indeed_payload["country"] == "ZA"
+
+    @patch("src.vacancy_search.apify_client.requests.post")
     def test_normalizes_indeed_and_linkedin_results(self, mock_post, monkeypatch):
         monkeypatch.setenv("APIFY_API_KEY", "test-key")
         monkeypatch.delenv("OFFLINE_MODE", raising=False)
@@ -203,6 +226,59 @@ class TestRealCallPath:
 
         assert len(results) == 1
         assert results[0].company == "Beta Power"
+
+
+class TestFairInterleaveTruncation:
+    @patch("src.vacancy_search.apify_client.requests.post")
+    def test_other_sources_survive_truncation_when_indeed_alone_exceeds_limit(
+        self, mock_post, monkeypatch
+    ):
+        """Real-run bug (2026-07-31): fetch_vacancies() built one flat
+        `results` list (Indeed extend, then LinkedIn extend, then crawler
+        platforms) and truncated with `[:limit]` at the very end. If Indeed
+        alone returns >= limit items, it fills the entire truncation window
+        before LinkedIn's (already paid-for) results are ever appended —
+        LinkedIn is starved out by list position, not relevance. The real
+        run returned 10/10 Indeed results with LinkedIn/PNet/Careers24
+        contributing zero despite real, billed network calls. Fix: round-
+        robin interleave across sources before the final dedupe/truncate."""
+        monkeypatch.setenv("APIFY_API_KEY", "test-key")
+        monkeypatch.delenv("OFFLINE_MODE", raising=False)
+        monkeypatch.setattr(
+            "src.vacancy_search.apify_client.SEARCH_TITLES", ["Operations Foreman"]
+        )
+
+        indeed_items = [
+            {
+                "company": f"Indeed Employer {i}",
+                "positionName": "Operations Foreman",
+                "url": f"https://za.indeed.com/viewjob?jk={i}",
+                "description": "Run the workshop.",
+            }
+            for i in range(5)
+        ]
+        linkedin_items = [
+            {
+                "companyName": f"LinkedIn Employer {i}",
+                "title": "Operations Foreman",
+                "link": f"https://www.linkedin.com/jobs/view/{i}",
+                "description": "Manage projects.",
+            }
+            for i in range(2)
+        ]
+        mock_post.side_effect = [
+            _mock_response(indeed_items),
+            _mock_response(linkedin_items),
+        ]
+
+        results = fetch_vacancies(limit=3)
+
+        assert len(results) == 3
+        platforms = {v.platform for v in results}
+        assert "linkedin" in platforms, (
+            "LinkedIn results were fully starved out by Indeed filling the "
+            "truncation window — round-robin interleave is missing"
+        )
 
 
 class TestNormalizeUrl:

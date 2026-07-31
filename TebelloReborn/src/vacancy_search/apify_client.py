@@ -1,7 +1,7 @@
 import logging
 import os
 import warnings
-from urllib.parse import urlsplit, urlunsplit
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 import requests
 
@@ -75,15 +75,40 @@ FIXTURE_VACANCIES = [
 ]
 
 
+# Known tracking params to strip when building the dedupe key — never a
+# platform's own significant identifier (e.g. Indeed's ?jk=<id>, which must
+# survive normalization or every Indeed URL collapses to the same bare path
+# key, silently merging genuinely distinct postings). Codex Review
+# Follow-up (W2): the original implementation stripped the entire query
+# string, which fixed UTM-differing duplicates but broke Indeed dedupe.
+_TRACKING_QUERY_PARAMS = {
+    "utm_source",
+    "utm_medium",
+    "utm_campaign",
+    "utm_term",
+    "utm_content",
+    "gclid",
+    "fbclid",
+}
+
+
 def normalize_url(url: str) -> str:
-    """Strips query string, fragment, and trailing slash before building
-    the dedupe key — two vacancies whose URLs differ only by a UTM query
-    string or trailing slash are otherwise treated as distinct (Codex Review
-    Follow-up amendment). Used by all four sources (Indeed, LinkedIn, PNet,
-    Careers24) via the shared _dedupe() below."""
+    """Strips known tracking query params, fragment, and trailing slash
+    before building the dedupe key — two vacancies whose URLs differ only
+    by a UTM query string or trailing slash are otherwise treated as
+    distinct (Codex Review Follow-up amendment). Significant identifier
+    params (e.g. Indeed's ?jk=<id>) are preserved, not stripped — only
+    _TRACKING_QUERY_PARAMS is removed. Used by all four sources (Indeed,
+    LinkedIn, PNet, Careers24) via the shared _dedupe() below."""
     parts = urlsplit(url)
     path = parts.path.rstrip("/") if len(parts.path) > 1 else parts.path
-    return urlunsplit((parts.scheme, parts.netloc, path, "", ""))
+    query_pairs = [
+        (k, v)
+        for k, v in parse_qsl(parts.query, keep_blank_values=True)
+        if k not in _TRACKING_QUERY_PARAMS
+    ]
+    query = urlencode(query_pairs)
+    return urlunsplit((parts.scheme, parts.netloc, path, query, ""))
 
 
 def _dedupe(vacancies: list[Vacancy]) -> list[Vacancy]:

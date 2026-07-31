@@ -67,6 +67,23 @@ runs on the right machine)
 
 ## Done
 
+- [x] **2026-07-31** — pitwall-companion: follow-up polish batch after the
+      workbook audit + Loadouts picker (below) — merged as PRs #11 and #12:
+      fixed the header's small icon (was still the pre-rename inline-SVG
+      placeholder, now uses the real `icons/icon-192.png` pit-wall artwork)
+      and centered the header title; renamed the app's user-facing branding
+      from "F1 Clash Resource Sheet" to **PitWall Companion** (title, header,
+      manifest name/short_name, export filename/tag, QR alt text) per
+      Tebello's copyright-exposure concern about the app's own name leaning
+      on the game's trademark — left factual/disclaimed game and workbook
+      references untouched (already covered by the existing "unaffiliated
+      fan tool" disclaimer), and left the internal `localStorage` keys /
+      cache-version string (`f1sheet.*`) untouched since renaming those
+      would silently wipe existing users' saved card levels; and laid out
+      both the Loadouts attribute-toggle buttons and the aggregate stat
+      chips as equal-size grids (2x2 and 2x3) instead of uneven flex-wrap
+      rows. Not its own queue item for the same reason as below. See
+      `docs/session-log.md` for full detail.
 - [x] **2026-07-31** — pitwall-companion: audited the app against the
       community "F1 Clash 2026 Resource Sheet" workbook (v1.1, the
       confirmed source-of-truth version) — no gaps found, driver/part

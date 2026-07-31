@@ -495,3 +495,77 @@ decision, Ollama timeout fix; Operations: NamePlateTool spot-check,
 NamePlateTool test suite, or one of the two SOPS items). See `docs/todo.md`.
 **Known risks:** None new.
 **Blockers:** None.
+
+## 2026-07-31 — pitwall-companion: polish batch (icon fix, rename, grid layouts)
+
+Follow-up to the Loadouts picker above, same session continuing on
+`pitwall-companion` at Tebello's direction (still not a hub queue item — no
+`docs/todo.md` of its own).
+
+**Header icon + title centering.** Tebello pointed out from a screenshot that
+the header's small icon didn't match the real app icon. Traced it to
+`index.html`'s `<header>`: the small `.logo` box was still rendering a
+leftover inline `<svg>` placeholder (a rounded square with an X) from before
+commit `95834b8` ("Replace app icon with new pit-wall dashboard artwork")
+swapped in the real `icons/icon-192.png` cockpit artwork — that commit only
+ever updated the actual icon files, never the header's own hardcoded markup.
+Replaced the inline SVG with an `<img src="./icons/icon-192.png">`. Also
+centered the header title (was left-aligned next to the icon) by changing
+`.brand` from a flex row to a `1fr minmax(0,auto) 1fr` grid, so the title
+centers on the full header width regardless of the icon/Install-button
+widths — verified truncation/ellipsis still behaves correctly at a 320px
+viewport.
+
+**Renamed the app to "PitWall Companion."** Tebello flagged a copyright
+concern: the app's own name, "F1 Clash Resource Sheet," leaned directly on
+the game's trademark rather than just describing what it tracks. Grepped the
+whole repo for every occurrence and split them into two categories:
+- Renamed (the app's own branding): `<title>`, header text,
+  `apple-mobile-web-app-title` (→ "PitWall", matching manifest
+  `short_name`), `manifest.webmanifest`'s `name`/`short_name`, the
+  exported-backup filename (`f1clash-backup-*.json` → `pitwall-backup-*.json`)
+  and its `app:` tag, the QR code's alt text, `sw.js`'s file-header comment,
+  and `README.md`'s top-level heading.
+- Left alone (nominative/factual, not the app's own branding): mentions of
+  the F1 Clash game itself and the community "F1 Clash 2026 Resource Sheet"
+  workbook the app is built from — already covered by the existing
+  "unofficial fan tool, not affiliated with F1, Formula 1, or Hutch Games"
+  disclaimer. Also left the internal `localStorage` keys
+  (`f1sheet.v1`/`f1sheet.season.v1`/`f1sheet.boosted.v1`/
+  `f1sheet.loadoutAttrs.v1`) and the service-worker `CACHE_VERSION` string
+  untouched — these aren't user-visible, and renaming them would silently
+  wipe every existing user's saved card levels/season data/boosts on their
+  next visit (a new key means `load()` finds nothing under the old name).
+  Flagged this reasoning explicitly rather than silently deciding it.
+
+**Loadouts grid layouts.** Two follow-up screenshots from Tebello showed the
+attribute-toggle buttons and the aggregate stat chips both wrapping unevenly
+(flex-wrap sizing each pill to its own text — "Speed"/"Qualifying" full-width,
+"Cornering"/"Power Unit" narrow). Changed `.lo-attr-bar` (4 buttons) to a
+`1fr 1fr` grid for an equal-size 2x2 layout, and `.lo-aggs` (5 stat chips:
+Speed/Cornering/Power Unit/Qualifying/Pit Time) to the same `1fr 1fr` grid
+for an equal-size 2x3 layout (last cell empty) — both requested explicitly
+as "equal size" grids, not just reflowed.
+
+All three changes verified with headless-Chromium screenshots (playwright,
+served via `python3 -m http.server`) before pushing — icon match, centered
+title at two viewport widths, `document.title`/header text reading "PitWall
+Companion", and both grids rendering as equal-width cells — zero console
+errors in every check.
+
+Pushed to `claude/continuation-8iamwu` as three separate commits, then
+combined into one PR per Tebello's request ("combine all PRs") since none of
+the three had been opened as a PR yet — merged as PR #11
+(tlelosa-web/pitwall-companion). The stat-chip grid fix came as a fourth,
+later request after #11 was already merged, so it shipped as its own PR #12
+rather than being folded in retroactively.
+
+**Last completed:** pitwall-companion header icon fix + "PitWall Companion"
+rename + Loadouts 2x2/2x3 equal-size grids, merged as PR #11 and #12 (this
+entry).
+**Next task:** Unchanged — whichever machine-bound queue item matches the
+next session's machine (Pappa T: codex-gate smoke-test, TebelloReborn scope
+decision, Ollama timeout fix; Operations: NamePlateTool spot-check,
+NamePlateTool test suite, or one of the two SOPS items). See `docs/todo.md`.
+**Known risks:** None new.
+**Blockers:** None.

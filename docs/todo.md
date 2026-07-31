@@ -13,11 +13,7 @@ _(none active at hub level — see Backlog for the one remaining TebelloReborn f
 
 ## Next up
 
-- [ ] `ai-outreach-agency`: bump `research/ollama_client.py`'s `READ_TIMEOUT` 60s → 120s and
-      add `"keep_alive": "30m"` to the `/api/generate` payload — local Ollama generation is
-      sitting close to the current timeout ceiling on cold-load calls, which risks
-      intermittent false-positive `OllamaError`s on an otherwise-healthy daemon during a
-      real batch. Small, single-file, RED/GREEN-able in one commit.
+_(none active at hub level right now)_
 
 ## Closed — on hold pending affordability
 
@@ -42,6 +38,10 @@ _(none active at hub level — see Backlog for the one remaining TebelloReborn f
 
 ## Completed
 
+- [x] `ai-outreach-agency`: fixed local Ollama generation-latency false-positive risk —
+      `research/ollama_client.py` `READ_TIMEOUT` bumped 60s → 120s and `"keep_alive": "30m"`
+      added to the `/api/generate` payload (`3ec16cd`, docs update `1b80d0c`). 156 tests
+      passing in that sub-project, zero regressions.
 - [x] `TebelloReborn`: PNet/Careers24 Vacancy Coverage build, Automated Discovery redesign
       (spec: `TebelloReborn/docs/specs/pnet-careers24-coverage.md`, Phases 9–15, steps 55–80).
       Reviewer-approved "APPROVE WITH NITS" (no blockers); both nits fixed TDD and merged to

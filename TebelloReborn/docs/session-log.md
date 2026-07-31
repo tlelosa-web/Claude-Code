@@ -7,6 +7,53 @@
 
 ---
 
+## 2026-07-31 — W1/W2 reviewer nits fixed, PNet/Careers24 build merged to master, PNet mode flipped to auto
+
+The PNet/Careers24 Automated Discovery build (worktree `agent-a6eb29f112cbc6764`,
+steps 63–80) was reviewer-approved "APPROVE WITH NITS" — no blockers, two
+follow-ups. Both fixed TDD in the same worktree before merge:
+
+- **W1 (extraction-prompt untrusted-text wrap).** `build_extraction_prompt()`
+  embedded `raw_page_text` (untrusted, scraped job-posting text) directly
+  into the Ollama extraction prompt with no defense-in-depth wrap — the same
+  sink shape as `vacancy.description` in `doc_gen`'s `cv_generator.py`/
+  `cover_letter_generator.py`, which already uses `runner.wrap_untrusted_text()`.
+  RED test asserted the wrapped-text markers appear in the prompt output
+  (`4633dd8`); GREEN applied `wrap_untrusted_text()` to `raw_page_text`
+  before embedding it (`a5c3285`).
+- **W2 (normalize_url over-strips Indeed's `?jk=`).** `normalize_url()`
+  stripped the entire query string before building the
+  `(company, title, normalize_url(url))` dedupe key — since Indeed's
+  canonical job identity lives in `?jk=<id>`, every Indeed URL collapsed to
+  the same bare path, silently merging genuinely distinct postings (e.g.
+  two reqs from the same employer, same title). RED test asserted
+  `?jk=1` and `?jk=2` normalize to *different* strings, while `?jk=1` and
+  `?jk=1&utm_source=x` still normalize the same (`5ffc010`); GREEN switched
+  `normalize_url()` to an allowlist-based strip of only known tracking
+  params (`utm_source`, `utm_medium`, `utm_campaign`, `utm_term`,
+  `utm_content`, `gclid`, `fbclid`), preserving `jk` and any other
+  significant identifier param (`6068db4`).
+
+`docs/api-patterns.md` updated to document both behaviors in place (the
+extraction-prompt untrusted-text wrap, and the tracking-param allowlist).
+Full suite: 232 passing, zero regressions, after both fixes.
+
+Worktree branch fast-forward merged into `master` (`9319b5a` — no separate
+merge commit needed, `master` was already the merge-base). Full suite
+re-run against merged `master`: 232 passing. Worktree removed
+(`git worktree remove`) after the merge was confirmed clean.
+
+Per Tebello's earlier in-browser confirmation that
+`https://www.pnet.co.za/jobs/operations-foreman/in-gauteng` (bare path, no
+query string) renders a working PNet results page with real matches,
+`data/discovery_config.json`'s `pnet.mode` was flipped from
+`"manual_pending_verification"` to `"auto"` as its own atomic commit on
+`master` (`bd72266`) — resolves Open Item 4 from the Amendment. Verified
+this doesn't break the PNet-fallback tests: they all construct their own
+`tmp_path` discovery-config fixtures rather than reading the real
+`data/discovery_config.json`, so the flip is fully test-isolated (232
+still passing after the flip).
+
 ## 2026-07-29 — codex-review pnet-careers24-coverage.md: ran
 
 ## 2026-07-29 — codex-review pnet-careers24-coverage.md: warned (codex exec argument-list-too-long, exit 126)

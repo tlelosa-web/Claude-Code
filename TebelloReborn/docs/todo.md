@@ -225,24 +225,37 @@ _(none active — the PNet/Careers24 gap below is now a scheduled, spec-backed b
       implementation never actually followed. New regression test `test_sends_correct_actor_payload_fields`
       added (`tests/unit/test_apify_client.py`) — asserts the exact payload shape per actor so this
       class of bug can't silently regress. All 182 tests pass.
+- [x] **Reviewer nits W1/W2 fixed and merged (2026-07-31).** Reviewer approved the PNet/Careers24
+      Automated Discovery build "APPROVE WITH NITS" (no blockers) with two follow-ups:
+      **W1** — `build_extraction_prompt()` embedded `raw_page_text` (untrusted, scraped job-posting
+      text) directly into the Ollama extraction prompt with no defense-in-depth wrap, unlike
+      `doc_gen`'s established `wrap_untrusted_text()` pattern for the equivalent `vacancy.description`
+      sink. Fixed: `extraction_prompt.py` now wraps `raw_page_text` with `doc_gen/runner.py`'s
+      `wrap_untrusted_text()` before embedding it (RED `4633dd8`, GREEN `a5c3285`).
+      **W2** — `normalize_url()` stripped the *entire* query string before building the
+      `(company, title, normalize_url(url))` dedupe key, collapsing every Indeed URL (whose canonical
+      identity lives in `?jk=<id>`) to the same bare path — silently merging genuinely distinct
+      postings. Fixed: `normalize_url()` now strips only an allowlist of known tracking params
+      (`utm_source`, `utm_medium`, `utm_campaign`, `utm_term`, `utm_content`, `gclid`, `fbclid`),
+      preserving significant identifier params like `jk` (RED `5ffc010`, GREEN `6068db4`). Both fixes
+      built TDD in worktree `agent-a6eb29f112cbc6764`, fast-forward merged to `master` at `9319b5a`
+      (232 tests passing, zero regressions). Worktree removed after merge confirmed clean.
 
 ---
 
 ## Open Items (require Tebello — not something an agent should attempt)
 
-- [ ] **Manual PNet bare-URL verification (Amendment, Open Item 4).** Open
-      `https://www.pnet.co.za/jobs/operations-foreman/in-gauteng` (the bare path-only shape, no `?`
-      query string) once in an ordinary browser and confirm whether it renders a working PNet
-      results/listing page or an error/redirect/block page. Record the result by editing
-      `data/discovery_config.json`'s `pnet.mode` directly: `"auto"` if it works, or leave it at
-      `"manual_pending_verification"` (with a one-line dated note added to the file's `_comment`) if it
-      doesn't. One-time check, not a recurring task — this gates whether `discovery.py::get_job_urls`
-      ever calls `discover_job_urls("pnet", ...)` for real, or stays on the seed-urls fallback below.
-- [ ] **Real PNet seed URLs — now PNet-only and conditional (Amendment, updated Open Item 1).**
-      Careers24 no longer needs this at all (fully automated). If the manual bare-URL check above shows
-      the bare-path shape does *not* render a usable page, `data/crawler_seed_urls.json`'s `"pnet"` list
-      needs real job-detail-page URLs supplied by Tebello — this becomes PNet's **permanent** sourcing
-      path in that case, not a temporary placeholder.
+- [x] **Manual PNet bare-URL verification (Amendment, Open Item 4) — resolved 2026-07-31.** Tebello
+      personally opened `https://www.pnet.co.za/jobs/operations-foreman/in-gauteng` (the bare path-only
+      shape, no `?` query string) in an ordinary browser and confirmed it renders a working results page
+      with real matches. `data/discovery_config.json`'s `pnet.mode` flipped from
+      `"manual_pending_verification"` to `"auto"` accordingly — `discovery.py::get_job_urls` now calls
+      `discover_job_urls("pnet", ...)` for real instead of the seed-urls fallback below.
+- [ ] **Real PNet seed URLs — now dormant, not deleted (Amendment, updated Open Item 1).** With
+      `pnet.mode` now `"auto"`, `data/crawler_seed_urls.json`'s `"pnet"` list is no longer PNet's active
+      sourcing path — it stays in place as the fallback `get_job_urls` would revert to if `pnet.mode` is
+      ever reverted to `"manual_pending_verification"` (e.g. PNet's live results page stops rendering
+      usably). No action needed unless that revert happens.
 - [ ] Extraction reliability at scale (Amendment, unchanged Open Item 2) — `qwen3:8b`'s known
       reliability risk applies to messier, more variable job-posting page text than the dedicated-actor
       JSON payloads. A high real-world `VacancyExtractionError` rate is signal for prompt-tuning or a

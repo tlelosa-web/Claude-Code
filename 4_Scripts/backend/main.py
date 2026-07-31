@@ -214,13 +214,17 @@ def _options_cached() -> dict:
     motor_pdf = _motor_pdf_path()
     table = _load_motor_table(str(motor_pdf)) if motor_pdf else {}
 
-    motors_by_pole: dict[str, list[str]] = {}
+    motors_by_pole: dict[str, dict[str, list[str]]] = {}
     poles_from_motor = sorted({int(p) for (_kw, p) in table.keys()}) if table else []
     validated_poles = sorted(set(poles_from_conn).intersection(set(poles_from_motor))) if table else []
 
     for p in validated_poles:
         kws = sorted({float(kw) for (kw, pp) in table.keys() if int(pp) == int(p)})
-        motors_by_pole[str(p)] = [_fmt_kw(k) for k in kws]
+        per_voltage: dict[str, list[str]] = {}
+        for v in voltages:
+            valid_kws = [k for k in kws if suggest_connection(v, p, k)[0] in ("STAR", "DELTA")]
+            per_voltage[str(v)] = [_fmt_kw(k) for k in valid_kws]
+        motors_by_pole[str(p)] = per_voltage
 
     motor_err = _config_error("MOTOR_PDF_PATH") if not motor_pdf else None
 

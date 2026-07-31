@@ -12,13 +12,9 @@
 
 - [ ] **Save Nameplate connection override — remaining follow-ups.** Step 1
       of the original fix plan (the actual override-blocking bug) is fixed
-      — see Done below. Remaining optional items from
+      — see Done below. Step 2 (voltage-filtered motor options) is now also
+      fixed — see Done below. Remaining optional item from
       `docs/bugs/connection-lookup-no-manual-override.md`:
-      2. Optional UX follow-up: filter `motors_by_pole` in
-         `_options_cached()` by voltage too (key by `(voltage, pole)`,
-         only include kW values with *some* STAR/DELTA rule) so incompatible
-         combos aren't offered in the first place. Not required now that (1)
-         is done, but avoids ever needing the override for the common case.
       3. While in the area, fix the same datetime-not-JSON-serializable
          defect pattern in `excel_source.py`'s `read_test_sheet_from_excel()`
          (line 288, raw `datetime` from `_cell(ws, 1, 21)`) alongside the
@@ -52,6 +48,24 @@
 
 ## Done
 
+- [x] **2026-07-31** — Voltage-filtered Motor kW options (fix-plan step 2):
+      `main.py`'s `_options_cached()` now nests `motors_by_pole` as
+      `{pole: {voltage: [kw, ...]}}`, filtering each per-voltage kW list
+      through the existing `suggest_connection()` rule tables so only kW
+      values with a real STAR/DELTA rule at that voltage are offered.
+      `FormFields.jsx`'s `motorOptions` lookup updated to match
+      (`motorsByPole[data.pole][data.voltage]`) — payload-shape contract
+      changed in both files together per this project's Hard Rule 1. Spec:
+      `docs/specs/2026-07-31-voltage-filtered-motor-options.md`. Verified
+      live: `GET /api/options` shows `motors_by_pole["4"]["525"]` capped at
+      4.0kW (excludes 5.5/7.5/9.2) while `["4"]["380"]` keeps the full
+      range; confirmed the same behavior interactively in the running
+      frontend form (Motor kW dropdown updates correctly when switching
+      Voltage between 525 and 380 at Pole=4), no console errors. Known,
+      pre-existing, not-fixed-here gap: no field resets `data.motor` when
+      the filtered list changes under a stale selection (documented in the
+      spec's Out of scope section). Fix-plan step 3 (`excel_source.py`
+      datetime fix) remains open — see Next up.
 - [x] **2026-07-31** — Save Nameplate connection-override fix (fix-plan step
       1 only): `main.py`'s `api_generate_pdf()` now falls back to
       `_clean(payload.connection)` when `suggest_connection()` finds no

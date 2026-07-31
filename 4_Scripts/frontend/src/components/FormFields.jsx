@@ -53,7 +53,7 @@ export default function FormFields({ data, errors, onChange, options = {}, showA
   const volts = options.voltages || [];
   const poles = options.poles || [];
   const motorsByPole = options.motors_by_pole || {};
-  const motorOptions = motorsByPole[data.pole] || [];
+  const motorOptions = (motorsByPole[data.pole] || {})[data.voltage] || [];
   const phaseOptions = [
     { label: "3~", value: "3~" },
     { label: "1~", value: "1~" },

@@ -9,20 +9,9 @@
 
 ## In Progress
 
-- [ ] **PRIORITY, PAUSED FOR REDESIGN** — `TebelloReborn`: PNet/Careers24 Vacancy Coverage build
-      (spec: `TebelloReborn/docs/specs/pnet-careers24-coverage.md`). Phases 9–11 (steps 55–62)
-      built and committed; Phase 12+ paused 2026-07-29 — Tebello caught objective drift: the
-      spec's static manually-curated seed-URL config contradicts the project's actual goal
-      (fully automated vacancy discovery, human review only at the final approval gate).
-      Needs a fresh Domain → Planner redesign pass for automated discovery (search-URL
-      construction from `SEARCH_TITLES`/`SEARCH_LOCATION`, mirroring Indeed/LinkedIn's
-      approach) before build resumes. See `TebelloReborn/docs/todo.md`'s Phase 9–14 section
-      for full detail. Still prioritized over the `ai-outreach-agency` items below once
-      redesign + build resumes.
+_(none active at hub level — see Backlog for the one remaining TebelloReborn follow-on item)_
 
 ## Next up
-
-_(deprioritized until the TebelloReborn item above is up and running — do not start without checking with Tebello first)_
 
 - [ ] Top up OpenRouter credits (openrouter.ai/settings/credits) — `ai-outreach-agency`'s
       `asset_gen` stage has been blocked on HTTP 402 since 2026-07-04; unblocks real
@@ -39,11 +28,28 @@ _(deprioritized until the TebelloReborn item above is up and running — do not 
       procedure (added 2026-07-29 to hub `CLAUDE.md` Pattern 1 and `TebelloReborn/CLAUDE.md`
       Hard Rule #13) to `ai-outreach-agency/CLAUDE.md` (self-governing, needs its own edit) and
       consider proposing it for the shared `CORE.md` template (separate repo, would make it
-      universal across every machine/project). Low priority — deferred until the TebelloReborn
-      PNet/Careers24 work above is complete, per Tebello's explicit prioritization.
+      universal across every machine/project).
+- [ ] `TebelloReborn` follow-on (lighter weight, not blocking): two Open Items remain in
+      `TebelloReborn/docs/todo.md` from the PNet/Careers24 build — extraction reliability at
+      scale (`qwen3:8b` on messier real-world job-posting text vs. dedicated-actor JSON) and
+      confirming `CRAWLER_RATE_LIMIT_PER_MIN`'s default of 30 is conservative enough once real
+      (non-fallback) PNet crawls are in regular use. Both are evidence-based revisits, not
+      known bugs — pick up only if real usage surfaces a problem.
 
 ## Completed
 
+- [x] `TebelloReborn`: PNet/Careers24 Vacancy Coverage build, Automated Discovery redesign
+      (spec: `TebelloReborn/docs/specs/pnet-careers24-coverage.md`, Phases 9–15, steps 55–80).
+      Reviewer-approved "APPROVE WITH NITS" (no blockers); both nits fixed TDD and merged to
+      `master` 2026-07-31 — W1 (extraction-prompt untrusted-text wrap, matching `doc_gen`'s
+      `wrap_untrusted_text()` pattern) and W2 (`normalize_url()` allowlist-based tracking-param
+      strip, preserving Indeed's `?jk=` identifier instead of collapsing all Indeed URLs to one
+      dedupe key). Worktree `agent-a6eb29f112cbc6764` fast-forward merged (`9319b5a`), 232 tests
+      passing, worktree removed. `data/discovery_config.json`'s `pnet.mode` flipped
+      `"manual_pending_verification"` → `"auto"` (`bd72266`) per Tebello's browser-verified
+      confirmation that PNet's bare-path search URL renders real results. See
+      `TebelloReborn/docs/todo.md` and `TebelloReborn/docs/session-log.md`'s 2026-07-31 entry
+      for full detail.
 - [x] Import Master Vault structure — strategic docs, CVs, sibling projects
       (`8612c8e`)
 - [x] Align project with dcoe-roster v3.2 template (`48e13d5`)

@@ -756,3 +756,151 @@ Watch for early feedback from the Discord trial that might reprioritize
 pitwall-companion work above the machine-bound queue next session.
 **Known risks:** None new.
 **Blockers:** None.
+
+## 2026-07-31 — pitwall-companion: added Spa (Belgium) to Track Stats
+
+New session, early Discord-trial feedback territory: Tebello sent an
+in-game "Track Stats" screenshot for Spa, Belgium (Overtaking + Power Unit
+spotlighted) and asked for the track to be added. Confirmed it was missing
+from the 21-circuit `TRACKS` array in `index.html` (added in PR #13, the
+Track Stats/Loadouts-By-Track feature from the previous session's work).
+Added `{n:"Spa", c:"Belgium", ds:"Overtaking", cs:"Power Unit"}`, placed
+between "São Paulo" and "Spielberg" to keep the existing near-alphabetical
+`Sp...`/`São...` grouping intact — the list isn't strictly sorted overall
+(diacritics aren't normalized for ordering) but adjacent entries follow it.
+No other code changes needed since By Track's dropdown, driver ranking,
+Suggested Boost, and loadout card are all data-driven off this single array.
+
+Pushed directly to `claude/repo-update-check-mn1wv2`
+(tlelosa-web/pitwall-companion) — not yet opened as a PR; the branch name
+suggests it may be this hub's own environment-setup branch reused for this
+ad-hoc request rather than a fresh feature branch, worth checking before the
+next pitwall-companion round.
+
+**Last completed:** pitwall-companion: added Spa (Belgium) to the Track
+Stats list (this entry).
+**Next task:** Unchanged — whichever machine-bound queue item matches the
+next session's machine (Pappa T: codex-gate smoke-test, TebelloReborn scope
+decision, Ollama timeout fix; Operations: NamePlateTool spot-check,
+NamePlateTool test suite, or one of the two SOPS items). See `docs/todo.md`.
+Also worth a PR for the Spa addition (and confirming the branch situation
+above) if more Discord-trial feedback isn't already queued.
+**Known risks:** None new.
+**Blockers:** None.
+
+## 2026-07-31 — pitwall-companion: added Boosts to the Compare tab
+
+Same session, continuing on `pitwall-companion`: Tebello sent a screenshot
+of Tools → Compare (currently Drivers/Components only) and asked for Boosts
+to be added there too.
+
+`compareHTML()`'s existing scope buttons (Drivers/Components) hoisted to
+render before the kind branch, with a new third "Boosts" button
+(`data-ck="b"`) reusing the same generic scope-switch handler already in
+place (keys off `ck.dataset.ck`, no kind-specific logic needed there or in
+the column-sort handler — both were already generic over any `cmpKind`
+value and `data-cs` key). New `compareBoostsHTML()` lists owned Boosts
+(`allBoosts().filter(qty>0)`, matching the Suggested-Boost/Boosts-tab
+"owned" definition) sorted by Name/Qty/any of the 13 `BOOST_ATTR_NAMES`
+stats/Total — same table markup, `sortable`/`active` header classes, and
+click-to-sort/reverse mechanic as the Drivers/Components tables, so it
+reads as the same feature rather than a bolted-on one. New
+`BOOST_SHORT_LABELS` constant mirrors `BOOST_ATTR_NAMES`' order for column
+headers (Over/Def/Qual/Start/Tyre/Spd/Cor/PU/Pit/OvM/Imp/Dur/Rch). Total is
+computed live as the sum of a Boost's own stat values rather than reusing
+built-in Boosts' precomputed `t` field, since custom user-added Boosts
+don't have one.
+
+Verified with a headless-Chromium test (playwright, `python3 -m
+http.server`): seeded three owned Boosts via `boostOwned`, confirmed
+default Tot-descending sort order (tie-break alphabetical, matching the
+existing Drivers/Components tie-break), confirmed clicking "Tot" again
+reverses to ascending, and confirmed switching back to Drivers/Components
+still renders their original headers unaffected — zero console errors.
+Also ran the same `node -e "new Function(...)"` executability check plus
+the duplicate-top-level-declaration grep from the last couple of
+pitwall-companion rounds before pushing, given this branch's history of
+squash-merge conflicts resurrecting dead code — neither flagged an issue,
+and this branch hadn't been rebased since the previous entry's Spa change,
+so no merge was even needed this time.
+
+Pushed directly to `claude/repo-update-check-mn1wv2`
+(tlelosa-web/pitwall-companion) — same branch as the Spa Track Stats
+addition above, still not opened as a PR.
+
+**Last completed:** pitwall-companion: added a Boosts scope to Tools →
+Compare (this entry).
+**Next task:** Unchanged — whichever machine-bound queue item matches the
+next session's machine (Pappa T: codex-gate smoke-test, TebelloReborn scope
+decision, Ollama timeout fix; Operations: NamePlateTool spot-check,
+NamePlateTool test suite, or one of the two SOPS items). See `docs/todo.md`.
+Also worth opening a PR covering both pitwall-companion changes on this
+branch (Spa + Compare Boosts) if no further Discord-trial feedback is
+queued.
+**Known risks:** None new.
+**Blockers:** None.
+
+## 2026-07-31 — pitwall-companion: opened PR #18 (Spa + Compare Boosts), then GP Event collapsible fix as PR #19
+
+Tebello asked for a PR covering both pending changes above. Opened PR #18
+(`claude/repo-update-check-mn1wv2` → `main`) with both the Spa Track Stats
+addition and the Compare-tab Boosts scope — no PR template exists in this
+repo. Before opening it, discovered the Spa commit (`4bc6f1c`) had already
+been merged into `main` on its own as PR #17 (unclear by whom/how — not
+this session), via a real merge commit rather than a squash, so it was
+already a proper ancestor of `main`; the branch didn't need the
+merged-PR-reuse restart procedure (`checkout -B` from fresh `main`) at all
+— confirmed with `git merge-base --is-ancestor` and a content diff before
+concluding that, since this branch's prior history includes real squash-
+merge conflicts that make ancestry checks alone unreliable (see the PR
+#14/#15 entries above). PR #18 opened and then merged (again as a real
+merge commit, not squash).
+
+**GP Event collapsible + rename.** Tebello then asked, from a screenshot of
+Loadouts → By Track, to make the "GP Event availability" filter panel
+collapsible (doesn't need to be visible all the time) and rename it to just
+"GP Event". Generalized the Boosts tab's "New Boost" `<details>`/`<summary>`
+collapsible CSS from `.nb-details`/`.nb-summary` to `.coll-details`/
+`.coll-summary` so both features share one collapsible-panel pattern
+instead of a Boost-specific name leaking into an unrelated feature, and
+applied it to `gpFilterBarHTML()` (shared by both Loadouts modes) alongside
+the header rename.
+
+Testing surfaced a real bug before it shipped: the app fully rebuilds its
+DOM on every `render()` call, which fires on every GP-tier button click and
+on the Legendary-drivers checkbox — so a native `<details open>` selected by
+the user would have been silently discarded and reset to closed the moment
+they picked a tier, making the collapsible pointless for its own filter
+controls. Fixed by tracking a `gpFilterOpen` boolean explicitly (alongside
+the app's other UI-state variables) instead of relying on the DOM element's
+own `open` attribute persisting, with a `data-gp-toggle` click handler that
+calls `preventDefault()` on the native toggle and drives the attribute from
+state on every re-render instead.
+
+Verified with a headless-Chromium test: panel collapsed by default, current
+tier still visible in the summary line while collapsed, expands on click,
+and — the actual regression check — stays open through both a tier
+selection and the Legendary-drivers checkbox toggle rather than snapping
+shut; zero console errors. Also re-ran the executability check and
+duplicate-declaration grep given this branch's squash-merge history, though
+no merge was needed this round (branch was still a clean ancestor of
+`main` at push time). Pushed as its own commit; PR #18 had already merged
+by the time this was ready, so it shipped as a separate PR #19 rather than
+folding in.
+
+Missed updating this hub's `docs/todo.md`/`docs/session-log.md` for the
+GP Event fix in the moment it shipped — Tebello caught the gap and this
+entry (plus the corrected `docs/todo.md` "Done" items above, which also
+now cite the actual PR #18/#19 numbers instead of "not yet opened as a
+PR") closes it. Hard Rule 5 applies to this project's logging the same as
+any other hub-level task, per the established practice in the entries
+above.
+
+**Last completed:** pitwall-companion: PR #18 (Spa + Compare Boosts) and
+PR #19 (GP Event collapsible + rename) opened and pushed (this entry).
+**Next task:** Unchanged — whichever machine-bound queue item matches the
+next session's machine (Pappa T: codex-gate smoke-test, TebelloReborn scope
+decision, Ollama timeout fix; Operations: NamePlateTool spot-check,
+NamePlateTool test suite, or one of the two SOPS items). See `docs/todo.md`.
+**Known risks:** None new.
+**Blockers:** None.

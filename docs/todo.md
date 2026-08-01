@@ -67,6 +67,32 @@ runs on the right machine)
 
 ## Done
 
+- [x] **2026-07-31** — pitwall-companion: made the Loadouts GP Event
+      availability filter collapsible (renamed to just "GP Event") — merged
+      as PR #19; doesn't need to be visible all the time per Tebello's
+      direction. Reused the Boosts tab's "New Boost" `<details>`/`<summary>`
+      collapsible pattern (generalized its CSS from `.nb-*` to `.coll-*`
+      since it's now shared by two features), collapsed by default with the
+      active tier still shown in the summary line. Found and fixed a
+      state-loss bug while testing: the app's full re-render on every
+      tier/legendary-checkbox click would have snapped the panel shut after
+      each interaction, so added an explicit `gpFilterOpen` state variable
+      instead of relying on the native `<details>` open attribute surviving
+      a DOM rebuild. Not its own queue item for the same reason as the
+      entries below. See `docs/session-log.md` for full detail.
+- [x] **2026-07-31** — pitwall-companion: added a Boosts scope to Tools →
+      Compare, alongside Drivers/Components — sortable table of owned
+      consumable Boosts (qty > 0) across all 13 boost stats plus a computed
+      Total, reusing the same table markup/sort mechanic as the existing
+      two scopes. Merged as PR #18 (together with the Spa entry below — both
+      landed on the same branch and were opened as one PR). Not its own
+      queue item for the same reason as the entries below. See
+      `docs/session-log.md` for full detail.
+- [x] **2026-07-31** — pitwall-companion: added Spa (Belgium) to the `TRACKS`
+      Track Stats list (driver stat Overtaking, component stat Power Unit),
+      transcribed from an in-game screenshot — merged as PR #18. Not its own
+      queue item for the same reason as the entries below. See
+      `docs/session-log.md` for full detail.
 - [x] **2026-07-31** — pitwall-companion: made the Loadouts → By Track
       loadout customizable, matching By Attribute — merged as PR #15 (final
       pitwall-companion change of the day; the app was then shared to

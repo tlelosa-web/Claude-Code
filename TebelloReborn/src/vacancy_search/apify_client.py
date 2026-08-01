@@ -27,18 +27,21 @@ CRAWLER_PLATFORMS = ("pnet", "careers24")
 DISCOVERY_CONFIG_PATH = "data/discovery_config.json"
 SEED_URLS_PATH = "data/crawler_seed_urls.json"
 
-# Actor slugs confirmed live on the Apify Store 2026-07-26 (misceres/indeed-scraper,
-# bebity/linkedin-jobs-scraper — API IDs use "~" where the store URL uses "/").
+# Actor slug confirmed live on the Apify Store 2026-07-26
+# (misceres/indeed-scraper — API IDs use "~" where the store URL uses "/").
+# LinkedIn (bebity/linkedin-jobs-scraper) was dropped 2026-08-01: its free
+# trial expired (403 actor-is-not-rented) — decision was to drop it, not pay
+# for the rental. See docs/todo.md's Resolved Items and
+# docs/decisions/ADR-002-apify-job-scraping.md.
 INDEED_ACTOR_URL = (
     "https://api.apify.com/v2/acts/misceres~indeed-scraper/run-sync-get-dataset-items"
 )
-LINKEDIN_ACTOR_URL = "https://api.apify.com/v2/acts/bebity~linkedin-jobs-scraper/run-sync-get-dataset-items"
 TIMEOUT = 60
 
-# One search per target title from profile_seed.json's target_titles, run
-# against both actors. Indeed requires "position"/"location" to have anything
-# to search; LinkedIn requires "title"/"location"/"rows" — neither accepts a
-# bare item-count field on its own (see the maxItems bug note below).
+# One search per target title from profile_seed.json's target_titles.
+# Indeed requires "position"/"location" to have anything to search — it
+# doesn't accept a bare item-count field on its own (see the maxItems bug
+# note below).
 SEARCH_TITLES = ["Operations Foreman/Manager", "Project Engineer (Mechanical)"]
 SEARCH_LOCATION = "Gauteng, South Africa"
 
@@ -58,9 +61,9 @@ FIXTURE_VACANCIES = [
     {
         "company": "Example Power Generation Ltd",
         "title": "Project Engineer (Mechanical)",
-        "url": "https://www.linkedin.com/jobs/view/example2",
+        "url": "https://www.careers24.com/jobs/vacancy-example2-beta-power/",
         "description": "Manage mechanical engineering projects across the power generation sector.",
-        "platform": "linkedin",
+        "platform": "careers24",
         "salary": None,
         "deadline": "2026-08-31",
     },
@@ -99,8 +102,9 @@ def normalize_url(url: str) -> str:
     by a UTM query string or trailing slash are otherwise treated as
     distinct (Codex Review Follow-up amendment). Significant identifier
     params (e.g. Indeed's ?jk=<id>) are preserved, not stripped — only
-    _TRACKING_QUERY_PARAMS is removed. Used by all four sources (Indeed,
-    LinkedIn, PNet, Careers24) via the shared _dedupe() below."""
+    _TRACKING_QUERY_PARAMS is removed. Used by all active sources (Indeed,
+    PNet, Careers24 — LinkedIn dropped 2026-08-01) via the shared _dedupe()
+    below."""
     parts = urlsplit(url)
     path = parts.path.rstrip("/") if len(parts.path) > 1 else parts.path
     query_pairs = [
@@ -137,18 +141,6 @@ def _normalize_indeed(item: dict) -> Vacancy:
         platform="indeed",
         salary=item.get("salary"),
         deadline=item.get("deadline"),
-    )
-
-
-def _normalize_linkedin(item: dict) -> Vacancy:
-    return Vacancy(
-        company=item.get("companyName", item.get("company", "")),
-        title=item.get("title", ""),
-        url=item.get("link", item.get("url", "")),
-        description=item.get("description", ""),
-        platform="linkedin",
-        salary=item.get("salary"),
-        deadline=item.get("expireAt"),
     )
 
 
@@ -211,7 +203,6 @@ def fetch_vacancies(limit: int = 25) -> list[Vacancy]:
 
     headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
     indeed_results: list[Vacancy] = []
-    linkedin_results: list[Vacancy] = []
 
     for title in SEARCH_TITLES:
         _limiter.acquire()
@@ -232,26 +223,9 @@ def fetch_vacancies(limit: int = 25) -> list[Vacancy]:
         except (requests.RequestException, ValueError):
             pass
 
-        _limiter.acquire()
-        try:
-            resp = requests.post(
-                LINKEDIN_ACTOR_URL,
-                headers=headers,
-                json={
-                    "title": title,
-                    "location": SEARCH_LOCATION,
-                    "rows": limit,
-                },
-                timeout=TIMEOUT,
-            )
-            resp.raise_for_status()
-            linkedin_results.extend(_normalize_linkedin(item) for item in resp.json())
-        except (requests.RequestException, ValueError):
-            pass
-
     total_pages = 0
     fixture_pages = 0
-    source_lists = [indeed_results, linkedin_results]
+    source_lists = [indeed_results]
     for platform in CRAWLER_PLATFORMS:
         platform_vacancies, live_count, fixture_count = (
             _fetch_crawler_platform_vacancies(platform, limit)

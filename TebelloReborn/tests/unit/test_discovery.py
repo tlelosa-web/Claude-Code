@@ -33,6 +33,27 @@ CAREERS24_LISTING_FIXTURE = """
 </body></html>
 """
 
+# Readability-extracted text has zero hrefs — confirmed against a real page
+# (2026-08-01, no hrefs of any kind survive the actor's default
+# htmlTransformer). Used to prove discover_job_urls() parses "html", not
+# "text_content" (the bug this regression test locks down).
+NO_URLS_TEXT_CONTENT = "Operations Foreman Jobs in Gauteng. 25 results found."
+
+# Real anchor shape confirmed via direct real-API test against
+# https://www.pnet.co.za/jobs/operations-foreman/in-gauteng with
+# htmlTransformer: "none" (2026-08-01) — job-detail links are
+# domain-relative, shaped /jobs--<slug>--<numeric-id>-inline.html, inside an
+# <a data-testid="job-item-title"> anchor. Trimmed/synthesized from the real
+# structure, not a verbatim scrape.
+PNET_LISTING_FIXTURE = """
+<html><body>
+<h2><a href="/jobs--Panelshop-Foreman-Johannesburg-Scania-S-A-Pty-Ltd--4243343-inline.html" data-testid="job-item-title">Panelshop Foreman</a></h2>
+<h2><a href="/jobs--Foreman-Supervisor-Fochville-SET--4240854-inline.html" data-testid="job-item-title">Foreman / Supervisor</a></h2>
+<a href="/jobs/general-manager/in-gauteng">General Manager Jobs</a>
+<a href="/jobs/operations-foreman/in-gauteng?action=facet_selected;worktypes;80001">Full-time</a>
+</body></html>
+"""
+
 
 class TestBuildSearchUrlCareers24:
     def test_returns_confirmed_live_shape(self):
@@ -74,6 +95,75 @@ class TestBuildSearchUrlPnet:
             assert "?" not in url
 
 
+class TestPnetSlugSlashHandling:
+    """Bonus finding #3 in docs/bugs/pnet-careers24-discovery-zero-results.md:
+    _pnet_slug used to silently drop "/" instead of treating it as a
+    separator, concatenating "Operations Foreman/Manager" into
+    "operations-foremanmanager". Fixed: "/" is now a separator, same as
+    whitespace."""
+
+    def test_slash_becomes_a_separator_not_dropped(self):
+        url = build_search_url("pnet", "Operations Foreman/Manager", "Gauteng")
+
+        assert "foremanmanager" not in url
+        assert "foreman-manager" in url
+
+    def test_still_never_contains_a_query_string_character(self):
+        url = build_search_url("pnet", "Operations Foreman/Manager", "Gauteng")
+
+        assert "?" not in url
+
+
+class TestParseJobUrlsFromListingPnet:
+    """Real anchor shape confirmed 2026-08-01 (see PNET_LISTING_FIXTURE):
+    domain-relative hrefs, /jobs--<slug>--<numeric-id>-inline.html, must be
+    resolved to absolute URLs (crawler_client.fetch_raw_page needs a full
+    URL for the follow-up job-detail fetch)."""
+
+    def test_extracts_and_resolves_job_detail_urls(self):
+        urls = parse_job_urls_from_listing(PNET_LISTING_FIXTURE, "pnet")
+
+        assert (
+            "https://www.pnet.co.za/jobs--Panelshop-Foreman-Johannesburg-Scania-S-A-Pty-Ltd--4243343-inline.html"
+            in urls
+        )
+        assert (
+            "https://www.pnet.co.za/jobs--Foreman-Supervisor-Fochville-SET--4240854-inline.html"
+            in urls
+        )
+
+    def test_does_not_include_related_search_or_facet_links(self):
+        """The listing page also contains /jobs/<category>/in-<location>
+        "related search" links (confirmed real, 2026-08-01) — a completely
+        different path shape from job-detail links and must not be picked
+        up as if they were postings."""
+        urls = parse_job_urls_from_listing(PNET_LISTING_FIXTURE, "pnet")
+
+        assert not any("/jobs/general-manager" in u for u in urls)
+        assert not any("action=facet_selected" in u for u in urls)
+
+
+class TestDiscoverJobUrlsPnet:
+    @patch("src.vacancy_search.discovery.crawler_client.fetch_raw_page")
+    def test_fetches_listing_then_parses_and_resolves_job_urls(
+        self, mock_fetch_raw_page, monkeypatch
+    ):
+        monkeypatch.delenv("OFFLINE_MODE", raising=False)
+        mock_fetch_raw_page.return_value = {
+            "url": "https://www.pnet.co.za/jobs/operations-foreman/in-gauteng",
+            "title": "PNet Search Results",
+            "text_content": NO_URLS_TEXT_CONTENT,
+            "html": PNET_LISTING_FIXTURE,
+            "_source_mode": "live",
+        }
+
+        urls = discover_job_urls("pnet", limit=25)
+
+        assert len(urls) == 2
+        assert all(u["url"].startswith("https://www.pnet.co.za/") for u in urls)
+        assert all(u["_source_mode"] == "live" for u in urls)
+
+
 class TestParseJobUrlsFromListingCareers24:
     def test_extracts_individual_job_detail_urls(self):
         urls = parse_job_urls_from_listing(CAREERS24_LISTING_FIXTURE, "careers24")
@@ -109,7 +199,8 @@ class TestDiscoverJobUrlsCareers24:
         mock_fetch_raw_page.return_value = {
             "url": "https://www.careers24.com/jobs/lc-gauteng/kw-operations-foreman/rmt-incl/",
             "title": "Careers24 Search Results",
-            "text_content": CAREERS24_LISTING_FIXTURE,
+            "text_content": NO_URLS_TEXT_CONTENT,
+            "html": CAREERS24_LISTING_FIXTURE,
             "_source_mode": "live",
         }
 
@@ -127,13 +218,33 @@ class TestDiscoverJobUrlsCareers24:
         mock_fetch_raw_page.return_value = {
             "url": "https://www.careers24.com/jobs/lc-gauteng/kw-operations-foreman/rmt-incl/",
             "title": "Careers24 Search Results",
-            "text_content": CAREERS24_LISTING_FIXTURE,
+            "text_content": NO_URLS_TEXT_CONTENT,
+            "html": CAREERS24_LISTING_FIXTURE,
             "_source_mode": "live",
         }
 
         urls = discover_job_urls("careers24", limit=1)
 
         assert len(urls) == 1
+
+    @patch("src.vacancy_search.discovery.crawler_client.fetch_raw_page")
+    def test_parses_html_field_not_text_content(self, mock_fetch_raw_page, monkeypatch):
+        """Regression lock for the real root cause (2026-08-01): a listing
+        page whose text_content has zero URLs (matching real readability
+        output) must still yield job URLs, because discovery reads "html",
+        not "text_content"."""
+        monkeypatch.delenv("OFFLINE_MODE", raising=False)
+        mock_fetch_raw_page.return_value = {
+            "url": "https://www.careers24.com/jobs/lc-gauteng/kw-operations-foreman/rmt-incl/",
+            "title": "Careers24 Search Results",
+            "text_content": NO_URLS_TEXT_CONTENT,
+            "html": CAREERS24_LISTING_FIXTURE,
+            "_source_mode": "live",
+        }
+
+        urls = discover_job_urls("careers24", limit=25)
+
+        assert len(urls) == 2
 
     @patch("src.vacancy_search.discovery.crawler_client.fetch_raw_page")
     def test_offline_mode_returns_fixture_without_any_fetch_call(

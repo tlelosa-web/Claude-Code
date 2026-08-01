@@ -35,7 +35,7 @@ Responsibilities:
 **Network:** Required — Apify
 
 Responsibilities:
-- Call the Apify Indeed scraper actor and the Apify LinkedIn Jobs scraper actor.
+- Call the Apify Indeed scraper actor. (The Apify LinkedIn Jobs actor was dropped 2026-08-01 — its free trial expired and it now requires a paid rental; decision was to drop it rather than pay for the rental. See `docs/todo.md`'s Resolved Items.)
 - Normalize results into the `Vacancy` schema (company, title, description, url, platform, salary, deadline, scraped_at).
 - Deduplicate by `(company, title, url)`.
 - **PNet and Careers24 are out of scope for MVP** — no dedicated Apify actor exists for either as of 2026-07-05. Future option: point Apify's generic `website-content-crawler` actor (already used by `ai-outreach-agency`) at their search-result pages and use Claude to extract structured fields from unstructured crawled text.
@@ -106,7 +106,8 @@ Enforced the same way as `ai-outreach-agency`'s lead status machine (`VALID_TRAN
 data/profile_seed.json ──▶ Profile Import ──▶ SQLite (CandidateProfile)
                                                      │
 Apify (Indeed) ──┐                                  │
-Apify (LinkedIn)─┼──▶ Vacancy Fetch ──▶ SQLite (Vacancy, status=new)
+Apify (crawler,  │                                  │
+ PNet/Careers24) ┼──▶ Vacancy Fetch ──▶ SQLite (Vacancy, status=new)
                  │                                  │
                  ▼                                  ▼
                                     AI Matching (Local Ollama)
@@ -134,7 +135,7 @@ Apify (LinkedIn)─┼──▶ Vacancy Fetch ──▶ SQLite (Vacancy, status=
 
 | Service              | Purpose                | Access method                                                     | Module      |
 |----------------------|-------------------------|--------------------------------------------------------------------|-------------|
-| Apify                | Job vacancy scraping   | Indeed + LinkedIn Jobs actors (paid, cheap: LinkedIn ~$0.4/1,000 jobs) | `vacancy_search/` |
+| Apify                | Job vacancy scraping   | Indeed scraper actor + generic `website-content-crawler` actor for PNet/Careers24 (paid). LinkedIn Jobs actor dropped 2026-08-01 (free trial expired, decided not to rent) | `vacancy_search/` |
 | Local Ollama         | AI matching            | Native `POST /api/generate` to a local daemon, no API key (`qwen3:8b`) | `matching/` |
 | Headless Claude Code | Document generation     | Local `claude -p ...` subprocess under Tebello's own Claude subscription, no API key | `doc_gen/`  |
 

@@ -40,23 +40,6 @@
 
 ---
 
-## Known Issues
-
-- **Separate, non-code finding, same investigation — decision made 2026-08-01: drop LinkedIn for now.**
-  The LinkedIn Apify actor (`bebity~linkedin-jobs-scraper`) now returns `403 actor-is-not-rented` — its
-  free trial expired and it requires a paid rental on Apify's console to keep working. Confirmed via
-  direct real-API test. `fetch_vacancies()`'s per-call swallow already handles this gracefully (a normal
-  per-source failure, same as any other platform outage) — all 20 vacancies stored in `career.db` so far
-  are `platform = "indeed"` only, and that's accepted as the current real-world source mix (Indeed +
-  PNet/Careers24 once the discovery bug above is fixed). Not renting the actor for now; not investing in
-  an alternative LinkedIn scraper either — Firecrawl was considered (per hub `docs/todo.md`'s 2026-08-01
-  backlog note on Apify-vs-Firecrawl) and ruled out as a quick fix specifically for LinkedIn, since it's
-  heavily bot-defended and neither tool has a dedicated LinkedIn actor. No code change made — the
-  existing graceful-degradation behavior already matches this decision. Revisit only if LinkedIn coverage
-  becomes a real product need later.
-
----
-
 ## Build Queue — ordered, atomic (see `docs/specs/mvp-pipeline-build.md` for full detail: inputs, outputs, verification, network flags, per-step agent; the spec was rewritten for ADR-003 in `4b71833` — 46→54 steps, Phase 4/5 now match the Ollama/headless-Claude-Code routing below)
 
 ### Phase 0 — Scaffolding & Config
@@ -224,6 +207,21 @@
 
 ## Resolved Items
 
+- [x] **LinkedIn dropped — decided and actioned 2026-08-01.** The LinkedIn Apify actor
+      (`bebity~linkedin-jobs-scraper`) returns `403 actor-is-not-rented` — its free trial expired and it
+      requires a paid rental on Apify's console to keep working (confirmed via direct real-API test). All
+      20 vacancies stored in `career.db` before this point were already `platform = "indeed"` only, since
+      LinkedIn had silently contributed zero results since the trial expired (the existing per-call error
+      swallow made this invisible). Firecrawl was considered as an alternative (per hub `docs/todo.md`'s
+      2026-08-01 backlog note on Apify-vs-Firecrawl) and ruled out — heavily bot-defended, no dedicated
+      LinkedIn actor either. **Decision: drop, not rent.** Code change (unlike the earlier "no code
+      change" framing when this was still an open Known Issue): `LINKEDIN_ACTOR_URL`, the LinkedIn
+      POST-call block, and `_normalize_linkedin()` removed from `apify_client.py`; `FIXTURE_VACANCIES`'
+      LinkedIn entry replaced with a careers24-shaped one. `VALID_PLATFORMS` in `schema.py` left
+      unchanged (still lists `"linkedin"` — harmless allowlist entry, no real rows use it). Docs updated:
+      `docs/architecture.md`'s External Integrations table + Data Flow diagram,
+      `docs/api-patterns.md`'s Apify section. 249 tests passing, zero regressions. Revisit only if
+      LinkedIn coverage becomes a real product need later.
 - [x] **PNet/Careers24 automated discovery zero-results bug — fixed 2026-08-01.** Full write-up:
       `docs/bugs/pnet-careers24-discovery-zero-results.md`'s Resolution section;
       `docs/decisions/ADR-002-apify-job-scraping.md`'s 2026-08-01 amendment. Root cause: discovery

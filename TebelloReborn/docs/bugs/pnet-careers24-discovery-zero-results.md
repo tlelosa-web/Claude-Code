@@ -138,3 +138,35 @@ something an agent should decide or pay for unprompted.
 5. Once fixed, re-run a small real `fetch-vacancies` to confirm PNet/
    Careers24 vacancies actually land in `career.db` before closing this
    out.
+
+## Resolution — 2026-08-01
+
+Fixed. Full detail: `docs/decisions/ADR-002-apify-job-scraping.md`'s
+"Amendment — 2026-08-01 (Zero-Results Root Cause + Fix)".
+
+- Went with **option (a)** for #2, but with a correction discovered along
+  the way: `saveHtml: true` alone was not sufficient — the actor's default
+  `htmlTransformer` (readability mode) strips `<a href>` tags from the HTML
+  output too, confirmed via a direct real-API test against a live PNet page
+  (0 hrefs in the default-mode output; 146 hrefs once `htmlTransformer:
+  "none"` was also set). Both flags were needed together.
+- #1 fixed: `_JOB_URL_PATTERNS["pnet"]` added, matching the real anchor
+  shape (`/jobs--<slug>--<numeric-id>-inline.html`, domain-relative,
+  resolved to absolute against `https://www.pnet.co.za`) confirmed via a
+  real capture, not guessed.
+- #3 fixed: `_pnet_slug()` now treats `"/"` as a separator.
+- Regression tests added for both platforms using a listing fixture whose
+  `text_content` deliberately contains zero URLs (matching real readability
+  output), positively proving the parser reads `"html"`.
+- Extra finding surfaced by the real capture, fixed in the same pass:
+  `crawler_client.TIMEOUT` was `60s`, but the real PNet call took ~150s
+  (bot-detection/JS-rendering delay) — bumped to `180s`. Without this, the
+  fix above would have been silently masked by every real PNet fetch timing
+  out and returning `None` through the existing broad `except` clause.
+- LinkedIn actor rental (step 4): decided — dropped, not rented. Tracked
+  separately, not part of this bug's fix.
+- Step 5 (real-run verification): pending, tracked as a follow-up task in
+  `docs/todo.md`.
+
+249 tests passing before this fix; see the ADR-002 amendment for the
+post-fix count.

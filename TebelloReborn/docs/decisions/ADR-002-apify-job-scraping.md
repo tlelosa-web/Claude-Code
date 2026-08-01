@@ -43,3 +43,69 @@ PNet/Careers24 discovery is now automated — the `docs/todo.md` "Known Issues"/
 - **`ollama_client.py` promoted `src/matching/` → `src/shared/`** per ADR-003 §Alternatives.D's own stated trigger ("promote later if a second consumer appears") — the extraction step above is that second consumer, alongside `matching/scorer.py`.
 - **New exception type**: `VacancyExtractionError(ValueError)`, defined in `extractor.py`, distinct from `matching/scorer.py`'s `MatchParseError` (different domain — malformed LLM extraction of a scraped page, not a malformed match score).
 - **Seed URLs remain parameterized config, never hardcoded** — `data/crawler_seed_urls.json` (unchanged from Phase 10) is now PNet's fallback source only, not the primary discovery path for either platform.
+
+## Amendment — 2026-08-01 (Zero-Results Root Cause + Fix)
+
+The Automated Discovery Redesign above shipped and passed its full offline
+test suite, but the first real (non-offline) run returned **zero** PNet or
+Careers24 vacancies — full root-cause writeup:
+`docs/bugs/pnet-careers24-discovery-zero-results.md`. Two compounding causes,
+both fixed:
+
+- **`parse_job_urls_from_listing()` was reading the wrong field.**
+  `discover_job_urls()` parsed `listing_page["text_content"]` — but
+  `crawler_client.fetch_raw_page()` never requested `saveHtml`, so
+  `text_content` is the actor's plain, de-markup'd readability text, which
+  contains zero URLs of any kind (confirmed live: a real careers24 page's
+  `text_content` had 0 occurrences of `"https://"`). Even careers24's
+  correct-looking regex could never match.
+- **`saveHtml: true` alone does not fix this.** A direct real-API test
+  against a live PNet listing page (2026-08-01) found the actor's *default*
+  `htmlTransformer` (`readableText`, Mozilla Readability) strips every
+  `<a href>` from its HTML output too — not just `text_content`. Getting real
+  anchors back required also setting `htmlTransformer: "none"`. This is a
+  correction to this ADR's own original Amendment text above, which assumed
+  (untested) that `saveHtml` alone would suffice.
+- **Fix**: `crawler_client.fetch_raw_page()` now sends both
+  `saveHtml: true` and `htmlTransformer: "none"`, and surfaces the result as
+  a new `"html"` field on its return dict — `"text_content"` is unchanged
+  (still clean readability text, still what `extractor.py`'s LLM extraction
+  prompt consumes; no reason to feed raw markup to the LLM).
+  `discover_job_urls()` now parses `listing_page["html"]` instead.
+- **`_JOB_URL_PATTERNS` had no `"pnet"` entry at all** — `parse_job_urls_from_listing(text, "pnet")` returned `[]`
+  unconditionally, regardless of page content. Fixed with a pattern derived
+  from a real capture (see below), not guessed.
+- **PNet's real job-detail links are domain-relative, and a completely
+  different shape from careers24's.** Confirmed via a direct real-API call
+  against `https://www.pnet.co.za/jobs/operations-foreman/in-gauteng` with
+  `htmlTransformer: "none"`: individual postings are
+  `<a data-testid="job-item-title" href="/jobs--<slug>--<numeric-id>-inline.html">`
+  — e.g. `/jobs--Panelshop-Foreman-Johannesburg-Scania-S-A-Pty-Ltd--4243343-inline.html`.
+  `_JOB_URL_PATTERNS["pnet"]` matches this shape and resolves it to an
+  absolute URL against `https://www.pnet.co.za` (careers24's pattern already
+  matches absolute URLs, so no resolution step was needed there). The same
+  listing page also has `/jobs/<category>/in-<location>` "related search"
+  links in a *different* path shape (no `--`) — the pattern is specific
+  enough not to pick these up as if they were postings.
+- **Bonus fix, same root-cause investigation**: `_pnet_slug()` silently
+  dropped `"/"` instead of treating it as a word separator, so
+  `SEARCH_TITLES`'s `"Operations Foreman/Manager"` slugified to
+  `"operations-foremanmanager"` (two words concatenated) instead of a
+  properly hyphen-separated slug. Low severity on its own — PNet tolerated
+  the malformed slug and still returned relevant results — but fixed
+  alongside the rest since it was found in the same pass.
+- **Also fixed**: `crawler_client.TIMEOUT` bumped `60s → 180s`. The real PNet
+  call took ~150s to complete (bot-detection/JS-rendering delay, confirmed
+  via direct real-API test) — the previous 60s timeout would have silently
+  returned `None` on every real PNet fetch via the existing broad `except`
+  clause, which would have masked this entire fix as a continued failure.
+- **Test-suite gap closed**: the original tests' fixtures were hand-authored
+  HTML strings that happened to embed literal URL substrings — a shape real
+  extracted content never has, which is exactly why this shipped unnoticed.
+  New tests parse against a listing fixture with a `text_content` field that
+  contains zero URLs (matching real readability output) and assert URLs are
+  still found — proving the parser reads `"html"`, not `"text_content"`.
+
+Careers24's regex and gating logic (Careers24 has no manual-verification
+gate, unlike PNet) are otherwise unchanged by this amendment — only the
+field it reads changed.

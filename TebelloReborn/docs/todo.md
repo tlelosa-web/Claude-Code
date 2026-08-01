@@ -42,18 +42,6 @@
 
 ## Known Issues
 
-- **PNet/Careers24 automated discovery returns zero job URLs on real runs — root cause found
-  2026-08-01, not yet fixed.** Full write-up: `docs/bugs/pnet-careers24-discovery-zero-results.md`.
-  Two independent bugs: (1) PNet has no `_JOB_URL_PATTERNS` entry at all — `parse_job_urls_from_listing`
-  returns `[]` unconditionally for PNet, always; (2) even careers24's existing regex can never match,
-  because `fetch_raw_page()` requests the crawler actor without `saveHtml: true`, so `text_content` is
-  plain de-markup'd text with zero URLs in it — confirmed via direct real-API test (0 occurrences of
-  `"https://"` in a real careers24 listing page's extracted text). A smaller, bonus finding (#3 in the
-  doc): `_pnet_slug()` mangles `"Operations Foreman/Manager"` into `"operations-foremanmanager"` by
-  silently dropping the `/` instead of treating it as a separator. Neither of the two Open Items below
-  (extraction reliability, rate-limit default) is reachable until this is fixed — discovery never
-  produces a URL for extraction or the rate limiter to act on. Fix options and next steps are in the
-  bug doc; awaiting Tebello's direction on approach before any code changes.
 - **Separate, non-code finding, same investigation — decision made 2026-08-01: drop LinkedIn for now.**
   The LinkedIn Apify actor (`bebity~linkedin-jobs-scraper`) now returns `403 actor-is-not-rented` — its
   free trial expired and it requires a paid rental on Apify's console to keep working. Confirmed via
@@ -236,6 +224,19 @@
 
 ## Resolved Items
 
+- [x] **PNet/Careers24 automated discovery zero-results bug — fixed 2026-08-01.** Full write-up:
+      `docs/bugs/pnet-careers24-discovery-zero-results.md`'s Resolution section;
+      `docs/decisions/ADR-002-apify-job-scraping.md`'s 2026-08-01 amendment. Root cause: discovery
+      parsed `text_content` (zero URLs — the actor's readability-post-processed text), and even after
+      switching to raw HTML, the actor's *default* `htmlTransformer` strips `<a href>` tags there too —
+      `saveHtml: true` alone wasn't enough, `htmlTransformer: "none"` was also required (confirmed via a
+      real capture against a live PNet page). Fixed: `crawler_client.fetch_raw_page()` now requests both
+      flags and surfaces a new `"html"` field; `discovery.py` parses that field; `_JOB_URL_PATTERNS`
+      gained a real, capture-derived `"pnet"` entry (domain-relative `/jobs--<slug>--<id>-inline.html`,
+      resolved to absolute); `_pnet_slug()` no longer drops `"/"`; `crawler_client.TIMEOUT` bumped
+      `60s → 180s` (PNet's real crawl took ~150s). 249 tests passing before this fix — see the ADR
+      amendment for the post-fix count. Real-run verification (confirming PNet/Careers24 vacancies
+      actually land in `career.db`) tracked as a follow-up below.
 - [x] Migration-file convention for net-new tables (Phases 2/3/5/6): confirmed against
       `ai-outreach-agency/src/lead_import/db.py` — initial `CREATE TABLE IF NOT EXISTS` statements live
       directly in each module's `init_db()`, not in `migrations.py`. `migrations.py` (empty `MIGRATIONS`
@@ -331,14 +332,19 @@
       sourcing path — it stays in place as the fallback `get_job_urls` would revert to if `pnet.mode` is
       ever reverted to `"manual_pending_verification"` (e.g. PNet's live results page stops rendering
       usably). No action needed unless that revert happens.
-- [ ] Extraction reliability at scale (Amendment, unchanged Open Item 2) — **blocked**: unreachable
-      until the discovery bug above is fixed (extraction never runs — discovery produces 0 URLs).
-      `qwen3:8b`'s known reliability risk applies to messier, more variable job-posting page text than
-      the dedicated-actor JSON payloads; still a valid future evidence-based revisit once discovery
-      actually feeds it real pages.
-- [ ] `CRAWLER_RATE_LIMIT_PER_MIN` default of 30 (Amendment, unchanged Open Item 3) — **blocked**: same
-      reason, no real crawl volume has ever gone through this limiter for PNet/Careers24 since discovery
-      finds nothing to fetch beyond the one listing-page request per platform.
+- [ ] Extraction reliability at scale (Amendment, unchanged Open Item 2) — **unblocked as of
+      2026-08-01's discovery fix**, but not yet evidence-tested: discovery now produces real URLs, so
+      this is reachable again, but no real extraction run against real PNet/Careers24 pages has happened
+      yet (pending the real-run verification tracked below). `qwen3:8b`'s known reliability risk applies
+      to messier, more variable job-posting page text than the dedicated-actor JSON payloads — revisit
+      once real pages have actually gone through extraction.
+- [ ] `CRAWLER_RATE_LIMIT_PER_MIN` default of 30 (Amendment, unchanged Open Item 3) — **unblocked as of
+      2026-08-01's discovery fix**, same reason as above: no real crawl volume has gone through this
+      limiter yet, but discovery can now actually produce URLs to fetch. Revisit after the real-run
+      verification below.
+- [ ] **Real-run verification for the 2026-08-01 discovery fix** — re-run a small real
+      `career-engine fetch-vacancies --limit <small>` and confirm PNet/Careers24 vacancies actually land
+      in `career.db` (per the bug doc's original suggested step 5). Not yet done.
 
 ---
 

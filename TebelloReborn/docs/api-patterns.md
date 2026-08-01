@@ -253,15 +253,29 @@ Base URL:
 (`CRAWLER_ACTOR_URL`).
 
 `fetch_raw_page(url) -> dict | None` is the single-URL primitive — one POST
-per URL (`startUrls`, `maxCrawlPages: 1`, `maxCrawlDepth: 0`), returning
-`{"url", "title", "text_content", "_source_mode"}` or `None` on a
-`(requests.RequestException, ValueError)`. `fetch_raw_pages(platform, limit,
-seed_urls_path)` composes on top of it, calling it once per seed URL loaded
-from `data/crawler_seed_urls.json` (job-detail pages only — never a
+per URL (`startUrls`, `maxCrawlPages: 1`, `maxCrawlDepth: 0`, `saveHtml:
+true`, `htmlTransformer: "none"`), returning `{"url", "title", "text_content",
+"html", "_source_mode"}` or `None` on a `(requests.RequestException,
+ValueError)`. `fetch_raw_pages(platform, limit, seed_urls_path)` composes on
+top of it, calling it once per seed URL loaded from
+`data/crawler_seed_urls.json` (job-detail pages only — never a
 listing/search-results URL, per that file's `HARD CONTRACT` comment) and
 filtering out `None` results. `discovery.py` below (listing-page fetch, and
 each discovered job-detail URL) composes on the same primitive rather than
 duplicating the POST/timeout/exception-handling logic a second time.
+
+> **Corrected 2026-08-01 (found via the first real, non-offline listing-page
+> fetch — see `docs/decisions/ADR-002-apify-job-scraping.md`'s 2026-08-01
+> amendment for the full write-up):** the actor's *default* `htmlTransformer`
+> (readability mode) strips every `<a href>` from its output, in both
+> `text_content` and (confirmed live) `html` — `saveHtml: true` alone doesn't
+> get real anchors back, `htmlTransformer: "none"` is also required. The
+> resulting raw HTML is now surfaced as a new `"html"` field, distinct from
+> `"text_content"` (unchanged — still the clean readability text
+> `extractor.py`'s LLM prompt consumes). `discovery.py::discover_job_urls()`
+> parses `"html"`, not `"text_content"`. Also corrected in the same pass:
+> `TIMEOUT` was `60s`, insufficient for PNet's real crawl time (~150s,
+> bot-detection/JS-rendering delay) — bumped to `180s`.
 
 Every returned dict carries `"_source_mode"`: `"live"` for a real crawl,
 `"fixture"` for `OFFLINE_MODE` or a missing-`APIFY_API_KEY` fallback — so a
@@ -301,17 +315,24 @@ vacancies automatically from `apify_client.py`'s `SEARCH_TITLES`/
   parameter or code path capable of appending a query string (structurally
   unreachable, not just avoided by convention — see the `_pnet_slug()`
   docstring in-file).
-- **`parse_job_urls_from_listing(raw_text, platform) -> list[str]`** — a
+- **`parse_job_urls_from_listing(raw_html, platform) -> list[str]`** — a
   deterministic regex/anchor extraction of individual job-detail-page URLs
-  out of a listing page's raw text, **not an LLM call**: listing pages have
-  a repeated, predictable anchor structure per platform (a structural
-  parsing task), unlike the unstructured job-description field extraction
-  `extractor.py` below is justified for.
+  out of a listing page's raw HTML (**not** `text_content` — see the
+  2026-08-01 correction above), **not an LLM call**: listing pages have a
+  repeated, predictable anchor structure per platform (a structural parsing
+  task), unlike the unstructured job-description field extraction
+  `extractor.py` below is justified for. `_JOB_URL_PATTERNS` holds one regex
+  per platform, confirmed against real captured pages, not guessed:
+  careers24's already matches absolute URLs
+  (`https://www.careers24.com/jobs/vacancy-...`); PNet's real hrefs are
+  domain-relative (`/jobs--<slug>--<numeric-id>-inline.html`, confirmed live
+  2026-08-01) and get resolved to absolute against `https://www.pnet.co.za`
+  before being returned.
 - **`discover_job_urls(platform, limit) -> list[dict]`** — builds the
   listing URL via `build_search_url()` (using `apify_client.py`'s
   `SEARCH_TITLES[0]`/`SEARCH_LOCATION`), fetches it via
   `crawler_client.fetch_raw_page()`, parses job-detail URLs out of its
-  `text_content`, and returns up to `limit` `{"url", "_source_mode"}` dicts
+  `"html"` field, and returns up to `limit` `{"url", "_source_mode"}` dicts
   tagged with the listing fetch's own `_source_mode`. `OFFLINE_MODE` returns
   a deterministic fixture list with no fetch call at all.
 - **`get_job_urls(platform, limit, discovery_config_path, seed_urls_path) -> list[str]`**

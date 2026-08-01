@@ -5,7 +5,7 @@ from typing import Optional
 
 from .schema import GenerationStatus
 
-DEFAULT_RUNNER_TIMEOUT_SECONDS = 120
+DEFAULT_RUNNER_TIMEOUT_SECONDS = 240
 # Read-only. The instruction embeds untrusted, scraped vacancy text
 # (vacancy.description), so the headless agent must never hold Write —
 # a prompt-injected instruction from a malicious job posting could

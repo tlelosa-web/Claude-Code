@@ -43,6 +43,27 @@ class TestRunClaudeCodeCommandShape:
         assert kwargs["timeout"] == DEFAULT_RUNNER_TIMEOUT_SECONDS
 
     @patch("src.doc_gen.runner.subprocess.run")
+    def test_explicit_utf8_encoding_is_used(self, mock_run):
+        """Real go-live run (2026-08-01): text=True with no explicit
+        encoding falls back to the OS's preferred encoding, which on
+        Windows is commonly cp1252, not UTF-8. Claude Code's JSON output
+        can contain characters cp1252 can't decode, crashing the
+        subprocess module's internal stdout-reader thread — observed as
+        both silent hangs (misread as slow generation, timing out at the
+        full 120s ceiling every time) and 'the JSON object must be str,
+        bytes or bytearray, not NoneType' when stdout came back as None.
+        Must pin UTF-8 explicitly, with a decode-error fallback so a
+        genuinely undecodable byte degrades gracefully instead of
+        crashing the reader thread."""
+        mock_run.return_value = _completed(stdout=json.dumps({"result": "ok"}))
+
+        run_claude_code("instruction")
+
+        kwargs = mock_run.call_args.kwargs
+        assert kwargs["encoding"] == "utf-8"
+        assert kwargs["errors"] == "replace"
+
+    @patch("src.doc_gen.runner.subprocess.run")
     def test_custom_timeout_is_passed_through(self, mock_run):
         mock_run.return_value = _completed(stdout=json.dumps({"result": "ok"}))
 

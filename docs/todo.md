@@ -35,6 +35,21 @@ _(none active at hub level right now)_
       confirming `CRAWLER_RATE_LIMIT_PER_MIN`'s default of 30 is conservative enough once real
       (non-fallback) PNet crawls are in regular use. Both are evidence-based revisits, not
       known bugs — pick up only if real usage surfaces a problem.
+- [ ] Investigated 2026-08-01: swap Apify's generic `website-content-crawler` actor for a
+      self-hosted Firecrawl instance (AGPL-3.0, $0 marginal cost once running — fits the
+      Ollama/headless-Claude-Code "local over paid API" pattern already used in both projects).
+      Applies to exactly 2 of the 3 Apify call sites — `ai-outreach-agency/src/research/apify_client.py`
+      and `TebelloReborn/src/vacancy_search/crawler_client.py` (both call the same generic actor).
+      **Does not apply** to `TebelloReborn/src/vacancy_search/apify_client.py`'s dedicated Indeed/
+      LinkedIn actors — Firecrawl has no job-board-specific equivalent, so that would mean rebuilding
+      Indeed/LinkedIn extraction from scratch (raw fetch + local Ollama extraction, same shape as the
+      PNet/Careers24 build), not a client swap. Real work either way: Docker Compose stack
+      (Redis + Postgres + Playwright + API server), and both clients' response-shape parsing rewritten
+      (Firecrawl's `/v2/scrape` returns markdown/HTML/JSON directly, not Apify's dataset-items array).
+      Self-hosted Firecrawl also lacks their "Fire-engine" anti-bot/IP-block handling per their own
+      self-host docs — a real risk for bot-hostile job boards, less so for the two applicable call
+      sites here (generic company-site and PNet/Careers24 crawling). Not urgent — neither project's
+      active blocker is scraping-related right now. Backlog candidate only; write a spec/ADR if picked up.
 
 ## Completed
 

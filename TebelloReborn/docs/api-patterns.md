@@ -53,12 +53,20 @@ the actionable "Ollama isn't running" message.
   daemon fails fast with `"Ollama not reachable at <url> — is it running?
   Start Ollama or set OFFLINE_MODE=true."` The TCP connection itself never
   completed.
-- **Read-timeout (60s, `READ_TIMEOUT`) → `OllamaError`, a different exception
+- **Read-timeout (120s, `READ_TIMEOUT`) → `OllamaError`, a different exception
   type.** The TCP connection succeeded — the daemon is up and responding — it
   just didn't finish generating in time. Message: `"Ollama timed out
-  generating a response after 60s — the model may be slow to respond or
+  generating a response after 120s — the model may be slow to respond or
   still cold-loading."` A read-timeout is not evidence the daemon is down, so
   it must not raise `OllamaUnreachableError` and must not share that message.
+  Every call also sends `"keep_alive": "30m"` so the model stays loaded
+  between the once-per-vacancy calls a real `run-all` batch makes in quick
+  succession — bumped from the original 60s/no-keep_alive pair 2026-08-01
+  after a real `run-all` hit this timeout on its very first vacancy
+  (`ollama ps` showed zero loaded models — a cold-load alone exceeded 60s).
+  Same fix already applied to `ai-outreach-agency/src/research/ollama_client.py`
+  (`3ec16cd`) for the identical failure class; this project's separate
+  `ollama_client.py` copy had never received it.
 
 Other error shapes: HTTP status ≥ 400 → `OllamaError` with the response body
 (truncated); a 200 response missing the expected `response` field →

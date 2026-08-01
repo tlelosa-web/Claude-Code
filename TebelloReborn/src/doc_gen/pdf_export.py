@@ -29,7 +29,13 @@ def _sanitize_filename(name: str) -> str:
 def _clean_text(text: str) -> str:
     for char, replacement in _UNICODE_REPLACEMENTS.items():
         text = text.replace(char, replacement)
-    return text
+    # Helvetica (a core, non-embedded PDF font) only supports latin-1.
+    # Headless-Claude-Code-generated content isn't fully predictable, so
+    # anything not covered by the specific substitutions above (currency
+    # symbols, CJK, emoji, etc.) must degrade to "?" rather than crash the
+    # export — losing a character is recoverable, an unhandled exception
+    # aborting a whole run-all batch is not.
+    return text.encode("latin-1", errors="replace").decode("latin-1")
 
 
 def _render_markdown_pdf(content: str) -> FPDF:

@@ -21,6 +21,19 @@ def _completed(returncode=0, stdout="", stderr=""):
     )
 
 
+class TestDefaultTimeoutHasRealHeadroom:
+    def test_default_timeout_is_at_least_180s(self):
+        """Real go-live run (2026-08-01): a real CV generation (full CV
+        history + vacancy description embedded) took 133.6s measured
+        end-to-end (4 turns, ~13k output tokens, $0.63 cost) — genuinely
+        over the original 120s ceiling, not a hang or decode crash. Cover
+        letters are shorter and consistently succeeded under 120s, which
+        is why only CV generation showed this failure pattern. 120s has
+        no real headroom above the observed worst case; require a value
+        that does."""
+        assert DEFAULT_RUNNER_TIMEOUT_SECONDS >= 180
+
+
 class TestRunClaudeCodeCommandShape:
     @patch("src.doc_gen.runner.subprocess.run")
     def test_invokes_expected_command(self, mock_run):

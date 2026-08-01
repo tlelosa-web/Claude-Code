@@ -3,6 +3,8 @@
 
 # Generated SQLite database (source of truth lives in data/, not this)
 *.db
+*.db-shm
+*.db-wal
 
 # Python
 __pycache__/

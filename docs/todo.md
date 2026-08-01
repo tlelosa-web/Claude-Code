@@ -59,6 +59,11 @@ _(none active at hub level right now)_
 
 ## Completed
 
+- [x] `Tenders`: archived the Eskom ITT E2142CXMWPR bid (`Enterprise Historian Licence,
+      Maintenance & Support`) — Tebello confirmed 2026-08-01 it was abandoned. Folder renamed
+      `110320262657` → `ARCHIVED_110320262657_Eskom_E2142CXMWPR` with an `ARCHIVED_STATUS.md`
+      marker added (`80aed74`, `c63ac32`). Content preserved as-is (real ITT annexures, drafted
+      bid returnables, costing, final packaged submission zip) — nothing deleted.
 - [x] Promoted the "Codex-review + fold strongest points into spec before build" standard
       procedure to the shared `CORE.md` template as Universal Hard Rule #9 (v1.0 → v1.1,
       `375df47` in `tlelosa-claude-config`, pushed to `origin/main`) — now universal across

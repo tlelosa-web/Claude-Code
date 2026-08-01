@@ -1,5 +1,18 @@
 # Session Log
 
+## 2026-08-01 (cont'd, 2)
+
+- Surveyed `Tenders/` and reported its state: the `find_gauteng_food_tenders.py` automation is
+  stale (last run 2026-04-15, both cached opportunities already past their close dates), and a
+  previously-unflagged folder (`110320262657`) turned out to be a real, git-tracked, 68-file Eskom
+  tender bid package (ITT E2142CXMWPR — Enterprise Historian Licence, Maintenance & Support, ZAR
+  5,261,250.00) that a 2026-07-28 knowledge-cache note had mischaracterized as "dormant, no bid
+  content." Tebello confirmed the bid was abandoned; archived it — renamed the folder to
+  `ARCHIVED_110320262657_Eskom_E2142CXMWPR` and added an `ARCHIVED_STATUS.md` marker (`80aed74`,
+  `c63ac32`). First attempt at the rename hit an OS-level "device or resource busy" lock (OneDrive
+  syncing the folder); a marker-file-only commit landed first, then the rename succeeded on retry
+  and was committed as its own atomic follow-up. Nothing deleted.
+
 ## 2026-08-01 (cont'd)
 
 - Reviewed the Firecrawl-swap backlog investigation: verified its code claims directly against

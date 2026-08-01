@@ -14,7 +14,19 @@ DEFAULT_SEED_URLS_PATH = "data/crawler_seed_urls.json"
 # extraction in extractor.py, which is what call_ollama() is justified for.
 _JOB_URL_PATTERNS = {
     "careers24": re.compile(r'https://www\.careers24\.com/jobs/vacancy-[^"\'\s<>]+'),
+    # Real anchor shape confirmed via direct real-API test (2026-08-01,
+    # htmlTransformer: "none"): domain-relative hrefs shaped
+    # /jobs--<slug>--<numeric-id>-inline.html. Distinct from the
+    # /jobs/<category>/in-<location> "related search" links elsewhere on the
+    # same listing page (careful: the leading "--" is what distinguishes a
+    # real job-detail link from a category/facet link).
+    "pnet": re.compile(r'/jobs--[^"\'\s<>]+?-\d+-inline\.html'),
 }
+
+# PNet's real hrefs are domain-relative (no scheme/host) — resolved to
+# absolute here since fetch_raw_page() needs a full URL for the follow-up
+# job-detail-page fetch. Careers24's pattern already matches absolute URLs.
+_PNET_BASE_URL = "https://www.pnet.co.za"
 
 # Generic placeholder discovered-URL fixtures — never real scraped content.
 # Mirrors crawler_client.py's FIXTURE_RAW_PAGES convention.
@@ -34,16 +46,21 @@ def _slugify(value: str) -> str:
 
 
 def _pnet_slug(value: str) -> str:
-    """Stricter slug for PNet URLs only: lowercase, spaces -> hyphens, then
-    strip any character that isn't alphanumeric or a hyphen. PNet's live
-    robots.txt (User-agent: *) includes "Disallow: /jobs/*?*" (confirmed
-    2026-07-29) — this makes the disallowed query-string shape structurally
-    unreachable from build_search_url("pnet", ...), rather than just avoided
-    by convention: no character sequence in `title`/`location` can produce a
-    "?" (or any other character requests wouldn't need for a bare path) in
-    the returned URL. There is no parameter or code path below that appends
-    a query string for the pnet branch."""
-    return re.sub(r"[^a-z0-9-]", "", _slugify(value))
+    """Stricter slug for PNet URLs only: lowercase, spaces AND "/" -> hyphens
+    (bug #3, docs/bugs/pnet-careers24-discovery-zero-results.md: "/" used to
+    be silently dropped by the strip step below instead of treated as a
+    separator, concatenating e.g. "Foreman/Manager" into "foremanmanager"),
+    then strip any remaining character that isn't alphanumeric or a hyphen.
+    PNet's live robots.txt (User-agent: *) includes "Disallow: /jobs/*?*"
+    (confirmed 2026-07-29) — this makes the disallowed query-string shape
+    structurally unreachable from build_search_url("pnet", ...), rather than
+    just avoided by convention: no character sequence in `title`/`location`
+    can produce a "?" (or any other character requests wouldn't need for a
+    bare path) in the returned URL. There is no parameter or code path below
+    that appends a query string for the pnet branch."""
+    slug = _slugify(value).replace("/", "-")
+    slug = re.sub(r"-+", "-", slug)
+    return re.sub(r"[^a-z0-9-]", "", slug).strip("-")
 
 
 def build_search_url(platform: str, title: str, location: str) -> str:
@@ -74,7 +91,10 @@ def parse_job_urls_from_listing(raw_text: str, platform: str) -> list[str]:
     pattern = _JOB_URL_PATTERNS.get(platform)
     if pattern is None:
         return []
-    return list(dict.fromkeys(pattern.findall(raw_text)))
+    matches = list(dict.fromkeys(pattern.findall(raw_text)))
+    if platform == "pnet":
+        matches = [_PNET_BASE_URL + m for m in matches]
+    return matches
 
 
 def _fixture_discovered_urls(platform: str) -> list[dict]:
@@ -105,7 +125,7 @@ def discover_job_urls(platform: str, limit: int) -> list[dict]:
     if listing_page is None:
         return []
 
-    job_urls = parse_job_urls_from_listing(listing_page["text_content"], platform)
+    job_urls = parse_job_urls_from_listing(listing_page.get("html", ""), platform)
     source_mode = listing_page["_source_mode"]
     return [{"url": u, "_source_mode": source_mode} for u in job_urls][:limit]
 

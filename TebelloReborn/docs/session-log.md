@@ -7,6 +7,28 @@
 
 ---
 
+## 2026-08-01 — Live vacancy pipeline dashboard (dev tool, not pipeline code)
+
+Added `tools/dashboard_server.py` + `tools/dashboard.html` (`1be39ca`): a
+local stdlib-only dev server that polls `career.db` every 4s and renders
+vacancies as a kanban board across the 5 pipeline statuses. `asset_ready`
+cards get Approve/Reject buttons that call the *same* review-gate DB
+functions `src/review/cli.py::run_review_gate()` uses — `save_approval()`
+committed before `update_vacancy_status()` — so the dashboard is a second
+front end onto the real human-approval gate, not a bypass of it (Hard
+Rule #1). Launched via the Browser pane's `preview_start` using a new
+`.claude/launch.json` in this project folder.
+
+Not part of the Build Queue or MVP pipeline — a visualization/control aid
+only, requested ad hoc. Also added `*.db-shm`/`*.db-wal` to `.gitignore`
+(the dashboard's concurrent read access started generating these SQLite
+WAL sidecar files; they were previously absent because nothing else read
+`career.db` outside of a single process at a time).
+
+No vacancies have reached `asset_ready` yet (all 20 currently-stored
+vacancies are `new`), so the Approve/Reject buttons are wired but
+untested against a real click — verify once matching + doc-gen has run.
+
 ## 2026-07-31 — W1/W2 reviewer nits fixed, PNet/Careers24 build merged to master, PNet mode flipped to auto
 
 The PNet/Careers24 Automated Discovery build (worktree `agent-a6eb29f112cbc6764`,

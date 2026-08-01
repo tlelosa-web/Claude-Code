@@ -1,6 +1,6 @@
 # Task Queue — TebelloReborn (Career Engine)
 
-> Updated: 2026-07-31 (real-run Apify bugs fixed — Indeed country/ZA targeting, round-robin fair-interleave truncation; see Resolved Items)
+> Updated: 2026-08-01 (added tools/dashboard — live vacancy pipeline dashboard, dev tool; see Completed and session-log.md)
 
 ---
 
@@ -16,6 +16,7 @@
 - [x] Confirmed target-title weighting for `profile_seed.json`: **Operations Foreman/Manager is the primary lane**, Project Engineer (Mechanical) is a secondary lane carried in the same file.
 - [x] Full MVP build plan written: `docs/specs/mvp-pipeline-build.md` (46 atomic tasks, Phases 0–8, Stages 1–5 only).
 - [x] ADR-003 (`docs/decisions/ADR-003-inference-provider-split.md`) accepted 2026-07-19: OpenRouter dropped entirely, pre-build. AI Matching (Phase 4) re-routed to local Ollama, Document Generation (Phase 5) re-routed to headless Claude Code. Build Queue below re-planned accordingly — total step count grew from 46 to 54 (see Build Queue).
+- [x] `tools/dashboard_server.py` + `tools/dashboard.html` (`1be39ca`, 2026-08-01): local live dashboard over `career.db`, kanban view by pipeline status, Approve/Reject on `asset_ready` cards wired to the real review-gate DB functions. Dev/visualization tool, not part of the Build Queue. See `session-log.md`'s 2026-08-01 entry.
 
 ---
 

@@ -1,5 +1,16 @@
 # Session Log
 
+## 2026-08-01
+
+- Promoted the "Codex-review + fold strongest points into spec before build" standard
+  procedure from a 3-place copy-paste (hub `CLAUDE.md` Pattern 1, `TebelloReborn/CLAUDE.md`
+  Hard Rule #13, `ai-outreach-agency/CLAUDE.md` Hard Rule #13) into the shared `CORE.md`
+  template as Universal Hard Rule #9 — v1.0 → v1.1, committed and pushed (`375df47`) to
+  `tlelosa-claude-config` on `origin/main`. Wording matches the existing per-project copies
+  verbatim. Every machine picks it up on next `/plugin marketplace update
+  tlelosa-claude-config`; no silent auto-apply. Closes the last open backlog item from this
+  hub's `docs/todo.md`.
+
 ## 2026-07-28
 
 - **Pappa T vault survey** (mirroring the Operations vault survey pattern): surveyed

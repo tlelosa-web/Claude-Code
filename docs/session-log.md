@@ -1,5 +1,19 @@
 # Session Log
 
+## 2026-08-01 (cont'd)
+
+- Reviewed the Firecrawl-swap backlog investigation: verified its code claims directly against
+  `ai-outreach-agency/src/research/apify_client.py`, `TebelloReborn/src/vacancy_search/crawler_client.py`,
+  and `TebelloReborn/src/vacancy_search/apify_client.py` (all confirmed accurate — 2 generic-actor call
+  sites, 1 dedicated-actor call site correctly excluded), and cross-checked its Firecrawl claims against
+  current self-host docs via web search. Found two corrections: the self-host stack is 5 services
+  (missing RabbitMQ from the original note) and needs ~8–12 GB RAM minimum, not just "a Docker Compose
+  stack" — a real resource cost competing with Ollama on the same desktop. Also softened the AGPL risk
+  note — the copyleft/publish clause only triggers on modify-and-offer-as-a-service, which doesn't apply
+  to internal self-use. Folded all corrections into the `docs/todo.md` backlog entry; kept it a backlog
+  candidate (not started) per Tebello's decision — the RAM finding makes it less attractive to pick up
+  soon, not more.
+
 ## 2026-08-01
 
 - Promoted the "Codex-review + fold strongest points into spec before build" standard

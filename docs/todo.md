@@ -30,21 +30,32 @@ _(none active at hub level right now)_
       confirming `CRAWLER_RATE_LIMIT_PER_MIN`'s default of 30 is conservative enough once real
       (non-fallback) PNet crawls are in regular use. Both are evidence-based revisits, not
       known bugs — pick up only if real usage surfaces a problem.
-- [ ] Investigated 2026-08-01: swap Apify's generic `website-content-crawler` actor for a
-      self-hosted Firecrawl instance (AGPL-3.0, $0 marginal cost once running — fits the
-      Ollama/headless-Claude-Code "local over paid API" pattern already used in both projects).
-      Applies to exactly 2 of the 3 Apify call sites — `ai-outreach-agency/src/research/apify_client.py`
-      and `TebelloReborn/src/vacancy_search/crawler_client.py` (both call the same generic actor).
-      **Does not apply** to `TebelloReborn/src/vacancy_search/apify_client.py`'s dedicated Indeed/
-      LinkedIn actors — Firecrawl has no job-board-specific equivalent, so that would mean rebuilding
-      Indeed/LinkedIn extraction from scratch (raw fetch + local Ollama extraction, same shape as the
-      PNet/Careers24 build), not a client swap. Real work either way: Docker Compose stack
-      (Redis + Postgres + Playwright + API server), and both clients' response-shape parsing rewritten
-      (Firecrawl's `/v2/scrape` returns markdown/HTML/JSON directly, not Apify's dataset-items array).
-      Self-hosted Firecrawl also lacks their "Fire-engine" anti-bot/IP-block handling per their own
-      self-host docs — a real risk for bot-hostile job boards, less so for the two applicable call
-      sites here (generic company-site and PNet/Careers24 crawling). Not urgent — neither project's
-      active blocker is scraping-related right now. Backlog candidate only; write a spec/ADR if picked up.
+- [ ] Investigated 2026-08-01, re-verified 2026-08-01 against code + current Firecrawl docs: swap
+      Apify's generic `website-content-crawler` actor for a self-hosted Firecrawl instance (AGPL-3.0,
+      $0 marginal cost once running — fits the Ollama/headless-Claude-Code "local over paid API"
+      pattern already used in both projects). Applies to exactly 2 of the 3 Apify call sites —
+      `ai-outreach-agency/src/research/apify_client.py` and `TebelloReborn/src/vacancy_search/crawler_client.py`
+      (both confirmed calling the identical generic actor URL and parsing the same dataset-items
+      array shape). **Does not apply** to `TebelloReborn/src/vacancy_search/apify_client.py`'s dedicated
+      Indeed/LinkedIn actors (confirmed — calls `misceres~indeed-scraper` / `bebity~linkedin-jobs-scraper`,
+      not the generic crawler) — Firecrawl has no job-board-specific equivalent, so that would mean
+      rebuilding Indeed/LinkedIn extraction from scratch (raw fetch + local Ollama extraction, same
+      shape as the PNet/Careers24 build), not a client swap.
+      Real work either way: self-host stack is actually **5 services** (API + Playwright + Redis +
+      RabbitMQ + Postgres, not 4 as originally noted), and current self-host docs put RAM at
+      **~8–12 GB minimum** — a real, ongoing resource cost on the same desktop that already runs
+      `qwen3:8b` in Ollama for both projects' inference, competing for the same headroom. Both
+      clients' response-shape parsing would also need rewriting (Firecrawl's `/v2/scrape` returns
+      markdown/HTML/JSON directly, not Apify's dataset-items array).
+      Self-hosted Firecrawl confirmed lacking their managed "Fire-engine" anti-bot/stealth layer —
+      falls back to plain Playwright, weaker against Cloudflare-class protection — a real risk for
+      bot-hostile job boards, less so for the two applicable call sites here (generic company-site and
+      PNet/Careers24 crawling). AGPL-3.0's copyleft/publish-modifications clause only triggers if
+      modified *and* offered as a network service to others — pure internal self-use on one desktop
+      for these two projects doesn't trigger it, so licensing is a non-issue in practice, not a real
+      constraint. Not urgent — neither project's active blocker is scraping-related right now, and the
+      RAM finding makes it less attractive to pick up soon, not more. Backlog candidate only; write a
+      spec/ADR if picked up.
 
 ## Completed
 

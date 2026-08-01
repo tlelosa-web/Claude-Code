@@ -32,6 +32,11 @@
 - [x] Full MVP build plan written: `docs/specs/mvp-pipeline-build.md` (46 atomic tasks, Phases 0–8, Stages 1–5 only).
 - [x] ADR-003 (`docs/decisions/ADR-003-inference-provider-split.md`) accepted 2026-07-19: OpenRouter dropped entirely, pre-build. AI Matching (Phase 4) re-routed to local Ollama, Document Generation (Phase 5) re-routed to headless Claude Code. Build Queue below re-planned accordingly — total step count grew from 46 to 54 (see Build Queue).
 - [x] `tools/dashboard_server.py` + `tools/dashboard.html` (`1be39ca`, 2026-08-01): local live dashboard over `career.db`, kanban view by pipeline status, Approve/Reject on `asset_ready` cards wired to the real review-gate DB functions. Dev/visualization tool, not part of the Build Queue. See `session-log.md`'s 2026-08-01 entry.
+- [x] Fixed a real bug (found 2026-08-01): `_run_pipeline_for_vacancy()` in `src/main.py` sent a
+      vacancy to the human review gate even when `run_doc_gen` didn't reach `asset_ready` (e.g. a
+      headless `claude -p` timeout), presenting a blank "CV: None / Cover Letter: None" for approval.
+      Added a status guard that skips the gate and prints a diagnostic instead (`6bbd0d8` RED,
+      `1403c47` GREEN). 239 tests passing, zero regressions. See `session-log.md`'s 2026-08-01 entry.
 
 ---
 

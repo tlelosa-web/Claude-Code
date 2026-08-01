@@ -7,6 +7,18 @@
 
 ---
 
+## 2026-08-01 — Review-gate bug fix: skip gate when doc-gen doesn't reach asset_ready
+
+Real bug found 2026-08-01: a CV generation timeout (headless `claude -p`) left a vacancy at
+status `scored` with `cv_text`/`cover_letter_text` still `None`, but `_run_pipeline_for_vacancy()`
+in `src/main.py` sent it to the human review gate anyway — a human would see "CV: None / Cover
+Letter: None" presented for approval. `run_doc_gen` only transitions status to `asset_ready` if
+both documents generate successfully, so the fix checks that status before calling
+`run_review_gate` and skips (with a diagnostic print pointing at `generation_log`) otherwise.
+Built TDD: `6bbd0d8` (RED — `TestDispatchRun` asserts the mock's `asset_ready_vacancy.status` is
+`asset_ready`, exposing the missing guard), `1403c47` (GREEN — the status-check guard in
+`_run_pipeline_for_vacancy`). Full suite: 239 passing, zero regressions.
+
 ## 2026-08-01 — Live vacancy pipeline dashboard (dev tool, not pipeline code)
 
 Added `tools/dashboard_server.py` + `tools/dashboard.html` (`1be39ca`): a

@@ -119,6 +119,30 @@ class TestRealCallPath:
         assert "run-sync-get-dataset-items" in CRAWLER_ACTOR_URL
 
     @patch("src.vacancy_search.crawler_client.requests.post")
+    def test_requests_raw_html_not_readability_extracted(
+        self, mock_post, monkeypatch, tmp_path
+    ):
+        """Real-run finding (2026-08-01): the actor's default htmlTransformer
+        (readableText / Mozilla Readability) strips every <a href> from its
+        HTML output — confirmed against a real PNet page (0 hrefs found).
+        saveHtml alone is not enough; htmlTransformer must be "none" to get
+        real anchors back, which discovery.py's link-harvesting depends on."""
+        monkeypatch.setenv("APIFY_API_KEY", "test-key")
+        monkeypatch.delenv("OFFLINE_MODE", raising=False)
+        mock_post.return_value = _mock_response(
+            [{"url": "https://example.co.za/job1", "title": "t", "text": "body", "html": "<html></html>"}]
+        )
+
+        seed_path = tmp_path / "seed_urls.json"
+        seed_path.write_text(json.dumps({"pnet": ["https://example.co.za/pnet-job-1"]}))
+
+        fetch_raw_pages("pnet", limit=25, seed_urls_path=str(seed_path))
+
+        payload = mock_post.call_args.kwargs["json"]
+        assert payload["saveHtml"] is True
+        assert payload["htmlTransformer"] == "none"
+
+    @patch("src.vacancy_search.crawler_client.requests.post")
     def test_live_results_tagged_source_mode_live(
         self, mock_post, monkeypatch, tmp_path
     ):
@@ -223,6 +247,30 @@ class TestFetchRawPage:
         assert page["_source_mode"] == "live"
         assert page["url"] == "https://example.co.za/job1"
         assert page["title"] == "Title"
+        assert page["text_content"] == "Body"
+
+    @patch("src.vacancy_search.crawler_client.requests.post")
+    def test_real_call_surfaces_raw_html_field(self, mock_post, monkeypatch):
+        """The raw "html" field (real anchors, htmlTransformer: none) is
+        surfaced separately from "text_content" (still the clean readability
+        text extractor.py's LLM prompt consumes) — discovery.py's
+        link-harvesting needs the former, extraction needs the latter."""
+        monkeypatch.setenv("APIFY_API_KEY", "test-key")
+        monkeypatch.delenv("OFFLINE_MODE", raising=False)
+        mock_post.return_value = _mock_response(
+            [
+                {
+                    "url": "https://example.co.za/job1",
+                    "title": "Title",
+                    "text": "Body",
+                    "html": '<a href="/jobs--Foo--123-inline.html">Foo</a>',
+                }
+            ]
+        )
+
+        page = fetch_raw_page("https://example.co.za/job1")
+
+        assert page["html"] == '<a href="/jobs--Foo--123-inline.html">Foo</a>'
         assert page["text_content"] == "Body"
 
     @patch("src.vacancy_search.crawler_client.requests.post")

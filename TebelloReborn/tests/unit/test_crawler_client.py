@@ -130,7 +130,14 @@ class TestRealCallPath:
         monkeypatch.setenv("APIFY_API_KEY", "test-key")
         monkeypatch.delenv("OFFLINE_MODE", raising=False)
         mock_post.return_value = _mock_response(
-            [{"url": "https://example.co.za/job1", "title": "t", "text": "body", "html": "<html></html>"}]
+            [
+                {
+                    "url": "https://example.co.za/job1",
+                    "title": "t",
+                    "text": "body",
+                    "html": "<html></html>",
+                }
+            ]
         )
 
         seed_path = tmp_path / "seed_urls.json"

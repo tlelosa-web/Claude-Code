@@ -42,18 +42,34 @@ Fix used here: capture the **root** process IDs at launch
 (`Start-Process -PassThru` → `5_Archive_and_Debug/pipeline.pids`,
 gitignored) and `taskkill /PID <root> /T /F` to kill the whole tree.
 
-## 2026-07-28 — Bug still unfixed, no new attempt since revert
+## 2026-07-28 — Fixed: Excel-import datetime crash + dead sheet-name check
+**Source:** tlelosa-web/NamePlateTool commit `777be76`
+**Status:** active
+
+Fixed in a separate session, same day as the "still unfixed" check below —
+`date_of_manuf` now goes through `_fmt_month_year()` in the "Info+Data Entry
+Form" branch (matching the `else` branch), so a raw `datetime` cell no
+longer breaks `JSONResponse` serialization. The dead `"Table 1"`
+primary-sheet check is also removed, along with its now-orphaned
+`_read_block_by_labels`/`_norm` helpers. Root-caused why the 2026-07-17
+attempt regressed to blank fields: it swapped in a `"NamePlateProc"` check,
+but that sheet is a static instructions/reference sheet, not per-job data —
+the real fix needed the `Info+Data Entry Form` branch's existing
+label-reading logic, not a renamed condition string on the wrong sheet.
+Manual PDF-output verification against this fix not yet confirmed from this
+hub session — worth a spot-check before treating it as fully closed.
+
+## 2026-07-28 — Bug was still unfixed as of this check (superseded same day)
 **Source:** session (cross-project status survey), `docs/todo.md`
-**Status:** active
+**Status:** superseded
 
-As of this check, the Excel-import bug below is still open and untouched
-since the 2026-07-17 reverted attempt — it's the only active defect across
-all 5 tracked repos and the top cross-project priority. No GitHub issue
-tracks it; it lives only in this project's `docs/todo.md`.
+As of this check, the Excel-import bug below was still open and untouched
+since the 2026-07-17 reverted attempt. Fixed later the same day — see the
+entry above.
 
-## 2026-07-23 — Known open bug: Excel-import datetime + wrong sheet-name check
+## 2026-07-23 — Known open bug: Excel-import datetime + wrong sheet-name check (fixed 2026-07-28)
 **Source:** tlelosa-web/NamePlateTool docs/todo.md
-**Status:** active
+**Status:** superseded
 
 `/api/nameplate/from-excel` crashes with `"Object of type datetime is not
 JSON serializable"` — `date_of_manuf` comes back as a Python `datetime`

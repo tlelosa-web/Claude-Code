@@ -839,3 +839,68 @@ branch (Spa + Compare Boosts) if no further Discord-trial feedback is
 queued.
 **Known risks:** None new.
 **Blockers:** None.
+
+## 2026-07-31 — pitwall-companion: opened PR #18 (Spa + Compare Boosts), then GP Event collapsible fix as PR #19
+
+Tebello asked for a PR covering both pending changes above. Opened PR #18
+(`claude/repo-update-check-mn1wv2` → `main`) with both the Spa Track Stats
+addition and the Compare-tab Boosts scope — no PR template exists in this
+repo. Before opening it, discovered the Spa commit (`4bc6f1c`) had already
+been merged into `main` on its own as PR #17 (unclear by whom/how — not
+this session), via a real merge commit rather than a squash, so it was
+already a proper ancestor of `main`; the branch didn't need the
+merged-PR-reuse restart procedure (`checkout -B` from fresh `main`) at all
+— confirmed with `git merge-base --is-ancestor` and a content diff before
+concluding that, since this branch's prior history includes real squash-
+merge conflicts that make ancestry checks alone unreliable (see the PR
+#14/#15 entries above). PR #18 opened and then merged (again as a real
+merge commit, not squash).
+
+**GP Event collapsible + rename.** Tebello then asked, from a screenshot of
+Loadouts → By Track, to make the "GP Event availability" filter panel
+collapsible (doesn't need to be visible all the time) and rename it to just
+"GP Event". Generalized the Boosts tab's "New Boost" `<details>`/`<summary>`
+collapsible CSS from `.nb-details`/`.nb-summary` to `.coll-details`/
+`.coll-summary` so both features share one collapsible-panel pattern
+instead of a Boost-specific name leaking into an unrelated feature, and
+applied it to `gpFilterBarHTML()` (shared by both Loadouts modes) alongside
+the header rename.
+
+Testing surfaced a real bug before it shipped: the app fully rebuilds its
+DOM on every `render()` call, which fires on every GP-tier button click and
+on the Legendary-drivers checkbox — so a native `<details open>` selected by
+the user would have been silently discarded and reset to closed the moment
+they picked a tier, making the collapsible pointless for its own filter
+controls. Fixed by tracking a `gpFilterOpen` boolean explicitly (alongside
+the app's other UI-state variables) instead of relying on the DOM element's
+own `open` attribute persisting, with a `data-gp-toggle` click handler that
+calls `preventDefault()` on the native toggle and drives the attribute from
+state on every re-render instead.
+
+Verified with a headless-Chromium test: panel collapsed by default, current
+tier still visible in the summary line while collapsed, expands on click,
+and — the actual regression check — stays open through both a tier
+selection and the Legendary-drivers checkbox toggle rather than snapping
+shut; zero console errors. Also re-ran the executability check and
+duplicate-declaration grep given this branch's squash-merge history, though
+no merge was needed this round (branch was still a clean ancestor of
+`main` at push time). Pushed as its own commit; PR #18 had already merged
+by the time this was ready, so it shipped as a separate PR #19 rather than
+folding in.
+
+Missed updating this hub's `docs/todo.md`/`docs/session-log.md` for the
+GP Event fix in the moment it shipped — Tebello caught the gap and this
+entry (plus the corrected `docs/todo.md` "Done" items above, which also
+now cite the actual PR #18/#19 numbers instead of "not yet opened as a
+PR") closes it. Hard Rule 5 applies to this project's logging the same as
+any other hub-level task, per the established practice in the entries
+above.
+
+**Last completed:** pitwall-companion: PR #18 (Spa + Compare Boosts) and
+PR #19 (GP Event collapsible + rename) opened and pushed (this entry).
+**Next task:** Unchanged — whichever machine-bound queue item matches the
+next session's machine (Pappa T: codex-gate smoke-test, TebelloReborn scope
+decision, Ollama timeout fix; Operations: NamePlateTool spot-check,
+NamePlateTool test suite, or one of the two SOPS items). See `docs/todo.md`.
+**Known risks:** None new.
+**Blockers:** None.

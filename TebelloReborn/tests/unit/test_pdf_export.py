@@ -70,3 +70,31 @@ class TestExportCoverLetterPdf:
         cl_path = export_cover_letter_pdf(_vacancy(), _CONTENT, output_dir=tmp_path)
 
         assert cv_path != cl_path
+
+
+class TestUnicodeContentNeverCrashesExport:
+    """Real go-live run (2026-08-01): a generated cover letter containing a
+    '€' character crashed the whole run-all batch — Helvetica (a core PDF
+    font, latin-1 only) raised FPDFUnicodeEncodingException on a character
+    outside _UNICODE_REPLACEMENTS' fixed map. Headless-Claude-Code-generated
+    content is not fully predictable, so export must never crash on
+    arbitrary Unicode, not just the specific punctuation marks already
+    handled."""
+
+    def test_euro_sign_does_not_crash(self, tmp_path):
+        content = "# Cover Letter\n\nExpected salary: €45,000 per annum.\n"
+
+        output_path = export_cover_letter_pdf(_vacancy(), content, output_dir=tmp_path)
+
+        assert output_path.exists()
+        with open(output_path, "rb") as f:
+            assert f.read(5) == b"%PDF-"
+
+    def test_arbitrary_unmapped_unicode_does_not_crash(self, tmp_path):
+        content = "# CV\n\n日本語 emoji 🎉 arbitrary unicode ☑ content.\n"
+
+        output_path = export_cv_pdf(_vacancy(), content, output_dir=tmp_path)
+
+        assert output_path.exists()
+        with open(output_path, "rb") as f:
+            assert f.read(5) == b"%PDF-"

@@ -330,19 +330,21 @@
       sourcing path — it stays in place as the fallback `get_job_urls` would revert to if `pnet.mode` is
       ever reverted to `"manual_pending_verification"` (e.g. PNet's live results page stops rendering
       usably). No action needed unless that revert happens.
-- [ ] Extraction reliability at scale (Amendment, unchanged Open Item 2) — **unblocked as of
-      2026-08-01's discovery fix**, but not yet evidence-tested: discovery now produces real URLs, so
-      this is reachable again, but no real extraction run against real PNet/Careers24 pages has happened
-      yet (pending the real-run verification tracked below). `qwen3:8b`'s known reliability risk applies
-      to messier, more variable job-posting page text than the dedicated-actor JSON payloads — revisit
-      once real pages have actually gone through extraction.
+- [ ] Extraction reliability at scale (Amendment, unchanged Open Item 2) — **first real data point
+      2026-08-01**: a real `fetch_vacancies(limit=6)` run successfully extracted 3 real PNet vacancies
+      end-to-end (discovery → crawl → LLM extraction → `Vacancy`), no `VacancyExtractionError`s. Still
+      only 3 data points, not "at scale" — `qwen3:8b`'s known reliability risk on messier, more variable
+      job-posting text is a valid future revisit with a larger sample, not resolved by one small run.
 - [ ] `CRAWLER_RATE_LIMIT_PER_MIN` default of 30 (Amendment, unchanged Open Item 3) — **unblocked as of
       2026-08-01's discovery fix**, same reason as above: no real crawl volume has gone through this
       limiter yet, but discovery can now actually produce URLs to fetch. Revisit after the real-run
       verification below.
-- [ ] **Real-run verification for the 2026-08-01 discovery fix** — re-run a small real
-      `career-engine fetch-vacancies --limit <small>` and confirm PNet/Careers24 vacancies actually land
-      in `career.db` (per the bug doc's original suggested step 5). Not yet done.
+- [x] **Real-run verification for the 2026-08-01 discovery fix — confirmed 2026-08-01.** A real
+      `fetch_vacancies(limit=6)` call returned 6 vacancies: 3 `indeed`, 3 `pnet` — PNet discovery is
+      confirmed working end-to-end against real data (discovery → crawl → LLM extraction → `Vacancy`).
+      Careers24 didn't appear in this particular 6-item sample (round-robin interleave may simply not
+      have reached it at this limit) — not evidence of a problem, just a small sample; revisit with a
+      larger `--limit` if Careers24 coverage needs separate confirmation.
 
 ---
 

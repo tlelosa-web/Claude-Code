@@ -54,6 +54,22 @@ class TestCallOllamaHappyPath:
         assert payload["stream"] is False
 
     @patch("src.shared.ollama_client.requests.post")
+    def test_requests_keep_alive_to_avoid_repeated_cold_loads(
+        self, mock_post, monkeypatch
+    ):
+        """A real run-all batch calls Ollama once per vacancy in quick
+        succession; without keep_alive each call risks the model unloading
+        between calls and re-triggering the cold-load read-timeout below.
+        Mirrors ai-outreach-agency/src/research/ollama_client.py's fix for
+        the same real-run failure class."""
+        mock_post.return_value = _mock_response(json_data={"response": "ok"})
+
+        call_ollama("test prompt")
+
+        payload = mock_post.call_args.kwargs["json"]
+        assert payload["keep_alive"] == "30m"
+
+    @patch("src.shared.ollama_client.requests.post")
     def test_requests_clean_prose_via_think_false(self, mock_post, monkeypatch):
         mock_post.return_value = _mock_response(json_data={"response": "ok"})
 

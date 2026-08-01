@@ -20,15 +20,21 @@ finder.
 re-investigate this as "untracked nested repo" in a future survey — it's
 deliberate and already resolved.
 
-There is also a numbered subfolder (`110320262657/`) containing a tender-bid
-working package — role-assignment docs (solution architect, project manager,
+There is also a numbered subfolder — now renamed with an `ARCHIVED_` prefix
+plus an `ARCHIVED_STATUS.md` marker (2026-08-01) — containing a tender-bid
+working package: role-assignment docs (solution architect, project manager,
 commercial/contracts/quality/HSE leads, etc.), a `submission/` tree
 (admin/commercial/contracts/planning/portal/quality/service/technical), and
-scratch generation scripts. Last touched mid-April 2026; appears to be a
-completed or dormant bid package, not a currently-active task — noted here only
-structurally (no bid content, company names, or figures) per the no-company-data
-rule. If a future session finds this folder still dormant, it's likely fully
-closed rather than newly stale.
+scratch generation scripts. **Correction to the 2026-07-28 entry below:** that
+survey called this folder "dormant... no bid content" — wrong on inspection.
+It's a fully worked, git-tracked bid package (real client ITT/annexures,
+drafted returnables, costing, a final packaged submission archive), not an
+empty scaffold. Project owner confirmed 2026-08-01 the bid was abandoned; it's
+now formally archived (folder rename + status marker), not merely dormant.
+Treat a future session finding it archived as closed, not newly stale — no
+need to re-investigate. (No bid content, company names, tender numbers, or
+figures carried into this note, per the no-company-data rule — see the actual
+project folder for specifics.)
 
 **Not carried over:** no tender numbers, bid content, company names, or figures
 — this entry is structural only.

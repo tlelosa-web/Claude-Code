@@ -21,7 +21,30 @@
 
 ## Known Issues
 
-_(none active — the PNet/Careers24 gap below is now a scheduled, spec-backed build, not an open issue)_
+- **PNet/Careers24 automated discovery returns zero job URLs on real runs — root cause found
+  2026-08-01, not yet fixed.** Full write-up: `docs/bugs/pnet-careers24-discovery-zero-results.md`.
+  Two independent bugs: (1) PNet has no `_JOB_URL_PATTERNS` entry at all — `parse_job_urls_from_listing`
+  returns `[]` unconditionally for PNet, always; (2) even careers24's existing regex can never match,
+  because `fetch_raw_page()` requests the crawler actor without `saveHtml: true`, so `text_content` is
+  plain de-markup'd text with zero URLs in it — confirmed via direct real-API test (0 occurrences of
+  `"https://"` in a real careers24 listing page's extracted text). A smaller, bonus finding (#3 in the
+  doc): `_pnet_slug()` mangles `"Operations Foreman/Manager"` into `"operations-foremanmanager"` by
+  silently dropping the `/` instead of treating it as a separator. Neither of the two Open Items below
+  (extraction reliability, rate-limit default) is reachable until this is fixed — discovery never
+  produces a URL for extraction or the rate limiter to act on. Fix options and next steps are in the
+  bug doc; awaiting Tebello's direction on approach before any code changes.
+- **Separate, non-code finding, same investigation — decision made 2026-08-01: drop LinkedIn for now.**
+  The LinkedIn Apify actor (`bebity~linkedin-jobs-scraper`) now returns `403 actor-is-not-rented` — its
+  free trial expired and it requires a paid rental on Apify's console to keep working. Confirmed via
+  direct real-API test. `fetch_vacancies()`'s per-call swallow already handles this gracefully (a normal
+  per-source failure, same as any other platform outage) — all 20 vacancies stored in `career.db` so far
+  are `platform = "indeed"` only, and that's accepted as the current real-world source mix (Indeed +
+  PNet/Careers24 once the discovery bug above is fixed). Not renting the actor for now; not investing in
+  an alternative LinkedIn scraper either — Firecrawl was considered (per hub `docs/todo.md`'s 2026-08-01
+  backlog note on Apify-vs-Firecrawl) and ruled out as a quick fix specifically for LinkedIn, since it's
+  heavily bot-defended and neither tool has a dedicated LinkedIn actor. No code change made — the
+  existing graceful-degradation behavior already matches this decision. Revisit only if LinkedIn coverage
+  becomes a real product need later.
 
 ---
 
@@ -287,14 +310,14 @@ _(none active — the PNet/Careers24 gap below is now a scheduled, spec-backed b
       sourcing path — it stays in place as the fallback `get_job_urls` would revert to if `pnet.mode` is
       ever reverted to `"manual_pending_verification"` (e.g. PNet's live results page stops rendering
       usably). No action needed unless that revert happens.
-- [ ] Extraction reliability at scale (Amendment, unchanged Open Item 2) — `qwen3:8b`'s known
-      reliability risk applies to messier, more variable job-posting page text than the dedicated-actor
-      JSON payloads. A high real-world `VacancyExtractionError` rate is signal for prompt-tuning or a
-      stronger local model, not evidence the design is wrong — flagged for a future evidence-based
-      revisit, not resolved here.
-- [ ] `CRAWLER_RATE_LIMIT_PER_MIN` default of 30 (Amendment, unchanged Open Item 3) — confirm this is
-      conservative enough once real (non-fallback) crawls are in regular use; easy to override via env
-      either way.
+- [ ] Extraction reliability at scale (Amendment, unchanged Open Item 2) — **blocked**: unreachable
+      until the discovery bug above is fixed (extraction never runs — discovery produces 0 URLs).
+      `qwen3:8b`'s known reliability risk applies to messier, more variable job-posting page text than
+      the dedicated-actor JSON payloads; still a valid future evidence-based revisit once discovery
+      actually feeds it real pages.
+- [ ] `CRAWLER_RATE_LIMIT_PER_MIN` default of 30 (Amendment, unchanged Open Item 3) — **blocked**: same
+      reason, no real crawl volume has ever gone through this limiter for PNet/Careers24 since discovery
+      finds nothing to fetch beyond the one listing-page request per platform.
 
 ---
 

@@ -9,7 +9,11 @@ from src.shared.rate_limiter import RateLimiter
 # Same generic actor ai-outreach-agency/src/research/apify_client.py already
 # calls — no dedicated PNet/Careers24 actor exists (ADR-002).
 CRAWLER_ACTOR_URL = "https://api.apify.com/v2/acts/apify~website-content-crawler/run-sync-get-dataset-items"
-TIMEOUT = 60
+# Bumped 60s -> 180s (2026-08-01): a real PNet crawl took ~150s to complete
+# (heavy bot-detection/JS-rendering delay, confirmed via direct real-API
+# test) — the previous 60s timeout would have silently returned None on
+# every real PNet fetch, masking success as a normal per-call failure.
+TIMEOUT = 180
 
 RATE_LIMIT_PER_MIN = int(os.environ.get("CRAWLER_RATE_LIMIT_PER_MIN", "30"))
 _limiter = RateLimiter(rate=RATE_LIMIT_PER_MIN, period=60.0)
@@ -74,6 +78,14 @@ def fetch_raw_page(url: str) -> dict | None:
                 "startUrls": [{"url": url}],
                 "maxCrawlPages": 1,
                 "maxCrawlDepth": 0,
+                "saveHtml": True,
+                # "none" disables the actor's default Mozilla-Readability
+                # post-processing — confirmed via direct real-API test
+                # (2026-08-01) that the default (readableText) mode strips
+                # every <a href> from its HTML output too, not just
+                # text_content, so discovery.py's link-harvesting has
+                # nothing to match against without this.
+                "htmlTransformer": "none",
             },
             timeout=TIMEOUT,
         )
@@ -90,6 +102,7 @@ def fetch_raw_page(url: str) -> dict | None:
         "url": first.get("url", url),
         "title": first.get("title", ""),
         "text_content": first.get("text", first.get("text_content", "")),
+        "html": first.get("html", ""),
         "_source_mode": "live",
     }
 

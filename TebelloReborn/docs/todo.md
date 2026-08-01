@@ -4,6 +4,21 @@
 
 ---
 
+## Known Issues (machine-specific, not architecture)
+
+- **This machine's `.env` runs `OLLAMA_MODEL=qwen3:1.7b`, not the documented `qwen3:8b` default
+  (CLAUDE.md/.env.example unchanged) — 2026-08-01.** Real go-live `run-all` hit severe RAM pressure
+  (~8GB total, <1GB free with Claude Code + Chrome running): `qwen3:8b` (5.9GB) caused a trivial
+  one-word prompt to hang 5+ minutes uncompleted even after the READ_TIMEOUT/keep_alive fix below —
+  genuine memory thrashing, not a code bug. Swapped to `qwen3:1.7b` (1.4GB) for this machine only;
+  confirmed working (5.2s for a real-shaped JSON prompt, correct output). This is a local workaround,
+  not a project-wide default change — a machine with more RAM should keep using `qwen3:8b`. Revisit
+  if match-quality problems show up in review (smaller model, weaker reasoning) — not verified against
+  real vacancy data yet, only a synthetic test prompt.
+- **Fixed same session:** `src/shared/ollama_client.py`'s `READ_TIMEOUT` bumped 60s → 120s and
+  `"keep_alive": "30m"` added, mirroring `ai-outreach-agency`'s identical fix (`3ec16cd`) that this
+  project's separate copy never received (`277800b`). Real fix, applies regardless of model size.
+
 ## Completed
 
 - [x] Archived the old Qwen-era prototype intact into `_archive_qwen_prototype/` (nothing deleted).

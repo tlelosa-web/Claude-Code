@@ -278,6 +278,7 @@ class TestDispatchRun:
         profile = _make_profile()
         scored_vacancy = _make_vacancy(id=7)
         asset_ready_vacancy = _make_vacancy(id=7)
+        asset_ready_vacancy.status = "asset_ready"
 
         mock_get_by_id.return_value = vacancy
         mock_get_profile.return_value = profile
@@ -370,7 +371,12 @@ class TestDispatchRunAll:
         mock_get_by_status.return_value = [v1, v2]
         mock_get_profile.return_value = _make_profile()
         mock_run_matching.side_effect = lambda vacancy, profile, **kw: vacancy
-        mock_run_doc_gen.side_effect = lambda profile, vacancy, **kw: vacancy
+
+        def _doc_gen_side_effect(profile, vacancy, **kw):
+            vacancy.status = "asset_ready"
+            return vacancy
+
+        mock_run_doc_gen.side_effect = _doc_gen_side_effect
 
         main(["run-all"])
 
@@ -418,7 +424,12 @@ class TestDispatchRunAll:
         mock_get_by_status.return_value = [v1, v2]
         mock_get_profile.return_value = _make_profile()
         mock_run_matching.side_effect = lambda vacancy, profile, **kw: vacancy
-        mock_run_doc_gen.side_effect = lambda profile, vacancy, **kw: vacancy
+
+        def _doc_gen_side_effect(profile, vacancy, **kw):
+            vacancy.status = "asset_ready"
+            return vacancy
+
+        mock_run_doc_gen.side_effect = _doc_gen_side_effect
         mock_run_review_gate.side_effect = SystemExit(0)
 
         main(["run-all"])  # must not raise — the quit is swallowed, loop just stops

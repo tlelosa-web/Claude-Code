@@ -131,9 +131,29 @@ def _run_pipeline_for_vacancy(vacancy, profile, db_path) -> None:
     """Score → generate → review a single vacancy. Passes the exact
     generated cv_text/cover_letter_text (set on the Vacancy by
     run_doc_gen) through to the human review gate — never a re-generated
-    copy, never nothing (see CLAUDE.md Hard Rule #1)."""
+    copy, never nothing (see CLAUDE.md Hard Rule #1).
+
+    run_doc_gen only transitions status to 'asset_ready' if both the CV
+    and cover letter generate successfully (see its own docstring) — a
+    throttled/errored generation (e.g. a headless `claude -p` timeout)
+    leaves the vacancy at 'scored' with cv_text/cover_letter_text still
+    None. Presenting that to the review gate would show a human a blank
+    CV/cover letter to approve — skip the gate entirely and report the
+    failure instead (real bug found 2026-08-01: a CV generation timeout
+    reached the review prompt with 'CV: None' / 'Cover Letter: None')."""
     scored_vacancy = run_matching(vacancy, profile, db_path=db_path)
     asset_ready_vacancy = run_doc_gen(profile, scored_vacancy, db_path=db_path)
+
+    if asset_ready_vacancy.status != "asset_ready":
+        print(
+            f"  Skipping vacancy {asset_ready_vacancy.id} "
+            f"({asset_ready_vacancy.company} — {asset_ready_vacancy.title}): "
+            f"document generation did not complete (status still "
+            f"'{asset_ready_vacancy.status}'). Check generation_log for "
+            "the error; re-run once resolved."
+        )
+        return
+
     run_review_gate(
         asset_ready_vacancy,
         asset_ready_vacancy.cv_text,

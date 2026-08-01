@@ -46,7 +46,7 @@ class TestOfflineMode:
         assert 2 <= len(results) <= 3
         assert all(isinstance(v, Vacancy) for v in results)
         platforms = {v.platform for v in results}
-        assert platforms <= {"indeed", "linkedin"}
+        assert platforms <= {"indeed", "careers24"}
 
     def test_offline_mode_respects_limit(self, monkeypatch):
         monkeypatch.setenv("OFFLINE_MODE", "true")
@@ -77,17 +77,18 @@ class TestRealCallPath:
         with patch("src.vacancy_search.apify_client._limiter.acquire") as mock_acquire:
             fetch_vacancies(limit=25)
 
-        # one Indeed + one LinkedIn call per search title
-        assert mock_acquire.call_count == len(SEARCH_TITLES) * 2
+        # one Indeed call per search title — LinkedIn dropped 2026-08-01
+        # (its Apify actor's free trial expired, 403 actor-is-not-rented;
+        # decision was to drop, not rent, see docs/todo.md's Resolved Items)
+        assert mock_acquire.call_count == len(SEARCH_TITLES)
 
     @patch("src.vacancy_search.apify_client.requests.post")
     def test_sends_correct_actor_payload_fields(self, mock_post, monkeypatch):
         """Regression test: fetch_vacancies() used to send {"maxItems": limit}
-        to both actors, which isn't a valid field for either — Indeed needs
-        position/location/maxItemsPerSearch, LinkedIn requires
-        title/location/rows. HTTP errors from the wrong payload were being
-        silently swallowed, so a real run returned zero results with no
-        visible failure."""
+        to the Indeed actor, which isn't a valid field — Indeed needs
+        position/location/maxItemsPerSearch. HTTP errors from the wrong
+        payload were being silently swallowed, so a real run returned zero
+        results with no visible failure."""
         monkeypatch.setenv("APIFY_API_KEY", "test-key")
         monkeypatch.delenv("OFFLINE_MODE", raising=False)
         monkeypatch.setattr(
@@ -97,19 +98,13 @@ class TestRealCallPath:
 
         fetch_vacancies(limit=10)
 
-        indeed_call, linkedin_call = mock_post.call_args_list
+        (indeed_call,) = mock_post.call_args_list
         indeed_payload = indeed_call.kwargs["json"]
-        linkedin_payload = linkedin_call.kwargs["json"]
 
         assert indeed_payload["position"] == "Operations Foreman"
         assert indeed_payload["location"]
         assert indeed_payload["maxItemsPerSearch"] == 10
         assert "maxItems" not in indeed_payload
-
-        assert linkedin_payload["title"] == "Operations Foreman"
-        assert linkedin_payload["location"]
-        assert linkedin_payload["rows"] == 10
-        assert "maxItems" not in linkedin_payload
 
     @patch("src.vacancy_search.apify_client.requests.post")
     def test_indeed_payload_includes_country_za(self, mock_post, monkeypatch):
@@ -135,7 +130,7 @@ class TestRealCallPath:
         assert indeed_payload["country"] == "ZA"
 
     @patch("src.vacancy_search.apify_client.requests.post")
-    def test_normalizes_indeed_and_linkedin_results(self, mock_post, monkeypatch):
+    def test_normalizes_indeed_results(self, mock_post, monkeypatch):
         monkeypatch.setenv("APIFY_API_KEY", "test-key")
         monkeypatch.delenv("OFFLINE_MODE", raising=False)
         monkeypatch.setattr(
@@ -151,29 +146,15 @@ class TestRealCallPath:
                 "salary": "R50,000 CTC",
             }
         ]
-        linkedin_items = [
-            {
-                "companyName": "Beta Power",
-                "title": "Project Engineer",
-                "link": "https://www.linkedin.com/jobs/view/2",
-                "description": "Manage projects.",
-                "expireAt": "2026-09-01",
-            }
-        ]
-        mock_post.side_effect = [
-            _mock_response(indeed_items),
-            _mock_response(linkedin_items),
-        ]
+        mock_post.return_value = _mock_response(indeed_items)
 
         results = fetch_vacancies(limit=25)
 
-        assert len(results) == 2
-        indeed_result = next(v for v in results if v.platform == "indeed")
-        linkedin_result = next(v for v in results if v.platform == "linkedin")
+        assert len(results) == 1
+        indeed_result = results[0]
+        assert indeed_result.platform == "indeed"
         assert indeed_result.company == "Acme Engineering"
         assert indeed_result.title == "Operations Foreman"
-        assert linkedin_result.company == "Beta Power"
-        assert linkedin_result.deadline == "2026-09-01"
 
     @patch("src.vacancy_search.apify_client.requests.post")
     def test_dedupes_by_company_title_url(self, mock_post, monkeypatch):
@@ -189,19 +170,28 @@ class TestRealCallPath:
             "url": "https://za.indeed.com/viewjob?jk=1",
             "description": "Run the workshop.",
         }
-        mock_post.side_effect = [
-            _mock_response([duplicate_item, duplicate_item]),
-            _mock_response([]),
-        ]
+        mock_post.return_value = _mock_response([duplicate_item, duplicate_item])
 
         results = fetch_vacancies(limit=25)
 
         assert len(results) == 1
 
+    @patch("src.vacancy_search.apify_client.extract_vacancy_fields")
+    @patch("src.vacancy_search.apify_client.fetch_raw_page")
+    @patch("src.vacancy_search.apify_client.get_job_urls")
     @patch("src.vacancy_search.apify_client.requests.post")
-    def test_request_error_on_one_actor_still_returns_other(
-        self, mock_post, monkeypatch
+    def test_request_error_on_indeed_still_returns_other_sources(
+        self,
+        mock_post,
+        mock_get_job_urls,
+        mock_fetch_raw_page,
+        mock_extract_vacancy_fields,
+        monkeypatch,
     ):
+        """LinkedIn (the second real actor) was dropped 2026-08-01 — the
+        remaining "does one source's failure still let other sources
+        through" regression coverage is now against Indeed erroring while
+        the pnet/careers24 pipeline still contributes."""
         monkeypatch.setenv("APIFY_API_KEY", "test-key")
         monkeypatch.delenv("OFFLINE_MODE", raising=False)
         monkeypatch.setattr(
@@ -210,38 +200,55 @@ class TestRealCallPath:
 
         import requests as _requests
 
-        linkedin_items = [
-            {
-                "companyName": "Beta Power",
-                "title": "Project Engineer",
-                "link": "https://www.linkedin.com/jobs/view/2",
-            }
-        ]
-        mock_post.side_effect = [
-            _requests.ConnectionError("indeed actor unreachable"),
-            _mock_response(linkedin_items),
-        ]
+        mock_post.side_effect = _requests.ConnectionError("indeed actor unreachable")
+        mock_get_job_urls.side_effect = lambda platform, limit, **_kwargs: (
+            ["https://example.co.za/pnet-job-1"] if platform == "pnet" else []
+        )
+        mock_fetch_raw_page.return_value = {
+            "url": "https://example.co.za/pnet-job-1",
+            "title": "t",
+            "text_content": "body",
+            "html": "",
+            "_source_mode": "live",
+        }
+        mock_extract_vacancy_fields.return_value = {
+            "company": "PNet Employer",
+            "title": "Operations Foreman",
+            "description": "desc",
+            "url": "https://example.co.za/pnet-job-1",
+            "salary": None,
+            "deadline": None,
+        }
 
         results = fetch_vacancies(limit=25)
 
         assert len(results) == 1
-        assert results[0].company == "Beta Power"
+        assert results[0].company == "PNet Employer"
 
 
 class TestFairInterleaveTruncation:
+    @patch("src.vacancy_search.apify_client.extract_vacancy_fields")
+    @patch("src.vacancy_search.apify_client.fetch_raw_page")
+    @patch("src.vacancy_search.apify_client.get_job_urls")
     @patch("src.vacancy_search.apify_client.requests.post")
     def test_other_sources_survive_truncation_when_indeed_alone_exceeds_limit(
-        self, mock_post, monkeypatch
+        self,
+        mock_post,
+        mock_get_job_urls,
+        mock_fetch_raw_page,
+        mock_extract_vacancy_fields,
+        monkeypatch,
     ):
         """Real-run bug (2026-07-31): fetch_vacancies() built one flat
-        `results` list (Indeed extend, then LinkedIn extend, then crawler
-        platforms) and truncated with `[:limit]` at the very end. If Indeed
-        alone returns >= limit items, it fills the entire truncation window
-        before LinkedIn's (already paid-for) results are ever appended —
-        LinkedIn is starved out by list position, not relevance. The real
-        run returned 10/10 Indeed results with LinkedIn/PNet/Careers24
-        contributing zero despite real, billed network calls. Fix: round-
-        robin interleave across sources before the final dedupe/truncate."""
+        `results` list (Indeed extend, then other sources extend) and
+        truncated with `[:limit]` at the very end. If Indeed alone returns
+        >= limit items, it fills the entire truncation window before other
+        (already paid-for) sources are ever appended — starved out by list
+        position, not relevance. The real run returned 10/10 Indeed results
+        with LinkedIn/PNet/Careers24 contributing zero despite real, billed
+        network calls. Fix: round-robin interleave across sources before the
+        final dedupe/truncate. (LinkedIn itself dropped 2026-08-01 — pnet
+        now stands in as "the other source" for this regression test.)"""
         monkeypatch.setenv("APIFY_API_KEY", "test-key")
         monkeypatch.delenv("OFFLINE_MODE", raising=False)
         monkeypatch.setattr(
@@ -257,26 +264,40 @@ class TestFairInterleaveTruncation:
             }
             for i in range(5)
         ]
-        linkedin_items = [
+        mock_post.return_value = _mock_response(indeed_items)
+        mock_get_job_urls.side_effect = lambda platform, limit, **_kwargs: (
+            [f"https://example.co.za/pnet-job-{i}" for i in range(2)]
+            if platform == "pnet"
+            else []
+        )
+        mock_fetch_raw_page.side_effect = [
             {
-                "companyName": f"LinkedIn Employer {i}",
-                "title": "Operations Foreman",
-                "link": f"https://www.linkedin.com/jobs/view/{i}",
-                "description": "Manage projects.",
+                "url": f"https://example.co.za/pnet-job-{i}",
+                "title": "t",
+                "text_content": "body",
+                "html": "",
+                "_source_mode": "live",
             }
             for i in range(2)
         ]
-        mock_post.side_effect = [
-            _mock_response(indeed_items),
-            _mock_response(linkedin_items),
+        mock_extract_vacancy_fields.side_effect = [
+            {
+                "company": f"PNet Employer {i}",
+                "title": "Operations Foreman",
+                "description": "desc",
+                "url": f"https://example.co.za/pnet-job-{i}",
+                "salary": None,
+                "deadline": None,
+            }
+            for i in range(2)
         ]
 
         results = fetch_vacancies(limit=3)
 
         assert len(results) == 3
         platforms = {v.platform for v in results}
-        assert "linkedin" in platforms, (
-            "LinkedIn results were fully starved out by Indeed filling the "
+        assert "pnet" in platforms, (
+            "PNet results were fully starved out by Indeed filling the "
             "truncation window — round-robin interleave is missing"
         )
 
@@ -330,16 +351,13 @@ class TestDedupeUsesNormalizedUrl:
             "url": "https://za.indeed.com/viewjob?jk=1",
             "description": "Run the workshop.",
         }
-        linkedin_item = {
-            "companyName": "Acme Engineering",
-            "title": "Operations Foreman",
-            "link": "https://za.indeed.com/viewjob?jk=1&utm_source=newsletter",
+        indeed_item_with_utm = {
+            "company": "Acme Engineering",
+            "positionName": "Operations Foreman",
+            "url": "https://za.indeed.com/viewjob?jk=1&utm_source=newsletter",
             "description": "Run the workshop.",
         }
-        mock_post.side_effect = [
-            _mock_response([indeed_item]),
-            _mock_response([linkedin_item]),
-        ]
+        mock_post.return_value = _mock_response([indeed_item, indeed_item_with_utm])
 
         results = fetch_vacancies(limit=25)
 
@@ -361,16 +379,13 @@ class TestDedupeUsesNormalizedUrl:
             "url": "https://za.indeed.com/viewjob/1",
             "description": "Run the workshop.",
         }
-        linkedin_item = {
-            "companyName": "Acme Engineering",
-            "title": "Operations Foreman",
-            "link": "https://za.indeed.com/viewjob/1/",
+        indeed_item_with_slash = {
+            "company": "Acme Engineering",
+            "positionName": "Operations Foreman",
+            "url": "https://za.indeed.com/viewjob/1/",
             "description": "Run the workshop.",
         }
-        mock_post.side_effect = [
-            _mock_response([indeed_item]),
-            _mock_response([linkedin_item]),
-        ]
+        mock_post.return_value = _mock_response([indeed_item, indeed_item_with_slash])
 
         results = fetch_vacancies(limit=25)
 

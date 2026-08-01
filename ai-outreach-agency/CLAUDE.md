@@ -358,6 +358,7 @@ ai-outreach-agency/
 10. **If acceptance criteria are unclear → STOP and ask** before implementing.
 11. **Update docs/todo.md** after every completed task.
 12. **Schedule bulk jobs before 31 Aug 2026** (Sonnet 5 intro pricing ends).
+13. **Run `/codex-review` on every spec in `docs/specs/` before dispatching an Executor** — advisory cross-family second opinion, appended to the spec, never blocking. Fold the strongest points (buried assumptions, missing acceptance criteria, real failure modes) back into the spec as a dated Amendment section before build starts. Standard procedure for every spec, not optional. The `reviewer` agent still holds sole APPROVE/BLOCK authority — Codex is advisory only.
 
 ---
 

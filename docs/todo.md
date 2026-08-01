@@ -24,11 +24,11 @@ _(none active at hub level right now)_
 
 ## Backlog
 
-- [ ] Propagate the "Codex-review + fold strongest points into spec before build" standard
-      procedure (added 2026-07-29 to hub `CLAUDE.md` Pattern 1 and `TebelloReborn/CLAUDE.md`
-      Hard Rule #13) to `ai-outreach-agency/CLAUDE.md` (self-governing, needs its own edit) and
-      consider proposing it for the shared `CORE.md` template (separate repo, would make it
-      universal across every machine/project).
+- [ ] Consider proposing the "Codex-review + fold strongest points into spec before build"
+      standard procedure for the shared `CORE.md` template (separate repo, would make it
+      universal across every machine/project). The procedure itself is now live in all three
+      places that build features: hub `CLAUDE.md` Pattern 1, `TebelloReborn/CLAUDE.md` Hard
+      Rule #13, and `ai-outreach-agency/CLAUDE.md` Hard Rule #13 (added 2026-08-01).
 - [ ] `TebelloReborn` follow-on (lighter weight, not blocking): two Open Items remain in
       `TebelloReborn/docs/todo.md` from the PNet/Careers24 build — extraction reliability at
       scale (`qwen3:8b` on messier real-world job-posting text vs. dedicated-actor JSON) and
@@ -38,6 +38,9 @@ _(none active at hub level right now)_
 
 ## Completed
 
+- [x] Propagated the "Codex-review + fold strongest points into spec before build" standard
+      procedure to `ai-outreach-agency/CLAUDE.md` Hard Rule #13, matching the exact wording
+      already used in `TebelloReborn/CLAUDE.md` Hard Rule #13.
 - [x] `ai-outreach-agency`: fixed local Ollama generation-latency false-positive risk —
       `research/ollama_client.py` `READ_TIMEOUT` bumped 60s → 120s and `"keep_alive": "30m"`
       added to the `/api/generate` payload (`3ec16cd`, docs update `1b80d0c`). 156 tests

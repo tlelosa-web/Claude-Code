@@ -312,6 +312,45 @@ class TestDispatchRun:
 
         mock_run_matching.assert_not_called()
 
+    @patch("src.main.run_review_gate")
+    @patch("src.main.run_doc_gen")
+    @patch("src.main.run_matching")
+    @patch("src.main.get_profile")
+    @patch("src.main.get_by_id")
+    def test_skips_review_gate_when_doc_gen_did_not_reach_asset_ready(
+        self,
+        mock_get_by_id,
+        mock_get_profile,
+        mock_run_matching,
+        mock_run_doc_gen,
+        mock_run_review_gate,
+    ):
+        """Real go-live run (2026-08-01): a headless-Claude-Code CV
+        generation timed out, so run_doc_gen left the vacancy at
+        'scored' (not 'asset_ready') with cv_text/cover_letter_text still
+        None. The pipeline called run_review_gate anyway, presenting a
+        blank CV/cover letter for human approval — a real risk of
+        approving an empty application. run_doc_gen returning a vacancy
+        still at 'scored' (doc-gen's own documented failure signal, see
+        its docstring) must skip the review gate entirely, not present it
+        with nothing to review."""
+        vacancy = _make_vacancy(id=7)
+        profile = _make_profile()
+        scored_vacancy = _make_vacancy(id=7)
+        scored_vacancy.status = "scored"
+        still_scored_vacancy = _make_vacancy(id=7)
+        still_scored_vacancy.status = "scored"  # doc_gen did not advance it
+
+        mock_get_by_id.return_value = vacancy
+        mock_get_profile.return_value = profile
+        mock_run_matching.return_value = scored_vacancy
+        mock_run_doc_gen.return_value = still_scored_vacancy
+
+        main(["run", "--vacancy-id", "7"])
+
+        mock_run_doc_gen.assert_called_once()
+        mock_run_review_gate.assert_not_called()
+
 
 class TestDispatchRunAll:
     @patch("src.main.run_review_gate")
@@ -385,3 +424,36 @@ class TestDispatchRunAll:
         main(["run-all"])  # must not raise — the quit is swallowed, loop just stops
 
         assert mock_run_review_gate.call_count == 1
+
+    @patch("src.main.run_review_gate")
+    @patch("src.main.run_doc_gen")
+    @patch("src.main.run_matching")
+    @patch("src.main.get_profile")
+    @patch("src.main.get_by_status")
+    def test_one_failed_doc_gen_does_not_block_the_rest_of_the_batch(
+        self,
+        mock_get_by_status,
+        mock_get_profile,
+        mock_run_matching,
+        mock_run_doc_gen,
+        mock_run_review_gate,
+    ):
+        v1, v2 = _make_vacancy(id=1), _make_vacancy(id=2, url="https://y")
+        mock_get_by_status.return_value = [v1, v2]
+        mock_get_profile.return_value = _make_profile()
+        mock_run_matching.side_effect = lambda vacancy, profile, **kw: vacancy
+
+        def _doc_gen_side_effect(profile, vacancy, **kw):
+            if vacancy.id == 1:
+                vacancy.status = "scored"  # simulates a generation failure
+            else:
+                vacancy.status = "asset_ready"
+            return vacancy
+
+        mock_run_doc_gen.side_effect = _doc_gen_side_effect
+
+        main(["run-all"])
+
+        assert mock_run_doc_gen.call_count == 2
+        mock_run_review_gate.assert_called_once()
+        assert mock_run_review_gate.call_args.args[0].id == 2

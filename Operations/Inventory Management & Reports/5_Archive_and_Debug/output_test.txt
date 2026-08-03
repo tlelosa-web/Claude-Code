@@ -1,0 +1,10 @@
+['Code', 'Description', 'Category', 'Supplier', 'Cost Price', 'Avg Monthly Usage (AMU)', 'Lead Time (months)', 'Safety Factor (months)', 'Review Period (months)', 'Safety Stock', 'Lead Time Demand', 'Reorder Point (ROP)', 'Maximum Stock (MAX)', 'Current Stock', 'On Order', 'Order Quantity']
+Total rows: 2884
+         Code  ... Cost Price
+0  -GLF12.5-S  ...        NaN
+1    .30 Duct  ...        NaN
+2    0.2543PM  ...     1138.0
+3    0.3723PM  ...     1193.0
+4    0.3741PM  ...        NaN
+
+[5 rows x 4 columns]

@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MVE Skill Tracker</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f4f7f6;
+            color: #333;
+        }
+        .container {
+            max-width: 1100px; /* Increased width to accommodate the link */
+            margin: auto;
+            background: #fff;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            color: #00796b;
+            border-bottom: 2px solid #e0e0e0;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+        .progress-bar-container {
+            margin-bottom: 30px;
+            background-color: #e0f2f1;
+            border-radius: 4px;
+            overflow: hidden;
+            height: 30px;
+        }
+        .progress-bar {
+            height: 100%;
+            background-color: #00796b;
+            text-align: center;
+            line-height: 30px;
+            color: white;
+            transition: width 0.5s ease-in-out;
+            font-weight: bold;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            font-size: 0.95em;
+        }
+        th, td {
+            padding: 12px 10px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        th {
+            background-color: #f0f0f0;
+            color: #555;
+            font-weight: 600;
+        }
+        tr:hover {
+            background-color: #f9f9f9;
+        }
+        .status-select {
+            padding: 8px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            font-weight: bold;
+            border: 1px solid #ccc;
+        }
+        /* Status Colors */
+        .not-started { background-color: #f8f8f8; color: #777; }
+        .in-progress { background-color: #fffde7; color: #f9a825; }
+        .completed { background-color: #e8f5e9; color: #388e3c; }
+        
+        .holiday-row td {
+            background-color: #ffebee; 
+            font-style: italic;
+            text-align: center;
+            color: #c62828;
+            font-weight: bold;
+        }
+        .topic-link {
+            text-decoration: none;
+            color: #00796b;
+        }
+        .topic-link:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>🚀 MVE Skill Tracker - Scheduled</h1>
+        <p>Your learning plan, committing to **1 hour per day, 5 days a week**, starting **November 17, 2025**. Click the topic title for quick access!</p>
+
+        <div class="progress-bar-container">
+            <div id="progressBar" class="progress-bar" style="width: 0%">0% Completed</div>
+        </div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Category</th>
+                    <th>Skill/Topic</th>
+                    <th>Est. Days</th>
+                    <th>Start Date</th>
+                    <th>End Date</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody id="skillTableBody">
+                </tbody>
+        </table>
+
+        <p style="margin-top: 30px; font-size: 0.9em; color: #999;">
+            *Progress is saved automatically in your browser's Local Storage.
+        </p>
+    </div>
+
+    <script>
+        // Data updated with estimated days, dates, and official links
+        const SKILLS = [
+            { category: "Foundations", topic: "HTML/CSS Basics (freeCodeCamp)", days: 5, start: "Nov 17, 2025", end: "Nov 21, 2025", id: "html-css", link: "https://www.freecodecamp.org/learn/responsive-web-design/" },
+            { category: "Foundations", topic: "JavaScript Fundamentals (JavaScript.info)", days: 10, start: "Nov 24, 2025", end: "Dec 5, 2025", id: "js-fundamentals", link: "https://javascript.info/" },
+            { category: "Backend/DB", topic: "PostgreSQL/SQL Basics (for DB schema)", days: 5, start: "Dec 8, 2025", end: "Dec 12, 2025", id: "sql-basics", link: "https://www.postgresql.org/docs/current/tutorial/" },
+            { category: "Backend/DB", topic: "Supabase Quickstart & Auth", days: 5, start: "Dec 15, 2025", end: "Dec 19, 2025", id: "supabase-auth", link: "https://supabase.com/docs/guides/auth/quickstart" },
+            // Holiday Break Row
+            { category: "Holiday Break", topic: "No work (Dec 22, 2025 - Jan 2, 2026)", days: 0, start: "Dec 22, 2025", end: "Jan 2, 2026", id: "holiday-break", isHoliday: true },
+            // Post-break skills
+            { category: "Frontend", topic: "SvelteKit Basics (Official Tutorial)", days: 7, start: "Jan 5, 2026", end: "Jan 13, 2026", id: "sveltekit-basics", link: "https://learn.svelte.dev/tutorial/welcome-to-svelte" },
+            { category: "Integration", topic: "Sage Developer Portal Signup & App Creation", days: 2, start: "Jan 14, 2026", end: "Jan 15, 2026", id: "sage-signup", link: "https://developer.sage.com/accounting/guides/" },
+            { category: "Integration", topic: "Postman & Sage API Exploration", days: 3, start: "Jan 16, 2026", end: "Jan 20, 2026", id: "sage-postman", link: "https://developer.sage.com/accounting/guides/postman-collection/" },
+            { category: "Architecture", topic: "Supabase Edge Functions Basics", days: 3, start: "Jan 21, 2026", end: "Jan 23, 2026", id: "edge-functions", link: "https://supabase.com/docs/guides/functions" },
+        ];
+
+        const STATUS_OPTIONS = ["Not Started", "In Progress", "Completed"];
+        const STORAGE_KEY = 'mveSkillProgressScheduled'; 
+
+        // Load progress from Local Storage or initialize
+        let progress = JSON.parse(localStorage.getItem(STORAGE_KEY)) || {};
+        
+        function renderTable() {
+            const tableBody = document.getElementById('skillTableBody');
+            tableBody.innerHTML = '';
+
+            SKILLS.forEach(skill => {
+                const row = tableBody.insertRow();
+
+                if (skill.isHoliday) {
+                    row.className = 'holiday-row';
+                    const cell = row.insertCell();
+                    cell.colSpan = 6;
+                    cell.textContent = skill.topic;
+                    return; 
+                }
+                
+                const currentStatus = progress[skill.id] || STATUS_OPTIONS[0];
+
+                // Category Cell
+                row.insertCell().textContent = skill.category;
+
+                // Topic Cell (with Link)
+                const topicCell = row.insertCell();
+                if (skill.link) {
+                    const link = document.createElement('a');
+                    link.href = skill.link;
+                    link.target = "_blank"; // Open in new tab
+                    link.className = 'topic-link';
+                    link.textContent = skill.topic;
+                    topicCell.appendChild(link);
+                } else {
+                    topicCell.textContent = skill.topic;
+                }
+
+                // Data Cells
+                row.insertCell().textContent = skill.days;
+                row.insertCell().textContent = skill.start;
+                row.insertCell().textContent = skill.end;
+
+                // Status Cell with Dropdown
+                const statusCell = row.insertCell();
+                const select = document.createElement('select');
+                select.id = `status-${skill.id}`;
+                select.className = 'status-select';
+                select.setAttribute('data-skill-id', skill.id);
+
+                STATUS_OPTIONS.forEach(option => {
+                    const opt = document.createElement('option');
+                    opt.value = option;
+                    opt.textContent = option;
+                    if (option === currentStatus) {
+                        opt.selected = true;
+                    }
+                    select.appendChild(opt);
+                });
+
+                select.onchange = handleStatusChange;
+                statusCell.appendChild(select);
+                
+                // Initial styling based on current status
+                updateStatusStyle(select, currentStatus);
+            });
+            
+            updateOverallProgress();
+        }
+
+        function handleStatusChange(event) {
+            const select = event.target;
+            const skillId = select.getAttribute('data-skill-id');
+            const newStatus = select.value;
+
+            // 1. Update progress object
+            progress[skillId] = newStatus;
+
+            // 2. Save to Local Storage
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(progress));
+
+            // 3. Update visual style
+            updateStatusStyle(select, newStatus);
+            
+            // 4. Update overall progress bar
+            updateOverallProgress();
+        }
+
+        function updateStatusStyle(selectElement, status) {
+            // Remove all status classes
+            selectElement.classList.remove('not-started', 'in-progress', 'completed');
+            
+            // Add the new status class
+            if (status === 'Not Started') {
+                selectElement.classList.add('not-started');
+            } else if (status === 'In Progress') {
+                selectElement.classList.add('in-progress');
+            } else if (status === 'Completed') {
+                selectElement.classList.add('completed');
+            }
+        }
+
+        function updateOverallProgress() {
+            const trackableSkills = SKILLS.filter(skill => !skill.isHoliday);
+            const totalSkills = trackableSkills.length;
+
+            const completedSkills = trackableSkills.filter(skill => progress[skill.id] === 'Completed').length;
+            
+            const percentage = totalSkills > 0 ? Math.round((completedSkills / totalSkills) * 100) : 0;
+            
+            const progressBar = document.getElementById('progressBar');
+            progressBar.style.width = `${percentage}%`;
+            progressBar.textContent = `${percentage}% Completed`;
+        }
+
+        // Initial render when the page loads
+        document.addEventListener('DOMContentLoaded', renderTable);
+    </script>
+
+</body>
+</html>

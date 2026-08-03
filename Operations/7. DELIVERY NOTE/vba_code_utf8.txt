@@ -1,0 +1,1166 @@
+﻿olevba 0.60.2 on Python 3.13.13 - http://decalage.info/python/oletools
+===============================================================================
+FILE: Auto-manual delivery note.xlsm
+Type: OpenXML
+WARNING  For now, VBA stomping cannot be detected for files in memory
+-------------------------------------------------------------------------------
+VBA MACRO ThisWorkbook.cls 
+in file: xl/vbaProject.bin - OLE stream: 'VBA/ThisWorkbook'
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+(empty macro)
+-------------------------------------------------------------------------------
+VBA MACRO Sheet1.cls 
+in file: xl/vbaProject.bin - OLE stream: 'VBA/Sheet1'
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+(empty macro)
+-------------------------------------------------------------------------------
+VBA MACRO Module1.bas 
+in file: xl/vbaProject.bin - OLE stream: 'VBA/Module1'
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+Option Explicit
+
+Public Sub RegisterDeliveryNote()
+    On Error GoTo CleanFail
+    
+    ' Core file references
+    Dim templatePath As String
+    templatePath = "c:\Users\Fan Movement\OneDrive - Fan Movement (Pty) Ltd\Zinziso Xhallie's files - Sales\Sales Contracts & Register\Contract Register\Manual Delivery Notes & Register\DELIVERY NOTE\2026\FM-DN0054 - Galvaglow - 09.03.2026.docx"
+    
+    ' Active template sheet and register sheet
+    Dim wsTemplate As Worksheet
+    Set wsTemplate = ActiveSheet
+    
+    Dim wsRegister As Worksheet
+    Set wsRegister = GetRegisterSheet()
+    
+    ' Protection checks
+    If wsTemplate.ProtectContents Then Err.Raise vbObjectError + 100, , "Template sheet is protected."
+    If wsRegister.ProtectContents Then Err.Raise vbObjectError + 101, , "Register sheet is protected."
+    
+    ' Validate Word template accessibility and content marker
+    ValidateWordTemplate templatePath
+    
+    ' Extract required header data
+    Dim dnValue As String
+    Dim dnDate As Variant
+    Dim customer As String
+    
+    dnValue = Trim(CStr(wsTemplate.Range("B2").Value))
+    dnDate = wsTemplate.Range("D2").Value
+    customer = Trim(CStr(wsTemplate.Range("A10").Value))
+    
+    ' Field validations
+    If dnValue = "" Then Err.Raise vbObjectError + 102, , "DN# is required in cell B2."
+    If Not IsDate(dnDate) Then Err.Raise vbObjectError + 103, , "Date in cell D2 is invalid."
+    If customer = "" Then Err.Raise vbObjectError + 104, , "Customer is required in cell A10."
+    
+    ' Identify description range dynamically from the template
+    Dim descRange As Range
+    Set descRange = GetDescriptionRange(wsTemplate)
+    
+    Dim descText As String
+    descText = BuildDescriptionText(descRange)
+    If descText = "" Then Err.Raise vbObjectError + 105, , "Description range is empty."
+    
+    ' Identify Register columns by headers
+    Dim dnCol As Long
+    Dim dateCol As Long
+    Dim customerCol As Long
+    Dim descCol As Long
+    
+    dnCol = FindHeaderColumn(wsRegister, Array("DN#", "DN No", "Delivery Note", "Delivery Note No"))
+    dateCol = FindHeaderColumn(wsRegister, Array("Date", "Delivery Date"))
+    customerCol = FindHeaderColumn(wsRegister, Array("Customer", "Client"))
+    descCol = FindHeaderColumn(wsRegister, Array("Description", "Details"))
+    
+    ' Duplicate DN prevention
+    If DNExists(wsRegister, dnCol, dnValue) Then Err.Raise vbObjectError + 106, , "Duplicate DN number found in Register."
+    
+    ' Confirmation before transfer
+    If MsgBox("Register DN " & dnValue & " to the Register sheet?", vbYesNo + vbQuestion, "Confirm Registration") <> vbYes Then Exit Sub
+    
+    ' Transfer to next available row
+    Dim nextRow As Long
+    nextRow = GetNextRegisterRow(wsRegister, dnCol)
+    
+    With wsRegister
+        .Cells(nextRow, dnCol).Value = dnValue
+        .Cells(nextRow, dateCol).Value = CDate(dnDate)
+        .Cells(nextRow, dateCol).NumberFormat = "yyyy-mm-dd"
+        .Cells(nextRow, customerCol).Value = customer
+        .Cells(nextRow, descCol).Value = descText
+    End With
+    
+    ' Confirmation before reset and increment
+    If MsgBox("Transfer complete. Reset template and increment DN number?", vbYesNo + vbQuestion, "Reset Template") = vbYes Then
+        ResetTemplate wsTemplate, dnValue, wsRegister, dnCol, descRange
+    End If
+    
+    MsgBox "Delivery note registered successfully.", vbInformation
+    Exit Sub
+    
+CleanFail:
+    MsgBox Err.Description, vbExclamation, "Delivery Note Registration"
+End Sub
+
+Private Function GetRegisterSheet() As Worksheet
+    On Error Resume Next
+    Set GetRegisterSheet = ThisWorkbook.Worksheets("Register")
+    On Error GoTo 0
+    If GetRegisterSheet Is Nothing Then Err.Raise vbObjectError + 200, , "Register sheet not found."
+End Function
+
+Private Sub ValidateWordTemplate(ByVal templatePath As String)
+    If Dir(templatePath) = "" Then Err.Raise vbObjectError + 201, , "Word template file not found."
+    
+    Dim wordApp As Object
+    Dim wordDoc As Object
+    Dim docText As String
+    
+    Set wordApp = CreateObject("Word.Application")
+    wordApp.Visible = False
+    Set wordDoc = wordApp.Documents.Open(templatePath, ReadOnly:=True)
+    
+    docText = wordDoc.Content.Text
+    
+    wordDoc.Close SaveChanges:=False
+    wordApp.Quit
+    
+    If InStr(1, docText, "FM-DN", vbTextCompare) = 0 Then
+        Err.Raise vbObjectError + 202, , "Word template validation failed. 'FM-DN' not found."
+    End If
+End Sub
+
+Private Function GetDescriptionRange(ByVal ws As Worksheet) As Range
+    Dim headerCell As Range
+    Set headerCell = ws.Cells.Find(What:="Description", LookIn:=xlValues, LookAt:=xlWhole)
+    
+    If headerCell Is Nothing Then Err.Raise vbObjectError + 203, , "Description header not found."
+    
+    Dim startRow As Long
+    Dim startCol As Long
+    Dim lastCol As Long
+    Dim lastRow As Long
+    
+    startRow = headerCell.Row + 1
+    startCol = headerCell.Column
+    lastCol = startCol
+    
+    Do While ws.Cells(headerCell.Row, lastCol + 1).Value <> ""
+        lastCol = lastCol + 1
+    Loop
+    
+    lastRow = startRow
+    Do While ws.Cells(lastRow, startCol).Value <> ""
+        lastRow = lastRow + 1
+    Loop
+    lastRow = lastRow - 1
+    
+    If lastRow < startRow Then Err.Raise vbObjectError + 204, , "No description rows found."
+    
+    Set GetDescriptionRange = ws.Range(ws.Cells(startRow, startCol), ws.Cells(lastRow, lastCol))
+End Function
+
+Private Function BuildDescriptionText(ByVal descRange As Range) As String
+    Dim r As Long, c As Long
+    Dim rowText As String
+    Dim fullText As String
+    
+    For r = 1 To descRange.Rows.Count
+        rowText = ""
+        For c = 1 To descRange.Columns.Count
+            Dim cellValue As String
+            cellValue = Trim(CStr(descRange.Cells(r, c).Value))
+            If cellValue <> "" Then
+                If rowText <> "" Then rowText = rowText & " | "
+                rowText = rowText & cellValue
+            End If
+        Next c
+        
+        If rowText <> "" Then
+            If fullText <> "" Then fullText = fullText & vbLf
+            fullText = fullText & rowText
+        End If
+    Next r
+    
+    BuildDescriptionText = fullText
+End Function
+
+Private Function FindHeaderColumn(ByVal ws As Worksheet, ByVal headerOptions As Variant) As Long
+    Dim optionText As Variant
+    Dim headerCell As Range
+    
+    For Each optionText In headerOptions
+        Set headerCell = ws.Cells.Find(What:=optionText, LookIn:=xlValues, LookAt:=xlWhole)
+        If Not headerCell Is Nothing Then
+            FindHeaderColumn = headerCell.Column
+            Exit Function
+        End If
+    Next optionText
+    
+    Err.Raise vbObjectError + 205, , "Required header not found in Register sheet."
+End Function
+
+Private Function GetNextRegisterRow(ByVal ws As Worksheet, ByVal dnCol As Long) As Long
+    Dim lastRow As Long
+    lastRow = ws.Cells(ws.Rows.Count, dnCol).End(xlUp).Row
+    If ws.Cells(lastRow, dnCol).Value = "" Then
+        GetNextRegisterRow = lastRow
+    Else
+        GetNextRegisterRow = lastRow + 1
+    End If
+End Function
+
+Private Function DNExists(ByVal ws As Worksheet, ByVal dnCol As Long, ByVal dnValue As String) As Boolean
+    Dim foundCell As Range
+    Set foundCell = ws.Columns(dnCol).Find(What:=dnValue, LookIn:=xlValues, LookAt:=xlWhole)
+    DNExists = Not foundCell Is Nothing
+End Function
+
+Private Sub ResetTemplate(ByVal ws As Worksheet, ByVal lastDn As String, ByVal wsRegister As Worksheet, ByVal dnCol As Long, ByVal descRange As Range)
+    ' Clear input fields without removing formulas or formatting
+    ws.Range("D2").ClearContents
+    ws.Range("A10").ClearContents
+    descRange.ClearContents
+    
+    ' Ensure To Return dropdown validation
+    EnsureToReturnValidation ws, descRange
+    
+    ' Increment DN number and avoid duplicates
+    ws.Range("B2").Value = GetNextDNValue(lastDn, wsRegister, dnCol)
+End Sub
+
+Private Sub EnsureToReturnValidation(ByVal ws As Worksheet, ByVal descRange As Range)
+    Dim toReturnHeader As Range
+    Set toReturnHeader = ws.Cells.Find(What:="To Return", LookIn:=xlValues, LookAt:=xlWhole)
+    
+    If toReturnHeader Is Nothing Then Err.Raise vbObjectError + 207, , "'To Return' header not found for validation."
+    
+    Dim targetRange As Range
+    
+    If toReturnHeader.Row = descRange.Row - 1 Then
+        Set targetRange = ws.Range(ws.Cells(descRange.Row, toReturnHeader.Column), ws.Cells(descRange.Row + descRange.Rows.Count - 1, toReturnHeader.Column))
+    Else
+        Set targetRange = toReturnHeader.Offset(0, 1)
+    End If
+    
+    With targetRange.Validation
+        .Delete
+        .Add Type:=xlValidateList, AlertStyle:=xlValidAlertStop, Operator:=xlBetween, Formula1:="Y,N"
+        .IgnoreBlank = True
+        .InCellDropdown = True
+        .ShowError = True
+    End With
+End Sub
+
+Private Function GetNextDNValue(ByVal currentDn As String, ByVal wsRegister As Worksheet, ByVal dnCol As Long) As String
+    Dim prefix As String
+    Dim numberPart As Long
+    Dim width As Long
+    
+    ParseDN currentDn, prefix, numberPart, width
+    
+    Dim nextNumber As Long
+    Dim nextDn As String
+    
+    nextNumber = numberPart + 1
+    nextDn = prefix & Format(nextNumber, String(width, "0"))
+    
+    Do While DNExists(wsRegister, dnCol, nextDn)
+        nextNumber = nextNumber + 1
+        nextDn = prefix & Format(nextNumber, String(width, "0"))
+    Loop
+    
+    GetNextDNValue = nextDn
+End Function
+
+Private Sub ParseDN(ByVal dnValue As String, ByRef prefix As String, ByRef numberPart As Long, ByRef width As Long)
+    Dim i As Long
+    Dim digits As String
+    digits = ""
+    
+    For i = Len(dnValue) To 1 Step -1
+        Dim ch As String
+        ch = Mid(dnValue, i, 1)
+        If ch Like "[0-9]" Then
+            digits = ch & digits
+        Else
+            If digits <> "" Then Exit For
+        End If
+    Next i
+    
+    If digits = "" Then Err.Raise vbObjectError + 206, , "DN# does not contain a numeric sequence."
+    
+    prefix = Left(dnValue, Len(dnValue) - Len(digits))
+    numberPart = CLng(digits)
+    width = Len(digits)
+End Sub
+-------------------------------------------------------------------------------
+VBA MACRO Module2.bas 
+in file: xl/vbaProject.bin - OLE stream: 'VBA/Module2'
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+Option Explicit
+
+Public Sub RegisterDeliveryNote()
+    On Error GoTo CleanFail
+    
+    ' Core file references
+    Dim templatePath As String
+    templatePath = "c:\Users\Fan Movement\OneDrive - Fan Movement (Pty) Ltd\Zinziso Xhallie's files - Sales\Sales Contracts & Register\Contract Register\Manual Delivery Notes & Register\DELIVERY NOTE\2026\FM-DN0054 - Galvaglow - 09.03.2026.docx"
+    
+    ' Active template sheet and register sheet
+    Dim wsTemplate As Worksheet
+    Set wsTemplate = ActiveSheet
+    
+    Dim wsRegister As Worksheet
+    Set wsRegister = GetRegisterSheet()
+    
+    ' Protection checks
+    If wsTemplate.ProtectContents Then Err.Raise vbObjectError + 100, , "Template sheet is protected."
+    If wsRegister.ProtectContents Then Err.Raise vbObjectError + 101, , "Register sheet is protected."
+    
+    ' Validate Word template accessibility and content marker
+    ValidateWordTemplate templatePath
+    
+    ' Extract required header data
+    Dim dnValue As String
+    Dim dnDate As Variant
+    Dim customer As String
+    
+    dnValue = Trim(CStr(wsTemplate.Range("B2").Value))
+    dnDate = wsTemplate.Range("D2").Value
+    customer = Trim(CStr(wsTemplate.Range("A10").Value))
+    
+    ' Field validations
+    If dnValue = "" Then Err.Raise vbObjectError + 102, , "DN# is required in cell B2."
+    If Not IsDate(dnDate) Then Err.Raise vbObjectError + 103, , "Date in cell D2 is invalid."
+    If customer = "" Then Err.Raise vbObjectError + 104, , "Customer is required in cell A10."
+    
+    ' Identify description range dynamically from the template
+    Dim descRange As Range
+    Set descRange = GetDescriptionRange(wsTemplate)
+    
+    Dim descText As String
+    descText = BuildDescriptionText(descRange)
+    If descText = "" Then Err.Raise vbObjectError + 105, , "Description range is empty."
+    
+    ' Identify Register columns by headers
+    Dim dnCol As Long
+    Dim dateCol As Long
+    Dim customerCol As Long
+    Dim descCol As Long
+    
+    dnCol = FindHeaderColumn(wsRegister, Array("DN#", "DN No", "Delivery Note", "Delivery Note No"))
+    dateCol = FindHeaderColumn(wsRegister, Array("Date", "Delivery Date"))
+    customerCol = FindHeaderColumn(wsRegister, Array("Customer", "Client"))
+    descCol = FindHeaderColumn(wsRegister, Array("Description", "Details"))
+    
+    ' Duplicate DN prevention
+    If DNExists(wsRegister, dnCol, dnValue) Then Err.Raise vbObjectError + 106, , "Duplicate DN number found in Register."
+    
+    ' Confirmation before transfer
+    If MsgBox("Register DN " & dnValue & " to the Register sheet?", vbYesNo + vbQuestion, "Confirm Registration") <> vbYes Then Exit Sub
+    
+    ' Transfer to next available row
+    Dim nextRow As Long
+    nextRow = GetNextRegisterRow(wsRegister, dnCol)
+    
+    With wsRegister
+        .Cells(nextRow, dnCol).Value = dnValue
+        .Cells(nextRow, dateCol).Value = CDate(dnDate)
+        .Cells(nextRow, dateCol).NumberFormat = "yyyy-mm-dd"
+        .Cells(nextRow, customerCol).Value = customer
+        .Cells(nextRow, descCol).Value = descText
+    End With
+    
+    ' Confirmation before reset and increment
+    If MsgBox("Transfer complete. Reset template and increment DN number?", vbYesNo + vbQuestion, "Reset Template") = vbYes Then
+        ResetTemplate wsTemplate, dnValue, wsRegister, dnCol, descRange
+    End If
+    
+    MsgBox "Delivery note registered successfully.", vbInformation
+    Exit Sub
+    
+CleanFail:
+    MsgBox Err.Description, vbExclamation, "Delivery Note Registration"
+End Sub
+
+Private Function GetRegisterSheet() As Worksheet
+    On Error Resume Next
+    Set GetRegisterSheet = ThisWorkbook.Worksheets("Register")
+    On Error GoTo 0
+    If GetRegisterSheet Is Nothing Then Err.Raise vbObjectError + 200, , "Register sheet not found."
+End Function
+
+Private Sub ValidateWordTemplate(ByVal templatePath As String)
+    If Dir(templatePath) = "" Then Err.Raise vbObjectError + 201, , "Word template file not found."
+    
+    Dim wordApp As Object
+    Dim wordDoc As Object
+    Dim docText As String
+    
+    Set wordApp = CreateObject("Word.Application")
+    wordApp.Visible = False
+    Set wordDoc = wordApp.Documents.Open(templatePath, ReadOnly:=True)
+    
+    docText = wordDoc.Content.Text
+    
+    wordDoc.Close SaveChanges:=False
+    wordApp.Quit
+    
+    If InStr(1, docText, "FM-DN", vbTextCompare) = 0 Then
+        Err.Raise vbObjectError + 202, , "Word template validation failed. 'FM-DN' not found."
+    End If
+End Sub
+
+Private Function GetDescriptionRange(ByVal ws As Worksheet) As Range
+    Dim headerCell As Range
+    Set headerCell = ws.Cells.Find(What:="Description", LookIn:=xlValues, LookAt:=xlWhole)
+    
+    If headerCell Is Nothing Then Err.Raise vbObjectError + 203, , "Description header not found."
+    
+    Dim startRow As Long
+    Dim startCol As Long
+    Dim lastCol As Long
+    Dim lastRow As Long
+    
+    startRow = headerCell.Row + 1
+    startCol = headerCell.Column
+    lastCol = startCol
+    
+    Do While ws.Cells(headerCell.Row, lastCol + 1).Value <> ""
+        lastCol = lastCol + 1
+    Loop
+    
+    lastRow = startRow
+    Do While ws.Cells(lastRow, startCol).Value <> ""
+        lastRow = lastRow + 1
+    Loop
+    lastRow = lastRow - 1
+    
+    If lastRow < startRow Then Err.Raise vbObjectError + 204, , "No description rows found."
+    
+    Set GetDescriptionRange = ws.Range(ws.Cells(startRow, startCol), ws.Cells(lastRow, lastCol))
+End Function
+
+Private Function BuildDescriptionText(ByVal descRange As Range) As String
+    Dim r As Long, c As Long
+    Dim rowText As String
+    Dim fullText As String
+    
+    For r = 1 To descRange.Rows.Count
+        rowText = ""
+        For c = 1 To descRange.Columns.Count
+            Dim cellValue As String
+            cellValue = Trim(CStr(descRange.Cells(r, c).Value))
+            If cellValue <> "" Then
+                If rowText <> "" Then rowText = rowText & " | "
+                rowText = rowText & cellValue
+            End If
+        Next c
+        
+        If rowText <> "" Then
+            If fullText <> "" Then fullText = fullText & vbLf
+            fullText = fullText & rowText
+        End If
+    Next r
+    
+    BuildDescriptionText = fullText
+End Function
+
+Private Function FindHeaderColumn(ByVal ws As Worksheet, ByVal headerOptions As Variant) As Long
+    Dim optionText As Variant
+    Dim headerCell As Range
+    
+    For Each optionText In headerOptions
+        Set headerCell = ws.Cells.Find(What:=optionText, LookIn:=xlValues, LookAt:=xlWhole)
+        If Not headerCell Is Nothing Then
+            FindHeaderColumn = headerCell.Column
+            Exit Function
+        End If
+    Next optionText
+    
+    Err.Raise vbObjectError + 205, , "Required header not found in Register sheet."
+End Function
+
+Private Function GetNextRegisterRow(ByVal ws As Worksheet, ByVal dnCol As Long) As Long
+    Dim lastRow As Long
+    lastRow = ws.Cells(ws.Rows.Count, dnCol).End(xlUp).Row
+    If ws.Cells(lastRow, dnCol).Value = "" Then
+        GetNextRegisterRow = lastRow
+    Else
+        GetNextRegisterRow = lastRow + 1
+    End If
+End Function
+
+Private Function DNExists(ByVal ws As Worksheet, ByVal dnCol As Long, ByVal dnValue As String) As Boolean
+    Dim foundCell As Range
+    Set foundCell = ws.Columns(dnCol).Find(What:=dnValue, LookIn:=xlValues, LookAt:=xlWhole)
+    DNExists = Not foundCell Is Nothing
+End Function
+
+Private Sub ResetTemplate(ByVal ws As Worksheet, ByVal lastDn As String, ByVal wsRegister As Worksheet, ByVal dnCol As Long, ByVal descRange As Range)
+    ' Clear input fields without removing formulas or formatting
+    ws.Range("D2").ClearContents
+    ws.Range("A10").ClearContents
+    descRange.ClearContents
+    
+    ' Ensure To Return dropdown validation
+    EnsureToReturnValidation ws, descRange
+    
+    ' Increment DN number and avoid duplicates
+    ws.Range("B2").Value = GetNextDNValue(lastDn, wsRegister, dnCol)
+End Sub
+
+Private Sub EnsureToReturnValidation(ByVal ws As Worksheet, ByVal descRange As Range)
+    Dim toReturnHeader As Range
+    Set toReturnHeader = ws.Cells.Find(What:="To Return", LookIn:=xlValues, LookAt:=xlWhole)
+    
+    If toReturnHeader Is Nothing Then Err.Raise vbObjectError + 207, , "'To Return' header not found for validation."
+    
+    Dim targetRange As Range
+    
+    If toReturnHeader.Row = descRange.Row - 1 Then
+        Set targetRange = ws.Range(ws.Cells(descRange.Row, toReturnHeader.Column), ws.Cells(descRange.Row + descRange.Rows.Count - 1, toReturnHeader.Column))
+    Else
+        Set targetRange = toReturnHeader.Offset(0, 1)
+    End If
+    
+    With targetRange.Validation
+        .Delete
+        .Add Type:=xlValidateList, AlertStyle:=xlValidAlertStop, Operator:=xlBetween, Formula1:="Y,N"
+        .IgnoreBlank = True
+        .InCellDropdown = True
+        .ShowError = True
+    End With
+End Sub
+
+Private Function GetNextDNValue(ByVal currentDn As String, ByVal wsRegister As Worksheet, ByVal dnCol As Long) As String
+    Dim prefix As String
+    Dim numberPart As Long
+    Dim width As Long
+    
+    ParseDN currentDn, prefix, numberPart, width
+    
+    Dim nextNumber As Long
+    Dim nextDn As String
+    
+    nextNumber = numberPart + 1
+    nextDn = prefix & Format(nextNumber, String(width, "0"))
+    
+    Do While DNExists(wsRegister, dnCol, nextDn)
+        nextNumber = nextNumber + 1
+        nextDn = prefix & Format(nextNumber, String(width, "0"))
+    Loop
+    
+    GetNextDNValue = nextDn
+End Function
+
+Private Sub ParseDN(ByVal dnValue As String, ByRef prefix As String, ByRef numberPart As Long, ByRef width As Long)
+    Dim i As Long
+    Dim digits As String
+    digits = ""
+    
+    For i = Len(dnValue) To 1 Step -1
+        Dim ch As String
+        ch = Mid(dnValue, i, 1)
+        If ch Like "[0-9]" Then
+            digits = ch & digits
+        Else
+            If digits <> "" Then Exit For
+        End If
+    Next i
+    
+    If digits = "" Then Err.Raise vbObjectError + 206, , "DN# does not contain a numeric sequence."
+    
+    prefix = Left(dnValue, Len(dnValue) - Len(digits))
+    numberPart = CLng(digits)
+    width = Len(digits)
+End Sub
+-------------------------------------------------------------------------------
+VBA MACRO Module3.bas 
+in file: xl/vbaProject.bin - OLE stream: 'VBA/Module3'
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+Option Explicit
+
+Public Sub RegisterDeliveryNote()
+    On Error GoTo CleanFail
+    
+    ' Core file references
+    Dim templatePath As String
+    templatePath = "c:\Users\Fan Movement\OneDrive - Fan Movement (Pty) Ltd\Zinziso Xhallie's files - Sales\Sales Contracts & Register\Contract Register\Manual Delivery Notes & Register\DELIVERY NOTE\2026\FM-DN0054 - Galvaglow - 09.03.2026.docx"
+    
+    ' Active template sheet and register sheet
+    Dim wsTemplate As Worksheet
+    Set wsTemplate = ActiveSheet
+    
+    Dim wsRegister As Worksheet
+    Set wsRegister = GetRegisterSheet()
+    
+    ' Protection checks
+    If wsTemplate.ProtectContents Then Err.Raise vbObjectError + 100, , "Template sheet is protected."
+    If wsRegister.ProtectContents Then Err.Raise vbObjectError + 101, , "Register sheet is protected."
+    
+    ' Validate Word template accessibility and content marker
+    ValidateWordTemplate templatePath
+    
+    ' Extract required header data
+    Dim dnValue As String
+    Dim dnDate As Variant
+    Dim customer As String
+    
+    dnValue = Trim(CStr(wsTemplate.Range("B2").Value))
+    dnDate = wsTemplate.Range("D2").Value
+    customer = Trim(CStr(wsTemplate.Range("A10").Value))
+    
+    ' Field validations
+    If dnValue = "" Then Err.Raise vbObjectError + 102, , "DN# is required in cell B2."
+    If Not IsDate(dnDate) Then Err.Raise vbObjectError + 103, , "Date in cell D2 is invalid."
+    If customer = "" Then Err.Raise vbObjectError + 104, , "Customer is required in cell A10."
+    
+    ' Identify description range dynamically from the template
+    Dim descRange As Range
+    Set descRange = GetDescriptionRange(wsTemplate)
+    
+    Dim descText As String
+    descText = BuildDescriptionText(descRange)
+    If descText = "" Then Err.Raise vbObjectError + 105, , "Description range is empty."
+    
+    ' Identify Register columns by headers
+    Dim dnCol As Long
+    Dim dateCol As Long
+    Dim customerCol As Long
+    Dim descCol As Long
+    
+    dnCol = FindHeaderColumn(wsRegister, Array("DN#", "DN No", "Delivery Note", "Delivery Note No"))
+    dateCol = FindHeaderColumn(wsRegister, Array("Date", "Delivery Date"))
+    customerCol = FindHeaderColumn(wsRegister, Array("Customer", "Client"))
+    descCol = FindHeaderColumn(wsRegister, Array("Description", "Details"))
+    
+    ' Duplicate DN prevention
+    If DNExists(wsRegister, dnCol, dnValue) Then Err.Raise vbObjectError + 106, , "Duplicate DN number found in Register."
+    
+    ' Confirmation before transfer
+    If MsgBox("Register DN " & dnValue & " to the Register sheet?", vbYesNo + vbQuestion, "Confirm Registration") <> vbYes Then Exit Sub
+    
+    ' Transfer to next available row
+    Dim nextRow As Long
+    nextRow = GetNextRegisterRow(wsRegister, dnCol)
+    
+    With wsRegister
+        .Cells(nextRow, dnCol).Value = dnValue
+        .Cells(nextRow, dateCol).Value = CDate(dnDate)
+        .Cells(nextRow, dateCol).NumberFormat = "yyyy-mm-dd"
+        .Cells(nextRow, customerCol).Value = customer
+        .Cells(nextRow, descCol).Value = descText
+    End With
+    
+    ' Confirmation before reset and increment
+    If MsgBox("Transfer complete. Reset template and increment DN number?", vbYesNo + vbQuestion, "Reset Template") = vbYes Then
+        ResetTemplate wsTemplate, dnValue, wsRegister, dnCol, descRange
+    End If
+    
+    MsgBox "Delivery note registered successfully.", vbInformation
+    Exit Sub
+    
+CleanFail:
+    MsgBox Err.Description, vbExclamation, "Delivery Note Registration"
+End Sub
+
+Private Function GetRegisterSheet() As Worksheet
+    On Error Resume Next
+    Set GetRegisterSheet = ThisWorkbook.Worksheets("Register")
+    On Error GoTo 0
+    If GetRegisterSheet Is Nothing Then Err.Raise vbObjectError + 200, , "Register sheet not found."
+End Function
+
+Private Sub ValidateWordTemplate(ByVal templatePath As String)
+    If Dir(templatePath) = "" Then Err.Raise vbObjectError + 201, , "Word template file not found."
+    
+    Dim wordApp As Object
+    Dim wordDoc As Object
+    Dim docText As String
+    
+    Set wordApp = CreateObject("Word.Application")
+    wordApp.Visible = False
+    Set wordDoc = wordApp.Documents.Open(templatePath, ReadOnly:=True)
+    
+    docText = wordDoc.Content.Text
+    
+    wordDoc.Close SaveChanges:=False
+    wordApp.Quit
+    
+    If InStr(1, docText, "FM-DN", vbTextCompare) = 0 Then
+        Err.Raise vbObjectError + 202, , "Word template validation failed. 'FM-DN' not found."
+    End If
+End Sub
+
+Private Function GetDescriptionRange(ByVal ws As Worksheet) As Range
+    Dim headerCell As Range
+    Dim headerOptions As Variant
+    Dim optionText As Variant
+    
+    headerOptions = Array("Description", "Item Description", "Details")
+    
+    For Each optionText In headerOptions
+        Set headerCell = ws.Cells.Find(What:=optionText, LookIn:=xlValues, LookAt:=xlPart, MatchCase:=False)
+        If Not headerCell Is Nothing Then Exit For
+    Next optionText
+    
+    If headerCell Is Nothing Then Err.Raise vbObjectError + 203, , "Description header not found."
+    
+    Dim startRow As Long
+    Dim startCol As Long
+    Dim lastCol As Long
+    Dim lastRow As Long
+    
+    startRow = headerCell.Row + 1
+    startCol = headerCell.Column
+    lastCol = ws.Cells(headerCell.Row, ws.Columns.Count).End(xlToLeft).Column
+    If lastCol < startCol Then lastCol = startCol
+    
+    Dim colIndex As Long
+    Dim colLastRow As Long
+    lastRow = startRow
+    
+    For colIndex = startCol To lastCol
+        colLastRow = ws.Cells(ws.Rows.Count, colIndex).End(xlUp).Row
+        If colLastRow > lastRow Then lastRow = colLastRow
+    Next colIndex
+    
+    If lastRow < startRow Then Err.Raise vbObjectError + 204, , "No description rows found."
+    
+    Set GetDescriptionRange = ws.Range(ws.Cells(startRow, startCol), ws.Cells(lastRow, lastCol))
+End Function
+
+Private Function BuildDescriptionText(ByVal descRange As Range) As String
+    Dim r As Long, c As Long
+    Dim rowText As String
+    Dim fullText As String
+    
+    For r = 1 To descRange.Rows.Count
+        rowText = ""
+        For c = 1 To descRange.Columns.Count
+            Dim cellValue As String
+            cellValue = Trim(CStr(descRange.Cells(r, c).Value))
+            If cellValue <> "" Then
+                If rowText <> "" Then rowText = rowText & " | "
+                rowText = rowText & cellValue
+            End If
+        Next c
+        
+        If rowText <> "" Then
+            If fullText <> "" Then fullText = fullText & vbLf
+            fullText = fullText & rowText
+        End If
+    Next r
+    
+    BuildDescriptionText = fullText
+End Function
+
+Private Function FindHeaderColumn(ByVal ws As Worksheet, ByVal headerOptions As Variant) As Long
+    Dim optionText As Variant
+    Dim headerCell As Range
+    
+    For Each optionText In headerOptions
+        Set headerCell = ws.Cells.Find(What:=optionText, LookIn:=xlValues, LookAt:=xlWhole)
+        If Not headerCell Is Nothing Then
+            FindHeaderColumn = headerCell.Column
+            Exit Function
+        End If
+    Next optionText
+    
+    Err.Raise vbObjectError + 205, , "Required header not found in Register sheet."
+End Function
+
+Private Function GetNextRegisterRow(ByVal ws As Worksheet, ByVal dnCol As Long) As Long
+    Dim lastRow As Long
+    lastRow = ws.Cells(ws.Rows.Count, dnCol).End(xlUp).Row
+    If ws.Cells(lastRow, dnCol).Value = "" Then
+        GetNextRegisterRow = lastRow
+    Else
+        GetNextRegisterRow = lastRow + 1
+    End If
+End Function
+
+Private Function DNExists(ByVal ws As Worksheet, ByVal dnCol As Long, ByVal dnValue As String) As Boolean
+    Dim foundCell As Range
+    Set foundCell = ws.Columns(dnCol).Find(What:=dnValue, LookIn:=xlValues, LookAt:=xlWhole)
+    DNExists = Not foundCell Is Nothing
+End Function
+
+Private Sub ResetTemplate(ByVal ws As Worksheet, ByVal lastDn As String, ByVal wsRegister As Worksheet, ByVal dnCol As Long, ByVal descRange As Range)
+    ' Clear input fields without removing formulas or formatting
+    ws.Range("D2").ClearContents
+    ws.Range("A10").ClearContents
+    descRange.ClearContents
+    
+    ' Ensure To Return dropdown validation
+    EnsureToReturnValidation ws, descRange
+    
+    ' Increment DN number and avoid duplicates
+    ws.Range("B2").Value = GetNextDNValue(lastDn, wsRegister, dnCol)
+End Sub
+
+Private Sub EnsureToReturnValidation(ByVal ws As Worksheet, ByVal descRange As Range)
+    Dim toReturnHeader As Range
+    Set toReturnHeader = ws.Cells.Find(What:="To Return", LookIn:=xlValues, LookAt:=xlWhole)
+    
+    If toReturnHeader Is Nothing Then Err.Raise vbObjectError + 207, , "'To Return' header not found for validation."
+    
+    Dim targetRange As Range
+    Dim startRow As Long
+    Dim endRow As Long
+    
+    startRow = toReturnHeader.Row + 1
+    endRow = descRange.Row + descRange.Rows.Count - 1
+    
+    If endRow < startRow Then Err.Raise vbObjectError + 208, , "'To Return' validation range cannot be determined."
+    
+    Set targetRange = ws.Range(ws.Cells(startRow, toReturnHeader.Column), ws.Cells(endRow, toReturnHeader.Column))
+    
+    With targetRange.Validation
+        .Delete
+        .Add Type:=xlValidateList, AlertStyle:=xlValidAlertStop, Operator:=xlBetween, Formula1:="Y,N"
+        .IgnoreBlank = True
+        .InCellDropdown = True
+        .ShowError = True
+    End With
+End Sub
+
+Private Function GetNextDNValue(ByVal currentDn As String, ByVal wsRegister As Worksheet, ByVal dnCol As Long) As String
+    Dim prefix As String
+    Dim numberPart As Long
+    Dim width As Long
+    
+    ParseDN currentDn, prefix, numberPart, width
+    
+    Dim nextNumber As Long
+    Dim nextDn As String
+    
+    nextNumber = numberPart + 1
+    nextDn = prefix & Format(nextNumber, String(width, "0"))
+    
+    Do While DNExists(wsRegister, dnCol, nextDn)
+        nextNumber = nextNumber + 1
+        nextDn = prefix & Format(nextNumber, String(width, "0"))
+    Loop
+    
+    GetNextDNValue = nextDn
+End Function
+
+Private Sub ParseDN(ByVal dnValue As String, ByRef prefix As String, ByRef numberPart As Long, ByRef width As Long)
+    Dim i As Long
+    Dim digits As String
+    digits = ""
+    
+    For i = Len(dnValue) To 1 Step -1
+        Dim ch As String
+        ch = Mid(dnValue, i, 1)
+        If ch Like "[0-9]" Then
+            digits = ch & digits
+        Else
+            If digits <> "" Then Exit For
+        End If
+    Next i
+    
+    If digits = "" Then Err.Raise vbObjectError + 206, , "DN# does not contain a numeric sequence."
+    
+    prefix = Left(dnValue, Len(dnValue) - Len(digits))
+    numberPart = CLng(digits)
+    width = Len(digits)
+End Sub
+-------------------------------------------------------------------------------
+VBA MACRO Module4.bas 
+in file: xl/vbaProject.bin - OLE stream: 'VBA/Module4'
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+Option Explicit
+
+Public Sub RegisterDeliveryNote()
+    On Error GoTo CleanFail
+    
+    ' Core file references
+    Dim templatePath As String
+    templatePath = "c:\Users\Fan Movement\OneDrive - Fan Movement (Pty) Ltd\Zinziso Xhallie's files - Sales\Sales Contracts & Register\Contract Register\Manual Delivery Notes & Register\DELIVERY NOTE\2026\FM-DN0054 - Galvaglow - 09.03.2026.docx"
+    
+    ' Active template sheet and register sheet
+    Dim wsTemplate As Worksheet
+    Set wsTemplate = ActiveSheet
+    
+    Dim wsRegister As Worksheet
+    Set wsRegister = GetRegisterSheet()
+    
+    ' Protection checks
+    If wsTemplate.ProtectContents Then Err.Raise vbObjectError + 100, , "Template sheet is protected."
+    If wsRegister.ProtectContents Then Err.Raise vbObjectError + 101, , "Register sheet is protected."
+    
+    ' Validate Word template accessibility and content marker
+    ValidateWordTemplate templatePath
+    
+    ' Extract required header data
+    Dim dnValue As String
+    Dim dnDate As Variant
+    Dim customer As String
+    
+    dnValue = Trim(CStr(wsTemplate.Range("B2").Value))
+    dnDate = wsTemplate.Range("D2").Value
+    customer = Trim(CStr(wsTemplate.Range("A10").Value))
+    
+    ' Field validations
+    If dnValue = "" Then Err.Raise vbObjectError + 102, , "DN# is required in cell B2."
+    If Not IsDate(dnDate) Then Err.Raise vbObjectError + 103, , "Date in cell D2 is invalid."
+    If customer = "" Then Err.Raise vbObjectError + 104, , "Customer is required in cell A10."
+    
+    ' Identify description range dynamically from the template
+    Dim descRange As Range
+    Set descRange = GetDescriptionRange(wsTemplate)
+    
+    Dim descText As String
+    descText = BuildDescriptionText(descRange)
+    If descText = "" Then Err.Raise vbObjectError + 105, , "Description range is empty."
+    
+    ' Identify Register columns by headers
+    Dim dnCol As Long
+    Dim dateCol As Long
+    Dim customerCol As Long
+    Dim descCol As Long
+    
+    dnCol = FindHeaderColumn(wsRegister, Array("DN#", "DN No", "Delivery Note", "Delivery Note No"))
+    dateCol = FindHeaderColumn(wsRegister, Array("Date", "Delivery Date"))
+    customerCol = FindHeaderColumn(wsRegister, Array("Customer", "Client"))
+    descCol = FindHeaderColumn(wsRegister, Array("Description", "Details"))
+    
+    ' Duplicate DN prevention
+    If DNExists(wsRegister, dnCol, dnValue) Then Err.Raise vbObjectError + 106, , "Duplicate DN number found in Register."
+    
+    ' Confirmation before transfer
+    If MsgBox("Register DN " & dnValue & " to the Register sheet?", vbYesNo + vbQuestion, "Confirm Registration") <> vbYes Then Exit Sub
+    
+    ' Transfer to next available row
+    Dim nextRow As Long
+    nextRow = GetNextRegisterRow(wsRegister, dnCol)
+    
+    With wsRegister
+        .Cells(nextRow, dnCol).Value = dnValue
+        .Cells(nextRow, dateCol).Value = CDate(dnDate)
+        .Cells(nextRow, dateCol).NumberFormat = "yyyy-mm-dd"
+        .Cells(nextRow, customerCol).Value = customer
+        .Cells(nextRow, descCol).Value = descText
+    End With
+    
+    ' Confirmation before reset and increment
+    If MsgBox("Transfer complete. Reset template and increment DN number?", vbYesNo + vbQuestion, "Reset Template") = vbYes Then
+        ResetTemplate wsTemplate, dnValue, wsRegister, dnCol, descRange
+    End If
+    
+    MsgBox "Delivery note registered successfully.", vbInformation
+    Exit Sub
+    
+CleanFail:
+    MsgBox Err.Description, vbExclamation, "Delivery Note Registration"
+End Sub
+
+Private Function GetRegisterSheet() As Worksheet
+    On Error Resume Next
+    Set GetRegisterSheet = ThisWorkbook.Worksheets("Register")
+    On Error GoTo 0
+    If GetRegisterSheet Is Nothing Then Err.Raise vbObjectError + 200, , "Register sheet not found."
+End Function
+
+Private Sub ValidateWordTemplate(ByVal templatePath As String)
+    If Dir(templatePath) = "" Then Err.Raise vbObjectError + 201, , "Word template file not found."
+    
+    Dim wordApp As Object
+    Dim wordDoc As Object
+    Dim docText As String
+    
+    Set wordApp = CreateObject("Word.Application")
+    wordApp.Visible = False
+    Set wordDoc = wordApp.Documents.Open(templatePath, ReadOnly:=True)
+    
+    docText = wordDoc.Content.Text
+    
+    wordDoc.Close SaveChanges:=False
+    wordApp.Quit
+    
+    If InStr(1, docText, "FM-DN", vbTextCompare) = 0 Then
+        Err.Raise vbObjectError + 202, , "Word template validation failed. 'FM-DN' not found."
+    End If
+End Sub
+
+Private Function GetDescriptionRange(ByVal ws As Worksheet) As Range
+    Dim headerCell As Range
+    Dim headerOptions As Variant
+    Dim optionText As Variant
+    
+    headerOptions = Array("Description", "Item Description", "Details")
+    
+    For Each optionText In headerOptions
+        Set headerCell = ws.Cells.Find(What:=optionText, LookIn:=xlValues, LookAt:=xlPart, MatchCase:=False)
+        If Not headerCell Is Nothing Then Exit For
+    Next optionText
+    
+    If headerCell Is Nothing Then Err.Raise vbObjectError + 203, , "Description header not found."
+    
+    Dim startRow As Long
+    Dim startCol As Long
+    Dim lastCol As Long
+    Dim lastRow As Long
+    
+    startRow = headerCell.Row + 1
+    startCol = headerCell.Column
+    lastCol = ws.Cells(headerCell.Row, ws.Columns.Count).End(xlToLeft).Column
+    If lastCol < startCol Then lastCol = startCol
+    
+    Dim colIndex As Long
+    Dim colLastRow As Long
+    lastRow = startRow
+    
+    For colIndex = startCol To lastCol
+        colLastRow = ws.Cells(ws.Rows.Count, colIndex).End(xlUp).Row
+        If colLastRow > lastRow Then lastRow = colLastRow
+    Next colIndex
+    
+    If lastRow < startRow Then Err.Raise vbObjectError + 204, , "No description rows found."
+    
+    Set GetDescriptionRange = ws.Range(ws.Cells(startRow, startCol), ws.Cells(lastRow, lastCol))
+End Function
+
+Private Function BuildDescriptionText(ByVal descRange As Range) As String
+    Dim r As Long, c As Long
+    Dim rowText As String
+    Dim fullText As String
+    
+    For r = 1 To descRange.Rows.Count
+        rowText = ""
+        For c = 1 To descRange.Columns.Count
+            Dim cellValue As String
+            cellValue = Trim(CStr(descRange.Cells(r, c).Value))
+            If cellValue <> "" Then
+                If rowText <> "" Then rowText = rowText & " | "
+                rowText = rowText & cellValue
+            End If
+        Next c
+        
+        If rowText <> "" Then
+            If fullText <> "" Then fullText = fullText & vbLf
+            fullText = fullText & rowText
+        End If
+    Next r
+    
+    BuildDescriptionText = fullText
+End Function
+
+Private Function FindHeaderColumn(ByVal ws As Worksheet, ByVal headerOptions As Variant) As Long
+    Dim optionText As Variant
+    Dim headerCell As Range
+    
+    For Each optionText In headerOptions
+        Set headerCell = ws.Cells.Find(What:=optionText, LookIn:=xlValues, LookAt:=xlWhole)
+        If Not headerCell Is Nothing Then
+            FindHeaderColumn = headerCell.Column
+            Exit Function
+        End If
+    Next optionText
+    
+    Err.Raise vbObjectError + 205, , "Required header not found in Register sheet."
+End Function
+
+Private Function GetNextRegisterRow(ByVal ws As Worksheet, ByVal dnCol As Long) As Long
+    Dim lastRow As Long
+    lastRow = ws.Cells(ws.Rows.Count, dnCol).End(xlUp).Row
+    If ws.Cells(lastRow, dnCol).Value = "" Then
+        GetNextRegisterRow = lastRow
+    Else
+        GetNextRegisterRow = lastRow + 1
+    End If
+End Function
+
+Private Function DNExists(ByVal ws As Worksheet, ByVal dnCol As Long, ByVal dnValue As String) As Boolean
+    Dim foundCell As Range
+    Set foundCell = ws.Columns(dnCol).Find(What:=dnValue, LookIn:=xlValues, LookAt:=xlWhole)
+    DNExists = Not foundCell Is Nothing
+End Function
+
+Private Sub ResetTemplate(ByVal ws As Worksheet, ByVal lastDn As String, ByVal wsRegister As Worksheet, ByVal dnCol As Long, ByVal descRange As Range)
+    ' Clear input fields without removing formulas or formatting
+    ws.Range("D2").ClearContents
+    ws.Range("A10").ClearContents
+    descRange.ClearContents
+    
+    ' Ensure To Return dropdown validation
+    EnsureToReturnValidation ws, descRange
+    
+    ' Increment DN number and avoid duplicates
+    ws.Range("B2").Value = GetNextDNValue(lastDn, wsRegister, dnCol)
+End Sub
+
+Private Sub EnsureToReturnValidation(ByVal ws As Worksheet, ByVal descRange As Range)
+    Dim toReturnHeader As Range
+    Set toReturnHeader = ws.Cells.Find(What:="To Return", LookIn:=xlValues, LookAt:=xlWhole)
+    
+    If toReturnHeader Is Nothing Then Err.Raise vbObjectError + 207, , "'To Return' header not found for validation."
+    
+    Dim targetRange As Range
+    Dim startRow As Long
+    Dim endRow As Long
+    
+    startRow = toReturnHeader.Row + 1
+    endRow = descRange.Row + descRange.Rows.Count - 1
+    
+    If endRow < startRow Then Err.Raise vbObjectError + 208, , "'To Return' validation range cannot be determined."
+    
+    Set targetRange = ws.Range(ws.Cells(startRow, toReturnHeader.Column), ws.Cells(endRow, toReturnHeader.Column))
+    
+    With targetRange.Validation
+        .Delete
+        .Add Type:=xlValidateList, AlertStyle:=xlValidAlertStop, Operator:=xlBetween, Formula1:="Y,N"
+        .IgnoreBlank = True
+        .InCellDropdown = True
+        .ShowError = True
+    End With
+End Sub
+
+Private Function GetNextDNValue(ByVal currentDn As String, ByVal wsRegister As Worksheet, ByVal dnCol As Long) As String
+    Dim prefix As String
+    Dim numberPart As Long
+    Dim width As Long
+    
+    ParseDN currentDn, prefix, numberPart, width
+    
+    Dim nextNumber As Long
+    Dim nextDn As String
+    
+    nextNumber = numberPart + 1
+    nextDn = prefix & Format(nextNumber, String(width, "0"))
+    
+    Do While DNExists(wsRegister, dnCol, nextDn)
+        nextNumber = nextNumber + 1
+        nextDn = prefix & Format(nextNumber, String(width, "0"))
+    Loop
+    
+    GetNextDNValue = nextDn
+End Function
+
+Private Sub ParseDN(ByVal dnValue As String, ByRef prefix As String, ByRef numberPart As Long, ByRef width As Long)
+    Dim i As Long
+    Dim digits As String
+    digits = ""
+    
+    For i = Len(dnValue) To 1 Step -1
+        Dim ch As String
+        ch = Mid(dnValue, i, 1)
+        If ch Like "[0-9]" Then
+            digits = ch & digits
+        Else
+            If digits <> "" Then Exit For
+        End If
+    Next i
+    
+    If digits = "" Then Err.Raise vbObjectError + 206, , "DN# does not contain a numeric sequence."
+    
+    prefix = Left(dnValue, Len(dnValue) - Len(digits))
+    numberPart = CLng(digits)
+    width = Len(digits)
+End Sub
+

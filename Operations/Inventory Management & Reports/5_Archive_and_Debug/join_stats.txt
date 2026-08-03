@@ -1,0 +1,8 @@
+Workshop total: 249
+Sage total: 2816
+Matched directly: 181
+
+Matched Upper: 182
+
+Workshop sample: ['M5X16X1.5 Flat washer', '258032', '258306', 'M5*16 HT HEX SET SCREW ZB', 'M5*45 HT HEX SET SCREW']
+Sage sample: ['.30 Duct', '0.2543PM', '0.3723PM', '0.3741PM', '0.3743PM']

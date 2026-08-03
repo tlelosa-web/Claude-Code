@@ -1,0 +1,29 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "sops-dev-server",
+      "runtimeExecutable": "powershell",
+      "runtimeArgs": ["-NoProfile", "-Command", "Set-Location -LiteralPath 'C:\\Dev\\Operations\\2. SOPS'; & 'venv\\Scripts\\python.exe' 'app.py'"],
+      "port": 5000
+    },
+    {
+      "name": "delivery-note-dev",
+      "runtimeExecutable": "powershell",
+      "runtimeArgs": ["-NoProfile", "-Command", "Set-Location -LiteralPath 'C:\\Dev\\Operations\\7. DELIVERY NOTE\\delivery-note-system'; npx next dev --webpack"],
+      "port": 3000
+    },
+    {
+      "name": "nameplate-backend",
+      "runtimeExecutable": "powershell",
+      "runtimeArgs": ["-NoProfile", "-Command", "Set-Location -LiteralPath 'C:\\Dev\\Operations\\3. Nameplate & Test Sheet\\4_Scripts\\backend'; & 'venv\\Scripts\\python.exe' -m uvicorn main:app --reload"],
+      "port": 8000
+    },
+    {
+      "name": "nameplate-frontend",
+      "runtimeExecutable": "powershell",
+      "runtimeArgs": ["-NoProfile", "-Command", "Set-Location -LiteralPath 'C:\\Dev\\Operations\\3. Nameplate & Test Sheet\\4_Scripts\\frontend'; npm run dev"],
+      "port": 5173
+    }
+  ]
+}

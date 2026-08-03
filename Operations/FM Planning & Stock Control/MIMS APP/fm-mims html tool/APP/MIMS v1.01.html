@@ -1,0 +1,840 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MIMS - Manufacturing & Inventory</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: { purple: '#714B67', teal: '#017e84' },
+                        primary: { 50: '#f0f9ff', 100: '#e0f2fe', 200: '#bae6fd', 300: '#7dd3fc', 400: '#38bdf8', 500: '#0ea5e9', 600: '#0284c7', 700: '#0369a1', 800: '#075985', 900: '#0c4a6e' },
+                        success: { 500: '#10b981' },
+                        warning: { 500: '#f59e0b' },
+                        danger: { 500: '#ef4444' },
+                        dark: { 500: '#1d3557' }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore-compat.js"></script>
+    <style>
+        :root {
+            --primary: #5d3d54; 
+            --accent: #017e84;
+            --success: #28a745;
+            --danger: #dc3545;
+            --warning: #ffc107;
+            --border: #dee2e6;
+            --transition: all 0.2s ease;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
+        body { background-color: #f9fafb; color: #374151; line-height: 1.5; font-size: 14px; }
+        .container { display: flex; min-height: 100vh; }
+        /* Sidebar */
+        .sidebar { width: 240px; background-color: #2f3640; color: #adb5bd; position: fixed; height: 100vh; overflow-y: auto; z-index: 40; }
+        .logo { display: flex; align-items: center; padding: 15px 20px; background-color: #23272b; margin-bottom: 10px; }
+        .logo i { font-size: 24px; margin-right: 10px; color: var(--accent); }
+        .logo h1 { font-size: 18px; font-weight: 700; color: white; letter-spacing: 0.5px; }
+        .nav-links { list-style: none; padding: 0; }
+        .nav-links a { display: flex; align-items: center; padding: 10px 20px; color: #ced4da; text-decoration: none; transition: var(--transition); font-size: 13px; font-weight: 500; }
+        .nav-links a:hover, .nav-links a.active { background: rgba(255,255,255,0.05); color: white; border-left: 3px solid var(--accent); }
+        .nav-links i { margin-right: 12px; width: 20px; text-align: center; font-size: 14px; }
+        /* Main Content */
+        .main-content { flex: 1; margin-left: 240px; width: calc(100% - 240px); background: #fff; }
+        /* Header */
+        .header { display: flex; justify-content: space-between; align-items: center; padding: 12px 25px; border-bottom: 1px solid #e5e7eb; background: white; }
+        .breadcrumb { font-size: 18px; font-weight: 600; color: #1f2937; }
+        /* Control Panel */
+        .control-panel { padding: 15px 25px; background: #f8f9fa; border-bottom: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center; gap: 15px; }
+        .view-switcher button { padding: 6px 10px; border: 1px solid #d1d5db; background: white; color: #4b5563; border-radius: 4px; }
+        .view-switcher button.active { background: #e5e7eb; font-weight: 600; }
+        /* Stats */
+        .stats-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; padding: 25px; }
+        .stat-card { background: white; border: 1px solid #e5e7eb; border-radius: 4px; padding: 15px; display: flex; align-items: center; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+        .stat-icon { width: 45px; height: 45px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 15px; font-size: 18px; }
+        /* Content & Tables */
+        .content-view { padding: 20px 25px; }
+        table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        th { text-align: left; padding: 10px; border-bottom: 2px solid #e5e7eb; color: #4b5563; font-weight: 600; text-transform: uppercase; font-size: 11px; }
+        td { padding: 10px; border-bottom: 1px solid #f3f4f6; color: #374151; }
+        tr:hover { background-color: #f9fafb; }
+        /* Badges */
+        .badge { padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 600; }
+        .badge-success { background: #d1fae5; color: #065f46; }
+        .badge-warning { background: #fef3c7; color: #92400e; }
+        .badge-info { background: #dbeafe; color: #1e40af; }
+        .badge-gray { background: #f3f4f6; color: #4b5563; }
+        .badge-danger { background: #fee2e2; color: #991b1b; }
+        /* Buttons */
+        .btn { padding: 6px 14px; border-radius: 4px; border: none; font-weight: 500; cursor: pointer; transition: var(--transition); display: inline-flex; align-items: center; justify-content: center; font-size: 13px; }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-primary:hover { filter: brightness(1.1); }
+        .btn-secondary { background: white; border: 1px solid #d1d5db; color: #374151; }
+        .btn-secondary:hover { background: #f3f4f6; }
+        /* Forms */
+        .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; }
+        .form-group label { display: block; font-size: 12px; font-weight: 700; color: #374151; margin-bottom: 4px; }
+        .form-group input, .form-group select { width: 100%; padding: 8px 10px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 13px; transition: border 0.2s; }
+        .form-group input:focus, .form-group select:focus { border-color: var(--primary); outline: none; }
+        /* File Upload Box */
+        .upload-box { border: 2px dashed #d1d5db; border-radius: 8px; padding: 40px; text-align: center; transition: all 0.2s; cursor: pointer; background: #f9fafb; }
+        .upload-box:hover { border-color: var(--primary); background: #f0fdfa; }
+        .upload-box i { font-size: 48px; color: #9ca3af; margin-bottom: 10px; }
+        /* Utils */
+        #toast { position: fixed; bottom: 20px; right: 20px; padding: 12px 20px; border-radius: 8px; color: white; font-weight: 500; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 1000; transform: translateY(100px); opacity: 0; transition: transform 0.3s, opacity 0.3s; }
+        #toast.show { transform: translateY(0); opacity: 1; }
+        #toast.success { background-color: #10b981; }
+        #toast.error { background-color: #ef4444; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .modal-content-scroll { max-height: 80vh; overflow-y: auto; }
+        @media (max-width: 992px) {
+            .sidebar { width: 60px; }
+            .sidebar span, .logo h1 { display: none; }
+            .logo { justify-content: center; padding: 15px 0; }
+            .logo i { margin: 0; }
+            .nav-links a { justify-content: center; padding: 15px; }
+            .nav-links i { margin: 0; }
+            .main-content { margin-left: 60px; width: calc(100% - 60px); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="sidebar">
+            <div class="logo">
+                <i class="fas fa-industry"></i>
+                <h1>MIMS</h1>
+            </div>
+            <ul class="nav-links">
+                <li><a href="#" class="active" data-tab="home"><i class="fas fa-tachometer-alt"></i> <span>Dashboard</span></a></li>
+                <li><a href="#" data-tab="inventory"><i class="fas fa-cubes"></i> <span>Inventory</span></a></li>
+                <li><a href="#" data-tab="finished-goods"><i class="fas fa-box"></i> <span>Finished Goods</span></a></li>
+                <li><a href="#" data-tab="production"><i class="fas fa-cogs"></i> <span>Production</span></a></li>
+                <li><a href="#" data-tab="suppliers"><i class="fas fa-truck"></i> <span>Suppliers</span></a></li>
+                <li><a href="#" data-tab="purchase-orders"><i class="fas fa-shopping-basket"></i> <span>Purchase Orders</span></a></li>
+                <li><a href="#" data-tab="customers"><i class="fas fa-users"></i> <span>Customers</span></a></li>
+            </ul>
+        </div>
+        <div class="main-content">
+            <div class="header">
+                <div class="breadcrumb" id="page-title">Dashboard</div>
+                <div class="flex items-center gap-3">
+                    <div id="connection-status" class="text-xs font-mono text-gray-500">...</div>
+                    <select id="currency-select" class="border border-gray-300 rounded px-2 py-1 text-xs bg-gray-50">
+                        <option value="ZAR">ZAR</option>
+                        <option value="USD">USD</option>
+                        <option value="EUR">EUR</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Dashboard -->
+            <div class="tab-content active" id="home-tab">
+                <div class="stats-container">
+                    <div class="stat-card border-l-4 border-l-blue-500">
+                        <div class="stat-icon bg-blue-100 text-blue-600">R</div>
+                        <div><h3 class="text-2xl font-bold" id="metric-raw-value">0.00</h3><p class="text-gray-500 text-xs uppercase">Inventory Value</p></div>
+                    </div>
+                    <div class="stat-card border-l-4 border-l-purple-500">
+                        <div class="stat-icon bg-purple-100 text-purple-600"><i class="fas fa-cogs"></i></div>
+                        <div><h3 class="text-2xl font-bold" id="metric-pending-prod">0</h3><p class="text-gray-500 text-xs uppercase">Pending Production</p></div>
+                    </div>
+                    <div class="stat-card border-l-4 border-l-green-500">
+                        <div class="stat-icon bg-green-100 text-green-600"><i class="fas fa-shopping-cart"></i></div>
+                        <div><h3 class="text-2xl font-bold" id="metric-po-sent">0</h3><p class="text-gray-500 text-xs uppercase">Open POs</p></div>
+                    </div>
+                    <div class="stat-card border-l-4 border-l-red-500">
+                        <div class="stat-icon bg-red-100 text-red-600"><i class="fas fa-exclamation-circle"></i></div>
+                        <div><h3 class="text-2xl font-bold" id="metric-low-stock">0</h3><p class="text-gray-500 text-xs uppercase">Low Stock</p></div>
+                    </div>
+                </div>
+                <div class="content-view">
+                    <div class="flex gap-4">
+                        <div class="flex-1 bg-white p-4 border rounded shadow-sm">
+                            <h4 class="font-bold text-gray-700 mb-3">System Status</h4>
+                            <div class="text-sm text-gray-600">Running in <span id="mode-display" class="font-mono font-bold">...</span> mode.</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Inventory Tab (renamed from Raw Materials) -->
+            <div class="tab-content" id="inventory-tab">
+                <div class="control-panel"><button class="btn btn-primary" onclick="openRawModal()"><i class="fas fa-plus mr-2"></i> Create</button></div>
+                <div class="content-view">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Code</th>
+                                <th>Description</th>
+                                <th>Category</th>
+                                <th>Supplier</th>
+                                <th>Lead Time</th>
+                                <th>Qty</th>
+                                <th>Min Req</th>
+                                <th>Avg Cost</th>
+                                <th>Total Cost</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="rm-list"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Finished Goods -->
+            <div class="tab-content" id="finished-goods-tab">
+                <div class="control-panel"><button class="btn btn-primary" onclick="openFinishedModal()"><i class="fas fa-plus mr-2"></i> Create</button></div>
+                <div class="content-view">
+                    <table><thead><tr><th>Product</th><th>SKU</th><th>Price</th><th>Stock</th><th>Action</th></tr></thead><tbody id="fg-list"></tbody></table>
+                </div>
+            </div>
+
+            <!-- Production -->
+            <div class="tab-content" id="production-tab">
+                <div class="control-panel">
+                    <button class="btn btn-primary" onclick="openProductionModal()"><i class="fas fa-plus mr-2"></i> Create Order</button>
+                </div>
+                <div class="content-view">
+                    <table>
+                        <thead><tr><th>Reference</th><th>Product</th><th>Qty</th><th>Status</th><th>Date</th><th>Actions</th></tr></thead>
+                        <tbody id="production-list-table"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Suppliers -->
+            <div class="tab-content" id="suppliers-tab">
+                <div class="control-panel"><button class="btn btn-primary" onclick="openSupplierModal()"><i class="fas fa-plus mr-2"></i> Create</button></div>
+                <div class="content-view">
+                    <table><thead><tr><th>Name</th><th>Contact</th><th>Phone</th><th>Email</th><th>Action</th></tr></thead><tbody id="sup-list"></tbody></table>
+                </div>
+            </div>
+
+            <!-- Purchase Orders (with Delivery Date) -->
+            <div class="tab-content" id="purchase-orders-tab">
+                <div class="control-panel">
+                    <button class="btn btn-primary" onclick="openPOModal()"><i class="fas fa-plus mr-2"></i> New PO</button>
+                </div>
+                <div class="content-view">
+                    <table>
+                        <thead><tr><th>Reference</th><th>Supplier</th><th>Items</th><th>Status</th><th>Order Date</th><th>Delivery Date</th><th>Action</th></tr></thead>
+                        <tbody id="po-list"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Customers -->
+            <div class="tab-content" id="customers-tab">
+                <div class="control-panel"><button class="btn btn-primary" onclick="openCustomerModal()"><i class="fas fa-plus mr-2"></i> Create</button></div>
+                <div class="content-view">
+                    <table><thead><tr><th>Name</th><th>Contact</th><th>Email</th><th>City</th><th>Action</th></tr></thead><tbody id="cust-list"></tbody></table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modals -->
+    <!-- Inventory Modal (with Lead Time) -->
+    <div id="raw-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded shadow-lg w-full max-w-2xl p-6 modal-content-scroll">
+            <h3 class="text-xl font-bold mb-4 text-gray-700">Inventory Item</h3>
+            <form id="raw-form" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <input type="hidden" id="raw-id">
+                <div class="form-group"><label>Code</label><input type="text" id="raw-code" required></div>
+                <div class="form-group"><label>Description</label><input type="text" id="raw-description" required></div>
+                <div class="form-group"><label>Category</label><input type="text" id="raw-category"></div>
+                <div class="form-group"><label>Lead Time (days)</label><input type="number" id="raw-lead-time" min="0" value="7"></div>
+                <div class="form-group"><label>Supplier (Name)</label><input type="text" id="raw-supplier-name"></div>
+                <div class="form-group"><label>Qty on Hand</label><input type="number" id="raw-qty-on-hand" required></div>
+                <div class="form-group"><label>Min Req</label><input type="number" id="raw-min-threshhold" required></div>
+                <div class="form-group"><label>On Order</label><input type="number" id="raw-on-order"></div>
+                <div class="form-group"><label>Avg Cost</label><input type="number" id="raw-avg-cost" step="0.01"></div>
+                <div class="form-group"><label>Total Cost</label><input type="number" id="raw-total-cost" step="0.01" readonly class="bg-gray-100"></div>
+                <div class="md:col-span-2 flex justify-end gap-2 pt-4 border-t mt-2">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('raw-modal')">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Finished Goods Modal -->
+    <div id="finished-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded shadow-lg w-full max-w-2xl p-6 modal-content-scroll">
+            <h3 class="text-xl font-bold mb-4 text-gray-700">Finished Good</h3>
+            <form id="finished-form" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <input type="hidden" id="finished-id">
+                <div class="md:col-span-2 form-group"><label>Name</label><input type="text" id="finished-name" required></div>
+                <div class="form-group"><label>SKU</label><input type="text" id="finished-sku" required></div>
+                <div class="form-group"><label>Sale Price</label><input type="number" id="finished-price" step="0.01" required></div>
+                <div class="md:col-span-2">
+                    <label class="text-xs font-bold text-gray-500 uppercase border-b block mb-2">Bill of Materials</label>
+                    <div id="bom-items" class="space-y-2"></div>
+                    <button type="button" class="text-sm text-blue-600 mt-1 hover:underline" onclick="addBOMItem()">+ Add Material</button>
+                </div>
+                <div class="md:col-span-2 flex justify-end gap-2 pt-4 border-t mt-2">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('finished-modal')">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Production Modal -->
+    <div id="production-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded shadow-lg w-full max-w-lg p-6">
+            <h3 class="text-xl font-bold mb-4 text-gray-700">Production Order</h3>
+            <form id="production-form" class="space-y-4">
+                <input type="hidden" id="production-id">
+                <div class="form-group"><label>Product</label><select id="production-product" required></select></div>
+                <div class="form-group"><label>Quantity</label><input type="number" id="production-qty" min="1" required></div>
+                <div class="flex justify-end gap-2 pt-4 border-t">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('production-modal')">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Create</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- PO Modal -->
+    <div id="po-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded shadow-lg w-full max-w-2xl p-6 modal-content-scroll">
+            <h3 class="text-xl font-bold mb-4 text-gray-700">Purchase Order</h3>
+            <form id="po-form" class="space-y-4">
+                <input type="hidden" id="po-id">
+                <div class="form-group"><label>Supplier</label><select id="po-supplier" required></select></div>
+                <div>
+                    <label class="text-xs font-bold text-gray-500 uppercase border-b block mb-2">Items</label>
+                    <div id="po-items" class="space-y-2"></div>
+                    <button type="button" class="text-sm text-blue-600 mt-1 hover:underline" onclick="addPOItem()">+ Add Item</button>
+                </div>
+                <div class="flex justify-end gap-2 pt-4 border-t">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('po-modal')">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Send Order</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Supplier/Customer Modals -->
+    <div id="supplier-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded shadow-lg w-full max-w-2xl p-6">
+            <h3 class="text-xl font-bold mb-4 text-gray-700">Supplier</h3>
+            <form id="supplier-form" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <input type="hidden" id="supplier-id">
+                <div class="md:col-span-2 form-group"><label>Name</label><input type="text" id="supplier-name" required></div>
+                <div class="form-group"><label>Contact</label><input type="text" id="supplier-contact"></div>
+                <div class="form-group"><label>Phone</label><input type="text" id="supplier-phone"></div>
+                <div class="md:col-span-2 form-group"><label>Email</label><input type="email" id="supplier-email"></div>
+                <div class="md:col-span-2 flex justify-end gap-2 pt-4 border-t">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('supplier-modal')">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="customer-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded shadow-lg w-full max-w-2xl p-6">
+            <h3 class="text-xl font-bold mb-4 text-gray-700">Customer</h3>
+            <form id="customer-form" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <input type="hidden" id="customer-id">
+                <div class="md:col-span-2 form-group"><label>Name</label><input type="text" id="customer-name" required></div>
+                <div class="form-group"><label>Contact</label><input type="text" id="customer-contact"></div>
+                <div class="form-group"><label>Email</label><input type="email" id="customer-email"></div>
+                <div class="md:col-span-2 form-group"><label>City</label><input type="text" id="customer-city"></div>
+                <div class="md:col-span-2 flex justify-end gap-2 pt-4 border-t">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('customer-modal')">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="toast" class="hidden"></div>
+
+    <script>
+        // --- CORE STATE ---
+        let appMode = 'DETECTING';
+        let db = null, auth = null, currentUser = null;
+        let currentCurrency = 'ZAR';
+        const CURRENCY_SYMBOLS = { 'ZAR': 'R', 'USD': '$', 'EUR': '€' };
+        // Data Stores
+        let rawMaterials = [], finishedGoods = [], finishedInventory = [];
+        let productionOrders = [], purchaseOrders = [];
+        let suppliers = [], customers = [];
+
+        // --- UTILS ---
+        const showToast = (msg, isErr) => {
+            const t = document.getElementById('toast');
+            t.textContent = msg;
+            t.className = `px-4 py-2 rounded shadow-lg z-50 ${isErr ? 'bg-danger-500' : 'bg-success-500'} text-white show`;
+            setTimeout(() => t.classList.remove('show'), 3000);
+        };
+        const formatCurrency = (val) => `${CURRENCY_SYMBOLS[currentCurrency]}${parseFloat(val || 0).toFixed(2)}`;
+        const uuid = () => (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : 'id-' + Date.now() + Math.random();
+
+        // --- DATABASE ADAPTER (enhanced from newer file) ---
+        function createLocalDB() {
+            let storage = JSON.parse(localStorage.getItem('mims_db_final') || '{}');
+            const save = () => localStorage.setItem('mims_db_final', JSON.stringify(storage));
+            const listeners = {};
+            return {
+                collection: (path) => {
+                    const col = path.split('/').pop();
+                    return {
+                        onSnapshot: (cb) => {
+                            if (!listeners[col]) listeners[col] = [];
+                            listeners[col].push(cb);
+                            cb({ docs: (storage[col] || []).map(d => ({ id: d.id,  () => d })) });
+                            return () => { };
+                        },
+                        doc: (id) => {
+                            const docId = id || uuid();
+                            return {
+                                set: async (d, opts) => {
+                                    if (!storage[col]) storage[col] = [];
+                                    const idx = storage[col].findIndex(x => x.id === docId);
+                                    const final = { id: docId, ...d };
+                                    if (idx >= 0) {
+                                        if (opts?.merge) Object.assign(storage[col][idx], d);
+                                        else storage[col][idx] = final;
+                                    } else {
+                                        storage[col].push(final);
+                                    }
+                                    save();
+                                    (listeners[col] || []).forEach(l => l({ docs: (storage[col] || []).map(x => ({ id: x.id, data: () => x })) }));
+                                },
+                                update: async (d) => {
+                                    if (!storage[col]) return;
+                                    const item = storage[col].find(x => x.id === docId);
+                                    if (item) {
+                                        Object.assign(item, d);
+                                        save();
+                                        (listeners[col] || []).forEach(l => l({ docs: (storage[col] || []).map(x => ({ id: x.id,  () => x })) }));
+                                    }
+                                }
+                            };
+                        }
+                    };
+                },
+                batch: () => ({
+                    update: (ref, data) => ref.update(data),
+                    set: (ref, data, opts) => ref.set(data, opts),
+                    commit: async () => true
+                })
+            };
+        }
+
+        function getCol(name) {
+            if (appMode === 'LOCAL') return db.collection(name);
+            return db.collection(`artifacts/${typeof __app_id !== 'undefined' ? __app_id : 'def'}/users/${currentUser.uid}/${name}`);
+        }
+
+        // --- INIT ---
+        window.addEventListener('DOMContentLoaded', async () => {
+            try {
+                if (typeof __firebase_config !== 'undefined') {
+                    appMode = 'FIREBASE';
+                    document.getElementById('mode-display').textContent = 'CLOUD';
+                    document.getElementById('connection-status').textContent = 'Online';
+                    firebase.initializeApp(JSON.parse(__firebase_config));
+                    auth = firebase.auth();
+                    db = firebase.firestore();
+                    if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) await auth.signInWithCustomToken(__initial_auth_token);
+                    else await auth.signInAnonymously();
+                    currentUser = auth.currentUser;
+                } else {
+                    appMode = 'LOCAL';
+                    document.getElementById('mode-display').textContent = 'LOCAL';
+                    document.getElementById('connection-status').textContent = 'Local';
+                    db = createLocalDB();
+                    currentUser = { uid: 'local' };
+                }
+                setupListeners();
+            } catch (e) {
+                console.error(e);
+                showToast("Init Failed", true);
+            }
+        });
+
+        function setupListeners() {
+            const sub = (col, arrName, renderFn) => getCol(col).onSnapshot(s => {
+                window[arrName] = s.docs.map(d => ({ id: d.id, ...d.data() }));
+                if (renderFn) renderFn();
+                renderDashboard();
+            });
+            sub('raw_materials', 'rawMaterials', renderRaw);
+            sub('finished_goods', 'finishedGoods', renderFG);
+            sub('finished_inventory', 'finishedInventory', renderFG);
+            sub('production_orders', 'productionOrders', () => { renderProd(); renderPO(); });
+            sub('purchase_orders', 'purchaseOrders', renderPO); // legacy — merged into prod_orders.type=PURCHASE in newer logic
+            sub('suppliers', 'suppliers', renderSup);
+            sub('customers', 'customers', renderCust);
+        }
+
+        // --- RENDERERS (adjusted for UI & Lead Time) ---
+        function renderDashboard() {
+            const totalRaw = rawMaterials.reduce((s, m) => s + ((m.qtyOnHand || 0) * (m.avgCost || 0)), 0);
+            document.getElementById('metric-raw-value').textContent = formatCurrency(totalRaw);
+            document.getElementById('metric-pending-prod').textContent = productionOrders.filter(o => o.status !== 'Complete' && o.status !== 'Cancelled').length;
+            document.getElementById('metric-po-sent').textContent = purchaseOrders.filter(o => o.status === 'Ordered').length;
+            document.getElementById('metric-low-stock').textContent = rawMaterials.filter(m => (m.qtyOnHand || 0) <= (m.minThreshhold || 0)).length;
+        }
+
+        function renderRaw() {
+            const el = document.getElementById('rm-list');
+            el.innerHTML = rawMaterials.map(r => {
+                const total = r.totalCost || ((r.qtyOnHand || 0) * (r.avgCost || 0));
+                return `
+                <tr>
+                    <td>${r.code || ''}</td>
+                    <td>${r.description || ''}</td>
+                    <td>${r.category || ''}</td>
+                    <td>${r.supplierName || r.supplier || '-'}</td>
+                    <td>${r.leadTimeDays || 0} days</td>
+                    <td>${r.qtyOnHand || 0}</td>
+                    <td>${r.minThreshhold || 0}</td>
+                    <td>${formatCurrency(r.avgCost)}</td>
+                    <td>${formatCurrency(total)}</td>
+                    <td><button class="text-blue-600" onclick="openRawModal('${r.id}')"><i class="fas fa-edit"></i></button></td>
+                </tr>`;
+            }).join('');
+            updateSelects();
+        }
+
+        function renderFG() {
+            const el = document.getElementById('fg-list');
+            el.innerHTML = finishedGoods.map(f => {
+                const inv = finishedInventory.find(i => i.productId === f.id);
+                return `<tr>
+                    <td>${f.name}</td><td>${f.productSku}</td><td>${formatCurrency(f.salePrice)}</td><td>${inv?.stockQuantity || 0}</td>
+                    <td><button class="text-blue-600" onclick="openFinishedModal('${f.id}')"><i class="fas fa-edit"></i></button></td>
+                </tr>`;
+            }).join('');
+        }
+
+        function renderSup() {
+            document.getElementById('sup-list').innerHTML = suppliers.map(s => `
+                <tr><td>${s.name}</td><td>${s.contactName || ''}</td><td>${s.phone || ''}</td><td>${s.email || ''}</td>
+                <td><button class="text-blue-600" onclick="openSupplierModal('${s.id}')"><i class="fas fa-edit"></i></button></td></tr>
+            `).join('');
+            updateSelects();
+        }
+
+        function renderCust() {
+            document.getElementById('cust-list').innerHTML = customers.map(c => `
+                <tr><td>${c.name}</td><td>${c.contactName || ''}</td><td>${c.email || ''}</td><td>${c.city || ''}</td>
+                <td><button class="text-blue-600" onclick="openCustomerModal('${c.id}')"><i class="fas fa-edit"></i></button></td></tr>
+            `).join('');
+        }
+
+        function renderProd() {
+            document.getElementById('production-list-table').innerHTML = productionOrders.map(p => {
+                const fg = finishedGoods.find(f => f.id === p.productId);
+                let badge = 'badge-gray';
+                if (p.status === 'Complete') badge = 'badge-success';
+                if (p.status === 'Pending') badge = 'badge-warning';
+                if (p.status === 'Ready') badge = 'badge-info';
+                return `<tr><td>MO-${p.id.substring(0, 6)}</td><td>${fg?.name || 'Unknown'}</td><td>${p.quantity}</td>
+                <td><span class="badge ${badge}">${p.status}</span></td>
+                <td>${new Date(p.createdAt?.seconds * 1000 || Date.now()).toLocaleDateString()}</td>
+                <td>${p.status !== 'Complete' ? `<button class="text-green-600 mr-2" onclick="completeProd('${p.id}')"><i class="fas fa-check"></i></button><button class="text-red-600" onclick="cancelProd('${p.id}')"><i class="fas fa-times"></i></button>` : ''}</td></tr>`;
+            }).join('');
+        }
+
+        function renderPO() {
+            const el = document.getElementById('po-list');
+            el.innerHTML = purchaseOrders.map(p => {
+                const sup = suppliers.find(s => s.id === p.supplierId);
+                // Calculate delivery date: order date + lead time of first item (or avg)
+                let deliveryDate = '—';
+                if (p.items && p.items.length > 0) {
+                    const item = p.items[0];
+                    const mat = rawMaterials.find(m => m.id === item.materialId);
+                    const lead = mat?.leadTimeDays || 7;
+                    const orderDate = p.createdAt?.seconds ? new Date(p.createdAt.seconds * 1000) : new Date();
+                    const delivery = new Date(orderDate.getTime() + lead * 24 * 60 * 60 * 1000);
+                    deliveryDate = delivery.toLocaleDateString();
+                }
+
+                return `<tr>
+                    <td>PO-${p.id.substring(0, 6)}</td>
+                    <td>${sup?.name || 'Unknown'}</td>
+                    <td>${p.items?.length || 0} items</td>
+                    <td><span class="badge ${p.status === 'Received' ? 'badge-success' : 'badge-info'}">${p.status}</span></td>
+                    <td>${new Date(p.createdAt?.seconds * 1000 || Date.now()).toLocaleDateString()}</td>
+                    <td>${deliveryDate}</td>
+                    <td>${p.status === 'Ordered' ? `<button class="text-green-600 mr-2" onclick="receivePO('${p.id}')"><i class="fas fa-box-open"></i></button>` : ''}</td>
+                </tr>`;
+            }).join('');
+        }
+
+        function updateSelects() {
+            const html = '<option value="">None</option>' + suppliers.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+            ['po-supplier'].forEach(id => {
+                if (document.getElementById(id)) document.getElementById(id).innerHTML = html;
+            });
+        }
+
+        // --- ACTIONS ---
+        function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+
+        // Inventory (Raw Materials)
+        function openRawModal(id) {
+            document.getElementById('raw-form').reset();
+            document.getElementById('raw-id').value = id || '';
+            if (id) {
+                const m = rawMaterials.find(x => x.id === id);
+                document.getElementById('raw-code').value = m.code || '';
+                document.getElementById('raw-description').value = m.description || '';
+                document.getElementById('raw-category').value = m.category || '';
+                document.getElementById('raw-lead-time').value = m.leadTimeDays || 7;
+                document.getElementById('raw-supplier-name').value = m.supplierName || m.supplier || '';
+                document.getElementById('raw-qty-on-hand').value = m.qtyOnHand || 0;
+                document.getElementById('raw-min-threshhold').value = m.minThreshhold || 0;
+                document.getElementById('raw-on-order').value = m.onOrder || 0;
+                document.getElementById('raw-avg-cost').value = m.avgCost || 0;
+                document.getElementById('raw-total-cost').value = m.totalCost || ((m.qtyOnHand || 0) * (m.avgCost || 0));
+            }
+            document.getElementById('raw-modal').classList.remove('hidden');
+        }
+
+        document.getElementById('raw-form').onsubmit = async (e) => {
+            e.preventDefault();
+            const id = document.getElementById('raw-id').value;
+            const qty = parseFloat(document.getElementById('raw-qty-on-hand').value) || 0;
+            const avg = parseFloat(document.getElementById('raw-avg-cost').value) || 0;
+            const lead = parseInt(document.getElementById('raw-lead-time').value) || 0;
+            const data = {
+                code: document.getElementById('raw-code').value,
+                description: document.getElementById('raw-description').value,
+                category: document.getElementById('raw-category').value,
+                leadTimeDays: lead,
+                supplierName: document.getElementById('raw-supplier-name').value,
+                qtyOnHand: qty,
+                minThreshhold: parseFloat(document.getElementById('raw-min-threshhold').value) || 0,
+                onOrder: parseFloat(document.getElementById('raw-on-order').value) || 0,
+                avgCost: avg,
+                totalCost: qty * avg
+            };
+            try {
+                if (id) await getCol('raw_materials').doc(id).update(data);
+                else await getCol('raw_materials').doc().set(data);
+                closeModal('raw-modal');
+                showToast('Saved');
+                renderRaw();
+            } catch (err) {
+                console.error(err);
+                showToast('Save Failed', true);
+            }
+        };
+
+        // Finished Goods
+        function openFinishedModal(id) {
+            document.getElementById('finished-form').reset();
+            document.getElementById('finished-id').value = id || '';
+            document.getElementById('bom-items').innerHTML = '';
+            if (id) {
+                const p = finishedGoods.find(x => x.id === id);
+                document.getElementById('finished-name').value = p.name;
+                document.getElementById('finished-sku').value = p.productSku;
+                document.getElementById('finished-price').value = p.salePrice;
+                (p.bom || []).forEach(i => addBOMItem(i.materialId, i.quantity));
+            } else {
+                addBOMItem();
+            }
+            document.getElementById('finished-modal').classList.remove('hidden');
+        }
+
+        function addBOMItem(matId, qty) {
+            const div = document.createElement('div');
+            div.className = 'flex gap-2';
+            div.innerHTML = `<select class="bom-mat border rounded p-1 flex-1">${rawMaterials.map(m => `<option value="${m.id}" ${m.id === matId ? 'selected' : ''}>${m.description}</option>`).join('')}</select>
+            <input type="number" class="bom-qty border rounded p-1 w-20" value="${qty || 1}"><button type="button" onclick="this.parentElement.remove()" class="text-red-500">x</button>`;
+            document.getElementById('bom-items').appendChild(div);
+        }
+
+        document.getElementById('finished-form').onsubmit = async (e) => {
+            e.preventDefault();
+            const id = document.getElementById('finished-id').value;
+            const bom = Array.from(document.querySelectorAll('#bom-items > div')).map(d => ({
+                materialId: d.querySelector('.bom-mat').value,
+                quantity: parseFloat(d.querySelector('.bom-qty').value)
+            }));
+            const data = {
+                name: document.getElementById('finished-name').value,
+                productSku: document.getElementById('finished-sku').value,
+                salePrice: parseFloat(document.getElementById('finished-price').value),
+                bom
+            };
+            const ref = id ? getCol('finished_goods').doc(id) : getCol('finished_goods').doc();
+            await (id ? ref.update(data) : ref.set(data));
+            if (!id) getCol('finished_inventory').doc(ref.id || ref.path.split('/').pop()).set({ productId: ref.id, stockQuantity: 0 });
+            closeModal('finished-modal'); showToast('Saved');
+        };
+
+        // Production
+        function openProductionModal() {
+            document.getElementById('production-form').reset();
+            document.getElementById('production-product').innerHTML = '<option value="">Select...</option>' + finishedGoods.map(f => `<option value="${f.id}">${f.name}</option>`);
+            document.getElementById('production-modal').classList.remove('hidden');
+        }
+
+        document.getElementById('production-form').onsubmit = async (e) => {
+            e.preventDefault();
+            const pid = document.getElementById('production-product').value;
+            const qty = parseFloat(document.getElementById('production-qty').value);
+            const fg = finishedGoods.find(f => f.id === pid);
+            const feasible = (fg.bom || []).every(b => {
+                const rm = rawMaterials.find(r => r.id === b.materialId);
+                return (rm?.qtyOnHand || 0) >= (b.quantity * qty);
+            });
+            await getCol('production_orders').doc().set({
+                productId: pid,
+                quantity: qty,
+                status: feasible ? 'Ready' : 'Pending',
+                createdAt: { seconds: Date.now() / 1000 }
+            });
+            closeModal('production-modal'); showToast(feasible ? 'Order Ready' : 'Order Pending (Low Stock)');
+        };
+
+        async function completeProd(id) {
+            const p = productionOrders.find(x => x.id === id);
+            const fg = finishedGoods.find(f => f.id === p.productId);
+            const batch = db.batch();
+            (fg.bom || []).forEach(b => {
+                const rm = rawMaterials.find(r => r.id === b.materialId);
+                batch.update(getCol('raw_materials').doc(b.materialId), { qtyOnHand: (rm.qtyOnHand || 0) - (b.quantity * p.quantity) });
+            });
+            const inv = finishedInventory.find(i => i.productId === p.productId);
+            const invRef = getCol('finished_inventory').doc(p.productId);
+            batch.set(invRef, { productId: p.productId, stockQuantity: (inv?.stockQuantity || 0) + p.quantity }, { merge: true });
+            batch.update(getCol('production_orders').doc(id), { status: 'Complete' });
+            await batch.commit();
+            showToast('Production Complete');
+        }
+
+        async function cancelProd(id) {
+            if (confirm('Cancel this order?')) await getCol('production_orders').doc(id).update({ status: 'Cancelled' });
+        }
+
+        // PO
+        function openPOModal() {
+            document.getElementById('po-form').reset();
+            document.getElementById('po-items').innerHTML = '';
+            updateSelects();
+            addPOItem();
+            document.getElementById('po-modal').classList.remove('hidden');
+        }
+
+        function addPOItem() {
+            const div = document.createElement('div');
+            div.className = 'flex gap-2';
+            div.innerHTML = `<select class="po-mat border rounded p-1 flex-1">${rawMaterials.map(m => `<option value="${m.id}">${m.description}</option>`).join('')}</select>
+            <input type="number" class="po-qty border rounded p-1 w-20" value="1"><button type="button" onclick="this.parentElement.remove()" class="text-red-500">x</button>`;
+            document.getElementById('po-items').appendChild(div);
+        }
+
+        document.getElementById('po-form').onsubmit = async (e) => {
+            e.preventDefault();
+            const items = Array.from(document.querySelectorAll('#po-items > div')).map(d => ({
+                materialId: d.querySelector('.po-mat').value,
+                quantityOrdered: parseFloat(d.querySelector('.po-qty').value)
+            }));
+            const data = {
+                type: 'PURCHASE',
+                supplierId: document.getElementById('po-supplier').value,
+                items,
+                status: 'Ordered',
+                createdAt: { seconds: Date.now() / 1000 }
+            };
+            await getCol('production_orders').doc().set(data); // Use unified collection
+            closeModal('po-modal'); showToast('PO Sent');
+        };
+
+        async function receivePO(id) {
+            const po = purchaseOrders.find(p => p.id === id);
+            const batch = db.batch();
+            po.items.forEach(i => {
+                const rm = rawMaterials.find(r => r.id === i.materialId);
+                batch.update(getCol('raw_materials').doc(i.materialId), { qtyOnHand: (rm.qtyOnHand || 0) + i.quantityOrdered });
+            });
+            batch.update(getCol('production_orders').doc(id), { status: 'Received' });
+            await batch.commit();
+            showToast('Goods Received');
+        }
+
+        // Supplier/Customer
+        function openSupplierModal(id) {
+            document.getElementById('supplier-form').reset();
+            document.getElementById('supplier-id').value = id || '';
+            if (id) {
+                const s = suppliers.find(x => x.id === id);
+                document.getElementById('supplier-name').value = s.name;
+                document.getElementById('supplier-contact').value = s.contactName || '';
+                document.getElementById('supplier-phone').value = s.phone || '';
+                document.getElementById('supplier-email').value = s.email || '';
+            }
+            document.getElementById('supplier-modal').classList.remove('hidden');
+        }
+
+        document.getElementById('supplier-form').onsubmit = async (e) => {
+            e.preventDefault();
+            const data = {
+                name: document.getElementById('supplier-name').value,
+                contactName: document.getElementById('supplier-contact').value,
+                phone: document.getElementById('supplier-phone').value,
+                email: document.getElementById('supplier-email').value
+            };
+            await getCol('suppliers').doc().set(data);
+            closeModal('supplier-modal'); showToast('Saved');
+        };
+
+        function openCustomerModal(id) {
+            document.getElementById('customer-form').reset();
+            document.getElementById('customer-id').value = id || '';
+            document.getElementById('customer-modal').classList.remove('hidden');
+        }
+
+        document.getElementById('customer-form').onsubmit = async (e) => {
+            e.preventDefault();
+            const data = {
+                name: document.getElementById('customer-name').value,
+                contactName: document.getElementById('customer-contact').value,
+                email: document.getElementById('customer-email').value,
+                city: document.getElementById('customer-city').value
+            };
+            await getCol('customers').doc().set(data);
+            closeModal('customer-modal'); showToast('Saved');
+        };
+
+        // Nav
+        document.querySelectorAll('.nav-links a').forEach(l => l.onclick = (e) => {
+            e.preventDefault();
+            document.querySelectorAll('.nav-links a').forEach(x => x.classList.remove('active'));
+            e.currentTarget.classList.add('active');
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            document.getElementById(e.currentTarget.dataset.tab + '-tab').classList.add('active');
+            document.getElementById('page-title').textContent = e.currentTarget.innerText.trim();
+        });
+
+        // Currency
+        document.getElementById('currency-select').onchange = (e) => {
+            currentCurrency = e.target.value;
+            renderDashboard(); renderRaw(); renderFG();
+        };
+    </script>
+</body>
+</html>

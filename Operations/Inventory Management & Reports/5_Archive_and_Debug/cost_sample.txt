@@ -1,0 +1,32 @@
+   Stock Code        Description    Supplier Category  Cost Price 
+0     K11MD75   SCL-K11 MD-7.5kW  Effepizeta   K11 MD    70724.745
+1     K11MD11    SCL-K11 MD-11kW  Effepizeta   K11 MD    77641.200
+2     K11MS75   SCL-K11 MS-7.5kW  Effepizeta   K11 MS    67530.645
+3     K11MS92   SCL-K11 MS-9.2kW  Effepizeta   K11 MS    69668.235
+4     K11MS11    SCL-K11 MS-11kW  Effepizeta   K11 MS    70356.195
+5     K11MS15    SCL-K11 MS-15kW  Effepizeta   K11 MS    72420.075
+6    K11MS185  SCL-K11 MS-18.5kW  Effepizeta   K11 MS    80737.020
+7     K11TD15    SCL-K11 TD-15kW  Effepizeta   K11 TD   114852.465
+8    K11TD185  SCL-K11 TD-18.5kW  Effepizeta   K11 TD   132616.575
+9     K11TS15    SCL-K11 TS-15kW  Effepizeta   K11 TS   114520.770
+10   K11TS185  SCL-K11 TS-18.5kW  Effepizeta   K11 TS   133083.405
+11    K11TS22    SCL-K11 TS-22kW  Effepizeta   K11 TS   133881.930
+12    K12MD11    SCL-K12 MD-11kW  Effepizeta   K12 MD    80958.150
+13    K12MD15    SCL-K12 MD-15kW  Effepizeta   K12 MD    86265.270
+14    K12MS92   SCL-K12 MS-9.2kW  Effepizeta   K12 MS    71523.270
+
+Total rows: 514
+Columns: ['Stock Code', 'Description', 'Supplier', 'Category', 'Cost Price ']
+Dtypes:
+Stock Code      object
+Description     object
+Supplier        object
+Category        object
+Cost Price     float64
+
+Null counts:
+Stock Code     33
+Description    13
+Supplier       13
+Category       17
+Cost Price     13

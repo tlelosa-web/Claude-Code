@@ -1,0 +1,922 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MIMS - Manufacturing & Inventory</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: { 50: '#f0f9ff', 100: '#e0f2fe', 200: '#bae6fd', 300: '#7dd3fc', 400: '#38bdf8', 500: '#0ea5e9', 600: '#0284c7', 700: '#0369a1', 800: '#075985', 900: '#0c4a6e' },
+                        success: { 500: '#10b981' },
+                        warning: { 500: '#f59e0b' },
+                        danger: { 500: '#ef4444' },
+                        dark: { 500: '#1d3557' }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore-compat.js"></script>
+    <style>
+        :root {
+            --primary: #4361ee;
+            --secondary: #3f37c9;
+            --success: #4cc9f0;
+            --danger: #f72585;
+            --warning: #f8961e;
+            --dark: #1d3557;
+            --light: #f8f9fa;
+            --gray: #6c757d;
+            --light-gray: #e9ecef;
+            --border: #dee2e6;
+            --shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            --transition: all 0.3s ease;
+        }
+        
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
+        body { background-color: #f5f7fb; color: #333; line-height: 1.6; }
+        .container { display: flex; min-height: 100vh; }
+        
+        /* Sidebar */
+        .sidebar { width: 260px; background: linear-gradient(180deg, var(--dark), var(--secondary)); color: white; padding: 20px 0; position: fixed; height: 100vh; overflow-y: auto; z-index: 40; }
+        .logo { display: flex; align-items: center; padding: 0 20px 20px; border-bottom: 1px solid rgba(255,255,255,0.1); margin-bottom: 20px; }
+        .logo i { font-size: 28px; margin-right: 12px; color: var(--success); }
+        .logo h1 { font-size: 22px; font-weight: 600; }
+        .nav-links { list-style: none; padding: 0 10px; }
+        .nav-links a { display: flex; align-items: center; padding: 12px 20px; color: rgba(255,255,255,0.85); text-decoration: none; border-radius: 8px; transition: var(--transition); margin-bottom: 5px; }
+        .nav-links a:hover, .nav-links a.active { background: rgba(255,255,255,0.1); color: white; }
+        .nav-links i { margin-right: 12px; font-size: 18px; width: 24px; text-align: center; }
+        
+        /* Main Content */
+        .main-content { flex: 1; margin-left: 260px; padding: 20px; width: calc(100% - 260px); }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; padding-bottom: 15px; border-bottom: 1px solid var(--border); }
+        .header h2 { color: var(--dark); font-size: 24px; font-weight: 600; }
+        
+        /* Stats */
+        .stats-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px; margin-bottom: 30px; }
+        .stat-card { background: white; border-radius: 12px; padding: 20px; box-shadow: var(--shadow); display: flex; align-items: center; }
+        .stat-icon { width: 60px; height: 60px; border-radius: 12px; display: flex; align-items: center; justify-content: center; margin-right: 15px; font-size: 24px; font-weight: bold; }
+        .stat-info h3 { font-size: 28px; margin-bottom: 5px; color: var(--dark); }
+        .stat-info p { color: var(--gray); font-size: 14px; }
+        
+        /* Content & Tables */
+        .content-section { background: white; border-radius: 12px; padding: 25px; margin-bottom: 30px; box-shadow: var(--shadow); overflow-x: auto; }
+        .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px; }
+        .section-header h3 { font-size: 20px; color: var(--dark); }
+        table { width: 100%; border-collapse: collapse; min-width: 800px; }
+        th, td { padding: 14px 15px; text-align: left; border-bottom: 1px solid var(--border); }
+        th { background-color: var(--light-gray); font-weight: 600; color: var(--dark); }
+        tr:hover { background-color: rgba(67, 97, 238, 0.03); }
+        
+        /* Buttons */
+        .btn { padding: 8px 16px; border-radius: 6px; border: none; font-weight: 600; cursor: pointer; transition: var(--transition); display: inline-flex; align-items: center; justify-content: center; }
+        .btn i { margin-right: 8px; }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-primary:hover { background: var(--secondary); }
+        .btn-outline { background: transparent; border: 1px solid var(--primary); color: var(--primary); }
+        .btn-outline:hover { background: rgba(67, 97, 238, 0.1); }
+        .btn-success { background: var(--success); color: white; }
+        .btn-success:hover { background: #3ab0d0; }
+        
+        /* Status Badges */
+        .status { padding: 5px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; white-space: nowrap; }
+        .status.in-stock { background: rgba(76, 201, 240, 0.2); color: #0a9396; }
+        .status.low-stock { background: rgba(248, 150, 30, 0.2); color: #e07a5f; }
+        .status.out-of-stock { background: rgba(247, 37, 133, 0.2); color: #d62828; }
+        .status.pending { background: rgba(255, 165, 0, 0.2); color: #ff9f1c; }
+        .status.completed { background: rgba(46, 204, 113, 0.2); color: #27ae60; }
+        .status.ordered { background: rgba(67, 97, 238, 0.2); color: var(--primary); }
+        .status.received { background: rgba(16, 185, 129, 0.2); color: var(--success); }
+        .status.cancelled { background: rgba(239, 68, 68, 0.2); color: var(--danger); }
+
+        /* Forms */
+        .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 16px; }
+        .currency-symbol { font-weight: bold; color: var(--primary); }
+        input, select { width: 100%; }
+        
+        /* Utils */
+        #toast { position: fixed; bottom: 20px; right: 20px; padding: 12px 20px; border-radius: 8px; color: white; font-weight: 500; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 1000; transform: translateY(100px); opacity: 0; transition: transform 0.3s, opacity 0.3s; }
+        #toast.show { transform: translateY(0); opacity: 1; }
+        #toast.success { background-color: #10b981; }
+        #toast.error { background-color: #ef4444; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .modal-content-scroll { max-height: 80vh; overflow-y: auto; }
+        
+        @media (max-width: 992px) {
+            .sidebar { width: 60px; }
+            .sidebar span, .sidebar h1 { display: none; }
+            .logo { justify-content: center; padding-bottom: 20px; }
+            .logo i { margin: 0; }
+            .nav-links a { justify-content: center; padding: 15px; }
+            .nav-links i { margin: 0; }
+            .main-content { margin-left: 60px; width: calc(100% - 60px); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="sidebar">
+            <div class="logo">
+                <i class="fas fa-industry"></i>
+                <h1>MIMS</h1>
+            </div>
+            <ul class="nav-links">
+                <li><a href="#" class="active" data-tab="home"><i class="fas fa-home"></i> <span>Home</span></a></li>
+                <li><a href="#" data-tab="raw-materials"><i class="fas fa-cubes"></i> <span>Raw Materials</span></a></li>
+                <li><a href="#" data-tab="finished-goods"><i class="fas fa-box-open"></i> <span>Finished Goods</span></a></li>
+                <li><a href="#" data-tab="production"><i class="fas fa-tasks"></i> <span>Production</span></a></li>
+                <li><a href="#" data-tab="suppliers"><i class="fas fa-truck"></i> <span>Suppliers</span></a></li>
+                <li><a href="#" data-tab="customers"><i class="fas fa-users"></i> <span>Customers</span></a></li>
+            </ul>
+        </div>
+        
+        <div class="main-content">
+            <div class="header">
+                <h2 id="page-title">Home</h2>
+                <div class="flex items-center gap-4">
+                    <div id="connection-status" class="text-sm px-3 py-1 rounded-full bg-gray-200 text-gray-600">Checking...</div>
+                </div>
+            </div>
+            
+            <div class="mb-5 flex items-center gap-4">
+                <label class="font-semibold">Currency:</label>
+                <select id="currency-select" class="border rounded px-2 py-1 w-32">
+                    <option value="ZAR">ZAR (R)</option>
+                    <option value="USD">USD ($)</option>
+                    <option value="EUR">EUR (€)</option>
+                    <option value="GBP">GBP (£)</option>
+                </select>
+            </div>
+            
+            <!-- Home Tab -->
+            <div class="tab-content active" id="home-tab">
+                <div class="stats-container">
+                    <div class="stat-card">
+                        <div class="stat-icon text-primary-600 bg-blue-100">R</div>
+                        <div class="stat-info"><h3 id="metric-raw-value">R0.00</h3><p>Raw Material Value</p></div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon text-danger-500 bg-red-100"><i class="fas fa-exclamation-triangle"></i></div>
+                        <div class="stat-info"><h3 id="metric-pending-prod">0</h3><p>Pending Production</p></div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon text-success-500 bg-green-100"><i class="fas fa-file-invoice"></i></div>
+                        <div class="stat-info"><h3 id="metric-po-sent">0</h3><p>PO Sent</p></div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon text-warning-500 bg-yellow-100"><i class="fas fa-bell"></i></div>
+                        <div class="stat-info"><h3 id="metric-low-stock">0</h3><p>Low Stock Alerts</p></div>
+                    </div>
+                </div>
+                
+                <div class="content-section">
+                    <div class="section-header"><h3>System Status</h3></div>
+                    <p class="text-gray-600" id="system-message">Welcome to MIMS. Select a tab to begin managing your inventory.</p>
+                </div>
+            </div>
+            
+            <!-- Raw Materials Tab -->
+            <div class="tab-content" id="raw-materials-tab">
+                <div class="content-section">
+                    <div class="section-header">
+                        <h3>Raw Materials</h3>
+                        <button class="btn btn-primary" onclick="openRawModal()"><i class="fas fa-plus"></i> Add</button>
+                    </div>
+                    <table class="raw-materials-table">
+                        <thead><tr><th>Code</th><th>Description</th><th>Cat</th><th>Avg Cost</th><th>Qty</th><th>Min</th><th>Status</th><th>Actions</th></tr></thead>
+                        <tbody id="raw-materials-list"></tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <!-- Finished Goods Tab -->
+            <div class="tab-content" id="finished-goods-tab">
+                <div class="content-section">
+                    <div class="section-header">
+                        <h3>Finished Goods</h3>
+                        <button class="btn btn-primary" onclick="openFinishedModal()"><i class="fas fa-plus"></i> Add</button>
+                    </div>
+                    <table>
+                        <thead><tr><th>Product</th><th>SKU</th><th>Stock</th><th>Price</th><th>COGS</th><th>Status</th><th>Actions</th></tr></thead>
+                        <tbody id="finished-goods-list"></tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <!-- Production Tab -->
+            <div class="tab-content" id="production-tab">
+                <div class="content-section">
+                    <div class="section-header">
+                        <h3>Production Orders</h3>
+                        <button class="btn btn-primary" onclick="openProductionModal()"><i class="fas fa-plus"></i> New Order</button>
+                    </div>
+                    <table>
+                        <thead><tr><th>Order ID</th><th>Product</th><th>Qty</th><th>Status</th><th>Created</th><th>Actions</th></tr></thead>
+                        <tbody id="production-list"></tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <!-- Suppliers Tab -->
+            <div class="tab-content" id="suppliers-tab">
+                <div class="content-section">
+                    <div class="section-header">
+                        <h3>Suppliers</h3>
+                        <button class="btn btn-primary" onclick="openSupplierModal()"><i class="fas fa-plus"></i> Add</button>
+                    </div>
+                    <table>
+                        <thead><tr><th>Supplier</th><th>Contact</th><th>Phone</th><th>Email</th><th>Actions</th></tr></thead>
+                        <tbody id="suppliers-list"></tbody>
+                    </table>
+                    <div class="section-header mt-8">
+                        <h3>Purchase Orders</h3>
+                        <button class="btn btn-primary" onclick="openPOModal()"><i class="fas fa-plus"></i> New PO</button>
+                    </div>
+                    <table>
+                        <thead><tr><th>PO ID</th><th>Supplier</th><th>Items</th><th>Status</th><th>Date</th><th>Actions</th></tr></thead>
+                        <tbody id="purchase-orders-list"></tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <!-- Customers Tab -->
+            <div class="tab-content" id="customers-tab">
+                <div class="content-section">
+                    <div class="section-header">
+                        <h3>Customers</h3>
+                        <button class="btn btn-primary" onclick="openCustomerModal()"><i class="fas fa-plus"></i> Add</button>
+                    </div>
+                    <table>
+                        <thead><tr><th>Customer</th><th>Contact</th><th>Email</th><th>City</th><th>Actions</th></tr></thead>
+                        <tbody id="customers-list"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modals (Wider & Grid Layouts) -->
+    
+    <!-- Raw Material Modal -->
+    <div id="raw-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-xl w-full max-w-2xl p-6 modal-content-scroll">
+            <h3 class="text-lg font-semibold mb-4">Raw Material</h3>
+            <form id="raw-form" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <input type="hidden" id="raw-id">
+                <div><label class="text-sm font-medium">Code</label><input type="text" id="raw-code" class="border rounded p-2 w-full" required></div>
+                <div><label class="text-sm font-medium">Description</label><input type="text" id="raw-description" class="border rounded p-2 w-full" required></div>
+                <div><label class="text-sm font-medium">Category</label><input type="text" id="raw-category" class="border rounded p-2 w-full"></div>
+                <div><label class="text-sm font-medium">Avg Cost</label><input type="number" id="raw-avg-cost" step="0.01" class="border rounded p-2 w-full" required></div>
+                <div><label class="text-sm font-medium">Excl Price</label><input type="number" id="raw-excl-price" step="0.01" class="border rounded p-2 w-full"></div>
+                <div><label class="text-sm font-medium">Qty on Hand</label><input type="number" id="raw-qty-on-hand" class="border rounded p-2 w-full" required></div>
+                <div><label class="text-sm font-medium">Min Threshold</label><input type="number" id="raw-min-threshhold" class="border rounded p-2 w-full" required></div>
+                <div><label class="text-sm font-medium">Supplier</label><select id="raw-supplier" class="border rounded p-2 w-full"><option value="">None</option></select></div>
+                <div class="md:col-span-2 flex justify-end gap-2 mt-4">
+                    <button type="button" class="btn bg-gray-200" onclick="closeModal('raw-modal')">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Finished Goods Modal -->
+    <div id="finished-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-xl w-full max-w-2xl p-6 modal-content-scroll">
+            <h3 class="text-lg font-semibold mb-4">Finished Good</h3>
+            <form id="finished-form" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <input type="hidden" id="finished-id">
+                <div class="md:col-span-2"><label class="text-sm font-medium">Name</label><input type="text" id="finished-name" class="border rounded p-2 w-full" required></div>
+                <div><label class="text-sm font-medium">SKU</label><input type="text" id="finished-sku" class="border rounded p-2 w-full" required></div>
+                <div><label class="text-sm font-medium">Sale Price</label><input type="number" id="finished-price" step="0.01" class="border rounded p-2 w-full" required></div>
+                <div class="md:col-span-2">
+                    <label class="text-sm font-medium">Bill of Materials</label>
+                    <div id="bom-items" class="space-y-2 mt-2"></div>
+                    <button type="button" onclick="addBOMItem()" class="text-sm text-primary-600 mt-1">+ Add Material</button>
+                </div>
+                <div class="md:col-span-2 flex justify-end gap-2 mt-4">
+                    <button type="button" class="btn bg-gray-200" onclick="closeModal('finished-modal')">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Production Modal -->
+    <div id="production-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-xl w-full max-w-lg p-6">
+            <h3 class="text-lg font-semibold mb-4">Production Order</h3>
+            <form id="production-form" class="space-y-4">
+                <input type="hidden" id="production-id">
+                <div><label class="text-sm font-medium">Product</label><select id="production-product" class="border rounded p-2 w-full" required></select></div>
+                <div><label class="text-sm font-medium">Quantity</label><input type="number" id="production-qty" min="1" class="border rounded p-2 w-full" required></div>
+                <div class="flex justify-end gap-2 mt-4">
+                    <button type="button" class="btn bg-gray-200" onclick="closeModal('production-modal')">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Create</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Supplier Modal -->
+    <div id="supplier-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-xl w-full max-w-2xl p-6">
+            <h3 class="text-lg font-semibold mb-4">Supplier</h3>
+            <form id="supplier-form" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <input type="hidden" id="supplier-id">
+                <div class="md:col-span-2"><label class="text-sm font-medium">Name</label><input type="text" id="supplier-name" class="border rounded p-2 w-full" required></div>
+                <div><label class="text-sm font-medium">Contact</label><input type="text" id="supplier-contact" class="border rounded p-2 w-full"></div>
+                <div><label class="text-sm font-medium">Phone</label><input type="text" id="supplier-phone" class="border rounded p-2 w-full"></div>
+                <div class="md:col-span-2"><label class="text-sm font-medium">Email</label><input type="email" id="supplier-email" class="border rounded p-2 w-full"></div>
+                <div class="md:col-span-2 flex justify-end gap-2 mt-4">
+                    <button type="button" class="btn bg-gray-200" onclick="closeModal('supplier-modal')">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Customer Modal -->
+    <div id="customer-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-xl w-full max-w-2xl p-6">
+            <h3 class="text-lg font-semibold mb-4">Customer</h3>
+            <form id="customer-form" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <input type="hidden" id="customer-id">
+                <div class="md:col-span-2"><label class="text-sm font-medium">Name</label><input type="text" id="customer-name" class="border rounded p-2 w-full" required></div>
+                <div><label class="text-sm font-medium">Contact</label><input type="text" id="customer-contact" class="border rounded p-2 w-full"></div>
+                <div><label class="text-sm font-medium">Email</label><input type="email" id="customer-email" class="border rounded p-2 w-full"></div>
+                <div class="md:col-span-2"><label class="text-sm font-medium">City</label><input type="text" id="customer-city" class="border rounded p-2 w-full"></div>
+                <div class="md:col-span-2 flex justify-end gap-2 mt-4">
+                    <button type="button" class="btn bg-gray-200" onclick="closeModal('customer-modal')">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- PO Modal -->
+    <div id="po-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-xl w-full max-w-3xl p-6 modal-content-scroll">
+            <h3 class="text-lg font-semibold mb-4">Purchase Order</h3>
+            <form id="po-form" class="space-y-4">
+                <input type="hidden" id="po-id">
+                <div><label class="text-sm font-medium">Supplier</label><select id="po-supplier" class="border rounded p-2 w-full" required></select></div>
+                <div>
+                    <label class="text-sm font-medium">Items</label>
+                    <div id="po-items" class="space-y-2 mt-2"></div>
+                    <button type="button" onclick="addPOItem()" class="text-sm text-primary-600 mt-1">+ Add Item</button>
+                </div>
+                <div class="flex justify-end gap-2 mt-4">
+                    <button type="button" class="btn bg-gray-200" onclick="closeModal('po-modal')">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Send Order</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="toast" class="hidden"></div>
+
+    <script>
+        // --- MIMS CORE LOGIC ---
+        
+        // State
+        let appMode = 'DETECTING'; // 'FIREBASE' or 'LOCAL'
+        let db = null;
+        let auth = null;
+        let currentUser = null;
+        const CURRENCY_SYMBOLS = { 'ZAR': 'R', 'USD': '$', 'EUR': '€', 'GBP': '£' };
+        let currentCurrency = 'ZAR';
+        
+        // Collections
+        let rawMaterials = [], finishedGoods = [], productionOrders = [], 
+            purchaseOrders = [], finishedInventory = [], suppliers = [], customers = [];
+
+        // UI Helper
+        const showToast = (msg, isErr = false) => {
+            const t = document.getElementById('toast');
+            t.textContent = msg;
+            t.className = `px-4 py-2 rounded-lg shadow-lg z-50 transition-transform duration-300 ${isErr?'bg-danger-500':'bg-success-500'} text-white show`;
+            setTimeout(() => t.classList.remove('show'), 3000);
+        };
+
+        const formatCurrency = (val) => `${CURRENCY_SYMBOLS[currentCurrency]}${parseFloat(val||0).toFixed(2)}`;
+        
+        // --- DATABASE ADAPTER ---
+        
+        function createLocalDatabase() {
+            const listeners = {};
+            // Load from LocalStorage
+            let storage = JSON.parse(localStorage.getItem('mims_local_db') || '{}');
+
+            const save = () => {
+                localStorage.setItem('mims_local_db', JSON.stringify(storage));
+                // Notify listeners
+                Object.keys(listeners).forEach(key => {
+                    if(listeners[key]) {
+                        const docs = (storage[key] || []).map(d => ({ id: d.id, data: () => d }));
+                        listeners[key].forEach(cb => cb({ docs }));
+                    }
+                });
+            };
+
+            return {
+                collection: (path) => {
+                    const parts = path.split('/');
+                    const colName = parts[parts.length - 1];
+                    
+                    return {
+                        onSnapshot: (cb) => {
+                            if(!listeners[colName]) listeners[colName] = [];
+                            listeners[colName].push(cb);
+                            // Initial callback
+                            const docs = (storage[colName] || []).map(d => ({ id: d.id, data: () => d }));
+                            cb({ docs });
+                            return () => {}; 
+                        },
+                        doc: (id) => {
+                            const actualId = id || crypto.randomUUID();
+                            return {
+                                set: async (data, opts) => {
+                                    if(!storage[colName]) storage[colName] = [];
+                                    const existing = storage[colName].find(d => d.id === actualId);
+                                    if(existing && opts?.merge) Object.assign(existing, data);
+                                    else if(existing) {
+                                        const idx = storage[colName].indexOf(existing);
+                                        storage[colName][idx] = { id: actualId, ...data };
+                                    } else {
+                                        storage[colName].push({ id: actualId, ...data });
+                                    }
+                                    save();
+                                },
+                                update: async (data) => {
+                                    if(!storage[colName]) return;
+                                    const existing = storage[colName].find(d => d.id === actualId);
+                                    if(existing) { Object.assign(existing, data); save(); }
+                                }
+                            }
+                        }
+                    };
+                },
+                batch: () => ({
+                    update: (ref, data) => ref.update(data),
+                    set: (ref, data, opts) => ref.set(data, opts),
+                    commit: async () => true
+                })
+            };
+        }
+
+        function getUserCollection(name) {
+            if(appMode === 'LOCAL') return db.collection(name);
+            const appId = typeof __app_id !== 'undefined' ? __app_id : 'default';
+            return db.collection(`artifacts/${appId}/users/${currentUser.uid}/${name}`);
+        }
+
+        // --- INITIALIZATION ---
+        async function initApp() {
+            const statusEl = document.getElementById('connection-status');
+            const msgEl = document.getElementById('system-message');
+
+            try {
+                if (typeof __firebase_config !== 'undefined') {
+                    appMode = 'FIREBASE';
+                    statusEl.textContent = 'Cloud Connected';
+                    statusEl.classList.add('bg-green-100', 'text-green-700');
+                    
+                    const config = JSON.parse(__firebase_config);
+                    firebase.initializeApp(config);
+                    auth = firebase.auth();
+                    db = firebase.firestore();
+                    
+                    if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                        await auth.signInWithCustomToken(__initial_auth_token);
+                    } else {
+                        await auth.signInAnonymously();
+                    }
+                    
+                    currentUser = auth.currentUser;
+                } else {
+                    appMode = 'LOCAL';
+                    statusEl.textContent = 'Local Storage Mode';
+                    statusEl.classList.add('bg-blue-100', 'text-blue-700');
+                    msgEl.textContent = "Running in Local Mode. Data is saved to your browser's local storage.";
+                    
+                    db = createLocalDatabase();
+                    currentUser = { uid: 'local-user' };
+                }
+
+                setupRealtimeListeners();
+                renderDashboard();
+                
+            } catch (e) {
+                console.error(e);
+                statusEl.textContent = 'Error';
+                showToast('Initialization Failed', true);
+            }
+        }
+
+        function setupRealtimeListeners() {
+            getUserCollection('raw_materials').onSnapshot(snap => {
+                rawMaterials = snap.docs.map(d => ({id: d.id, ...d.data()}));
+                renderRaw(); renderDashboard();
+            });
+            getUserCollection('finished_goods').onSnapshot(snap => {
+                finishedGoods = snap.docs.map(d => ({id: d.id, ...d.data()}));
+                renderFinished(); renderDashboard();
+            });
+            getUserCollection('production_orders').onSnapshot(snap => {
+                const all = snap.docs.map(d => ({id: d.id, ...d.data()}));
+                purchaseOrders = all.filter(o => o.type === 'PURCHASE');
+                productionOrders = all.filter(o => o.type !== 'PURCHASE');
+                renderProd(); renderPO(); renderDashboard();
+            });
+            getUserCollection('finished_inventory').onSnapshot(snap => {
+                finishedInventory = snap.docs.map(d => ({id: d.id, ...d.data()}));
+                renderFinished(); renderDashboard();
+            });
+            getUserCollection('suppliers').onSnapshot(snap => {
+                suppliers = snap.docs.map(d => ({id: d.id, ...d.data()}));
+                renderSup(); updateSelects();
+            });
+            getUserCollection('customers').onSnapshot(snap => {
+                customers = snap.docs.map(d => ({id: d.id, ...d.data()}));
+                renderCust();
+            });
+        }
+
+        // --- RENDERING ---
+        function renderRaw() {
+            const el = document.getElementById('raw-materials-list');
+            el.innerHTML = rawMaterials.map(m => `
+                <tr>
+                    <td>${m.code||''}</td><td>${m.description||''}</td><td>${m.category||'-'}</td>
+                    <td>${formatCurrency(m.avgCost)}</td><td>${m.qtyOnHand||0}</td><td>${m.minThreshhold||0}</td>
+                    <td><span class="status ${(m.qtyOnHand||0)<=(m.minThreshhold||0)?'low-stock':'in-stock'}">${(m.qtyOnHand||0)<=(m.minThreshhold||0)?'Low':'OK'}</span></td>
+                    <td><button class="btn btn-outline p-1 h-8 w-8" onclick="openRawModal('${m.id}')"><i class="fas fa-edit"></i></button></td>
+                </tr>`).join('') || '<tr><td colspan="8" class="text-gray-500 text-center">No items</td></tr>';
+        }
+
+        function renderFinished() {
+            const el = document.getElementById('finished-goods-list');
+            el.innerHTML = finishedGoods.map(p => {
+                const inv = finishedInventory.find(i => i.productId === p.id);
+                const stock = inv ? (inv.stockQuantity || 0) : 0;
+                const cogs = (p.bom||[]).reduce((sum, i) => {
+                    const m = rawMaterials.find(r => r.id === i.materialId);
+                    return sum + (i.quantity * (m?.avgCost||0));
+                }, 0);
+                return `<tr>
+                    <td>${p.name}</td><td>${p.productSku}</td><td>${stock}</td>
+                    <td>${formatCurrency(p.salePrice)}</td><td>${formatCurrency(cogs)}</td>
+                    <td><span class="status ${stock>0?'in-stock':'out-of-stock'}">${stock>0?'Stock':'Empty'}</span></td>
+                    <td><button class="btn btn-outline p-1 h-8 w-8" onclick="openFinishedModal('${p.id}')"><i class="fas fa-edit"></i></button></td>
+                </tr>`
+            }).join('') || '<tr><td colspan="7" class="text-gray-500 text-center">No items</td></tr>';
+        }
+
+        function renderProd() {
+            const el = document.getElementById('production-list');
+            el.innerHTML = productionOrders.map(o => {
+                const p = finishedGoods.find(x => x.id === o.productId);
+                let badge = 'pending';
+                if(o.status === 'Complete') badge = 'completed';
+                if(o.status === 'Cancelled') badge = 'cancelled';
+                return `<tr>
+                    <td>#${o.id.substring(0,6)}</td><td>${p?.name||'Unknown'}</td><td>${o.quantity}</td>
+                    <td><span class="status ${badge}">${o.status}</span></td>
+                    <td>${o.createdAt ? (o.createdAt.toDate ? new Date(o.createdAt.toDate()) : new Date()).toLocaleDateString() : 'Just now'}</td>
+                    <td>${o.status !== 'Complete' && o.status !== 'Cancelled' ? `
+                        <button class="text-green-600 mr-2" onclick="completeProd('${o.id}')"><i class="fas fa-check"></i></button>
+                        <button class="text-red-600" onclick="cancelProd('${o.id}')"><i class="fas fa-times"></i></button>` : ''}
+                    </td>
+                </tr>`
+            }).join('') || '<tr><td colspan="6" class="text-gray-500 text-center">No orders</td></tr>';
+        }
+
+        function renderPO() {
+            const el = document.getElementById('purchase-orders-list');
+            el.innerHTML = purchaseOrders.map(o => {
+                const s = suppliers.find(x => x.id === o.supplierId);
+                let badge = 'ordered';
+                if(o.status === 'Received') badge = 'received';
+                if(o.status === 'Cancelled') badge = 'cancelled';
+                return `<tr>
+                    <td>#${o.id.substring(0,6)}</td><td>${s?.name||'Unknown'}</td><td>${o.items?.length||0} items</td>
+                    <td><span class="status ${badge}">${o.status}</span></td>
+                    <td>${o.createdAt ? (o.createdAt.toDate ? new Date(o.createdAt.toDate()) : new Date()).toLocaleDateString() : 'Just now'}</td>
+                    <td>${o.status === 'Ordered' ? `
+                        <button class="text-green-600 mr-2" onclick="receivePO('${o.id}')"><i class="fas fa-box-open"></i></button>
+                        <button class="text-red-600" onclick="cancelPO('${o.id}')"><i class="fas fa-times"></i></button>` : ''}
+                    </td>
+                </tr>`
+            }).join('') || '<tr><td colspan="6" class="text-gray-500 text-center">No POs</td></tr>';
+        }
+        
+        function renderSup() {
+            document.getElementById('suppliers-list').innerHTML = suppliers.map(s => `
+                <tr><td>${s.name}</td><td>${s.contactName||''}</td><td>${s.phone||''}</td><td>${s.email||''}</td>
+                <td><button class="btn btn-outline p-1 h-8 w-8" onclick="openSupplierModal('${s.id}')"><i class="fas fa-edit"></i></button></td></tr>
+            `).join('');
+        }
+        
+        function renderCust() {
+            document.getElementById('customers-list').innerHTML = customers.map(c => `
+                <tr><td>${c.name}</td><td>${c.contactName||''}</td><td>${c.email||''}</td><td>${c.city||''}</td>
+                <td><button class="btn btn-outline p-1 h-8 w-8" onclick="openCustomerModal('${c.id}')"><i class="fas fa-edit"></i></button></td></tr>
+            `).join('');
+        }
+
+        function renderDashboard() {
+            const totalRaw = rawMaterials.reduce((s,m) => s + ((m.qtyOnHand||0)*(m.avgCost||0)), 0);
+            document.getElementById('metric-raw-value').textContent = formatCurrency(totalRaw);
+            document.getElementById('metric-pending-prod').textContent = productionOrders.filter(o => o.status !== 'Complete' && o.status !== 'Cancelled').length;
+            document.getElementById('metric-po-sent').textContent = purchaseOrders.filter(o => o.status === 'Ordered').length;
+            document.getElementById('metric-low-stock').textContent = rawMaterials.filter(m => (m.qtyOnHand||0) <= (m.minThreshhold||0)).length;
+        }
+
+        function updateSelects() {
+            const html = '<option value="">None</option>' + suppliers.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+            if(document.getElementById('raw-supplier')) document.getElementById('raw-supplier').innerHTML = html;
+            if(document.getElementById('po-supplier')) document.getElementById('po-supplier').innerHTML = html;
+        }
+
+        // --- ACTIONS & LOGIC ---
+        
+        // Raw Materials
+        function openRawModal(id) {
+            document.getElementById('raw-form').reset();
+            document.getElementById('raw-id').value = id || '';
+            if(id) {
+                const m = rawMaterials.find(x => x.id === id);
+                document.getElementById('raw-code').value = m.code;
+                document.getElementById('raw-description').value = m.description;
+                document.getElementById('raw-category').value = m.category || '';
+                document.getElementById('raw-avg-cost').value = m.avgCost;
+                document.getElementById('raw-excl-price').value = m.exclPrice || 0;
+                document.getElementById('raw-qty-on-hand').value = m.qtyOnHand;
+                document.getElementById('raw-min-threshhold').value = m.minThreshhold;
+                document.getElementById('raw-supplier').value = m.preferredSupplierId || '';
+            }
+            document.getElementById('raw-modal').classList.remove('hidden');
+        }
+        
+        document.getElementById('raw-form').onsubmit = async (e) => {
+            e.preventDefault();
+            const id = document.getElementById('raw-id').value;
+            const data = {
+                code: document.getElementById('raw-code').value,
+                description: document.getElementById('raw-description').value,
+                category: document.getElementById('raw-category').value,
+                avgCost: parseFloat(document.getElementById('raw-avg-cost').value),
+                exclPrice: parseFloat(document.getElementById('raw-excl-price').value),
+                qtyOnHand: parseFloat(document.getElementById('raw-qty-on-hand').value),
+                minThreshhold: parseFloat(document.getElementById('raw-min-threshhold').value),
+                preferredSupplierId: document.getElementById('raw-supplier').value
+            };
+            const ref = id ? getUserCollection('raw_materials').doc(id) : getUserCollection('raw_materials').doc(crypto.randomUUID());
+            await (id ? ref.update(data) : ref.set(data));
+            closeModal('raw-modal');
+            showToast('Material Saved');
+        };
+
+        // Finished Goods
+        function openFinishedModal(id) {
+            document.getElementById('finished-form').reset();
+            document.getElementById('finished-id').value = id || '';
+            document.getElementById('bom-items').innerHTML = '';
+            if(id) {
+                const p = finishedGoods.find(x => x.id === id);
+                document.getElementById('finished-name').value = p.name;
+                document.getElementById('finished-sku').value = p.productSku;
+                document.getElementById('finished-price').value = p.salePrice;
+                (p.bom||[]).forEach(i => addBOMItem(i.materialId, i.quantity));
+            } else { addBOMItem(); }
+            document.getElementById('finished-modal').classList.remove('hidden');
+        }
+
+        function addBOMItem(matId, qty) {
+            const div = document.createElement('div');
+            div.className = 'flex gap-2';
+            div.innerHTML = `
+                <select class="bom-mat border rounded p-1 flex-1">${rawMaterials.map(m => `<option value="${m.id}" ${m.id===matId?'selected':''}>${m.description}</option>`).join('')}</select>
+                <input type="number" class="bom-qty border rounded p-1 w-20" value="${qty||1}" min="0.1" step="0.1">
+                <button type="button" onclick="this.parentElement.remove()" class="text-red-500">x</button>
+            `;
+            document.getElementById('bom-items').appendChild(div);
+        }
+
+        document.getElementById('finished-form').onsubmit = async (e) => {
+            e.preventDefault();
+            const id = document.getElementById('finished-id').value;
+            const bom = Array.from(document.querySelectorAll('#bom-items > div')).map(d => ({
+                materialId: d.querySelector('.bom-mat').value,
+                quantity: parseFloat(d.querySelector('.bom-qty').value)
+            }));
+            const data = {
+                name: document.getElementById('finished-name').value,
+                productSku: document.getElementById('finished-sku').value,
+                salePrice: parseFloat(document.getElementById('finished-price').value),
+                bom
+            };
+            
+            const newId = id || crypto.randomUUID();
+            const ref = getUserCollection('finished_goods').doc(newId);
+            await (id ? ref.update(data) : ref.set(data));
+            if(!id) getUserCollection('finished_inventory').doc(newId).set({ productId: newId, stockQuantity: 0 });
+            closeModal('finished-modal');
+            showToast('Product Saved');
+        };
+
+        // Production
+        function openProductionModal() {
+            document.getElementById('production-form').reset();
+            const sel = document.getElementById('production-product');
+            sel.innerHTML = '<option value="">Select</option>' + finishedGoods.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
+            document.getElementById('production-modal').classList.remove('hidden');
+        }
+
+        document.getElementById('production-form').onsubmit = async (e) => {
+            e.preventDefault();
+            const pid = document.getElementById('production-product').value;
+            const qty = parseInt(document.getElementById('production-qty').value);
+            
+            const prod = finishedGoods.find(p => p.id === pid);
+            const feasible = (prod.bom||[]).every(i => {
+                const m = rawMaterials.find(r => r.id === i.materialId);
+                return (m?.qtyOnHand||0) >= (i.quantity * qty);
+            });
+
+            await getUserCollection('production_orders').doc(crypto.randomUUID()).set({
+                productId: pid, quantity: qty, status: feasible ? 'Ready' : 'Pending', createdAt: new Date()
+            });
+            closeModal('production-modal');
+            showToast(feasible ? 'Order Created' : 'Order Pending (Low Stock)', !feasible);
+        };
+
+        async function completeProd(id) {
+            const o = productionOrders.find(x => x.id === id);
+            const p = finishedGoods.find(x => x.id === o.productId);
+            
+            const feasible = (p.bom||[]).every(i => {
+                const m = rawMaterials.find(r => r.id === i.materialId);
+                return (m?.qtyOnHand||0) >= (i.quantity * o.quantity);
+            });
+            
+            if(!feasible) return showToast('Insufficient materials', true);
+
+            const batch = db.batch();
+            batch.update(getUserCollection('production_orders').doc(id), { status: 'Complete' });
+            
+            (p.bom||[]).forEach(i => {
+                const m = rawMaterials.find(r => r.id === i.materialId);
+                batch.update(getUserCollection('raw_materials').doc(i.materialId), { qtyOnHand: m.qtyOnHand - (i.quantity * o.quantity) });
+            });
+            
+            const inv = finishedInventory.find(i => i.productId === p.id);
+            const invRef = getUserCollection('finished_inventory').doc(p.id);
+            batch.set(invRef, { productId: p.id, stockQuantity: (inv?.stockQuantity||0) + o.quantity }, {merge:true});
+            
+            await batch.commit();
+            showToast('Production Complete');
+        }
+
+        async function cancelProd(id) {
+            if(confirm('Cancel order?')) await getUserCollection('production_orders').doc(id).update({ status: 'Cancelled' });
+        }
+
+        // Suppliers / Customers
+        function openSupplierModal(id) {
+            document.getElementById('supplier-form').reset();
+            document.getElementById('supplier-id').value = id || '';
+            if(id) {
+                const s = suppliers.find(x => x.id === id);
+                document.getElementById('supplier-name').value = s.name;
+                document.getElementById('supplier-contact').value = s.contactName || '';
+                document.getElementById('supplier-phone').value = s.phone || '';
+                document.getElementById('supplier-email').value = s.email || '';
+            }
+            document.getElementById('supplier-modal').classList.remove('hidden');
+        }
+        
+        document.getElementById('supplier-form').onsubmit = async (e) => {
+            e.preventDefault();
+            const id = document.getElementById('supplier-id').value;
+            const data = {
+                name: document.getElementById('supplier-name').value,
+                contactName: document.getElementById('supplier-contact').value,
+                phone: document.getElementById('supplier-phone').value,
+                email: document.getElementById('supplier-email').value
+            };
+            const ref = id ? getUserCollection('suppliers').doc(id) : getUserCollection('suppliers').doc(crypto.randomUUID());
+            await (id ? ref.update(data) : ref.set(data));
+            closeModal('supplier-modal');
+        };
+
+        function openCustomerModal(id) {
+            document.getElementById('customer-form').reset();
+            document.getElementById('customer-id').value = id || '';
+            if(id) {
+                const c = customers.find(x => x.id === id);
+                document.getElementById('customer-name').value = c.name;
+                document.getElementById('customer-contact').value = c.contactName || '';
+                document.getElementById('customer-email').value = c.email || '';
+                document.getElementById('customer-city').value = c.city || '';
+            }
+            document.getElementById('customer-modal').classList.remove('hidden');
+        }
+        
+        document.getElementById('customer-form').onsubmit = async (e) => {
+            e.preventDefault();
+            const id = document.getElementById('customer-id').value;
+            const data = {
+                name: document.getElementById('customer-name').value,
+                contactName: document.getElementById('customer-contact').value,
+                email: document.getElementById('customer-email').value,
+                city: document.getElementById('customer-city').value
+            };
+            const ref = id ? getUserCollection('customers').doc(id) : getUserCollection('customers').doc(crypto.randomUUID());
+            await (id ? ref.update(data) : ref.set(data));
+            closeModal('customer-modal');
+        };
+
+        // POs
+        function openPOModal() {
+            document.getElementById('po-form').reset();
+            document.getElementById('po-items').innerHTML = '';
+            const sel = document.getElementById('po-supplier');
+            sel.innerHTML = '<option value="">Select</option>' + suppliers.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+            addPOItem();
+            document.getElementById('po-modal').classList.remove('hidden');
+        }
+
+        function addPOItem() {
+            const div = document.createElement('div');
+            div.className = 'flex gap-2';
+            div.innerHTML = `
+                <select class="po-mat border rounded p-1 flex-1">${rawMaterials.map(m => `<option value="${m.id}">${m.description}</option>`).join('')}</select>
+                <input type="number" class="po-qty border rounded p-1 w-20" value="1" min="1">
+                <button type="button" onclick="this.parentElement.remove()" class="text-red-500">x</button>
+            `;
+            document.getElementById('po-items').appendChild(div);
+        }
+
+        document.getElementById('po-form').onsubmit = async (e) => {
+            e.preventDefault();
+            const sid = document.getElementById('po-supplier').value;
+            const items = Array.from(document.querySelectorAll('#po-items > div')).map(d => ({
+                materialId: d.querySelector('.po-mat').value,
+                quantityOrdered: parseFloat(d.querySelector('.po-qty').value)
+            }));
+            
+            await getUserCollection('production_orders').doc(crypto.randomUUID()).set({
+                type: 'PURCHASE', supplierId: sid, items, status: 'Ordered', createdAt: new Date()
+            });
+            closeModal('po-modal');
+            showToast('PO Sent');
+        };
+
+        async function receivePO(id) {
+            const o = purchaseOrders.find(x => x.id === id);
+            const batch = db.batch();
+            batch.update(getUserCollection('production_orders').doc(id), { status: 'Received' });
+            
+            o.items.forEach(i => {
+                const m = rawMaterials.find(r => r.id === i.materialId);
+                if(m) batch.update(getUserCollection('raw_materials').doc(m.id), { qtyOnHand: m.qtyOnHand + i.quantityOrdered });
+            });
+            
+            await batch.commit();
+            showToast('Goods Received');
+        }
+
+        async function cancelPO(id) {
+            if(confirm('Cancel PO?')) await getUserCollection('production_orders').doc(id).update({ status: 'Cancelled' });
+        }
+
+        // Utils
+        function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+        document.querySelectorAll('.nav-links a').forEach(l => l.onclick = (e) => {
+            e.preventDefault();
+            document.querySelectorAll('.nav-links a').forEach(x => x.classList.remove('active'));
+            e.currentTarget.classList.add('active');
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            document.getElementById(e.currentTarget.dataset.tab + '-tab').classList.add('active');
+            document.getElementById('page-title').textContent = e.currentTarget.innerText.trim();
+        });
+        document.getElementById('currency-select').onchange = (e) => {
+            currentCurrency = e.target.value;
+            renderDashboard(); renderRaw(); renderFinished();
+        };
+
+        // Start
+        window.addEventListener('DOMContentLoaded', initApp);
+    </script>
+</body>
+</html>

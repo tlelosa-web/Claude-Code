@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MVE Skill Tracker — Customise & Track Your Learning</title>
+  <style>
+    :root {
+      --not-started: #e0e0e0;
+      --in-progress: #ffcc00;
+      --completed: #4caf50;
+      --text: #333;
+      --bg: #fff;
+      --border: #ddd;
+      --accent: #1e88e5;
+      --link: #1565c0;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background-color: #f8f9fa;
+      color: var(--text);
+      margin: 0;
+      padding: 20px;
+      line-height: 1.6;
+    }
+
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      background: var(--bg);
+      border-radius: 10px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+      overflow: hidden;
+    }
+
+    header {
+      background: #2c3e50;
+      color: white;
+      padding: 20px;
+      text-align: center;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 1.8rem;
+    }
+
+    .timeline-section {
+      background: #e3f2fd;
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.95rem;
+    }
+
+    .timeline-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .timeline-item {
+      margin-bottom: 4px;
+    }
+
+    .timeline-label {
+      font-weight: 600;
+      color: #1565c0;
+    }
+
+    .progress-section {
+      padding: 20px;
+      background: #f1f3f5;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .progress-label {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 8px;
+      font-weight: 600;
+    }
+
+    .progress-bar-container {
+      height: 24px;
+      background: #e9ecef;
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    .progress-bar {
+      height: 100%;
+      background: var(--completed);
+      width: 0%;
+      transition: width 0.4s ease;
+    }
+
+    .skills-list {
+      padding: 0;
+      list-style: none;
+      margin: 0;
+    }
+
+    .skill-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      padding: 18px 20px;
+      border-bottom: 1px solid var(--border);
+      background: white;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .skill-item:last-child {
+      border-bottom: none;
+    }
+
+    .skill-info {
+      flex: 1;
+      min-width: 250px;
+    }
+
+    .skill-category {
+      font-size: 0.85rem;
+      color: #6c757d;
+      margin-bottom: 4px;
+    }
+
+    .skill-name {
+      font-weight: 600;
+      margin: 0 0 4px 0;
+    }
+
+    .skill-links {
+      margin-top: 4px;
+    }
+
+    .skill-link {
+      font-size: 0.85rem;
+      color: var(--link);
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .skill-link:hover {
+      text-decoration: underline;
+    }
+
+    .skill-link::before {
+      content: "🔗";
+      font-size: 0.9em;
+    }
+
+    .skill-hours {
+      font-size: 0.8rem;
+      color: #666;
+      margin-top: 4px;
+    }
+
+    .status-selector {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+    }
+
+    .status-btn {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      border: 2px solid #aaa;
+      background: transparent;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .status-btn.active,
+    .status-btn:hover {
+      transform: scale(1.2);
+    }
+
+    .status-not-started {
+      background-color: var(--not-started);
+    }
+
+    .status-in-progress {
+      background-color: var(--in-progress);
+    }
+
+    .status-completed {
+      background-color: var(--completed);
+    }
+
+    .reset-btn {
+      display: block;
+      margin: 12px auto 20px;
+      padding: 10px 20px;
+      background: #e74c3c;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .reset-btn:hover {
+      background: #c0392b;
+    }
+
+    .footer {
+      text-align: center;
+      padding: 16px;
+      color: #777;
+      font-size: 0.85rem;
+    }
+
+    @media (max-width: 600px) {
+      .timeline-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .skill-item {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      .status-selector {
+        width: 100%;
+        justify-content: flex-end;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>MVE Skill Tracker</h1>
+    </header>
+
+    <section class="timeline-section">
+      <div class="timeline-grid">
+        <div class="timeline-item">
+          <span class="timeline-label">Start Date:</span>
+          <span id="start-date">–</span>
+        </div>
+        <div class="timeline-item">
+          <span class="timeline-label">Planned Finish:</span>
+          <span id="planned-end-date">–</span>
+        </div>
+        <div class="timeline-item">
+          <span class="timeline-label">Days Elapsed:</span>
+          <span id="days-elapsed">–</span>
+        </div>
+        <div class="timeline-item">
+          <span class="timeline-label">Projected Finish:</span>
+          <span id="projected-end-date">–</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="progress-section">
+      <div class="progress-label">
+        <span>Overall Progress</span>
+        <span id="progress-text">0%</span>
+      </div>
+      <div class="progress-bar-container">
+        <div class="progress-bar" id="progress-bar"></div>
+      </div>
+    </section>
+
+    <ul class="skills-list" id="skills-list">
+      <!-- Skills will be injected by JavaScript -->
+    </ul>
+
+    <button class="reset-btn" id="reset-btn">Reset All Progress</button>
+
+    <div class="footer">
+      Progress saved automatically. Excludes weekends & SA public holidays.
+    </div>
+  </div>
+
+  <script>
+    // === SKILLS WITH LINKS & HOURS (SA English friendly) ===
+    const SKILLS = [
+      {
+        category: "Foundations",
+        name: "HTML/CSS Basics (freeCodeCamp)",
+        hours: 10,
+        url: "https://www.freecodecamp.org/learn/2022/responsive-web-design/"
+      },
+      {
+        category: "Foundations",
+        name: "JavaScript Fundamentals (JavaScript.info)",
+        hours: 20,
+        url: "https://javascript.info/"
+      },
+      {
+        category: "Backend/DB",
+        name: "Supabase Quickstart & Auth",
+        hours: 6,
+        url: "https://supabase.com/docs/guides/getting-started"
+      },
+      {
+        category: "Backend/DB",
+        name: "PostgreSQL/SQL Basics (for DB schema)",
+        hours: 8,
+        url: "https://www.postgresqltutorial.com/postgresql-basics/"
+      },
+      {
+        category: "Frontend",
+        name: "SvelteKit Basics (Official Tutorial)",
+        hours: 12,
+        url: "https://learn.svelte.dev/tutorial/welcome-to-sveltekit"
+      },
+      {
+        category: "Integration",
+        name: "Sage Developer Portal Signup & App Creation",
+        hours: 2,
+        url: "https://developer.sage.com/"
+      },
+      {
+        category: "Integration",
+        name: "Postman & Sage API Exploration",
+        hours: 5,
+        url: "https://developer.sage.com/accounting/guides/getting-started/"
+      },
+      {
+        category: "Architecture",
+        name: "Supabase Edge Functions Basics",
+        hours: 7,
+        url: "https://supabase.com/docs/guides/functions"
+      }
+    ];
+
+    const TOTAL_HOURS = SKILLS.reduce((sum, s) => sum + s.hours, 0); // 70
+
+    // === SOUTH AFRICAN PUBLIC HOLIDAYS (2025–2026, weekdays only) ===
+    const PUBLIC_HOLIDAYS = new Set([
+      '2025-12-16', // Day of Reconciliation
+      '2025-12-25', // Christmas Day
+      '2025-12-26', // Day of Goodwill
+      '2026-01-01', // New Year’s Day
+      '2026-04-10', // Good Friday
+      '2026-04-13'  // Family Day
+    ]);
+
+    function isWorkingDay(date) {
+      const day = date.getDay();
+      const isWeekday = day >= 1 && day <= 5;
+      const iso = date.toISOString().split('T')[0];
+      return isWeekday && !PUBLIC_HOLIDAYS.has(iso);
+    }
+
+    function addWorkingDays(startDate, days) {
+      let date = new Date(startDate);
+      let count = 0;
+      while (count < days) {
+        date.setDate(date.getDate() + 1);
+        if (isWorkingDay(date)) count++;
+      }
+      return date;
+    }
+
+    function formatDate(date) {
+      return date.toLocaleDateString('en-ZA', {
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric'
+      });
+    }
+
+    // === PLAN CONFIGURATION ===
+    const START_DATE = new Date('2025-11-17');
+    const PLANNED_END_DATE = addWorkingDays(START_DATE, TOTAL_HOURS - 1);
+
+    // DOM Elements
+    const skillsListEl = document.getElementById('skills-list');
+    const progressBarEl = document.getElementById('progress-bar');
+    const progressTextEl = document.getElementById('progress-text');
+    const resetBtn = document.getElementById('reset-btn');
+    const startDateEl = document.getElementById('start-date');
+    const plannedEndDateEl = document.getElementById('planned-end-date');
+    const daysElapsedEl = document.getElementById('days-elapsed');
+    const projectedEndDateEl = document.getElementById('projected-end-date');
+
+    const STATUSES = {
+      NOT_STARTED: 'not-started',
+      IN_PROGRESS: 'in-progress',
+      COMPLETED: 'completed'
+    };
+
+    // === Persistence ===
+    function loadProgress() {
+      const saved = localStorage.getItem('mveSkillProgress');
+      if (saved) {
+        try {
+          const data = JSON.parse(saved);
+          if (Array.isArray(data) && data.length === SKILLS.length) {
+            return data;
+          }
+        } catch (e) {
+          console.warn('Invalid saved data; re-initialising.');
+        }
+      }
+      return SKILLS.map(() => STATUSES.NOT_STARTED);
+    }
+
+    function saveProgress(progress) {
+      localStorage.setItem('mveSkillProgress', JSON.stringify(progress));
+    }
+
+    // === Metrics ===
+    function computeMetrics(progress) {
+      let completedHours = 0;
+      let inProgressCount = 0;
+
+      for (let i = 0; i < SKILLS.length; i++) {
+        if (progress[i] === STATUSES.COMPLETED) {
+          completedHours += SKILLS[i].hours;
+        } else if (progress[i] === STATUSES.IN_PROGRESS) {
+          inProgressCount++;
+        }
+      }
+
+      const percent = TOTAL_HOURS > 0 ? Math.round((completedHours / TOTAL_HOURS) * 100) : 0;
+      const estimatedHoursDone = completedHours + (inProgressCount * 0.5);
+      const daysElapsed = Math.max(0, Math.floor(estimatedHoursDone));
+      let projectedEnd = START_DATE;
+
+      if (estimatedHoursDone < TOTAL_HOURS) {
+        const remainingDays = Math.ceil(TOTAL_HOURS - estimatedHoursDone);
+        projectedEnd = addWorkingDays(START_DATE, daysElapsed + remainingDays - 1);
+      } else {
+        projectedEnd = new Date();
+      }
+
+      return { completedHours, percent, daysElapsed, projectedEnd };
+    }
+
+    // === Render ===
+    function renderSkills() {
+      const progress = loadProgress();
+      skillsListEl.innerHTML = '';
+
+      SKILLS.forEach((skill, index) => {
+        const li = document.createElement('li');
+        li.className = 'skill-item';
+
+        li.innerHTML = `
+          <div class="skill-info">
+            <div class="skill-category">${skill.category}</div>
+            <div class="skill-name">${skill.name}</div>
+            <div class="skill-links">
+              <a href="${skill.url}" target="_blank" class="skill-link">Open resource</a>
+            </div>
+            <div class="skill-hours">${skill.hours} hour${skill.hours !== 1 ? 's' : ''}</div>
+          </div>
+          <div class="status-selector">
+            <button class="status-btn status-not-started" 
+                    data-status="not-started" 
+                    data-index="${index}"
+                    title="Not Started"></button>
+            <button class="status-btn status-in-progress" 
+                    data-status="in-progress" 
+                    data-index="${index}"
+                    title="In Progress"></button>
+            <button class="status-btn status-completed" 
+                    data-status="completed" 
+                    data-index="${index}"
+                    title="Completed"></button>
+          </div>
+        `;
+        skillsListEl.appendChild(li);
+      });
+
+      updateButtons(progress);
+      updateProgressDisplay(progress);
+      updateTimelineDisplay(progress);
+    }
+
+    function updateButtons(progress) {
+      document.querySelectorAll('.status-btn').forEach(btn => {
+        const idx = parseInt(btn.dataset.index);
+        const status = btn.dataset.status;
+        btn.classList.toggle('active', progress[idx] === status);
+      });
+    }
+
+    function updateProgressDisplay(progress) {
+      const { percent } = computeMetrics(progress);
+      progressBarEl.style.width = `${percent}%`;
+      progressTextEl.textContent = `${percent}%`;
+    }
+
+    function updateTimelineDisplay(progress) {
+      const { daysElapsed, projectedEnd } = computeMetrics(progress);
+      startDateEl.textContent = formatDate(START_DATE);
+      plannedEndDateEl.textContent = formatDate(PLANNED_END_DATE);
+      daysElapsedEl.textContent = `${daysElapsed} day${daysElapsed !== 1 ? 's' : ''}`;
+      projectedEndDateEl.textContent = formatDate(projectedEnd);
+    }
+
+    // === Handlers ===
+    function handleStatusChange(event) {
+      if (!event.target.classList.contains('status-btn')) return;
+      const btn = event.target;
+      const index = parseInt(btn.dataset.index);
+      const newStatus = btn.dataset.status;
+      let progress = loadProgress();
+      progress[index] = newStatus;
+      saveProgress(progress);
+      updateButtons(progress);
+      updateProgressDisplay(progress);
+      updateTimelineDisplay(progress);
+    }
+
+    function resetProgress() {
+      if (confirm('Are you sure you want to reset all progress? This cannot be undone.')) {
+        localStorage.removeItem('mveSkillProgress');
+        renderSkills();
+      }
+    }
+
+    // === Initialise ===
+    document.addEventListener('DOMContentLoaded', () => {
+      renderSkills();
+      skillsListEl.addEventListener('click', handleStatusChange);
+      resetBtn.addEventListener('click', resetProgress);
+    });
+  </script>
+</body>
+</html>

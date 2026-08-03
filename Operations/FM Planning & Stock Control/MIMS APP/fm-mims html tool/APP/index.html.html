@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Manufacturing & Inventory Manager</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <!-- Firebase SDKs (Modular v9+) -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
+    import {
+      getAuth,
+      signInAnonymously,
+      onAuthStateChanged
+    } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+    import {
+      getFirestore,
+      collection,
+      doc,
+      setDoc,
+      updateDoc,
+      deleteDoc,
+      getDocs,
+      query,
+      orderBy,
+      onSnapshot,
+      serverTimestamp,
+      increment,
+      arrayUnion
+    } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+
+    // 🔑 REPLACE WITH YOUR REAL CONFIG
+    const __firebase_config = {
+      apiKey: "AIzaSyBEXAMPLE1234567890",
+      authDomain: "your-project.firebaseapp.com",
+      projectId: "your-project",
+      storageBucket: "your-project.appspot.com",
+      messagingSenderId: "123456789012",
+      appId: "1:123456789012:web:abcdef1234567890"
+    };
+
+    const app = initializeApp(__firebase_config);
+    const auth = getAuth(app);
+    const firestore = getFirestore(app);
+
+    // ========== GLOBAL STATE ==========
+    let currentUserId = null;
+    let currency = localStorage.getItem('appCurrency') || 'ZAR';
+    const currencySymbols = { ZAR: 'R', USD: '$', EUR: '€', GBP: '£' };
+
+    // Unsubscribers for real-time listeners
+    let rawUnsub = null, finishedUnsub = null, productionUnsub = null,
+        poUnsub = null, customerUnsub = null, supplierUnsub = null;
+
+    // ========== UTILITIES ==========
+    function showToast(message, type = 'info') {
+      const toast = document.createElement('div');
+      toast.className = `fixed bottom-4 right-4 px-4 py-2 rounded text-white z-50 ${
+        type === 'error' ? 'bg-red-500' : type === 'success' ? 'bg-green-500' : 'bg-blue-500'
+      }`;
+      toast.textContent = message;
+      document.body.appendChild(toast);
+      setTimeout(() => toast.remove(), 3000);
+    }
+
+    function parseRow(row, requiredFields, entityName) {
+      const missing = requiredFields.filter(field => !row[field]);
+      if (missing.length > 0) {
+        throw new Error(`${entityName}: Missing required fields: ${missing.join(', ')}`);
+      }
+      return row;
+    }
+
+    function updateCurrencyDisplay() {
+      const symbol = currencySymbols[currency] || 'R';
+      document.querySelectorAll('.currency-symbol').forEach(el => {
+        el.textContent = symbol;
+      });
+      document.getElementById('currencySelect').value = currency;
+      localStorage.setItem('appCurrency', currency);
+    }
+
+    // ========== AUTH ==========
+    onAuthStateChanged(auth, (user) => {
+      if (user) {
+        currentUserId = user.uid;
+        document.getElementById('authSection').classList.add('hidden');
+        document.getElementById('appSection').classList.remove('hidden');
+        initApp();
+      } else {
+        signInAnonymously(auth).catch(e => {
+          console.error("Auth error:", e);
+          showToast("Login failed. Check console.", "error");
+        });
+      }
+    });
+
+    // ========== INIT APP ==========
+    function initApp() {
+      updateCurrencyDisplay();
+      setupEventListeners();
+      loadAllData();
+    }
+
+    function setupEventListeners() {
+      // Currency switch
+      document.getElementById('currencySelect').addEventListener('change', (e) => {
+        currency = e.target.value;
+        updateCurrencyDisplay();
+      });
+
+      // Import buttons
+      document.getElementById('importRawBtn').addEventListener('click', () => handleFileImport('raw'));
+      document.getElementById('importFinishedBtn').addEventListener('click', () => handleFileImport('finished'));
+      document.getElementById('importPOBtn').addEventListener('click', () => handleFileImport('po'));
+      document.getElementById('importProductionBtn').addEventListener('click', () => handleFileImport('production'));
+
+      // Export buttons
+      document.getElementById('exportRawBtn').addEventListener('click', () => exportToExcel('raw_materials'));
+      document.getElementById('exportFinishedBtn').addEventListener('click', () => exportToExcel('finished_goods'));
+    }
+
+    // ========== FILE IMPORT ==========
+    function handleFileImport(type) {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = '.csv,.xlsx,.xls';
+      input.onchange = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (evt) => {
+          try {
+            const data = new Uint8Array(evt.target.result);
+            const workbook = XLSX.read(data, { type: 'array' });
+            const sheetName = workbook.SheetNames[0];
+            const sheet = workbook.Sheets[sheetName];
+            const json = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+            if (json.length < 2) throw new Error("Empty file");
+            const headers = json[0].map(h => h.trim());
+            const rows = json.slice(1).map(r => {
+              const obj = {};
+              headers.forEach((h, i) => { obj[h] = r[i] != null ? String(r[i]).trim() : ''; });
+              return obj;
+            });
+            processImport(type, rows);
+          } catch (err) {
+            showToast("Import failed: " + err.message, "error");
+          }
+        };
+        reader.readAsArrayBuffer(file);
+      };
+      input.click();
+    }
+
+    async function processImport(type, data) {
+      try {
+        switch (type) {
+          case 'raw': await handleRawUpload(data); break;
+          case 'finished': await handleFinishedUpload(data); break;
+          case 'po': await handlePOUpload(data); break;
+          case 'production': await handleProductionUpload(data); break;
+          default: throw new Error("Unknown import type");
+        }
+      } catch (err) {
+        showToast("Import error: " + err.message, "error");
+      }
+    }
+
+    // ========== IMPORT HANDLERS ==========
+    async function handleRawUpload(data) {
+      const required = ['name', 'sku', 'unit', 'reorderPoint'];
+      const batch = firestore.batch();
+      const col = collection(firestore, 'raw_materials');
+      for (const row of data) {
+        const clean = parseRow(row, required, 'Raw Material');
+        batch.set(doc(col), {
+          name: clean.name,
+          sku: clean.sku,
+          unit: clean.unit,
+          reorderPoint: parseFloat(clean.reorderPoint) || 0,
+          currentStock: parseFloat(clean.currentStock) || 0,
+          unitCost: parseFloat(clean.unitCost) || 0,
+          supplierId: clean.supplierId || '',
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp()
+        });
+      }
+      await batch.commit();
+      showToast('Raw materials imported!', 'success');
+    }
+
+    async function handleFinishedUpload(data) {
+      const required = ['name', 'sku', 'unit', 'reorderPoint', 'bom'];
+      const batch = firestore.batch();
+      const col = collection(firestore, 'finished_goods');
+      for (const row of data) {
+        const clean = parseRow(row, required, 'Finished Good');
+        let bom = [];
+        try {
+          bom = clean.bom ? JSON.parse(clean.bom) : [];
+        } catch (e) {
+          throw new Error(`Invalid BOM JSON in row: ${clean.name}`);
+        }
+        batch.set(doc(col), {
+          name: clean.name,
+          sku: clean.sku,
+          unit: clean.unit,
+          reorderPoint: parseFloat(clean.reorderPoint) || 0,
+          currentStock: parseFloat(clean.currentStock) || 0,
+          bom: bom,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp()
+        });
+      }
+      await batch.commit();
+      showToast('Finished goods imported!', 'success');
+    }
+
+    async function handlePOUpload(data) {
+      const required = ['supplierId', 'items'];
+      const batch = firestore.batch();
+      const col = collection(firestore, 'purchase_orders');
+      for (const row of data) {
+        const clean = parseRow(row, required, 'Purchase Order');
+        let items = [];
+        try {
+          items = clean.items ? JSON.parse(clean.items) : [];
+        } catch (e) {
+          throw new Error(`Invalid items JSON in PO`);
+        }
+        batch.set(doc(col), {
+          supplierId: clean.supplierId,
+          items: items.map(i => ({
+            rawMaterialId: i.rawMaterialId,
+            quantity: parseFloat(i.quantity) || 0,
+            unitCost: parseFloat(i.unitCost) || 0
+          })),
+          status: 'draft',
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp()
+        });
+      }
+      await batch.commit();
+      showToast('Purchase orders imported!', 'success');
+    }
+
+    async function handleProductionUpload(data) {
+      const required = ['finishedGoodId', 'quantity'];
+      const batch = firestore.batch();
+      const col = collection(firestore, 'production_orders');
+      for (const row of data) {
+        const clean = parseRow(row, required, 'Production Order');
+        batch.set(doc(col), {
+          finishedGoodId: clean.finishedGoodId,
+          quantity: parseFloat(clean.quantity) || 0,
+          completedQuantity: 0,
+          status: 'draft',
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp()
+        });
+      }
+      await batch.commit();
+      showToast('Production orders imported!', 'success');
+    }
+
+    // ========== REAL-TIME LOADERS ==========
+    function loadAllData() {
+      loadRawMaterials();
+      loadFinishedGoods();
+      loadProductionOrders();
+      loadPurchaseOrders();
+      loadCustomers();
+      loadSuppliers();
+    }
+
+    function loadRawMaterials() {
+      if (rawUnsub) rawUnsub();
+      rawUnsub = onSnapshot(query(collection(firestore, 'raw_materials'), orderBy('name')), snap => {
+        const list = []; snap.forEach(d => list.push({ id: d.id, ...d.data() }));
+        renderRawMaterials(list);
+      }, err => showToast('Raw materials load error: ' + err.message, 'error'));
+    }
+
+    function loadFinishedGoods() {
+      if (finishedUnsub) finishedUnsub();
+      finishedUnsub = onSnapshot(query(collection(firestore, 'finished_goods'), orderBy('name')), snap => {
+        const list = []; snap.forEach(d => list.push({ id: d.id, ...d.data() }));
+        renderFinishedGoods(list);
+      }, err => showToast('Finished goods load error', 'error'));
+    }
+
+    function loadProductionOrders() {
+      if (productionUnsub) productionUnsub();
+      productionUnsub = onSnapshot(query(collection(firestore, 'production_orders'), orderBy('createdAt', 'desc')), snap => {
+        const list = []; snap.forEach(d => list.push({ id: d.id, ...d.data() }));
+        renderProductionOrders(list);
+      }, err => showToast('Production orders load error', 'error'));
+    }
+
+    function loadPurchaseOrders() {
+      if (poUnsub) poUnsub();
+      poUnsub = onSnapshot(query(collection(firestore, 'purchase_orders'), orderBy('createdAt', 'desc')), snap => {
+        const list = []; snap.forEach(d => list.push({ id: d.id, ...d.data() }));
+        renderPurchaseOrders(list);
+      }, err => showToast('POs load error', 'error'));
+    }
+
+    function loadCustomers() {
+      // Similar pattern...
+    }
+
+    function loadSuppliers() {
+      // Similar pattern...
+    }
+
+    // ========== RENDER FUNCTIONS (Simplified) ==========
+    function renderRawMaterials(materials) {
+      const tbody = document.getElementById('rawTableBody');
+      tbody.innerHTML = '';
+      materials.forEach(m => {
+        const low = m.currentStock < (m.reorderPoint * 0.1);
+        const tr = document.createElement('tr');
+        tr.className = low ? 'bg-red-50' : '';
+        tr.innerHTML = `
+          <td>${m.name}</td>
+          <td>${m.sku}</td>
+          <td>${m.currentStock} ${m.unit}</td>
+          <td><span class="currency-symbol">R</span>${(m.unitCost || 0).toFixed(2)}</td>
+          <td>${m.reorderPoint}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+      updateCurrencyDisplay();
+    }
+
+    function renderFinishedGoods(goods) {
+      const tbody = document.getElementById('finishedTableBody');
+      tbody.innerHTML = '';
+      goods.forEach(g => {
+        const cogs = (g.bom || []).reduce((sum, item) => sum + (item.unitCost || 0) * item.quantity, 0);
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${g.name}</td>
+          <td>${g.sku}</td>
+          <td>${g.currentStock} ${g.unit}</td>
+          <td><span class="currency-symbol">R</span>${cogs.toFixed(2)}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+      updateCurrencyDisplay();
+    }
+
+    function renderProductionOrders(orders) {
+      const tbody = document.getElementById('productionTableBody');
+      tbody.innerHTML = '';
+      orders.forEach(o => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${o.finishedGoodId}</td>
+          <td>${o.quantity}</td>
+          <td>${o.completedQuantity}</td>
+          <td>${o.status}</td>
+          <td>
+            ${o.status === 'draft' ? 
+              `<button onclick="completeProduction('${o.id}', '${o.finishedGoodId}', ${o.quantity})" class="text-green-600">Complete</button>` : 
+              '✅'}
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function renderPurchaseOrders(orders) {
+      const tbody = document.getElementById('poTableBody');
+      tbody.innerHTML = '';
+      orders.forEach(o => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${o.supplierId}</td>
+          <td>${o.items?.length || 0} items</td>
+          <td>${o.status}</td>
+          <td>
+            ${o.status === 'draft' ? 
+              `<button onclick="receivePO('${o.id}')">Receive</button>` : 
+              '📦 Received'}
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    // ========== BUSINESS LOGIC ==========
+    window.completeProduction = async (orderId, fgId, qty) => {
+      try {
+        const fgSnap = await getDocs(query(collection(firestore, 'finished_goods'), /* add where if needed */));
+        const fg = fgSnap.docs.find(d => d.id === fgId);
+        if (!fg) throw new Error('Finished good not found');
+        const fgData = fg.data();
+
+        const fgRef = doc(firestore, 'finished_goods', fgId);
+        const orderRef = doc(firestore, 'production_orders', orderId);
+
+        await updateDoc(fgRef, {
+          currentStock: increment(qty),
+          updatedAt: serverTimestamp()
+        });
+
+        const batch = firestore.batch();
+        for (const item of fgData.bom || []) {
+          const rmRef = doc(firestore, 'raw_materials', item.rawMaterialId);
+          batch.update(rmRef, {
+            currentStock: increment(-item.quantity * qty),
+            updatedAt: serverTimestamp()
+          });
+        }
+        batch.update(orderRef, {
+          status: 'completed',
+          completedQuantity: qty,
+          updatedAt: serverTimestamp()
+        });
+        await batch.commit();
+        showToast('Production completed!', 'success');
+      } catch (err) {
+        showToast('Completion failed: ' + err.message, 'error');
+      }
+    };
+
+    window.receivePO = async (poId) => {
+      try {
+        const poRef = doc(firestore, 'purchase_orders', poId);
+        const poSnap = await getDocs(query(collection(firestore, 'purchase_orders')));
+        const po = poSnap.docs.find(d => d.id === poId)?.data();
+        if (!po) throw new Error('PO not found');
+
+        const batch = firestore.batch();
+        for (const item of po.items || []) {
+          const rmRef = doc(firestore, 'raw_materials', item.rawMaterialId);
+          batch.update(rmRef, {
+            currentStock: increment(item.quantity),
+            unitCost: item.unitCost, // or recalc avg
+            updatedAt: serverTimestamp()
+          });
+        }
+        batch.update(poRef, {
+          status: 'received',
+          receivedAt: serverTimestamp(),
+          updatedAt: serverTimestamp()
+        });
+        await batch.commit();
+        showToast('PO received!', 'success');
+      } catch (err) {
+        showToast('Receive failed: ' + err.message, 'error');
+      }
+    };
+
+    // ========== EXPORT TO EXCEL ==========
+    function exportToExcel(collectionName) {
+      // In real app, fetch data and use XLSX.utils.json_to_sheet
+      showToast(`Exporting ${collectionName}... (demo)`, 'info');
+    }
+
+    // ========== CLEANUP ON UNLOAD ==========
+    window.addEventListener('beforeunload', () => {
+      if (rawUnsub) rawUnsub();
+      if (finishedUnsub) finishedUnsub();
+      // ... others
+    });
+  </script>
+</head>
+<body class="bg-gray-100">
+  <!-- Auth Loader -->
+  <div id="authSection" class="flex items-center justify-center h-screen">
+    <div class="text-center">
+      <p class="text-xl">Logging in...</p>
+      <p class="text-gray-500">Anonymous access enabled</p>
+    </div>
+  </div>
+
+  <!-- Main App (Hidden until auth) -->
+  <div id="appSection" class="hidden p-6">
+    <div class="mb-4 flex justify-between items-center">
+      <h1 class="text-2xl font-bold">Inventory Manager</h1>
+      <div>
+        <label class="mr-2">Currency:</label>
+        <select id="currencySelect" class="border rounded p-1">
+          <option value="ZAR">ZAR (R)</option>
+          <option value="USD">USD ($)</option>
+          <option value="EUR">EUR (€)</option>
+          <option value="GBP">GBP (£)</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Tabs would go here – simplified to Raw Materials table -->
+    <div class="bg-white p-4 rounded shadow mb-6">
+      <div class="flex justify-between mb-2">
+        <h2>Raw Materials</h2>
+        <div>
+          <button id="importRawBtn" class="bg-blue-500 text-white px-3 py-1 rounded mr-2">Import CSV</button>
+          <button id="exportRawBtn" class="bg-green-500 text-white px-3 py-1 rounded">Export</button>
+        </div>
+      </div>
+      <table class="min-w-full border">
+        <thead><tr><th>Name</th><th>SKU</th><th>Stock</th><th>Unit Cost</th><th>Reorder</th></tr></thead>
+        <tbody id="rawTableBody"></tbody>
+      </table>
+    </div>
+
+    <div class="bg-white p-4 rounded shadow mb-6">
+      <h2>Finished Goods</h2>
+      <button id="importFinishedBtn" class="bg-blue-500 text-white px-3 py-1 rounded mr-2 mt-2">Import</button>
+      <table class="min-w-full border mt-2">
+        <thead><tr><th>Name</th><th>SKU</th><th>Stock</th><th>COGS</th></tr></thead>
+        <tbody id="finishedTableBody"></tbody>
+      </table>
+    </div>
+
+    <div class="grid grid-cols-2 gap-6">
+      <div class="bg-white p-4 rounded shadow">
+        <h2>Production Orders</h2>
+        <button id="importProductionBtn" class="bg-blue-500 text-white px-3 py-1 rounded mr-2 mt-2">Import</button>
+        <table class="min-w-full border mt-2">
+          <thead><tr><th>FG ID</th><th>Qty</th><th>Done</th><th>Status</th><th>Action</th></tr></thead>
+          <tbody id="productionTableBody"></tbody>
+        </table>
+      </div>
+
+      <div class="bg-white p-4 rounded shadow">
+        <h2>Purchase Orders</h2>
+        <button id="importPOBtn" class="bg-blue-500 text-white px-3 py-1 rounded mr-2 mt-2">Import</button>
+        <table class="min-w-full border mt-2">
+          <thead><tr><th>Supplier</th><th>Items</th><th>Status</th><th>Action</th></tr></thead>
+          <tbody id="poTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

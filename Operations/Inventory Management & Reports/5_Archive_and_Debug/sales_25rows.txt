@@ -1,0 +1,26 @@
+﻿                                                Name_Date  Reference    Status                                               Description  Qty  Total_Selling
+0   Name\n                     \n                    Date  Reference    Status                                               Description  Qty  Total Selling
+1                                           52 Engneering        NaN       NaN                                                       NaN  NaN            NaN
+2                                              06/02/2023     SO1966  Invoiced                                                       NaN  NaN            NaN
+3                                                     NaN        NaN       NaN                                          class 4 Impeller    1          23320
+4                                        Total for SO1966        NaN       NaN                                                       NaN    1          23320
+5                                 Total for 52 Engneering        NaN       NaN                                                       NaN    1          23320
+6                 9 South African Infantry Battalion Base        NaN       NaN                                                       NaN  NaN            NaN
+7                                              27/07/2023     SO2346  Invoiced                                                       NaN  NaN            NaN
+8                                                     NaN        NaN       NaN  GLF 7 - c/w 0.45kW 960rpm 380V Motor + Louvre and screen    2          19242
+9                                                     NaN        NaN       NaN                                                  Delivery    1           1050
+10                                       Total for SO2346        NaN       NaN                                                       NaN    3          20292
+11      Total for 9 South African Infantry Battalion Base        NaN       NaN                                                       NaN    3          20292
+12                          A-Z Office & Home Renovations        NaN       NaN                                                       NaN  NaN            NaN
+13                                             14/06/2024     SO3087  Invoiced                                                       NaN  NaN            NaN
+14                                                    NaN        NaN       NaN                                                DEUMIDO 20    1           7629
+15                                                    NaN        NaN       NaN                                                V 150/6 AR    1           1764
+16                                       Total for SO3087        NaN       NaN                                                       NaN    2           9393
+17                Total for A-Z Office & Home Renovations        NaN       NaN                                                       NaN    2           9393
+18                                       ABMS ENGINEERING        NaN       NaN                                                       NaN  NaN            NaN
+19                                             17/10/2025     SO4094  Invoiced                                                       NaN  NaN            NaN
+20                                                    NaN        NaN       NaN                                               RAD 315-EF1    1           3391
+21                                                    NaN        NaN       NaN                                               RAD 315-EF2    1           3391
+22                                       Total for SO4094        NaN       NaN                                                       NaN    2           6782
+23                             Total for ABMS ENGINEERING        NaN       NaN                                                       NaN    2           6782
+24                              ABMS Maintenance Services        NaN       NaN                                                       NaN  NaN            NaN

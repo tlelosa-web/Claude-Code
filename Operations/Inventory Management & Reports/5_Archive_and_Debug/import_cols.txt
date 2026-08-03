@@ -1,0 +1,9 @@
+Columns:
+- 📊 CATEGORY SUMMARY
+- Unnamed: 1
+- Unnamed: 2
+- Unnamed: 3
+- Unnamed: 4
+
+Data dict:
+[{'📊 CATEGORY SUMMARY': nan, 'Unnamed: 1': nan, 'Unnamed: 2': nan, 'Unnamed: 3': nan, 'Unnamed: 4': nan}]

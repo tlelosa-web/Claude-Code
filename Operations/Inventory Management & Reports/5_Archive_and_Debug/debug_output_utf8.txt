@@ -1,0 +1,4 @@
+Inventory Build Successful.
+Processed 2898 total items.
+Items missing Cost Price: 542
+Items with recalculated stock levels: 1040

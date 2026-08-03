@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sales Order Tool - SOT v1.12</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f4f4f4;
+        }
+        .container {
+            max-width: 1200px;
+            margin: auto;
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        h1, h2 {
+            color: #333;
+            border-bottom: 2px solid #eee;
+            padding-bottom: 5px;
+            margin-top: 20px;
+        }
+        /* Table Styles */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+        th, td {
+            padding: 10px 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        th {
+            background-color: #007bff;
+            color: white;
+            text-transform: uppercase;
+            font-size: 0.9em;
+        }
+        /* Summary Specific Styles */
+        #summaryTable td:nth-child(2) {
+            font-weight: bold;
+            text-align: right;
+            color: #0056b3;
+        }
+        /* Detailed Item Specific Styles */
+        #detailsTable tbody tr:hover {
+            background-color: #f9f9f9;
+        }
+        #detailsTable th:nth-child(6),
+        #detailsTable th:nth-child(7),
+        #detailsTable td:nth-child(6),
+        #detailsTable td:nth-child(7) {
+            text-align: right; /* Align currency columns to the right */
+        }
+        .note {
+            background-color: #fff3cd;
+            color: #856404;
+            padding: 10px;
+            border: 1px solid #ffeeba;
+            border-radius: 4px;
+            margin-bottom: 15px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Sales Order Processing Tool</h1>
+
+    <div class="note">
+        <strong>NOTE:</strong> This script uses hardcoded sample data for demonstration. To actually parse a PDF file, you would need to implement a solution using a library like **pdf.js** or an external OCR service to populate the <code>salesOrderData</code> object below.
+    </div>
+
+    <input type="file" id="pdfUpload" accept=".pdf">
+    <button onclick="loadSampleData()">Load Sample Data (SO4188rev)</button>
+
+    <div id="output">
+        <h2>Sales Order Summary (<span id="soNumberDisplay">SO###</span>)</h2>
+        <div id="summaryContainer">
+            <table id="summaryTable">
+                <tbody>
+                </tbody>
+            </table>
+        </div>
+
+        <hr>
+
+        <h2>Detailed Items</h2>
+        <div id="detailsContainer">
+            <table id="detailsTable">
+                <thead>
+                    <tr>
+                        <th>Line_ID</th>
+                        <th>Item_Code</th>
+                        <th>Item_Name</th>
+                        <th>Quantity</th>
+                        <th>Discount_Per</th>
+                        <th>Unit_Price_Excl</th>
+                        <th>Total_Excl</th>
+                    </tr>
+                </thead>
+                <tbody>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+    // --- SAMPLE DATA STRUCTURE (Extracted from FM3648-3655 - SO4188rev.pdf) ---
+    const sampleData = {
+        summary: {
+            "SO Number": "SO4188rev",
+            "Reference": "FM3648-3655 - JOUBERT",
+            "Date": "17/11/2025",
+            "Delivery Date": "28/11/2025",
+            "Sales Rep": "SIMON MOKGOLA",
+            "Total Exclusive": "R 15,907.00",
+            "Total VAT (15%)": "R 2,386.05",
+            "Grand Total": "R 18,293.05"
+        },
+        details: [
+            { Line_ID: 1, Item_Code: "315RBM-315", Item_Name: "315 RADIAL BACKWARD CURVED FAN", Quantity: 1.00, Discount_Per: "2.50%", Unit_Price_Excl: "R 5,350.00", Total_Excl: "R 5,216.25" },
+            { Line_ID: 2, Item_Code: "315T600", Item_Name: "315 Diam Tube Silencer 60OL", Quantity: 2.00, Discount_Per: "2.50%", Unit_Price_Excl: "R 884.00", Total_Excl: "R 1,723.80" },
+            { Line_ID: 3, Item_Code: "315MF", Item_Name: "315 Diam Mounting Feet", Quantity: 4.00, Discount_Per: "2.50%", Unit_Price_Excl: "R 141.00", Total_Excl: "R 549.90" },
+            { Line_ID: 4, Item_Code: "315CF", Item_Name: "315 Diam Counter Flange", Quantity: 2.00, Discount_Per: "2.50%", Unit_Price_Excl: "R 230.00", Total_Excl: "R 448.50" },
+            { Line_ID: 5, Item_Code: "80-500AVMS", Item_Name: "80 to 500 NDA RED ANeoprene Floor Mounts", Quantity: 8.00, Discount_Per: "2.50%", Unit_Price_Excl: "R 70.00", Total_Excl: "R 546.00" },
+            { Line_ID: 6, Item_Code: "MFP4000752", Item_Name: "MAXFLO 400/150/10 P c/w 0,75KW 2P 380V", Quantity: 1.00, Discount_Per: "2.50%", Unit_Price_Excl: "R 6,899.00", Total_Excl: "R 6,726.52" },
+            { Line_ID: 7, Item_Code: "400CF", Item_Name: "400 Diam Counter Flange", Quantity: 2.00, Discount_Per: "2.50%", Unit_Price_Excl: "R 263.00", Total_Excl: "R 512.85" }
+        ]
+    };
+    // --------------------------------------------------------------------------
+
+    /**
+     * Renders the sales order data into the HTML tables.
+     * @param {object} data - The sales order data object.
+     */
+    function renderSalesOrder(data) {
+        if (!data || !data.summary || !data.details) {
+            console.error("Invalid sales order data provided.");
+            return;
+        }
+
+        // 1. Render Summary Table
+        const summaryTbody = document.getElementById('summaryTable').getElementsByTagName('tbody')[0];
+        summaryTbody.innerHTML = ''; // Clear previous data
+        
+        // Update SO Number display
+        document.getElementById('soNumberDisplay').textContent = data.summary['SO Number'] || 'N/A';
+
+        for (const [key, value] of Object.entries(data.summary)) {
+            // Skip the SO Number as it is used in the heading
+            if (key === 'SO Number') continue; 
+
+            const row = summaryTbody.insertRow();
+            
+            const cellLabel = row.insertCell(0);
+            cellLabel.textContent = key + ':';
+            
+            const cellValue = row.insertCell(1);
+            cellValue.textContent = value;
+        }
+
+
+        // 2. Render Detailed Items Table
+        const detailsTbody = document.getElementById('detailsTable').getElementsByTagName('tbody')[0];
+        detailsTbody.innerHTML = ''; // Clear previous data
+
+        data.details.forEach(item => {
+            const row = detailsTbody.insertRow();
+            
+            // Note: The order of cells must match the order of <th> in the HTML
+            const fields = ['Line_ID', 'Item_Code', 'Item_Name', 'Quantity', 'Discount_Per', 'Unit_Price_Excl', 'Total_Excl'];
+
+            fields.forEach(field => {
+                const cell = row.insertCell();
+                cell.textContent = item[field];
+            });
+        });
+    }
+
+    /**
+     * Placeholder function to load the sample data when the button is clicked.
+     */
+    function loadSampleData() {
+        renderSalesOrder(sampleData);
+    }
+    
+    // Initial load (optional, you can remove this if you want the user to click the button first)
+    // loadSampleData();
+
+    // The logic below is where you would place your PDF parsing function.
+    // document.getElementById('pdfUpload').addEventListener('change', function(event) {
+    //     const file = event.target.files[0];
+    //     if (file) {
+    //         // THIS IS WHERE THE PDF PARSING LOGIC WOULD GO
+    //         // Example: 
+    //         // parsePDF(file).then(extractedData => {
+    //         //     renderSalesOrder(extractedData);
+    //         // });
+    //         // For now, we'll just alert the user that it's a manual step.
+    //         alert("PDF file selected. You need a separate library (like pdf.js) or OCR to extract the data structure required by the script.");
+    //     }
+    // });
+</script>
+
+</body>
+</html>

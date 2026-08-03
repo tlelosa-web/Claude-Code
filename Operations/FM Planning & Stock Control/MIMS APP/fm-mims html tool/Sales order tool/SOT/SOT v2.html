@@ -1,0 +1,814 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sales Order Import/Export Tool (PDF-Ready)</title>
+  <style>
+    :root {
+      --bg: #121212;
+      --card: #1e1e1e;
+      --text: #e0e0e0;
+      --subtext: #b0b0b0;
+      --accent: #bb86fc;
+      --accent-hover: #a053f0;
+      --green: #03dac6;
+      --border: #2c2c2c;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', Roboto, sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      padding: 20px;
+      line-height: 1.5;
+    }
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 20px;
+    }
+    @media (max-width: 900px) {
+      .container { grid-template-columns: 1fr; }
+      .sidebar { order: -1; }
+    }
+    .card {
+      background: var(--card);
+      border-radius: 12px;
+      padding: 20px;
+      border: 1px solid var(--border);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+    }
+    h1, h2 {
+      margin-bottom: 16px;
+      font-weight: 600;
+      color: var(--text);
+    }
+    h1 { font-size: 1.5em; }
+    h2 { font-size: 1.2em; border-bottom: 1px solid var(--border); padding-bottom: 8px; }
+    textarea {
+      width: 100%;
+      height: 180px;
+      background: #121212;
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 12px;
+      font-family: monospace;
+      font-size: 0.95em;
+      resize: vertical;
+    }
+    button {
+      background: var(--accent);
+      color: #000;
+      border: none;
+      border-radius: 6px;
+      padding: 12px 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    button:hover { background: var(--accent-hover); }
+    button.secondary {
+      background: #3a3a3a;
+      color: var(--text);
+      flex: 1;
+      min-width: 0;
+    }
+    button.secondary:hover { background: #4a4a4a; }
+    .btn-group {
+      display: flex;
+      gap: 12px;
+      margin-top: 12px;
+    }
+    .table-container {
+      overflow-x: auto;
+      margin-top: 16px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.9em;
+    }
+    th, td {
+      padding: 10px 8px;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+      white-space: nowrap;
+    }
+    th {
+      background: rgba(187,134,252,0.1);
+      color: var(--subtext);
+      font-weight: 500;
+      position: sticky;
+      top: 0;
+    }
+    tr:hover td { background: rgba(255,255,255,0.03); }
+    input, select {
+      background: #121212;
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 6px 8px;
+      width: 100%;
+    }
+    .status-cell {
+      font-weight: 500;
+    }
+    .status-Invoiced { color: #4caf50; }
+    .status-In\ progress { color: #ff9800; }
+    .status-ON\ HOLD { color: #2196f3; }
+    .status-Cancelled { color: #f44336; }
+    .zar { font-family: monospace; }
+    .actions { display: flex; gap: 6px; }
+    .action-btn {
+      background: none;
+      border: none;
+      color: var(--subtext);
+      cursor: pointer;
+      padding: 4px;
+      border-radius: 4px;
+    }
+    .action-btn:hover { background: rgba(255,255,255,0.1); color: var(--text); }
+    .summary {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 12px;
+      margin-top: 16px;
+      font-size: 0.95em;
+    }
+    .summary-item {
+      background: #2a2a2a;
+      padding: 12px;
+      border-radius: 6px;
+      text-align: center;
+    }
+    .summary-label { color: var(--subtext); font-size: 0.9em; }
+    .summary-value { font-size: 1.2em; font-weight: 600; margin-top: 4px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="main-content">
+      <div class="card">
+        <h1>📦 Sales Order Import/Export Tool (PDF-Ready)</h1>
+        <p style="color:var(--subtext); margin-bottom:16px;">
+          Paste raw text copied from <strong>any sales order PDF</strong> (e.g., SO4197 or SO4039) → click <strong>Parse</strong>.
+        </p>
+        
+        <h2>Paste PDF Text Here</h2>
+        <textarea id="inputText" placeholder="📋 Copy & paste FULL text from PDF (like SO4197) — no cleanup needed!"></textarea>
+        <div class="btn-group">
+          <button id="parseBtn">✅ Parse PDF Text</button>
+          <button id="clearBtn" class="secondary">⌫ Clear</button>
+        </div>
+
+        <h2 style="margin-top:24px;">Parsed Items (<span id="rowCount">0</span>)</h2>
+        <div class="table-container">
+          <table id="itemTable">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Job Number</th>
+                <th>Doc No.</th>
+                <th>Customer Ref.</th>
+                <th>Customer</th>
+                <th>Item & Description</th>
+                <th>QTY</th>
+                <th>Excl Price</th>
+                <th>Disc%</th>
+                <th>Overall Disc%</th>
+                <th>Supplier</th>
+                <th>Sales Rep</th>
+                <th>Status</th>
+                <th>Comments</th>
+                <th>Excl Total</th>
+                <th>Incl Total</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="itemBody"></tbody>
+          </table>
+        </div>
+
+        <div class="summary">
+          <div class="summary-item">
+            <div class="summary-label">Total Excl. (Before Overall Disc)</div>
+            <div class="summary-value zar" id="totalExclPreDisc">R 0.00</div>
+          </div>
+          <div class="summary-item">
+            <div class="summary-label">Total Discount Applied</div>
+            <div class="summary-value zar" id="totalDiscountAmount">R 0.00</div>
+          </div>
+          <div class="summary-item">
+            <div class="summary-label">Total Excl. (Final)</div>
+            <div class="summary-value zar" id="totalExcl">R 0.00</div>
+          </div>
+          <div class="summary-item">
+            <div class="summary-label">Total VAT (15% of Final Excl)</div>
+            <div class="summary-value zar" id="totalVat">R 0.00</div>
+          </div>
+          <div class="summary-item">
+            <div class="summary-label">Grand Total</div>
+            <div class="summary-value zar" id="grandTotal">R 0.00</div>
+          </div>
+          <div class="summary-item">
+            <div class="summary-label">Rows</div>
+            <div class="summary-value" id="summaryCount">0</div>
+          </div>
+        </div>
+
+        <div class="btn-group" style="margin-top:20px;">
+          <button id="exportBtn">📤 Export CSV (for Report)</button>
+          <button id="addRowBtn" class="secondary">➕ Add Row</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="sidebar">
+      <div class="card">
+        <h2>✅ Works With Your SO4197 & SO4039</h2>
+        <ul style="padding-left:20px; margin-top:12px; font-size:0.95em; color:var(--subtext);">
+          <li>✅ Handles SO4197 broken lines (e.g., motor specs)</li>
+          <li>✅ Handles SO4039 structured table data</li>
+          <li>✅ Ignores addresses, banking, VAT lines</li>
+          <li>✅ Parses FM3669- FM3670 → FM3669 FM3670</li>
+          <li>✅ ZAR formatting: R 3,052.00</li>
+          <li>✅ Auto-fills Dynatron or Powernex customer data</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <h2>⚙️ Defaults</h2>
+        <table style="width:100%; font-size:0.9em;">
+          <tr><td>Supplier:</td><td>Ex Stock</td></tr>
+          <tr><td>Supplier PO:</td><td>N/A</td></tr>
+          <tr><td>Status:</td><td>In progress</td></tr>
+          <tr><td>Comments:</td><td>Target completion Date: 27/11/2025</td></tr>
+        </table>
+      </div>
+
+      <div class="card">
+        <h2>📂 History</h2>
+        <p id="historyCount" style="font-size:0.9em; color:var(--subtext);">No orders saved</p>
+        <div class="btn-group" style="margin-top:12px;">
+          <button id="saveBtn" class="secondary" disabled>💾 Save Current</button>
+          <button id="loadBtn" class="secondary">📂 Load Saved</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const VAT_RATE = 0.15;
+
+    const formatZAR = (num) => {
+      // Ensure the number is handled correctly as a float, then format for ZAR display
+      return 'R ' + (parseFloat(num) || 0).toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    };
+
+    const cleanCurrency = (str) => {
+      // Remove R, whitespace, and commas used as thousands separators (standard in SA English locale for currency)
+      if (typeof str !== 'string') return 0;
+      return parseFloat(str.replace(/R\s?|,/g, '')) || 0;
+    };
+
+    const parseDate = (str) => {
+      if (!str) return '';
+      // Assumes DD/MM/YYYY format
+      const parts = str.split('/');
+      if (parts.length !== 3) return str;
+      const d = new Date(`${parts[2]}-${parts[1]}-${parts[0]}`);
+      if (isNaN(d)) return str;
+      return str; // Return original format if valid
+    };
+
+    let items = JSON.parse(localStorage.getItem('soItems')) || [];
+    // Overall discount is tracked separately from items for the SO4039 logic
+    let overallDiscountPct = 0.00; 
+
+    const statusOptions = ['Invoiced', 'In progress', 'ON HOLD', 'Cancelled'];
+
+    const updateSummary = () => {
+      // 1. Calculate the subtotal based on item-level price * quantity * (1 - item disc)
+      const exclPreDisc = items.reduce((sum, i) => sum + (parseFloat(i.exclTotal) || 0), 0);
+      
+      // 2. Apply the overall order discount
+      const overallDiscAmount = exclPreDisc * (overallDiscountPct / 100);
+      const exclFinal = exclPreDisc - overallDiscAmount;
+
+      // 3. Calculate VAT on the final exclusive total
+      const vat = exclFinal * VAT_RATE;
+      const grandTotal = exclFinal + vat;
+      
+      document.getElementById('totalExclPreDisc').textContent = formatZAR(exclPreDisc);
+      document.getElementById('totalDiscountAmount').textContent = formatZAR(overallDiscAmount);
+      document.getElementById('totalExcl').textContent = formatZAR(exclFinal);
+      document.getElementById('totalVat').textContent = formatZAR(vat);
+      document.getElementById('grandTotal').textContent = formatZAR(grandTotal);
+      document.getElementById('summaryCount').textContent = items.length;
+      document.getElementById('rowCount').textContent = items.length;
+      document.getElementById('historyCount').textContent = 
+        localStorage.getItem('soHistory') ? 'Saved: ' + JSON.parse(localStorage.getItem('soHistory')).length : 'No orders saved';
+    };
+
+    const renderTable = () => {
+      const tbody = document.getElementById('itemBody');
+      tbody.innerHTML = items.map((item, idx) => `
+        <tr>
+          <td>${idx + 1}</td>
+          <td><input type="text" value="${item.jobNumber}" data-id="${idx}" data-field="jobNumber" style="width:100px;"></td>
+          <td><input type="text" value="${item.docNo}" data-id="${idx}" data-field="docNo" style="width:80px;"></td>
+          <td><input type="text" value="${item.customerRef}" data-id="${idx}" data-field="customerRef"></td>
+          <td><input type="text" value="${item.customer}" data-id="${idx}" data-field="customer" style="width:120px;"></td>
+          <td><input type="text" value="${item.description}" data-id="${idx}" data-field="description" style="min-width:200px;"></td>
+          <td><input type="number" step="1" min="0" value="${item.qty}" data-id="${idx}" data-field="qty" style="width:60px;"></td>
+          <td><input type="number" step="0.01" min="0" value="${item.exclPrice}" data-id="${idx}" data-field="exclPrice" style="width:80px;"></td>
+          <td><input type="number" step="0.1" min="0" max="100" value="${item.discPct}" data-id="${idx}" data-field="discPct" style="width:60px;"></td>
+          <td>${overallDiscountPct.toFixed(2)}%</td>
+          <td><input type="text" value="${item.supplier}" data-id="${idx}" data-field="supplier" style="width:80px;"></td>
+          <td><input type="text" value="${item.salesRep}" data-id="${idx}" data-field="salesRep" style="width:100px;"></td>
+          <td>
+            <select data-id="${idx}" data-field="status" class="status-cell status-${item.status.replace(/\s/g,'\\ ')}">
+              ${statusOptions.map(opt => `<option value="${opt}" ${opt === item.status ? 'selected' : ''}>${opt}</option>`).join('')}
+            </select>
+          </td>
+          <td><input type="text" value="${item.comments}" data-id="${idx}" data-field="comments" style="min-width:150px;"></td>
+          <td class="zar">${formatZAR(item.exclTotal)}</td>
+          <td class="zar">${formatZAR(item.inclTotal)}</td>
+          <td class="actions">
+            <button class="action-btn delete-row" data-id="${idx}" title="Delete">🗑️</button>
+          </td>
+        </tr>
+      `).join('');
+      
+      tbody.querySelectorAll('input, select').forEach(el => {
+        el.addEventListener('change', updateItemField);
+        el.addEventListener('keydown', e => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            updateItemField({ target: el });
+          }
+        });
+      });
+      tbody.querySelectorAll('.delete-row').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const id = parseInt(btn.dataset.id);
+          items.splice(id, 1);
+          renderTable();
+          updateSummary();
+        });
+      });
+      updateSummary();
+    };
+
+    const updateItemField = (e) => {
+      const el = e.target;
+      const idx = parseInt(el.dataset.id);
+      const field = el.dataset.field;
+      const value = el.type === 'checkbox' ? el.checked : el.value;
+      
+      if (field === 'qty' || field === 'exclPrice' || field === 'discPct') {
+        items[idx][field] = parseFloat(value) || 0;
+        const qty = items[idx].qty;
+        const price = items[idx].exclPrice;
+        const disc = items[idx].discPct / 100;
+        
+        // Recalculate Excl Total and Incl Total based on editable fields
+        items[idx].exclTotal = qty * price * (1 - disc);
+        items[idx].inclTotal = items[idx].exclTotal * (1 + VAT_RATE);
+      } else if (field === 'status') {
+        items[idx][field] = value;
+        el.className = `status-cell status-${value.replace(/\s/g,'\\ ')}`;
+      } else {
+        items[idx][field] = value;
+      }
+      renderTable();
+    };
+
+
+    // --- NEW SO4039 STRUCTURED PARSER ---
+    const parseSO4039LineItems = (lineItemsText, headerDefaults) => {
+        const parsedItems = [];
+        // The SO4039 structure (Source 26) has 5 columns:
+        // "Description", "Quantity", "Excl. Price\nDisc %\nVAT%", "Excl Total", "Incl. Total"
+        
+        // Split the large block of item text into individual rows
+        const rows = lineItemsText.split(/\n/);
+        
+        for (const row of rows) {
+            // Find the split point that separates the description from the rest of the data.
+            // Descriptions often contain codes like "17161-LINEO 125 QUIET - Item I"
+            // The rest of the data starts with numbers/percentages.
+            
+            // Look for the last ' - Item X' marker or the Quantity column start
+            const parts = row.match(/(.+?)\s+([\d\.]+)\s+(R\s?[\d\s,]+\.\d{2}|[\d\s\.\%]+R\s?[\d\s,]+\.\d{2})\s+(R\s?[\d\s,]+\.\d{2})\s+(R\s?[\d\s,]+\.\d{2})/);
+            
+            if (parts && parts.length === 6) {
+                const description = parts[1].trim();
+                const qty = cleanCurrency(parts[2]); // Quantity (e.g., 1.00)
+                const messyCol = parts[3].trim(); // Excl. Price / Disc % / VAT %
+                const exclTotalGiven = cleanCurrency(parts[4]); // Excl Total (e.g., R 2,597.00)
+                const inclTotalGiven = cleanCurrency(parts[5]); // Incl. Total (e.g., R 2,986.55)
+
+                // 1. Extract Unit Price: The unit price is jumbled in the messy column.
+                // We'll calculate it using the given Excl Total and Quantity to be accurate.
+                let unitPrice = qty > 0 ? exclTotalGiven / qty : 0.00;
+                
+                // 2. Extract Item Discount (for editing simplicity)
+                // Item I has an item discount of 15.00% explicitly in the messy column, others are 0.00% or price is pre-discounted.
+                // For editing, we'll set the discount to 0.0 and let the Excl Price = Excl Total / QTY.
+                let itemDiscPct = 0.0;
+                
+                // In the SO4039 PDF, the listed Excl Total is actually the Quantity * Listed Excl Price.
+                // The overall 5.00% discount is applied later, so the item-level discount is 0 for most rows.
+                // The exception is row 'Item I' which has '15.00%' listed first in the messy column[cite: 26].
+                if (description.includes('- Item I')) {
+                    // Item I has a 15.00% discount listed in the messy column [cite: 26]
+                    // This means the listed 'Excl Total' is the final amount after this 15% discount.
+                    const listedPriceMatch = messyCol.match(/R\s?([\d,]+\.\d{2})/);
+                    const listedPricePreDisc = cleanCurrency(listedPriceMatch ? listedPriceMatch[1] : '0.00');
+                    
+                    // Recalculate unitPrice *without* discount and set discPct to 15.0
+                    unitPrice = listedPricePreDisc; 
+                    itemDiscPct = 15.0; 
+                    // The calculated exclTotal (qty * unitPrice * (1-discPct)) should match exclTotalGiven.
+                }
+
+                // If the item has a specific price listed in the messy column (like R 2,597.00), use that for the editable exclPrice field.
+                const listedPriceMatch = messyCol.match(/R\s?([\d,]+\.\d{2})/);
+                if (listedPriceMatch) {
+                    unitPrice = cleanCurrency(listedPriceMatch[1]);
+                }
+
+
+                // Create the item object
+                parsedItems.push({
+                    date: headerDefaults.date,
+                    deliveryDate: headerDefaults.deliveryDate,
+                    jobNumber: headerDefaults.jobRef,
+                    docNo: headerDefaults.soNumber,
+                    customerRef: headerDefaults.customerRef,
+                    customer: headerDefaults.customer,
+                    description: description,
+                    qty: qty,
+                    exclPrice: unitPrice, // Set as the editable unit price
+                    discPct: itemDiscPct, // Set as the editable item discount
+                    overallDiscountPct: headerDefaults.overallDiscountPct, // Store the overall discount %
+                    supplier: 'Ex Stock',
+                    supplierPONumber: 'N/A',
+                    salesRep: headerDefaults.salesRep,
+                    status: 'In progress',
+                    comments: headerDefaults.comments,
+                    // These totals are derived from the editable fields (qty * price * (1-disc))
+                    // For SO4039, the final Excl Total is given directly. We use the *calculated* // value from the editable fields to maintain tool consistency.
+                    exclTotal: qty * unitPrice * (1 - itemDiscPct / 100),
+                    inclTotal: (qty * unitPrice * (1 - itemDiscPct / 100)) * (1 + VAT_RATE)
+                });
+            }
+        }
+        return parsedItems;
+    };
+    
+    // === ✅ ENHANCED PDF PARSER (v2) ===
+    const parseSalesOrderPDF = (rawText) => {
+      // Normalize: replace non-breaking spaces, collapse whitespace, split into clean lines
+      let lines = rawText
+        .replace(/\u00A0/g, ' ') // nbsp → space
+        .replace(/\r/g, '\n')
+        .split('\n')
+        .map(l => l.trim())
+        .filter(l => l.length > 0);
+
+      // Remove known noise lines (addresses, banking, VAT, FROM/TO)
+      const noisePatterns = [
+        /FROM\s+TO/i,
+        /VAT NO:/i,
+        /CUSTOMER VAT NO:/i,
+        /DELIVERY ADDRESS:/i,
+        /POSTAL ADDRESS:/i,
+        /BANKING DETAILS/i,
+        /Name of Bank/i,
+        /Swift Code/i
+        // NOTE: Keeping Total Discount/Sub Total/Grand Total for later use if needed
+      ];
+      let cleanLines = lines.filter(l => !noisePatterns.some(p => p.test(l)));
+
+      // Extract header via regex (more robust)
+      let soNumber = 'SO????';
+      let jobRef = 'FM????';
+      let date = '';
+      let deliveryDate = '';
+      let salesRep = 'Simon Mokgola';
+      let customer = 'Dynatron Group';
+      let customerRef = '';
+      let overallDiscountPct = 0.00; 
+
+      for (const line of lines) {
+        // NUMBER: SO4039 
+        const numMatch = line.match(/NUMBER:\s*([A-Z0-9]+)/i);
+        if (numMatch) soNumber = numMatch[1].trim();
+
+        // REFERENCE: PO000106 
+        const refMatch = line.match(/REFERENCE:\s*([^\s]+)/i);
+        if (refMatch) {
+            customerRef = refMatch[1].trim(); 
+        }
+
+        // PO000106 -> use as Job Ref
+        if(customerRef.startsWith('PO')) {
+            jobRef = customerRef;
+        }
+
+
+        const dateMatch = line.match(/DATE:\s*(\d{1,2}\/\d{1,2}\/\d{4})/i);
+        if (dateMatch) date = parseDate(dateMatch[1]); // 01/10/2025 
+
+        const delivMatch = line.match(/DELIVERY DATE:\s*(\d{1,2}\/\d{1,2}\/\d{4})/i);
+        if (delivMatch) deliveryDate = parseDate(delivMatch[1]); // 31/10/2025 
+
+        // SALES REP: MASHUDU TSHIFULARO 
+        const repMatch = line.match(/SALES REP:\s*([A-Z\s]+)/i);
+        if (repMatch) salesRep = repMatch[1].trim();
+
+        // OVERALL DISCOUNT %: 5.00% 
+        const discMatch = line.match(/OVERALL DISCOUNT %:\s*([\d\.]+)%/i);
+        if (discMatch) overallDiscountPct = parseFloat(discMatch[1]) || 0.00; // 5.00
+
+        // Customer: POWERNEX T/A POWER NEX (PTY) LTD [cite: 19]
+        if (line.includes('POWERNEX') || line.includes('POWER NEX')) {
+            customer = line.replace('TO', '').trim();
+        } else if (!customer && /group|pty/i.test(line) && !/VAT|DELIVERY|POSTAL/.test(line)) {
+          customer = line.split(/VAT|DELIVERY|POSTAL/)[0].trim();
+        }
+      }
+
+      const headerDefaults = {
+          date: date || new Date().toLocaleDateString('en-ZA'),
+          deliveryDate: deliveryDate || '',
+          jobNumber: jobRef,
+          docNo: soNumber,
+          customerRef: customerRef || 'PO-???',
+          customer: customer,
+          salesRep: salesRep,
+          overallDiscountPct: overallDiscountPct,
+          comments: deliveryDate ? `Target completion Date: ${parseDate(deliveryDate)}` : 'Target completion Date: 27/11/2025',
+      };
+      
+      // --------------------------------------------------------
+      // DECISION: WHICH PARSER TO USE?
+      // If the text contains the specific SO4039 item table headers, use the new parser.
+      // Otherwise, fall back to the old heuristic parser (for SO4197-like documents).
+      // --------------------------------------------------------
+      if (rawText.includes('Excl. Price') && rawText.includes('Disc %')) {
+          // Identify the start of the line item block
+          const startMarker = 'Description\nQuantity\nExcl. Price';
+          const endMarker = 'FAN MOVEMENT BANKING DETAILS';
+          
+          let itemBlock = '';
+          const startIdx = rawText.indexOf(startMarker);
+          const endIdx = rawText.indexOf(endMarker);
+
+          if (startIdx !== -1 && endIdx !== -1 && endIdx > startIdx) {
+              // Extract the raw text containing the items and totals
+              itemBlock = rawText.substring(startIdx + startMarker.length, endIdx).trim();
+          } else if (startIdx !== -1) {
+              itemBlock = rawText.substring(startIdx + startMarker.length).trim();
+          }
+
+          if (itemBlock) {
+              // Clean up the item block for easier row processing: 
+              // replace newlines that follow an item's data with a space.
+              itemBlock = itemBlock.replace(/(\d+\.\d{2}|[\d\s\.\%]+R\s?[\d\s,]+\.\d{2}) (\s*\n\s*)/g, ' ');
+
+              // Now, split by recognized line breaks for new rows
+              const itemRows = itemBlock.split(/\n\n+/).map(r => r.trim()).filter(r => r.length > 0 && r.includes('R '));
+              
+              return parseSO4039LineItems(itemRows.join('\n'), headerDefaults);
+          }
+      }
+
+
+      // --- FALLBACK TO EXISTING SO4197 HEURISTIC PARSER ---
+      // This section is the original v1 logic, adapted to use the new headerDefaults
+
+      const itemLines = [];
+      const linesWithR = cleanLines.filter(l => l.includes('R ') || l.includes(' R'));
+
+      for (let i = 0; i < linesWithR.length; i++) {
+        let line = linesWithR[i].trim();
+        // Skip total lines
+        if (/Total\s+(Discount|Exclusive|VAT|Sub|Grand)/i.test(line)) break;
+
+        // Heuristic: if line doesn't start with word + dash, merge with previous
+        if (itemLines.length > 0 && !/^[A-Z0-9]+-/.test(line)) {
+          itemLines[itemLines.length - 1] += ' ' + line;
+        } else {
+          itemLines.push(line);
+        }
+      }
+
+      const parsedItems = [];
+      for (const line of itemLines) {
+        let cleanLine = line.replace(/\s+/g, ' ');
+
+        const parts = cleanLine.split(/\s+/);
+        if (parts.length < 5) continue;
+
+        let qtyIdx = -1;
+        for (let j = 0; j < parts.length; j++) {
+          if (!isNaN(parseFloat(parts[j])) && parts[j].includes('.')) {
+            qtyIdx = j;
+            break;
+          }
+        }
+        if (qtyIdx === -1) continue;
+
+        let priceIdx = -1;
+        for (let j = qtyIdx + 1; j < parts.length; j++) {
+          if (parts[j] === 'R' && j + 1 < parts.length) {
+            priceIdx = j + 1;
+            break;
+          }
+          if (parts[j].startsWith('R')) {
+            priceIdx = j;
+            break;
+          }
+        }
+        if (priceIdx === -1) continue;
+
+        let description = parts.slice(0, qtyIdx).join(' ').replace(/-\s*/, ' - ').trim();
+        const qty = parseFloat(parts[qtyIdx]) || 1;
+        let exclPriceStr = parts[priceIdx].replace(/[R,]/g, '');
+        const exclPrice = parseFloat(exclPriceStr) || 0;
+
+        let discPct = 0;
+        for (let j = priceIdx + 1; j < parts.length; j++) {
+          if (parts[j].endsWith('%') && !parts[j].includes('VAT')) {
+            discPct = parseFloat(parts[j].replace('%', '')) || 0;
+            break;
+          }
+        }
+
+        parsedItems.push({
+          date: headerDefaults.date,
+          deliveryDate: headerDefaults.deliveryDate,
+          jobNumber: headerDefaults.jobRef,
+          docNo: headerDefaults.soNumber,
+          customerRef: headerDefaults.customerRef,
+          customer: headerDefaults.customer,
+          description: description,
+          qty: qty,
+          exclPrice: exclPrice,
+          discPct: discPct,
+          overallDiscountPct: headerDefaults.overallDiscountPct, // Included for consistency
+          supplier: 'Ex Stock',
+          supplierPONumber: 'N/A',
+          salesRep: headerDefaults.salesRep,
+          status: 'In progress',
+          comments: headerDefaults.comments,
+          exclTotal: qty * exclPrice * (1 - discPct / 100),
+          inclTotal: qty * exclPrice * (1 - discPct / 100) * (1 + VAT_RATE)
+        });
+      }
+
+      return parsedItems;
+    };
+
+    const exportToCSV = () => {
+      if (items.length === 0) {
+        alert('No items to export.');
+        return;
+      }
+      
+      const headers = [
+        'Date', 'Delivery Date', 'Job Number', 'Document No.', 'Customer Ref.', 'Customer',
+        'Item & Description', 'QTY', 'Supplier', 'Supplier PO Number', 'Sales Rep', 'Status', 'Comments',
+        'Excl Price', 'Disc%', 'Overall Disc%', 'Excl Total', 'Incl Total'
+      ];
+      
+      const rows = items.map(item => [
+        item.date,
+        item.deliveryDate,
+        `"${item.jobNumber}"`,
+        item.docNo,
+        `"${item.customerRef}"`,
+        `"${item.customer}"`,
+        `"${item.description}"`,
+        item.qty,
+        item.supplier,
+        item.supplierPONumber,
+        item.salesRep,
+        item.status,
+        `"${item.comments}"`,
+        item.exclPrice.toFixed(2).replace('.', ','),
+        item.discPct.toFixed(1),
+        item.overallDiscountPct.toFixed(2), // Export overall discount %
+        item.exclTotal.toFixed(2).replace('.', ','),
+        item.inclTotal.toFixed(2).replace('.', ',')
+      ]);
+      
+      const csvContent = [
+        headers.join(','),
+        ...rows.map(row => row.join(','))
+      ].join('\n');
+      
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      const now = new Date();
+      a.download = `Sales_Order_Report_${now.getDate()}-${now.getMonth()+1}-${now.getFullYear()}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    };
+
+    // Event listeners
+    document.getElementById('parseBtn').addEventListener('click', () => {
+      const text = document.getElementById('inputText').value.trim();
+      if (!text) {
+        alert('Please paste sales order text first.');
+        return;
+      }
+      const parsed = parseSalesOrderPDF(text);
+      if (parsed.length === 0) {
+        alert('⚠️ Could not parse items.\n\n✅ Tip: Try pasting the ENTIRE PDF text (including headers).');
+        return;
+      }
+      items = parsed;
+      overallDiscountPct = items[0] ? items[0].overallDiscountPct : 0.00; // Set global discount from the first parsed item
+      renderTable();
+      document.getElementById('inputText').value = '';
+    });
+
+    document.getElementById('clearBtn').addEventListener('click', () => {
+      items = [];
+      overallDiscountPct = 0.00;
+      renderTable();
+      document.getElementById('inputText').value = '';
+    });
+
+    document.getElementById('exportBtn').addEventListener('click', exportToCSV);
+
+    document.getElementById('addRowBtn').addEventListener('click', () => {
+      items.push({
+        date: new Date().toLocaleDateString('en-ZA'),
+        deliveryDate: '',
+        jobNumber: 'FM????',
+        docNo: 'SO????',
+        customerRef: 'PO-???',
+        customer: 'Dynatron Group',
+        description: 'New Item',
+        qty: 1,
+        exclPrice: 0.00,
+        discPct: 0.0,
+        overallDiscountPct: overallDiscountPct,
+        supplier: 'Ex Stock',
+        supplierPONumber: 'N/A',
+        salesRep: 'Simon Mokgola',
+        status: 'In progress',
+        comments: 'Target completion Date: ' + new Date(Date.now() + 8*24*60*60*1000).toLocaleDateString('en-ZA'),
+        exclTotal: 0.00,
+        inclTotal: 0.00
+      });
+      renderTable();
+    });
+
+    document.getElementById('saveBtn').addEventListener('click', () => {
+      const name = prompt('Enter a name (e.g., SO4197):');
+      if (!name) return;
+      const history = JSON.parse(localStorage.getItem('soHistory') || '[]');
+      history.push({ name, timestamp: new Date().toISOString(), items: JSON.parse(JSON.stringify(items)), overallDiscountPct: overallDiscountPct });
+      localStorage.setItem('soHistory', JSON.stringify(history));
+      alert(`✅ Saved "${name}"`);
+      document.getElementById('historyCount').textContent = `Saved: ${history.length}`;
+    });
+
+    document.getElementById('loadBtn').addEventListener('click', () => {
+      const history = JSON.parse(localStorage.getItem('soHistory') || '[]');
+      if (history.length === 0) {
+        alert('No saved orders.');
+        return;
+      }
+      const names = history.map((h, i) => `${i+1}. ${h.name} (${new Date(h.timestamp).toLocaleDateString()})`).join('\n');
+      const choice = prompt(`Select order to load:\n\n${names}`);
+      if (!choice) return;
+      const idx = parseInt(choice) - 1;
+      if (idx >= 0 && idx < history.length) {
+        items = JSON.parse(JSON.stringify(history[idx].items));
+        overallDiscountPct = history[idx].overallDiscountPct || 0.00;
+        renderTable();
+        alert(`✅ Loaded "${history[idx].name}"`);
+      } else {
+        alert('Invalid selection.');
+      }
+    });
+
+    renderTable();
+  </script>
+</body>
+</html>

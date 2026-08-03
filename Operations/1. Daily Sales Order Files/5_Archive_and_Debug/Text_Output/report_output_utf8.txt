@@ -1,0 +1,31 @@
+﻿====== HEADERS (Row 1) ======
+['Date', 'Delivery Date', 'Job Number', 'SO Number', 'Customer Ref.', 'Customer', 'Total', 'Sales Rep', 'Status', 'Payment Status', 'Details', 'Planned Delivery Date', None, None]
+
+====== SAMPLE ROW 2 (Check Formulas/Data) ======
+[datetime.datetime(2026, 2, 3, 0, 0), datetime.datetime(2026, 3, 23, 21, 26, 9, 374000), 'FM3808', 'SO4339', 'PO549NN', 'Intervent-Universal (Pty) Ltd', 22816, 'Simon Mokgola', 'Ready-Dispatch', 'ACCOUNT - UP TO DATE', 'RAD 250 (Qty: 8)', '=B2', None, None]
+
+====== SAMPLE ROW ALIGNMENTS (Row 2) ======
+['center', 'center', 'center', 'center', 'left', 'left', 'None', 'center', 'center', 'center', 'left', 'center', 'None', 'None']
+
+====== SHEET DIMENSIONS ======
+Max Row: 32, Max Col: 14
+
+====== SUMMARY SECTION (Last 20 Rows) ======
+Row 12: ['Col 1: 2026-03-12 00:00:00', 'Col 2: 2026-03-27 00:00:00', 'Col 3: FM3902', 'Col 4: SO4448', 'Col 5: 61713', 'Col 6: Chabo & Joubert Air Conditioning (Pty) Ltd', 'Col 7: 84019', 'Col 8: Sizwe Tshabalala', 'Col 9: In Progress', 'Col 10: ACCOUNT - UP TO DATE', 'Col 11: MAJAX 965 c/w 11,00KW 4P 525V - 2 Stage (Qty: 2)', 'Col 12: =B12']
+Row 13: ['Col 1: 2026-02-05 00:00:00', 'Col 2: 2026-03-31 00:00:00', 'Col 3: FM3812', 'Col 4: SO4343', 'Col 5: DPO-1616', 'Col 6: Dueltron (Pty) Ltd', 'Col 7: 145269.15', 'Col 8: Mashudu Tshifularo', 'Col 9: In Progress', 'Col 10: ACCOUNT - UP TO DATE', 'Col 11: MAJAX-2 BIF 1250 c/w 22,00KW 4P 380V (Qty: 1)', 'Col 12: =B13']
+Row 14: ['Col 1: 2026-03-10 00:00:00', 'Col 2: 2026-04-01 00:00:00', 'Col 3: FM3907', 'Col 4: SO4440', 'Col 5: PO2228', 'Col 6: Hucra Fans', 'Col 7: 21208.3', 'Col 8: Sales Agent Hucra Fans', 'Col 9: Ready-Dispatch', 'Col 10: ACCOUNT - UP TO DATE', 'Col 11: SCL-K05 MS-2.2kW 380V (Qty: 1)', 'Col 12: =B14']
+Row 15: ['Col 1: 2026-03-23 00:00:00', 'Col 2: 2026-04-02 00:00:00', 'Col 3: FM3952', 'Col 4: SO4475', 'Col 5: J5383-001ORD', 'Col 6: RTS Africa Engineering (Pty) Ltd', 'Col 7: 34103.49', 'Col 8: Simon Mokgola', 'Col 9: In Progress', 'Col 10: ACCOUNT - UP TO DATE', 'Col 11: MAJAX 400 c/w 0.75kW 2Pole 380V (Qty: 2), Data Book (Qty: 2), 400 Diam Side Screen (Qty: 2)', 'Col 12: =B15']
+Row 16: ['Col 1: 2026-03-18 00:00:00', 'Col 2: 2026-04-16 00:00:00', 'Col 3: FM3930', 'Col 4: SO4469', 'Col 5: PO0007989 - FAN MAXFLO 710', 'Col 6: AGILITY ENGINEERING SERVICES (PTY) LTD', 'Col 7: 69948.06', 'Col 8: Mashudu Tshifularo', 'Col 9: In Progress', 'Col 10: ACCOUNT - UP TO DATE', 'Col 11: MAXFLO 710/150/10 A c/w 4,00KW 4P 380V (Qty: 2)', 'Col 12: =B16']
+Row 17: ['Col 1: 2025-05-22 00:00:00', 'Col 2: 2026-04-30 00:00:00', 'Col 3: FM3944', 'Col 4: SO3760', 'Col 5: PO 62844', 'Col 6: Rey & Lenferna Ltd', 'Col 7: 545349.34', 'Col 8: Sizwe - R.O.A', 'Col 9: Pending', 'Col 10: ACCOUNT - UP TO DATE', 'Col 11: OUTSTANDING ORDER (Qty: 1)', 'Col 12: =B17']
+Row 18: ['Col 1: 2026-01-30 00:00:00', 'Col 2: 2026-04-30 00:00:00', 'Col 3: FM3951', 'Col 4: SO4331', 'Col 5: PO 62844', 'Col 6: Rey & Lenferna Ltd', 'Col 7: 521526.68', 'Col 8: Sizwe - R.O.A', 'Col 9: Pending', 'Col 10: ACCOUNT - UP TO DATE', 'Col 11: Sales order (Qty: 1)', 'Col 12: =B18']
+Row 19: ['Col 1: 2026-02-24 00:00:00', 'Col 2: 2026-05-15 00:00:00', 'Col 3: FM3874', 'Col 4: SO4404', 'Col 5: PO2174', 'Col 6: ITD North Pty Ltd', 'Col 7: 94247.1', 'Col 8: Mashudu Tshifularo', 'Col 9: In Progress', 'Col 10: ACCOUNT - UP TO DATE', 'Col 11: RDH 710 K2 - Nicotra Fan (Qty: 1)', 'Col 12: =B19']
+Row 20: ['Col 1: 2026-02-16 00:00:00', 'Col 2: 2026-05-15 00:00:00', 'Col 3: FM3841', 'Col 4: SO4372', 'Col 5: PO2213', 'Col 6: Hucra Fans', 'Col 7: 379993.35', 'Col 8: Sales Agent Hucra Fans', 'Col 9: In Progress', 'Col 10: ACCOUNT - UP TO DATE', 'Col 11: SCL K11 MS - 11.0kW - 525V (Qty: 3)', 'Col 12: =B20']
+Row 21: ['Col 6: Total Value (All):', 'Col 7: =SUM(G2:G20)']
+Row 23: ['Col 6: BREAKDOWN']
+Row 24: ['Col 6: Cash Sale (March):', 'Col 7: =SUMIFS(G2:G20, J2:J20, "*CASH SALE*", L2:L20, ">="&EOMONTH(TODAY(),-1)+1, L2:L20, "<="&EOMONTH(TODAY(),0))', 'Col 9: Cash Sale (April):', 'Col 10: =SUMIFS(G2:G20, J2:J20, "*ACCOUNT*", L2:L20, ">="&EOMONTH(TODAY(),-1)+1, L2:L20, "<="&EOMONTH(TODAY(),0))']
+Row 25: ['Col 6: Account (March):', 'Col 7: =SUMIFS(G2:G20, J2:J20, "*CASH SALE*", L2:L20, ">="&EOMONTH(TODAY(),0)+1, L2:L20, "<="&EOMONTH(TODAY(),1))', 'Col 9: Account (April):', 'Col 10: =SUMIFS(G2:G20, J2:J20, "*ACCOUNT*", L2:L20, ">="&EOMONTH(TODAY(),0)+1, L2:L20, "<="&EOMONTH(TODAY(),1))']
+Row 27: ['Col 6: Ready-Dispatch:', 'Col 7: =SUMIFS(G2:G20, I2:I20, "*Ready*Dispatch*")']
+Row 29: ['Col 1: Date', 'Col 2: Delivery Date', 'Col 3: Job Number', 'Col 4: SO Number', 'Col 5: Customer Ref.', 'Col 6: Customer', 'Col 7: Total', 'Col 8: Sales Rep', 'Col 9: Status', 'Col 10: Payment Status', 'Col 11: Comments']
+Row 30: ['Col 1: 2026-02-03 00:00:00', 'Col 2: 2026-03-23 21:26:09.374000', 'Col 3: FM3808', 'Col 4: SO4339', 'Col 5: PO549NN', 'Col 6: Intervent-Universal (Pty) Ltd', 'Col 7: 22816', 'Col 8: Simon Mokgola', 'Col 9: Ready-Dispatch', 'Col 10: ACCOUNT - UP TO DATE', 'Col 11: Awaiting payment, client unreachable']
+Row 31: ['Col 1: 2026-03-10 00:00:00', 'Col 2: 2026-04-01 00:00:00', 'Col 3: FM3907', 'Col 4: SO4440', 'Col 5: PO2228', 'Col 6: Hucra Fans', 'Col 7: 21208.3', 'Col 8: Sales Agent Hucra Fans', 'Col 9: Ready-Dispatch', 'Col 10: ACCOUNT - UP TO DATE', 'Col 11: Client requested dispatch 01/04/2026']
+Row 32: ['Col 6: Ready-Dispatch:', 'Col 7: =SUM(G30:G31)']

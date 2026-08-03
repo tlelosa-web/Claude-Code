@@ -1,0 +1,24 @@
+
+--- Sheet: W-shop Calc ---
+Columns: ['Code', 'Description', 'Category', 'Cost Price', 'Avg Monthly Usage (AMU)', 'Lead Time (months)', 'Safety Factor (months)', 'Review Period (months)', 'Safety Stock', 'Lead Time Demand', 'Reorder Point (ROP)', 'Maximum Stock (MAX)', 'Current Stock', 'On Order', 'Order Quantity']
+
+--- Sheet: W-shop RPT ---
+Columns: ['Code', 'Description', 'Category', 'Cost Price', 'Safety Stock', 'Reorder Point (ROP)', 'Maximum Stock (MAX)', 'Current Stock', 'On Order', 'Order Quantity', 'Stock Value', 'Order Value']
+
+--- Sheet: W-shop Report Total ---
+Columns: ['Code', 'Description', 'Category', 'Cost Price', 'Minimum Stock (MIN)', 'Maximum Stock (MAX)', 'Current Stock', 'On Order', 'Order Quantity', 'Rep - Cost']
+
+--- Sheet: W-shop Rpt Total + Plnd ---
+Columns: ['Code', 'Description', 'Category', 'Cost Price', 'Minimum Stock (MIN)', 'Maximum Stock (MAX)', 'Current Stock', 'On Order', 'Order Quantity', 'Rep - Cost', 'Total Stock + On Order']
+
+--- Sheet: Replenishment ---
+Columns: ['Code', 'Description', 'Category', 'Cost Price', 'Minimum Stock (MIN)', 'Maximum Stock (MAX)', 'Current Stock', 'On Order', 'Order Quantity', 'Rep - Cost']
+
+--- Sheet: Sheet2 ---
+Columns: ['Code', 'Description', 'Category', 'Actom Cost Price', 'Weg Cost Price', 'Askari Cost Price', 'Avg Monthly Usage (AMU)', 'Lead Time (months)', 'Safety Factor (months)', 'Review Period (months)', 'Safety Stock', 'Lead Time Demand', 'Reorder Point (ROP)', 'Maximum Stock (MAX)', 'Current Stock', 'On Order', 'Order Quantity', 'Actom PO', 'Askari PO']
+
+--- Sheet: Sheet1 ---
+Columns: ['PO#', 'Code', 'Description', 'Category', 'Actom Cost Price', 'Order Quantity', 'Total', 'Column1', 'Availability']
+
+--- Sheet: ItemListingReport ---
+Columns: ['Code', 'Description', 'Category', 'Last Cost', 'Avg. Cost']

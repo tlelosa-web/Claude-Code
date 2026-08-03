@@ -1,0 +1,40 @@
+With skiprows=1:
+Columns: ['Name\n                     \n                    Date', 'Reference', 'Status', 'Description', 'Qty', 'Total Selling']
+Shape: (16445, 6)
+
+0: {'Name\n                     \n                    Date': '52 Engneering'}
+1: {'Name\n                     \n                    Date': '06/02/2023', 'Reference': 'SO1966', 'Status': 'Invoiced'}
+2: {'Description': 'class 4 Impeller', 'Qty': 1.0, 'Total Selling': 23320.0}
+3: {'Name\n                     \n                    Date': 'Total for SO1966', 'Qty': 1.0, 'Total Selling': 23320.0}
+4: {'Name\n                     \n                    Date': 'Total for 52 Engneering', 'Qty': 1.0, 'Total Selling': 23320.0}
+5: {'Name\n                     \n                    Date': '9 South African Infantry Battalion Base'}
+6: {'Name\n                     \n                    Date': '27/07/2023', 'Reference': 'SO2346', 'Status': 'Invoiced'}
+7: {'Description': 'GLF 7 - c/w 0.45kW 960rpm 380V Motor + Louvre and screen', 'Qty': 2.0, 'Total Selling': 19242.0}
+8: {'Description': 'Delivery', 'Qty': 1.0, 'Total Selling': 1050.0}
+9: {'Name\n                     \n                    Date': 'Total for SO2346', 'Qty': 3.0, 'Total Selling': 20292.0}
+10: {'Name\n                     \n                    Date': 'Total for 9 South African Infantry Battalion Base', 'Qty': 3.0, 'Total Selling': 20292.0}
+11: {'Name\n                     \n                    Date': 'A-Z Office & Home Renovations'}
+12: {'Name\n                     \n                    Date': '14/06/2024', 'Reference': 'SO3087', 'Status': 'Invoiced'}
+13: {'Description': 'DEUMIDO 20', 'Qty': 1.0, 'Total Selling': 7629.0}
+14: {'Description': 'V 150/6 AR', 'Qty': 1.0, 'Total Selling': 1764.0}
+
+
+--- Alternative: skiprows=3 ---
+Columns: ['06/02/2023', 'SO1966', 'Invoiced', 'Unnamed: 3', 'Unnamed: 4', 'Unnamed: 5']
+Shape: (16443, 6)
+
+0: {'Unnamed: 3': 'class 4 Impeller', 'Unnamed: 4': 1.0, 'Unnamed: 5': 23320.0}
+1: {'06/02/2023': 'Total for SO1966', 'Unnamed: 4': 1.0, 'Unnamed: 5': 23320.0}
+2: {'06/02/2023': 'Total for 52 Engneering', 'Unnamed: 4': 1.0, 'Unnamed: 5': 23320.0}
+3: {'06/02/2023': '9 South African Infantry Battalion Base'}
+4: {'06/02/2023': '27/07/2023', 'SO1966': 'SO2346', 'Invoiced': 'Invoiced'}
+5: {'Unnamed: 3': 'GLF 7 - c/w 0.45kW 960rpm 380V Motor + Louvre and screen', 'Unnamed: 4': 2.0, 'Unnamed: 5': 19242.0}
+6: {'Unnamed: 3': 'Delivery', 'Unnamed: 4': 1.0, 'Unnamed: 5': 1050.0}
+7: {'06/02/2023': 'Total for SO2346', 'Unnamed: 4': 3.0, 'Unnamed: 5': 20292.0}
+8: {'06/02/2023': 'Total for 9 South African Infantry Battalion Base', 'Unnamed: 4': 3.0, 'Unnamed: 5': 20292.0}
+9: {'06/02/2023': 'A-Z Office & Home Renovations'}
+10: {'06/02/2023': '14/06/2024', 'SO1966': 'SO3087', 'Invoiced': 'Invoiced'}
+11: {'Unnamed: 3': 'DEUMIDO 20', 'Unnamed: 4': 1.0, 'Unnamed: 5': 7629.0}
+12: {'Unnamed: 3': 'V 150/6 AR', 'Unnamed: 4': 1.0, 'Unnamed: 5': 1764.0}
+13: {'06/02/2023': 'Total for SO3087', 'Unnamed: 4': 2.0, 'Unnamed: 5': 9393.0}
+14: {'06/02/2023': 'Total for A-Z Office & Home Renovations', 'Unnamed: 4': 2.0, 'Unnamed: 5': 9393.0}

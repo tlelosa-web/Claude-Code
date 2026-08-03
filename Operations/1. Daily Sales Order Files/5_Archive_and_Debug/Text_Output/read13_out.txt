@@ -1,0 +1,8 @@
+--- 13.03.2026 TOP 6 ROWS ---
+Row 1: ['SALES ORDER REPORT', 'None', 'None', 'None', 'None', 'None', 'None', 'None', 'None', 'None', '=TODAY()', 'None']
+Row 2: ['Date', 'Delivery Date', 'Job Number', 'SO Number', 'Customer Ref.', 'Customer', 'Price Incl.', 'Sales Rep.', 'Status', 'Payment Type & Status', 'Details', 'Planned Collection / Delivery']
+Row 3: ['2026-02-03 00:00:00', '=TODAY()', 'FM3808', 'SO4339', 'PO549NN', 'Intervent-Universal (Pty) Ltd', '22816', 'Simon Mokgola', 'Ready - Dispatch', 'CASH SALE - UNPAID', 'RAD 250', '=Table13456789345789[[#This Row],[Delivery Date]]']
+Row 4: ['2026-02-19 00:00:00', '=TODAY()', 'FM3854', 'SO4384', 'FM3854', 'KG Construction Pty Ltd', '79321.25', 'Simon Mokgola', 'Ready - Dispatch', 'CASH SALE - UNPAID', 'AIRMAX-2.750 P.EC', '=Table13456789345789[[#This Row],[Delivery Date]]']
+Row 5: ['2026-02-25 00:00:00', '=TODAY()', 'FM3878', 'SO4408', 'Cash Sale', 'XL Air-Conditioning', '19908.8', 'Sizwe Tshabalala', 'Ready - Dispatch', 'CASH SALE – PARTIAL', 'Maxflo 1000 Impeller', '=Table13456789345789[[#This Row],[Delivery Date]]']
+Row 6: ['2026-02-23 00:00:00', '=TODAY()', 'FM3866', 'SO4397', 'J99335 Replacement', 'Moyahabo Mosala Trading and Projects', '88260.89', 'Sizwe Tshabalala', 'Ready - Dispatch', 'CASH SALE – PARTIAL', 'MAJAX-1 1000 c/w 22.00KW 4P 380V Spark Proof', '=Table13456789345789[[#This Row],[Delivery Date]]']
+Frozen Panes: E12

@@ -1,0 +1,8 @@
+﻿Cols: ['Name\n                     \n                    Date', 'Reference', 'Status', 'Description', 'Qty', 'Total Selling']
+Shape: (16445, 6)
+  Name\n                     \n                    Date Reference    Status       Description  Qty  Total Selling
+0                                         52 Engneering       NaN       NaN               NaN  NaN            NaN
+1                                            06/02/2023    SO1966  Invoiced               NaN  NaN            NaN
+2                                                   NaN       NaN       NaN  class 4 Impeller  1.0        23320.0
+3                                      Total for SO1966       NaN       NaN               NaN  1.0        23320.0
+4                               Total for 52 Engneering       NaN       NaN               NaN  1.0        23320.0

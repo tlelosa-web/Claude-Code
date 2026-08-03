@@ -1,0 +1,1030 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+  <meta name="mobile-web-app-capable" content="yes">
+  <title>🪙 Quest and version</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+    }
+    html { touch-action: manipulation; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #0f172a;
+      color: #e2e8f0;
+      padding: 12px;
+      line-height: 1.5;
+      -webkit-text-size-adjust: 100%;
+    }
+    .container { max-width: 560px; margin: 0 auto; }
+
+    /* Toast */
+    #toast {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      background: #1e3a5f;
+      color: #bfdbfe;
+      padding: 12px 20px;
+      border-radius: 8px;
+      font-weight: 600;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+      z-index: 1000;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s, transform 0.3s;
+    }
+    #toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    /* Hidden sections */
+    #badges-section, #total-wealth-section, #custom-controls-section { display: none !important; }
+
+    /* UI */
+    header { text-align: center; margin-bottom: 16px; }
+    /* MODIFICATION 1: Title and version styling */
+    h1 { font-size: 22px; color: #fbbf24; margin-bottom: 6px; text-shadow: 0 0 6px rgba(251,191,36,0.3); }
+    .version-text { 
+      font-size: 11px; 
+      color: #94a3b8; /* Grey color */
+      font-weight: normal; 
+      margin-left: 6px; 
+    }
+    .subtitle { font-size: 14px; color: #94a3b8; margin-bottom: 6px; }
+    .datetime { font-size: 14px; color: #cbd5e1; margin-bottom: 12px; font-family: 'SF Mono', monospace; }
+    
+    .quest-metrics {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+    .metric-card {
+      background: #1e293b;
+      padding: 10px;
+      border-radius: 8px;
+      text-align: center;
+      font-size: 13px;
+    }
+    .metric-label { display: block; color: #94a3b8; }
+    .metric-value { font-weight: bold; font-size: 16px; }
+    .gold { color: #fbbf24; }
+    .treasure { color: #10b981; }
+    .days { color: #60a5fa; }
+    .metric-card .loss { color: #ef4444; } /* ADDED: Style for loss in metric card */
+
+    .section { background: #1e293b; padding: 14px; border-radius: 10px; margin-bottom: 16px; box-shadow: 0 2px 6px rgba(0,0,0,0.2); }
+    .section-title { font-size: 16px; font-weight: 700; margin-bottom: 10px; color: #fbbf24; display: flex; align-items: center; gap: 6px; }
+    .section-title::before { content: "▶"; font-size: 12px; }
+
+    .level-info { display: grid; grid-template-columns: 1fr; gap: 8px; margin-bottom: 12px; }
+    .level-item { background: #334155; padding: 8px 10px; border-radius: 6px; font-size: 13px; }
+    .level-label { color: #94a3b8; font-size: 12px; }
+    .level-value { font-weight: 600; font-size: 15px; }
+
+    .input-group { margin-bottom: 12px; }
+    label { display: block; font-weight: 600; margin-bottom: 5px; font-size: 14px; }
+    input { width: 100%; padding: 9px 12px; font-size: 15px; border: 1px solid #475569; border-radius: 6px; background: #334155; color: white; }
+
+    .btn-group { display: flex; gap: 8px; margin: 8px 0; }
+    .btn {
+      flex: 1;
+      padding: 10px;
+      font-size: 15px;
+      font-weight: 600;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .btn-loss { background: #ef4444; color: white; }
+    .btn-win { background: #10b981; color: white; }
+    .btn-secondary { background: #475569; color: white; font-size: 14px; }
+    .btn-switch { background: #818cf8; }
+    .btn-save { background: #fbbf24; color: #0f172a; font-weight: bold; }
+
+    .settings-card { background: #334155; border-radius: 8px; padding: 12px; margin-top: 12px; display: none; }
+    .settings-card.show { display: block; }
+    .toggle-btn {
+      background: #475569;
+      color: white;
+      font-size: 14px;
+      padding: 8px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      margin-top: 8px;
+      text-align: center;
+    }
+
+    .over-risk-warning {
+      background: #dc2626;
+      color: white;
+      padding: 10px;
+      border-radius: 6px;
+      margin-top: 10px;
+      display: none;
+      font-weight: 500;
+      font-size: 14px;
+      animation: pulse 1.5s infinite;
+    }
+    @keyframes pulse {
+      0% { opacity: 1; }
+      50% { opacity: 0.6; }
+      100% { opacity: 1; }
+    }
+
+    .hint-box {
+      background: #1e3a5f;
+      border-left: 3px solid #3b82f6;
+      padding: 12px;
+      border-radius: 0 6px 6px 0;
+      margin-top: 10px;
+      font-size: 14px;
+    }
+    /* Renamed Hint Title */
+    .hint-title { font-weight: 600; color: #93c5fd; margin-bottom: 4px; }
+    .hint-detail {
+      padding-left: 16px;
+      font-weight: 600;
+      color: #bfdbfe;
+      font-family: 'SF Mono', 'Monaco', monospace;
+      font-size: 14px;
+    }
+
+    .progress-container { margin-top: 8px; }
+    .progress-bar { height: 18px; background: #334155; border-radius: 9px; overflow: hidden; }
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #3b82f6, #10b981);
+      border-radius: 9px;
+      width: 0%;
+      transition: width 0.5s ease;
+    }
+    .progress-text { text-align: center; font-weight: 600; margin-top: 6px; font-size: 15px; }
+
+    .results { margin-top: 12px; background: #334155; border-radius: 8px; padding: 12px; display: none; }
+    .row { display: flex; justify-content: space-between; margin: 5px 0; font-size: 14px; }
+    .label { font-weight: 600; color: #cbd5e1; }
+    .value { font-weight: 600; }
+    .loss .value { color: #ef4444; }
+    .win .value { color: #34d399; }
+
+    /* Trade Value Colors */
+    .row .value.trade-win { color: #10b981; } /* Green */
+    .row .value.trade-current { color: #fbbf24; } /* Orange/Gold */
+    .row .value.trade-loss { color: #ef4444; } /* Red */
+
+    .history {
+      margin-top: 12px;
+      font-size: 13px;
+      max-height: 200px;
+      overflow-y: auto;
+      padding: 10px;
+      background: #1e293b;
+      border-radius: 8px;
+      border: 1px solid #334155;
+      will-change: transform;
+    }
+    /* Auto-adjust record # column width */
+    .history-item {
+      padding: 5px 0;
+      border-bottom: 1px solid #334155;
+      display: grid;
+      grid-template-columns: 35px 1fr 70px 80px 50px;
+      align-items: center;
+      gap: 4px;
+    }
+    .history-item:last-child { border: none; }
+    .history-number, .history-action, .history-change, .history-balance, .history-time {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .history-number { font-weight: bold; color: #94a3b8; }
+    .history-action.win { color: #34d399; }
+    .history-action.loss { color: #ef4444; }
+    .history-change.win { color: #34d399; }
+    .history-change.loss { color: #ef4444; }
+
+    .footer { text-align: center; margin-top: 16px; font-size: 12px; color: #94a3b8; }
+
+    @media (max-width: 480px) {
+      .quest-metrics { 
+        grid-template-columns: 1fr 1fr 1fr; 
+        gap: 5px; 
+      }
+      .metric-card { padding: 8px 4px; }
+      .metric-label { font-size: 11px; }
+      .metric-value { font-size: 14px; }
+      /* Adjusted for small screens too */
+      .history-item { grid-template-columns: 28px 30px 50px 60px 50px; font-size: 12px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>
+        <span>🪙 Quest</span>
+        <span class="version-text">v1.0</span>
+      </h1>
+      <p class="subtitle">Custom target & duration</p>
+      <div class="datetime" id="datetime">Loading…</div>
+      <div class="quest-metrics">
+        <div class="metric-card">
+          <span class="metric-label">Account (R)</span>
+          <span class="metric-value gold" id="account-balance">R100.00</span>
+        </div>
+        <div class="metric-card">
+          <span class="metric-label">Saved (R)</span>
+          <span class="metric-value treasure" id="saved-balance">R0.00</span>
+        </div>
+        <div class="metric-card">
+          <span class="metric-label">Days to Target</span>
+          <span class="metric-value days" id="projected-days">30</span>
+        </div>
+      </div>
+    </header>
+    
+    <div class="section">
+      <h2 class="section-title">✨ Quest Status</h2>
+      <div class="level-item">
+        <span class="level-label">Quest Progress</span>
+        <div class="level-value" id="level-display">Day 1 (30 days to Target)</div>
+      </div>
+      <div class="level-item" style="background:#334155;margin-top:6px;">
+        <span class="level-label">Daily Target (Total Wealth)</span>
+        <div class="level-value" id="daily-target-display">R9.17</div>
+      </div>
+      <div class="level-item" style="background:#1e3a5f;margin-top:6px;">
+        <span class="level-label">Discipline Score</span>
+        <div class="level-value" id="discipline-score">100% (Perfect!)</div>
+      </div>
+      <div class="progress-container">
+          <div class="progress-bar"><div class="progress-fill"></div></div>
+          <div class="progress-text">0.00% — R100.00</div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2 class="section-title">📊 Performance</h2>
+      <div class="quest-metrics">
+        <div class="metric-card">
+          <span class="metric-label">Total Wins</span>
+          <span class="metric-value treasure" id="total-wins-display">0</span>
+        </div>
+        <div class="metric-card">
+          <span class="metric-label">Total Losses</span>
+          <span class="metric-value loss" id="total-losses-display">0</span>
+        </div>
+        <div class="metric-card">
+          <span class="metric-label">Actual Win Rate</span>
+          <span class="metric-value gold" id="actual-win-rate-display">N/A</span>
+        </div>
+      </div>
+    </div>
+    <div class="section">
+      <h2 class="section-title">🛡️ Trade</h2>
+      
+      <div class="row">
+        <span class="label">Next Trade (W):</span> 
+        <span class="value trade-win" id="next-trade-win">R3.66</span>
+      </div>
+      
+      <div class="row">
+        <span class="label">Current Trade:</span> 
+        <span class="value trade-current" id="current-trade">R3.53</span>
+      </div>
+      
+      <div class="row">
+        <span class="label">Next Trade (L):</span> 
+        <span class="value trade-loss" id="next-trade-loss">R3.40</span>
+      </div>
+
+      <div class="hint-box">
+        <div class="hint-title">🎯 Targets & Performance</div>
+        
+        <div class="hint-detail" id="multiplier-hint">Profit: 100.0% | Risk: 3.53%</div>
+        
+        <div class="hint-detail" id="win-rate-hint" style="margin-top: 5px; font-size: 13px; color: #34d399;">Actual Win Rate: N/A</div>
+
+        <div class="hint-detail" id="trades-per-day-hint" style="margin-top: 5px; font-size: 13px; color: #facc15;">Target Trades/Day: N/A</div> 
+
+        <div class="hint-detail" id="daily-target-amount-hint" style="font-size: 13px; color: #facc15;">Target Wealth (Day 1): R109.17</div> 
+
+        <div class="hint-detail" id="previous-target-hint" style="margin-top: 5px; font-size: 13px; color: #a5b4fc;">Daily Target initialized.</div>
+      </div>
+
+      <div class="over-risk-warning" id="over-risk-warning">
+        ⚠️ Over-Risk Alert: Your trade deviates >10% from settings. Stay disciplined!
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="btn-group">
+        <button class="btn btn-loss" id="loss-btn">🟥 Record Loss</button>
+        <button class="btn btn-win" id="win-btn">🟩 Record Win</button>
+      </div>
+      <div class="btn-group" style="margin-top:8px;">
+        <button class="btn btn-save" id="save-btn" disabled>💰 Save 50% (R1.00)</button>
+      </div>
+    </div>
+    
+    <div class="section">
+      <div class="btn-group">
+        <button class="btn btn-switch" id="mode-btn">⚙️ Custom Mode: OFF</button>
+        <button class="btn btn-secondary" id="reset-btn">↺ Reset</button>
+        <button class="btn btn-secondary" id="export-btn">📤 Export</button>
+      </div>
+
+      <div id="custom-controls" class="settings-card">
+        <div class="input-group">
+          <label for="openingInput">Opening Balance (R)</label>
+          <input type="number" id="openingInput" inputmode="decimal" value="100" min="0.01" step="0.01">
+        </div>
+        <div class="input-group">
+          <label for="targetInput">Target Amount (R)</label>
+          <input type="number" id="targetInput" inputmode="decimal" value="150000" min="1" step="1000">
+        </div>
+        <div class="input-group">
+          <label for="durationInput">Duration (Days)</label>
+          <input type="number" id="durationInput" inputmode="decimal" value="30" min="1" step="1">
+        </div>
+        <div class="input-group">
+          <label for="riskPercent">Risk (%)</label>
+          <input type="number" id="riskPercent" inputmode="decimal" value="3.53" min="0.1" max="50" step="0.1">
+        </div>
+        <div class="input-group" style="opacity: 0.5; pointer-events: none; display:none;">
+          <label for="lowMultiplier">Low Multiplier (Disabled)</label>
+          <input type="number" id="lowMultiplier" inputmode="decimal" value="2" min="1.0" step="0.1">
+        </div>
+        <div class="input-group">
+          <label for="profitPercent">Profit (% of Risk)</label>
+          <input type="number" id="profitPercent" inputmode="decimal" value="100" min="1.0" step="1">
+        </div>
+
+        <div class="input-group">
+          <label for="targetWinRateInput">Target Win Rate (%)</label>
+          <input type="number" id="targetWinRateInput" inputmode="decimal" value="60" min="0" max="100" step="1">
+        </div>
+        <div class="input-group">
+          <label for="savePercent">Save % of Profit</label>
+          <input type="number" id="savePercent" inputmode="decimal" value="50" min="0" max="100" step="5">
+        </div>
+        <button class="btn btn-secondary" id="apply-custom">✓ Apply Settings</button>
+      </div>
+
+      <div class="toggle-btn" id="toggle-settings">▼ Show Settings</div>
+    </div>
+
+    <div class="section">
+      <h2 class="section-title">📜 Adventure Journal</h2>
+      <div id="history" class="history">
+        <div class="history-item">
+          <span class="history-number">#1</span>
+          <span class="history-action">BEGIN</span>
+          <span class="history-change">+R0.00</span>
+          <span class="history-balance">R100.00</span>
+          <span class="history-time">—</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="footer">
+      🌟 Your discipline builds wealth — on your terms.
+    </div>
+  </div>
+
+  <div id="toast">Settings updated</div>
+
+  <script>
+    // ===== DATE/TIME =====
+    function updateDateTime() {
+      const now = new Date();
+      const options = {
+        weekday: 'short',
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      };
+      const locale = navigator.language || 'en-ZA';
+      document.getElementById('datetime').textContent = now.toLocaleString(locale, options);
+    }
+    updateDateTime();
+    setInterval(updateDateTime, 60000);
+
+    // ===== STATE =====
+    let openingBalance = 100;
+    let targetAmount = 150000;
+    let durationDays = 30;
+    let savedBalance = 0;
+    let riskPercent = 3.53;
+    let lowMultiplier = 2.0; 
+    let profitPercent = 100;
+    let targetWinRate = 60; // NEW STATE VARIABLE
+    let savePercent = 50;
+    let currentBalance = openingBalance;
+    let currentDay = 1;
+    let tradesCompleted = 0;
+    let lastTradeTime = new Date(); 
+    let tradeLog = [{ id: 1, type: 'init', change: 0, balance: openingBalance, saved: 0, time: new Date(), discipline: 100 }];
+    let nextId = 2;
+    let customMode = false;
+    let lastWinProfit = 0;
+    let disciplineHistory = [];
+    let badges = {
+      firstSave: false,
+      fiveWins: false,
+      ninetyDiscipline: false,
+      tenK: false
+    };
+    let lastDailyTargetValue = 0; 
+    
+    let totalWins = 0;
+    let totalLosses = 0;
+
+    // ===== DOM =====
+    const accountBalanceEl = document.getElementById('account-balance');
+    const savedBalanceEl = document.getElementById('saved-balance');
+    const projectedDaysEl = document.getElementById('projected-days');
+    const levelDisplayEl = document.getElementById('level-display');
+    const dailyTargetDisplayEl = document.getElementById('daily-target-display');
+    const disciplineScoreEl = document.getElementById('discipline-score');
+
+    // NEW PERFORMANCE DOM ELEMENTS
+    const totalWinsDisplayEl = document.getElementById('total-wins-display');
+    const totalLossesDisplayEl = document.getElementById('total-losses-display');
+    const actualWinRateDisplayEl = document.getElementById('actual-win-rate-display');
+    
+    const currentTradeEl = document.getElementById('current-trade');
+    const nextTradeWinEl = document.getElementById('next-trade-win');
+    const nextTradeLossEl = document.getElementById('next-trade-loss');
+    
+    const multiplierHintEl = document.getElementById('multiplier-hint');
+    const winRateHintEl = document.getElementById('win-rate-hint'); 
+    const tradesPerDayHintEl = document.getElementById('trades-per-day-hint');
+    const dailyTargetAmountHintEl = document.getElementById('daily-target-amount-hint');
+    const previousTargetHintEl = document.getElementById('previous-target-hint');
+    const overRiskWarningEl = document.getElementById('over-risk-warning');
+    const lossBtn = document.getElementById('loss-btn');
+    const winBtn = document.getElementById('win-btn');
+    const saveBtn = document.getElementById('save-btn');
+    const historyEl = document.getElementById('history');
+
+    // Custom controls
+    const openingInput = document.getElementById('openingInput');
+    const targetInput = document.getElementById('targetInput');
+    const durationInput = document.getElementById('durationInput');
+    const riskPercentInput = document.getElementById('riskPercent');
+    const lowMultInput = document.getElementById('lowMultiplier');
+    const profitPercentInput = document.getElementById('profitPercent'); 
+    const targetWinRateInput = document.getElementById('targetWinRateInput'); // NEW INPUT
+    const savePercentInput = document.getElementById('savePercent');
+    const applyCustomBtn = document.getElementById('apply-custom');
+    const customControls = document.getElementById('custom-controls');
+    const toggleSettingsBtn = document.getElementById('toggle-settings');
+    const modeBtn = document.getElementById('mode-btn');
+    const resetBtn = document.getElementById('reset-btn');
+    const exportBtn = document.getElementById('export-btn');
+    const toastEl = document.getElementById('toast');
+
+    // ===== HELPERS =====
+    function formatZAR(num) {
+      const sign = num < 0 ? '−' : '';
+      const abs = Math.abs(num);
+      return sign + 'R' + abs.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+    }
+    
+    // Round to nearest 0.1 (R0.10)
+    function roundToTenth(num) {
+      return Math.round(num * 10) / 10;
+    }
+
+    function formatTime(date) {
+      if (!date || !(date instanceof Date)) return '-';
+      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+
+    function estimateDaysToTarget(wealth, dailyGrowth) {
+      if (wealth <= 0) return Infinity; 
+      if (wealth >= targetAmount) return 0;
+      if (dailyGrowth <= 0) return Infinity;
+      return Math.ceil(Math.log(targetAmount / wealth) / Math.log(1 + dailyGrowth));
+    }
+
+    function showToast(message, duration = 2000) {
+      toastEl.textContent = message;
+      toastEl.classList.add('show');
+      setTimeout(() => toastEl.classList.remove('show'), duration);
+    }
+
+    function on(el, type, handler) {
+      if (el) {
+        if ('ontouchstart' in window) {
+          el.addEventListener('touchstart', (e) => { e.preventDefault(); handler(); }, { passive: false });
+        } else {
+          el.addEventListener('click', handler);
+        }
+      }
+    }
+
+    function checkAndAdvanceDay(currentTime) {
+        const twentyFourHours = 24 * 60 * 60 * 1000;
+        if (currentTime.getTime() - lastTradeTime.getTime() >= twentyFourHours) {
+            const diffMs = currentTime.getTime() - lastTradeTime.getTime();
+            const daysPassed = Math.floor(diffMs / twentyFourHours);
+            
+            currentDay += daysPassed;
+            
+            lastTradeTime = new Date(lastTradeTime.getTime() + (daysPassed * twentyFourHours));
+        }
+    }
+
+    // ===== CORE LOGIC UPDATED (WITH ROUNDING) =====
+    function recalculate() {
+      if (tradeLog.length > 1) {
+          checkAndAdvanceDay(new Date());
+      } else {
+          lastTradeTime = new Date();
+      }
+
+      const totalWealth = currentBalance + savedBalance;
+      const idealDailyRate = Math.pow(targetAmount / openingBalance, 1 / durationDays) - 1;
+
+      const targetWealthCurrentDay = openingBalance * Math.pow(1 + idealDailyRate, currentDay);
+      const dailyTarget = targetWealthCurrentDay - totalWealth; 
+
+      const profitRatio = profitPercent / 100;
+      const riskRatio = riskPercent / 100;
+      
+      // --- Calculate Actual Win Rate ---
+      const totalTrades = totalWins + totalLosses;
+      let actualWinRate = 'N/A';
+      if (totalTrades > 0) {
+        actualWinRate = ((totalWins / totalTrades) * 100).toFixed(1) + '%';
+      }
+      
+      // --- Calculate Trades Per Day (TARGET WIN RATE - REALISTIC) ---
+      let realisticTradesPerDay = 'N/A';
+      const winRateRatio = targetWinRate / 100;
+      
+      // Expected growth per trade (E) in fractional terms: E = W * (R% * P%) - (1-W) * R%
+      // This is the expected compounding factor
+      const expectedGrowthPerTrade = (winRateRatio * riskRatio * profitRatio) - ((1 - winRateRatio) * riskRatio);
+      
+      if (expectedGrowthPerTrade > 0 && targetAmount > openingBalance) {
+          // T_total = log(Target/Balance) / log(1+E)
+          const totalTradesRequiredGeometric = Math.log(targetAmount / openingBalance) / Math.log(1 + expectedGrowthPerTrade);
+          
+          if (totalTradesRequiredGeometric > 0) {
+              realisticTradesPerDay = Math.ceil(totalTradesRequiredGeometric / durationDays);
+          }
+      } else if (expectedGrowthPerTrade <= 0 && targetWinRate > 0) {
+           realisticTradesPerDay = '∞'; // Will never reach target at this win rate
+      }
+      // If targetWinRate is 0, expectedGrowthPerTrade will be negative, setting to 'N/A' or '∞' is fine.
+      
+      
+      // 1. Calculate and Round Current Risk
+      const rawCurrentRisk = currentBalance * riskRatio;
+      const roundedCurrentRisk = roundToTenth(rawCurrentRisk);
+
+      // 2. Calculate Profit/Loss Scenarios using Rounded Risk
+      const profitAmount = roundedCurrentRisk * profitRatio;
+      const balanceAfterWin = currentBalance + profitAmount;
+      const balanceAfterLoss = currentBalance - roundedCurrentRisk;
+
+      // 3. Calculate and Round Next Trade Values 
+      const rawNextTradeWin = balanceAfterWin * riskRatio;
+      const roundedNextTradeWin = roundToTenth(rawNextTradeWin);
+      const rawNextTradeLoss = balanceAfterLoss * riskRatio;
+      const roundedNextTradeLoss = roundToTenth(rawNextTradeLoss);
+
+      // Project Days Logic (No change)
+      let projectedDays = durationDays;
+      if (tradeLog.length > 1) {
+        const firstWealth = tradeLog[0].balance + tradeLog[0].saved;
+        const lastWealth = totalWealth;
+        const daysElapsed = Math.max(0.1, currentDay - 1 + (tradesCompleted / 10)); 
+        const avgDailyGrowth = daysElapsed > 0 && firstWealth > 0 ? Math.pow(lastWealth / firstWealth, 1 / daysElapsed) - 1 : 0;
+        projectedDays = estimateDaysToTarget(totalWealth, avgDailyGrowth);
+        if (!isFinite(projectedDays) || projectedDays > 999) projectedDays = 999;
+      }
+
+      // Discipline Logic (No change)
+      const avgDiscipline = disciplineHistory.length > 0 
+        ? disciplineHistory.reduce((a, b) => a + b, 0) / disciplineHistory.length 
+        : 100;
+      const disciplineText = avgDiscipline >= 95 ? 'Perfect!' : 
+                           avgDiscipline >= 90 ? 'Excellent' : 
+                           avgDiscipline >= 80 ? 'Good' : 'Needs Work';
+
+      // UPDATE DOM
+      if (tradeLog.length > 1) {
+        previousTargetHintEl.textContent = `Previous Shortfall: ${formatZAR(lastDailyTargetValue)}`;
+        if (lastDailyTargetValue < 0) {
+            previousTargetHintEl.textContent = `Previous Surplus: ${formatZAR(Math.abs(lastDailyTargetValue))}`;
+        }
+      } else {
+        previousTargetHintEl.textContent = `Daily Target initialized.`;
+      }
+      
+      // HINT UPDATES
+      winRateHintEl.textContent = `Actual Win Rate: ${actualWinRate}`; 
+      dailyTargetAmountHintEl.textContent = `Target Wealth (Day ${currentDay}): ${formatZAR(targetWealthCurrentDay)}`;
+      multiplierHintEl.textContent = `Profit: ${profitPercent.toFixed(1)}% | Risk: ${riskPercent}%`;
+
+      // Trades Per Day Hint Update
+      let tradesHintText = `Target Trades/Day: ${realisticTradesPerDay === 'N/A' || realisticTradesPerDay === '∞' ? 'N/A' : realisticTradesPerDay} (at ${targetWinRate}%)`;
+      if (realisticTradesPerDay === '∞') {
+          tradesHintText = `Target Trades/Day: ∞ (Need > ${targetWinRate}% WR)`;
+      }
+      tradesPerDayHintEl.textContent = tradesHintText;
+
+      dailyTargetDisplayEl.textContent = formatZAR(dailyTarget);
+
+      // Display Rounded Values
+      currentTradeEl.textContent = formatZAR(roundedCurrentRisk);
+      nextTradeWinEl.textContent = formatZAR(roundedNextTradeWin);
+      nextTradeLossEl.textContent = formatZAR(roundedNextTradeLoss);
+      
+      projectedDaysEl.textContent = projectedDays === 999 ? '∞' : projectedDays;
+      levelDisplayEl.textContent = `Day ${currentDay} (${projectedDays} days to Target)`;
+
+      accountBalanceEl.textContent = formatZAR(currentBalance);
+      savedBalanceEl.textContent = formatZAR(savedBalance);
+
+      const totalWealthForProgress = currentBalance + savedBalance;
+      const progressPct = (totalWealthForProgress / targetAmount) * 100;
+      const fillEl = document.querySelector('.progress-fill');
+      const textEl = document.querySelector('.progress-text');
+      if(fillEl) fillEl.style.width = `${Math.min(progressPct, 100)}%`;
+      if(textEl) textEl.textContent = `${progressPct.toFixed(2)}% — ${formatZAR(currentBalance)}`;
+
+      disciplineScoreEl.textContent = `${Math.round(avgDiscipline)}% (${disciplineText})`;
+      
+      // NEW PERFORMANCE SECTION UPDATES
+      totalWinsDisplayEl.textContent = totalWins;
+      totalLossesDisplayEl.textContent = totalLosses;
+      actualWinRateDisplayEl.textContent = actualWinRate;
+
+      if (lastWinProfit >= 5.00) {
+        const saveAmount = parseFloat((lastWinProfit * savePercent / 100).toFixed(2));
+        saveBtn.textContent = `💰 Save ${savePercent}% (${formatZAR(saveAmount)})`;
+        saveBtn.disabled = false;
+      } else {
+        saveBtn.textContent = `💰 Save (min R5 profit)`;
+        saveBtn.disabled = true;
+      }
+      
+      lastDailyTargetValue = dailyTarget; 
+    }
+
+    function addToLog(type, change, balance, saved = 0, discipline = 100) {
+      const entry = {
+        id: nextId++,
+        type: type,
+        change: change,
+        balance: balance,
+        saved: saved,
+        time: new Date(),
+        discipline: discipline
+      };
+      
+      tradeLog.push(entry);
+      
+      disciplineHistory.push(discipline);
+      if (disciplineHistory.length > 10) disciplineHistory.shift();
+
+      lastTradeTime = entry.time; 
+      
+      renderHistory();
+      
+      try {
+        const state = {
+          openingBalance, targetAmount, durationDays, savedBalance, riskPercent, lowMultiplier, profitPercent, targetWinRate, savePercent,
+          currentBalance, currentDay, tradesCompleted, tradeLog, nextId, customMode, lastWinProfit,
+          disciplineHistory, badges, lastTradeTime: lastTradeTime.getTime(),
+          lastDailyTargetValue,
+          totalWins, totalLosses 
+        };
+        localStorage.setItem('r1mQuestState', JSON.stringify(state));
+      } catch (e) {
+        console.warn('Auto-save failed:', e);
+      }
+    }
+
+    function renderHistory() {
+      if(!historyEl) return;
+      historyEl.innerHTML = tradeLog.map(item => {
+        let action = 'BEGIN', actionCls = '', changeStr = `+${formatZAR(0)}`, changeCls = '';
+        if (item.type === 'loss') {
+          action = '🟥 Loss'; actionCls = 'loss';
+          changeStr = `−${formatZAR(Math.abs(item.change))}`; changeCls = 'loss';
+        } else if (item.type === 'win') {
+          action = '🟩 Win'; actionCls = 'win';
+          changeStr = `+${formatZAR(item.change)}`; changeCls = 'win';
+        } else if (item.type === 'save') {
+          action = '💰 Save'; actionCls = 'win';
+          changeStr = `−${formatZAR(Math.abs(item.change))}`; changeCls = 'win';
+        }
+        return `
+          <div class="history-item">
+            <span class="history-number">#${item.id}</span>
+            <span class="history-action ${actionCls}">${action}</span>
+            <span class="history-change ${changeCls}">${changeStr}</span>
+            <span class="history-balance">${formatZAR(item.balance)}</span>
+            <span class="history-time">${formatTime(item.time)}</span>
+          </div>
+        `;
+      }).join('');
+      historyEl.scrollTop = historyEl.scrollHeight;
+    }
+
+    function checkDiscipline(riskAmount, profit) {
+      // riskAmount here is already the rounded value
+      const idealProfit = riskAmount * (profitPercent / 100);
+      
+      const denominator = idealProfit === 0 ? 1 : idealProfit;
+      const dev = Math.abs(profit - idealProfit) / denominator;
+      
+      const discipline = Math.max(0, 100 - (dev * 100));
+      const isOk = dev <= 0.1;
+      overRiskWarningEl.style.display = isOk ? 'none' : 'block';
+      return { isOk, discipline };
+    }
+
+    function processTrade(isWin) {
+      checkAndAdvanceDay(new Date());
+
+      // Use the rounded risk amount for the actual trade execution
+      const rawRiskAmount = currentBalance * (riskPercent / 100);
+      const riskAmount = roundToTenth(rawRiskAmount); 
+      
+      let change = 0;
+      let discipline = 100;
+      const profitRatio = profitPercent / 100;
+
+      if (!isWin) {
+        change = -riskAmount;
+        currentBalance += change;
+        totalLosses++; 
+      } else {
+        change = riskAmount * profitRatio;
+        currentBalance += change;
+        lastWinProfit = change;
+        totalWins++; 
+        
+        // Pass the rounded risk and calculated change/profit for discipline check
+        const result = checkDiscipline(riskAmount, change); 
+        discipline = result.discipline;
+      }
+
+      addToLog(isWin ? 'win' : 'loss', change, currentBalance, savedBalance, discipline);
+      tradesCompleted++;
+
+      recalculate();
+    }
+
+    function saveProfit() {
+      if (lastWinProfit < 5.00) return;
+      const amountToSave = parseFloat((lastWinProfit * savePercent / 100).toFixed(2));
+      savedBalance += amountToSave;
+      currentBalance -= amountToSave;
+      lastWinProfit = 0;
+      addToLog('save', -amountToSave, currentBalance, savedBalance);
+      recalculate();
+      showToast(`✅ Saved ${formatZAR(amountToSave)}`);
+    }
+
+    // ===== INIT =====
+    function loadState() {
+      try {
+        const saved = localStorage.getItem('r1mQuestState');
+        if (saved) {
+          const state = JSON.parse(saved);
+          openingBalance = state.openingBalance || 100;
+          targetAmount = state.targetAmount || 150000; 
+          durationDays = state.durationDays || 30; 
+          savedBalance = state.savedBalance || 0;
+          riskPercent = state.riskPercent || 3.53; 
+          lowMultiplier = state.lowMultiplier || 2.0;
+          savePercent = state.savePercent || 50;
+          
+          if (state.targetWinRate !== undefined) { // NEW LOAD
+             targetWinRate = state.targetWinRate;
+          }
+
+          currentBalance = state.currentBalance !== undefined ? state.currentBalance : openingBalance;
+          currentDay = state.currentDay || 1;
+          tradesCompleted = state.tradesCompleted || 0;
+          
+          if (state.profitPercent !== undefined) {
+             profitPercent = state.profitPercent; 
+          } else if (state.topMultiplier !== undefined) {
+             profitPercent = parseFloat(((state.topMultiplier - 1) * 100).toFixed(1)); 
+          } else {
+             profitPercent = 100; 
+          }
+          
+          if (state.tradeLog && Array.isArray(state.tradeLog)) {
+             tradeLog = state.tradeLog.map(item => ({
+                 ...item,
+                 time: new Date(item.time)
+             }));
+          } else {
+             tradeLog = [{ id: 1, type: 'init', change: 0, balance: openingBalance, saved: 0, time: new Date(), discipline: 100 }];
+          }
+
+          nextId = state.nextId || 2;
+          customMode = state.customMode || false;
+          lastWinProfit = state.lastWinProfit || 0;
+          disciplineHistory = state.disciplineHistory || [];
+          badges = state.badges || { firstSave: false, fiveWins: false, ninetyDiscipline: false, tenK: false };
+          lastTradeTime = state.lastTradeTime ? new Date(state.lastTradeTime) : new Date();
+          lastDailyTargetValue = state.lastDailyTargetValue || 0; 
+          
+          totalWins = state.totalWins || 0; 
+          totalLosses = state.totalLosses || 0; 
+          
+          return true;
+        }
+      } catch (e) {
+        console.warn('Load failed:', e);
+      }
+      return false;
+    }
+
+    function init() {
+      if (!loadState()) {
+        openingBalance = 100;
+        targetAmount = 150000; 
+        durationDays = 30; 
+        riskPercent = 3.53; 
+        savedBalance = 0;
+        lowMultiplier = 2.0;
+        profitPercent = 100; 
+        targetWinRate = 60; // NEW DEFAULT
+        savePercent = 50;
+        currentBalance = openingBalance;
+        tradeLog = [{ id: 1, type: 'init', change: 0, balance: currentBalance, saved: 0, time: new Date(), discipline: 100 }];
+        nextId = 2;
+        currentDay = 1;
+        tradesCompleted = 0;
+        lastWinProfit = 0;
+        customMode = false;
+        disciplineHistory = [];
+        badges = { firstSave: false, fiveWins: false, ninetyDiscipline: false, tenK: false };
+        lastTradeTime = new Date(); 
+        lastDailyTargetValue = 0;
+        
+        totalWins = 0; 
+        totalLosses = 0; 
+      }
+      
+      if (tradeLog.length > 1) {
+          checkAndAdvanceDay(new Date());
+      }
+
+      recalculate();
+      renderHistory();
+      
+      openingInput.value = openingBalance;
+      targetInput.value = targetAmount;
+      durationInput.value = durationDays;
+      riskPercentInput.value = riskPercent;
+      lowMultInput.value = lowMultiplier;
+      profitPercentInput.value = profitPercent; 
+      targetWinRateInput.value = targetWinRate; // NEW INPUT VALUE
+      savePercentInput.value = savePercent;
+    }
+
+    // ===== EVENT HANDLERS =====
+    on(modeBtn, 'click', () => {
+      customMode = !customMode;
+      modeBtn.textContent = `⚙️ Custom Mode: ${customMode ? 'ON' : 'OFF'}`;
+      
+      if (customMode) {
+        customControls.classList.add('show');
+      } else {
+        customControls.classList.remove('show');
+      }
+      overRiskWarningEl.style.display = 'none';
+      recalculate(); 
+    });
+
+    on(toggleSettingsBtn, 'click', () => {
+      const isShowing = customControls.classList.contains('show');
+      customControls.classList.toggle('show');
+      toggleSettingsBtn.textContent = isShowing ? '▲ Hide Settings' : '▼ Show Settings';
+    });
+
+    on(applyCustomBtn, 'click', () => {
+      const newOpening = parseFloat(openingInput.value);
+      const newTarget = parseFloat(targetInput.value);
+      const newDuration = parseInt(durationInput.value);
+      const newRisk = parseFloat(riskPercentInput.value);
+      const newProfit = parseFloat(profitPercentInput.value); 
+      const newWinRate = parseFloat(targetWinRateInput.value); // NEW
+      const newSave = parseFloat(savePercentInput.value);
+
+      if (isNaN(newOpening) || newOpening <= 0) return showToast('⚠️ Opening > R0');
+      if (isNaN(newTarget) || newTarget <= 0) return showToast('⚠️ Target > R0');
+      if (isNaN(newDuration) || newDuration <= 0) return showToast('⚠️ Duration ≥ 1 day');
+      if (isNaN(newRisk) || newRisk <= 0 || newRisk > 50) return showToast('⚠️ Risk %: 0.1–50');
+      if (isNaN(newProfit) || newProfit < 1.0) return showToast('⚠️ Profit % ≥ 1.0');
+      if (isNaN(newWinRate) || newWinRate < 0 || newWinRate > 100) return showToast('⚠️ Win Rate %: 0–100'); // NEW VALIDATION
+      if (isNaN(newSave) || newSave < 0 || newSave > 100) return showToast('⚠️ Save %: 0–100');
+
+      const openingChanged = newOpening !== openingBalance;
+      openingBalance = newOpening;
+      targetAmount = newTarget;
+      durationDays = newDuration;
+      riskPercent = newRisk;
+      profitPercent = newProfit; 
+      targetWinRate = newWinRate; // NEW ASSIGNMENT
+      savePercent = newSave;
+
+      if (openingChanged) {
+        currentBalance = openingBalance;
+        savedBalance = 0;
+        currentDay = 1;
+        tradesCompleted = 0;
+        lastWinProfit = 0;
+        tradeLog = [{ id: 1, type: 'init', change: 0, balance: currentBalance, saved: 0, time: new Date(), discipline: 100 }];
+        nextId = 2;
+        disciplineHistory = [];
+        badges = { firstSave: false, fiveWins: false, ninetyDiscipline: false, tenK: false };
+        lastTradeTime = new Date(); 
+        lastDailyTargetValue = 0;
+        totalWins = 0; 
+        totalLosses = 0; 
+        showToast('✅ Opening balance updated. Quest restarted.');
+      } else {
+        showToast('✅ Settings updated.');
+      }
+
+      recalculate();
+      renderHistory(); 
+    });
+
+    on(lossBtn, 'click', () => processTrade(false));
+    on(winBtn, 'click', () => processTrade(true));
+    on(saveBtn, 'click', saveProfit);
+
+    on(resetBtn, 'click', () => {
+      if (confirm('Reset to initial state?')) {
+        localStorage.removeItem('r1mQuestState');
+        init();
+        overRiskWarningEl.style.display = 'none';
+      }
+    });
+
+    on(exportBtn, 'click', () => {
+      if (tradeLog.length <= 1) return showToast('No trades recorded');
+      let text = `🪙 R1M Quest Log\n`;
+      text += `Target: ${formatZAR(targetAmount)} in ${durationDays} days\n`;
+      text += `Account: ${formatZAR(currentBalance)} | Saved: ${formatZAR(savedBalance)}\n`;
+      text += `Total Wealth: ${formatZAR(currentBalance + savedBalance)}\n`;
+      text += `Risk: ${riskPercent}% | Profit: ${profitPercent}% (Ratio: x${(1 + (profitPercent/100)).toFixed(2)})\n`;
+      const totalTrades = totalWins + totalLosses;
+      const winRate = totalTrades > 0 ? ((totalWins / totalTrades) * 100).toFixed(1) : 0.0;
+      text += `Total Trades: ${totalTrades} | Win Rate: ${winRate}%\n`; 
+      text += `\nTrade History:\n`;
+      text += `# | Type  | Change    | Balance   | Time\n`;
+      text += `- | ----- | --------- | --------- | -------\n`;
+      tradeLog.slice(1).forEach(item => {
+        const type = item.type === 'win' ? 'Win' : item.type === 'loss' ? 'Loss' : 'Save';
+        const changeStr = (item.change >= 0 ? '+' : '') + formatZAR(item.change);
+        const timeStr = item.time instanceof Date 
+            ? item.time.toLocaleString([], { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
+            : '-';
+        text += `${item.id} | ${type} | ${changeStr.padEnd(9)} | ${formatZAR(item.balance).padEnd(9)} | ${timeStr}\n`;
+      });
+      text += `\nExported: ${new Date().toLocaleString()}`;
+
+      const el = document.createElement('textarea');
+      el.value = text;
+      document.body.appendChild(el);
+      el.select();
+      document.execCommand('copy');
+      document.body.removeChild(el);
+      showToast('✅ Log copied to clipboard');
+    });
+
+    // ===== START =====
+    window.addEventListener('load', init);
+  </script>
+</body>
+</html>

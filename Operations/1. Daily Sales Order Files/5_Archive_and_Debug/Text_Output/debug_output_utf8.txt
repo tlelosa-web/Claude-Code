@@ -1,0 +1,23 @@
+--- Reading Released_Jobs_Comments.xlsx ---
+
+Found 235 Jobs/SOs with text boxes. Simulating Mapping:
+[FM3676] -> 'FM3676 --- CASH SALE - PAID --- - O...' -> Mapped to: 'ACCOUNT - PENDING'
+[FM3680] -> 'RELEASE DATE: 24/11/2025_x000D__x00...' -> Mapped to: 'ACCOUNT - PENDING'
+[FM3681] -> 'FM3681 --- ACCOUNT - UP TO DATE ---...' -> Mapped to: 'ACCOUNT - UP TO DATE'
+[FM3682] -> 'FM3682 --- ACCOUNT - UP TO DATE ---...' -> Mapped to: 'ACCOUNT - UP TO DATE'
+[FM3683] -> 'ACCOUNT - UP TO DATE --- RELEASE DA...' -> Mapped to: 'ACCOUNT - UP TO DATE'
+[FM3684] -> 'FM3684 --- ACCOUNT - UP TO DATE ---...' -> Mapped to: 'ACCOUNT - UP TO DATE'
+[FM3685] -> 'RELEASE DATE: 24/11/2025_x000D__x00...' -> Mapped to: 'ACCOUNT - PENDING'
+[FM3686] -> 'FM3686 --- CASH SALE - PAID --- - C...' -> Mapped to: 'ACCOUNT - PENDING'
+[FM3687] -> 'FM3687 --- RELEASE DATE: 24/11/2025...' -> Mapped to: 'ACCOUNT - PENDING'
+[FM3688] -> 'RELEASE DATE: 24/11/2025_x000D__x00...' -> Mapped to: 'ACCOUNT - PENDING'
+[FM3689] -> 'FM3689 --- RELEASE DATE: 24/11/2025...' -> Mapped to: 'ACCOUNT - PENDING'
+[FM3690] -> 'FM3690 --- CASH SALE - PAID --- EX ...' -> Mapped to: 'ACCOUNT - PENDING'
+[FM3691] -> 'FM3691 --- ACCOUNT - UP TO DATE ---...' -> Mapped to: 'ACCOUNT - UP TO DATE'
+[FM3692] -> 'FM3692 --- CASH SALE - PAID --- ITE...' -> Mapped to: 'ACCOUNT - PENDING'
+[FM3693] -> 'FM3693 --- ACCOUNT - UP TO DATE ---...' -> Mapped to: 'ACCOUNT - UP TO DATE'
+
+--- Reading Sales Order Report ---
+Checking sheet: 23.03.2026
+
+Done. Processed 16 matching rows. Found 0 mismatches.

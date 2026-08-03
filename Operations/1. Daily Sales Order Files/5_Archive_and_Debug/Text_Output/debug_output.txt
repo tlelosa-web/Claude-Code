@@ -1,0 +1,40 @@
+=== ANNOTATIONS ===
+No annotations found.
+
+
+=== EXTRACTED TEXT ===
+
+--- Page 1 Text ---
+TAX INVOICE
+FM3589 NUMBER: INV4167
+REFERENCE: FM3589
+DATE: 04/11/2025
+DUE DATE: 30/11/2025
+SALES REP: SIZWE TSHABALALA
+OVERALL DISCOUNT %: 0.00%
+PAGE: 1/1
+FROM TO
+FAN MOVEMENT (PTY) LTD MABENAKI PROJECT
+VAT NO: 4080272422 CUSTOMER VAT NO:
+POSTAL ADDRESS: PHYSICAL ADDRESS: POSTAL ADDRESS: PHYSICAL ADDRESS:
+3 Sivewright Ave 3 Sivewright Ave
+Alrode South Alrode South
+Alberton, Johannesburg Alberton, Johannesburg
+Export Code: 21590790 Export Code: 21590790
+011 682 3020 011 682 3020
+Description Quantity Excl. Price Disc % VAT % Excl. Total Incl. Total
+0.3741PM - 0.37KW 4P 220V Pad Mount 1.00 R 2,764.00 0.00% 15.00% R 2,764.00 R 3,178.60
+Motor
+D100039 - Assembly and Cleaning 1.00 R 1,000.00 0.00% 15.00% R 1,000.00 R 1,150.00
+FAN MOVEMENT BANKING DETAILS Total Discount: R 0.00
+Total Exclusive: R 3,764.00
+Name of Bank - First National Bank (FNB)
+Total VAT: R 564.60
+Name of Branch - Mall of the South
+Account Number - 62550053723 Sub Total: R 4,328.60
+Account Type - Business Cheque
+Branch Code - 250655
+Swift Code - FIRNZAJJ
+Grand Total: R 4,328.60
+BALANCE DUE
+R 4,328.60

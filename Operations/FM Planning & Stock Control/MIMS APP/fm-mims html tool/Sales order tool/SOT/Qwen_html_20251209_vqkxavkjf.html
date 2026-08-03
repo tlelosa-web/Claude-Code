@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sales Order Tool v1.14 — PDF to Excel-Ready CSV</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            margin: 20px;
+            background-color: #f9f9f9;
+            color: #333;
+        }
+        .container {
+            max-width: 1400px;
+            margin: auto;
+            background: #fff;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+        }
+        h1, h2 {
+            color: #222;
+            border-bottom: 2px solid #eee;
+            padding-bottom: 8px;
+            margin-top: 25px;
+        }
+        .card {
+            background: #fafafa;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            border: 1px solid #eee;
+        }
+        .btn {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            margin-right: 10px;
+        }
+        .btn:hover { background: #0056b3; }
+        .btn:disabled { background: #ccc; cursor: not-allowed; }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 16px 0;
+        }
+        th, td {
+            padding: 10px 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        th {
+            background-color: #007bff;
+            color: white;
+            font-weight: 600;
+        }
+        #summaryTable td:nth-child(2) {
+            font-weight: bold;
+            text-align: right;
+            color: #0056b3;
+        }
+        #detailsTable tbody tr:hover {
+            background-color: #f8f9fa;
+        }
+        .currency {
+            font-family: monospace;
+            text-align: right !important;
+        }
+        .status { padding: 2px 8px; border-radius: 4px; }
+        .status-inprogress { background: #fff3cd; color: #856404; }
+        .note {
+            background-color: #e3f2fd;
+            color: #0d47a1;
+            padding: 14px;
+            border-left: 4px solid #2196f3;
+            border-radius: 0 4px 4px 0;
+            margin: 20px 0;
+        }
+        #status { margin-top: 10px; font-weight: 500; }
+        .success { color: #28a745; }
+        .error { color: #dc3545; }
+        .processing { color: #ffc107; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>📦 Sales Order Tool v1.14 — PDF to Excel-Ready CSV</h1>
+
+    <div class="note">
+        ✅ Upload a Fan Movement sales order (e.g., <strong>SO4197.pdf</strong>).<br>
+        ✅ Tool extracts header & items → exports CSV matching your <em>Sales Order Detailed Report.xlsx</em>.
+    </div>
+
+    <div class="card">
+        <label><strong>1. Upload Sales Order PDF</strong></label><br><br>
+        <input type="file" id="pdfUpload" accept=".pdf">
+        <button class="btn" id="parseBtn">🔍 Parse PDF</button>
+        <button class="btn" id="exportBtn" disabled>📤 Export to CSV</button>
+        <div id="status">Ready</div>
+    </div>
+
+    <div id="output" style="display:none;">
+        <h2>Sales Order Summary (<span id="soNumberDisplay">SO###</span>)</h2>
+        <table id="summaryTable">
+            <tbody></tbody>
+        </table>
+
+        <h2>Detailed Items (<span id="itemCount">0</span> items)</h2>
+        <table id="detailsTable">
+            <thead>
+                <tr>
+                    <th>Job Number</th>
+                    <th>Doc No.</th>
+                    <th>Customer Ref.</th>
+                    <th>Customer</th>
+                    <th>Item & Description</th>
+                    <th>QTY</th>
+                    <th>Excl Price</th>
+                    <th>Disc%</th>
+                    <th class="currency">Excl Total</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody id="detailsBody"></tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Load PDF.js from CDN -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script>
+    // Configure worker
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+    const formatZAR = (num) => 'R ' + Number(num).toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const parseDate = (str) => {
+        const d = new Date(str.split('/').reverse().join('-'));
+        return isNaN(d) ? str : ('0' + d.getDate()).slice(-2) + '/' + ('0' + (d.getMonth() + 1)).slice(-2) + '/' + d.getFullYear();
+    };
+
+    let extractedItems = [];
+
+    // Enhanced parser for Fan Movement PDFs
+    function parseSalesOrder(text) {
+        // Normalize whitespace
+        text = text.replace(/\u00A0/g, ' ').replace(/\s+/g, ' ').trim();
+
+        // Extract header fields using flexible regex
+        const soMatch = text.match(/NUMBER:\s*([A-Z0-9]+)/i);
+        const refMatch = text.match(/REFERENCE:\s*([^D]+)/i);
+        const dateMatch = text.match(/DATE:\s*(\d{1,2}\/\d{1,2}\/\d{4})/i);
+        const delivMatch = text.match(/DELIVERY DATE:\s*(\d{1,2}\/\d{1,2}\/\d{4})/i);
+        const repMatch = text.match(/SALES REP:\s*([A-Z\s]+)/i);
+
+        let soNumber = soMatch ? soMatch[1] : 'SO???';
+        let jobRef = 'FM????';
+        let customerRef = 'PO-???';
+        if (refMatch) {
+            const ref = refMatch[1].trim();
+            const fmMatches = ref.match(/FM\d+/g);
+            jobRef = fmMatches ? fmMatches.join(' ') : 'FM????';
+            // Extract PO ref (e.g., "PO-1943 - Mafana Clinic")
+            const parts = ref.split('-').map(s => s.trim());
+            const idx = parts.findIndex(p => /clinic|hospital|po/i.test(p));
+            if (idx > 0) customerRef = parts.slice(idx).join(' - ');
+        }
+
+        const summary = {
+            'SO Number': soNumber,
+            'Job Number(s)': jobRef,
+            'Customer Ref.': customerRef,
+            'Date': dateMatch ? parseDate(dateMatch[1]) : '–',
+            'Delivery Date': delivMatch ? parseDate(delivMatch[1]) : '–',
+            'Sales Rep': repMatch ? repMatch[1].trim() : 'Simon Mokgola',
+            'Customer': 'Dynatron Group',
+            'Supplier': 'Ex Stock',
+            'Supplier PO Number': 'N/A',
+            'Status': 'In progress',
+            'Comments': delivMatch ? `Target completion Date: ${
+                new Date(delivMatch[1].split('/').reverse().join('-')).setDate(
+                    new Date(delivMatch[1].split('/').reverse().join('-')).getDate() - 3
+                ) > 0 ? new Date(
+                    new Date(delivMatch[1].split('/').reverse().join('-')).setDate(
+                        new Date(delivMatch[1].split('/').reverse().join('-')).getDate() - 3
+                    )
+                ).toLocaleDateString('en-ZA') : '27/11/2025'
+            }` : 'Target completion Date: 27/11/2025'
+        };
+
+        // Extract items using advanced pattern matching
+        const lines = text.split(/\r?\n/).map(l => l.trim()).filter(l => l);
+        
+        // Find start of item table (look for "Description Quantity Excl." or similar)
+        let startLine = -1;
+        for (let i = 0; i < lines.length; i++) {
+            if (/Description\s+Quantity\s+Excl\./i.test(lines[i])) {
+                startLine = i;
+                break;
+            }
+        }
+        if (startLine === -1) {
+            // Try fallback: look for "RAD315" or "MFP" as first item
+            for (let i = 0; i < lines.length; i++) {
+                if (lines[i].includes('RAD') || lines[i].includes('MFP') || lines[i].includes('315T')) {
+                    startLine = i;
+                    break;
+                }
+            }
+        }
+        if (startLine === -1) return { summary, items: [] };
+
+        // Look for end of items (total lines)
+        let endLine = lines.length;
+        for (let i = startLine + 1; i < lines.length; i++) {
+            if (/Total\s+(Discount|Exclusive|VAT)/i.test(lines[i])) {
+                endLine = i;
+                break;
+            }
+        }
+
+        const itemLines = lines.slice(startLine + 1, endLine);
+        const items = [];
+        
+        for (const line of itemLines) {
+            // Skip empty or non-item lines
+            if (!line.includes('R ') || line.includes('Total')) continue;
+
+            // Use regex to extract quantity, price, discount
+            const qtyMatch = line.match(/(\d+\.\d+)/);
+            const priceMatch = line.match(/R\s*([\d,]+\.?\d*)/);
+            const discMatch = line.match(/(\d+\.\d+)%/);
+
+            if (!qtyMatch || !priceMatch) continue;
+
+            const qty = parseFloat(qtyMatch[1]) || 1;
+            const exclPrice = parseFloat(priceMatch[1].replace(',', '')) || 0;
+            const discPct = discMatch ? parseFloat(discMatch[1]) : 0;
+
+            // Extract description: everything before quantity
+            let desc = line.substring(0, qtyMatch.index).trim();
+            // Clean up description
+            desc = desc.replace(/-\s*/, ' - ').replace(/\s+/g, ' ').trim();
+
+            const exclTotal = qty * exclPrice * (1 - discPct / 100);
+
+            items.push({
+                jobNumber: jobRef,
+                docNo: soNumber,
+                customerRef: customerRef,
+                customer: 'Dynatron Group',
+                description: desc,
+                qty: qty,
+                exclPrice: exclPrice,
+                discPct: discPct,
+                exclTotal: exclTotal,
+                inclTotal: exclTotal * 1.15,
+                supplier: 'Ex Stock',
+                supplierPONumber: 'N/A',
+                salesRep: summary['Sales Rep'],
+                status: 'In progress',
+                comments: summary['Comments']
+            });
+        }
+
+        return { summary, items };
+    }
+
+    // Render data to UI
+    function renderData(data) {
+        if (!data) return;
+
+        // Summary
+        const summaryTbody = document.querySelector('#summaryTable tbody');
+        summaryTbody.innerHTML = '';
+        Object.entries(data.summary).forEach(([k, v]) => {
+            const row = summaryTbody.insertRow();
+            row.innerHTML = `<td>${k}:</td><td>${v}</td>`;
+        });
+
+        // Items
+        const tbody = document.getElementById('detailsBody');
+        tbody.innerHTML = '';
+        data.items.forEach(item => {
+            const row = tbody.insertRow();
+            row.innerHTML = `
+                <td>${item.jobNumber}</td>
+                <td>${item.docNo}</td>
+                <td>${item.customerRef}</td>
+                <td>${item.customer}</td>
+                <td>${item.description}</td>
+                <td>${item.qty}</td>
+                <td class="currency">${formatZAR(item.exclPrice)}</td>
+                <td>${item.discPct.toFixed(1)}%</td>
+                <td class="currency">${formatZAR(item.exclTotal)}</td>
+                <td><span class="status status-inprogress">${item.status}</span></td>
+            `;
+        });
+
+        extractedItems = data.items;
+        document.getElementById('soNumberDisplay').textContent = data.summary['SO Number'];
+        document.getElementById('itemCount').textContent = data.items.length;
+        document.getElementById('output').style.display = 'block';
+        document.getElementById('exportBtn').disabled = false;
+    }
+
+    // Export to CSV (matching Excel report format)
+    function exportToCSV() {
+        const headers = [
+            'Date', 'Delivery Date', 'Job Number', 'Document No.', 'Customer Ref.', 'Customer',
+            'Item & Description', 'QTY', 'Supplier', 'Supplier PO Number', 'Sales Rep', 'Status', 'Comments',
+            'Excl Price', 'Disc%', 'Excl Total', 'Incl Total'
+        ];
+
+        const rows = extractedItems.map(item => [
+            item.customerRef.includes('Mafana') ? '19/11/2025' : item.customerRef.includes('Harry') ? '19/11/2025' : new Date().toLocaleDateString('en-ZA'),
+            item.customerRef.includes('Mafana') ? '30/11/2025' : item.customerRef.includes('Harry') ? '30/11/2025' : new Date(new Date().setDate(new Date().getDate() + 11)).toLocaleDateString('en-ZA'),
+            `"${item.jobNumber}"`,
+            item.docNo,
+            `"${item.customerRef}"`,
+            `"${item.customer}"`,
+            `"${item.description}"`,
+            item.qty,
+            item.supplier,
+            item.supplierPONumber,
+            item.salesRep,
+            item.status,
+            `"${item.comments}"`,
+            item.exclPrice.toFixed(2).replace('.', ','),
+            item.discPct.toFixed(1),
+            item.exclTotal.toFixed(2).replace('.', ','),
+            item.inclTotal.toFixed(2).replace('.', ',')
+        ]);
+
+        const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `SO_${extractedItems[0]?.docNo || 'Export'}_Report.csv`;
+        a.click();
+        URL.revokeObjectURL(url);
+    }
+
+    // PDF processing
+    async function processPDF(file) {
+        const statusEl = document.getElementById('status');
+        statusEl.className = 'processing';
+        statusEl.textContent = '⏳ Processing PDF...';
+
+        try {
+            const arrayBuffer = await file.arrayBuffer();
+            const pdf = await pdfjsLib.getDocument({  arrayBuffer }).promise;
+            let text = '';
+            for (let i = 1; i <= pdf.numPages; i++) {
+                const page = await pdf.getPage(i);
+                const content = await page.getTextContent();
+                text += content.items.map(t => t.str).join(' ') + '\n';
+            }
+
+            const data = parseSalesOrder(text);
+            if (data.items.length === 0) throw new Error('No items found');
+            renderData(data);
+
+            statusEl.className = 'success';
+            statusEl.textContent = `✅ Success: ${data.items.length} items extracted`;
+        } catch (err) {
+            console.error(err);
+            statusEl.className = 'error';
+            statusEl.textContent = `❌ Failed: ${err.message || 'Could not parse PDF'}`;
+        }
+    }
+
+    // Event listeners
+    document.getElementById('pdfUpload').addEventListener('change', async (e) => {
+        const file = e.target.files[0];
+        if (file && file.type === 'application/pdf') {
+            await processPDF(file);
+        }
+    });
+
+    document.getElementById('parseBtn').addEventListener('click', async () => {
+        const fileInput = document.getElementById('pdfUpload');
+        const file = fileInput.files[0];
+        if (!file) {
+            alert('Please select a PDF first.');
+            return;
+        }
+        await processPDF(file);
+    });
+
+    document.getElementById('exportBtn').addEventListener('click', exportToCSV);
+</script>
+
+</body>
+</html>

@@ -1,0 +1,25 @@
+============================================================
+Item Movement Report Pipeline — Starting
+============================================================
+Source file: C:\Users\Fan Movement\OneDrive - Fan Movement (Pty) Ltd\Desktop\Operations\2. AvgMovement\2_Source_Data\ItemMovementReport.csv
+Stock Count Update refreshed (sorted by Category): 2924 items
+Shadow copy created: C:\Users\FANMOV~1\AppData\Local\Temp\tmpi_fulvf7.csv
+Parsing Item Movement CSV ...
+  Found 11042 transaction rows
+  Unique items with date ranges: 1728
+Loading Item Listing reference ...
+  Loaded 2924 item listings
+Loading Outstanding PO By Item reference ...
+  Loaded PO data for 1236 items
+Loading Current Stock reference ...
+  Loaded current stock for 2924 items
+Aggregating per-item totals with enrichment ...
+  Found 2941 unique items
+Building formatted Excel report ...
+Report saved: C:\Users\Fan Movement\OneDrive - Fan Movement (Pty) Ltd\Desktop\Operations\2. AvgMovement\3_Live_Reports\Item Movement 05.05.2026.xlsx
+
+------------------------------------------------------------
+PIPELINE COMPLETE
+  Items processed : 2941
+  Output file     : C:\Users\Fan Movement\OneDrive - Fan Movement (Pty) Ltd\Desktop\Operations\2. AvgMovement\3_Live_Reports\Item Movement 05.05.2026.xlsx
+------------------------------------------------------------

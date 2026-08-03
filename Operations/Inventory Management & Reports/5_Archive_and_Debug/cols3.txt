@@ -1,0 +1,10 @@
+
+--- Sheet: ImportStockCount_TOT ---
+Columns: ['TOTAL STOCK', 'Unnamed: 1', 'Unnamed: 2', 'Unnamed: 3', 'Unnamed: 4', 'Unnamed: 5', 'Unnamed: 6', 'Unnamed: 7', 'Unnamed: 8', 'Unnamed: 9', 'Unnamed: 10', 'Unnamed: 11']
+Data snippet:
+[{'TOTAL STOCK': 'Item', 'Unnamed: 1': 'Description', 'Unnamed: 2': 'Supplier', 'Unnamed: 3': 'Category', 'Unnamed: 4': 'Cost Price', 'Unnamed: 5': 'Safety Stock', 'Unnamed: 6': 'Reorder Point (ROP)', 'Unnamed: 7': 'Maximum Stock (MAX)', 'Unnamed: 8': 'Current Stock', 'Unnamed: 9': 'On Order', 'Unnamed: 10': 'Order Quantity', 'Unnamed: 11': 'Stock Value'}, {'TOTAL STOCK': '125TTSilentM', 'Unnamed: 1': '125 TT Silent M Fan', 'Unnamed: 2': nan, 'Unnamed: 3': 'FM - DONKIN', 'Unnamed: 4': 'Not Found', 'Unnamed: 5': 3, 'Unnamed: 6': 6, 'Unnamed: 7': 9, 'Unnamed: 8': 0, 'Unnamed: 9': 0, 'Unnamed: 10': 9, 'Unnamed: 11': 0}]
+
+--- Sheet: FPZ ---
+Columns: ['FM - FPZ', 'Unnamed: 1', 'Unnamed: 2', 'Unnamed: 3', 'Unnamed: 4', 'Unnamed: 5', 'Unnamed: 6', 'Unnamed: 7', 'Unnamed: 8', 'Unnamed: 9', 'Unnamed: 10', 'Unnamed: 11', 'Unnamed: 12']
+Data snippet:
+[{'FM - FPZ': 'Item', 'Unnamed: 1': 'Description', 'Unnamed: 2': 'Supplier', 'Unnamed: 3': 'Category', 'Unnamed: 4': 'Cost Price', 'Unnamed: 5': 'Safety Stock', 'Unnamed: 6': 'Reorder Point (ROP)', 'Unnamed: 7': 'Maximum Stock (MAX)', 'Unnamed: 8': 'Current Stock', 'Unnamed: 9': 'On Order', 'Unnamed: 10': 'Order Quantity', 'Unnamed: 11': 'Stock Value', 'Unnamed: 12': 'Order Value'}, {'FM - FPZ': 'CA4', 'Unnamed: 1': "CA4V - 1' 1/4", 'Unnamed: 2': 'Effepizeta', 'Unnamed: 3': 'FM - FPZ', 'Unnamed: 4': 675.6750000000001, 'Unnamed: 5': 1, 'Unnamed: 6': 2, 'Unnamed: 7': 3, 'Unnamed: 8': 7, 'Unnamed: 9': 0, 'Unnamed: 10': 0, 'Unnamed: 11': 4729.725, 'Unnamed: 12': 0}]

@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sales Order Import/Export Tool</title>
+  <style>
+    :root {
+      --bg: #121212;
+      --card: #1e1e1e;
+      --text: #e0e0e0;
+      --subtext: #b0b0b0;
+      --accent: #bb86fc;
+      --accent-hover: #a053f0;
+      --green: #03dac6;
+      --border: #2c2c2c;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', Roboto, sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      padding: 20px;
+      line-height: 1.5;
+    }
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 20px;
+    }
+    @media (max-width: 900px) {
+      .container { grid-template-columns: 1fr; }
+      .sidebar { order: -1; }
+    }
+    .card {
+      background: var(--card);
+      border-radius: 12px;
+      padding: 20px;
+      border: 1px solid var(--border);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+    }
+    h1, h2 {
+      margin-bottom: 16px;
+      font-weight: 600;
+      color: var(--text);
+    }
+    h1 { font-size: 1.5em; }
+    h2 { font-size: 1.2em; border-bottom: 1px solid var(--border); padding-bottom: 8px; }
+    textarea {
+      width: 100%;
+      height: 180px;
+      background: #121212;
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 12px;
+      font-family: monospace;
+      font-size: 0.95em;
+      resize: vertical;
+    }
+    button {
+      background: var(--accent);
+      color: #000;
+      border: none;
+      border-radius: 6px;
+      padding: 12px 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    button:hover { background: var(--accent-hover); }
+    button.secondary {
+      background: #3a3a3a;
+      color: var(--text);
+      flex: 1;
+      min-width: 0;
+    }
+    button.secondary:hover { background: #4a4a4a; }
+    .btn-group {
+      display: flex;
+      gap: 12px;
+      margin-top: 12px;
+    }
+    .table-container {
+      overflow-x: auto;
+      margin-top: 16px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.9em;
+    }
+    th, td {
+      padding: 10px 8px;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+      white-space: nowrap;
+    }
+    th {
+      background: rgba(187,134,252,0.1);
+      color: var(--subtext);
+      font-weight: 500;
+      position: sticky;
+      top: 0;
+    }
+    tr:hover td { background: rgba(255,255,255,0.03); }
+    input, select {
+      background: #121212;
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 6px 8px;
+      width: 100%;
+    }
+    .status-cell {
+      font-weight: 500;
+    }
+    .status-Invoiced { color: #4caf50; }
+    .status-In\ progress { color: #ff9800; }
+    .status-ON\ HOLD { color: #2196f3; }
+    .status-Cancelled { color: #f44336; }
+    .zar { font-family: monospace; }
+    .actions { display: flex; gap: 6px; }
+    .action-btn {
+      background: none;
+      border: none;
+      color: var(--subtext);
+      cursor: pointer;
+      padding: 4px;
+      border-radius: 4px;
+    }
+    .action-btn:hover { background: rgba(255,255,255,0.1); color: var(--text); }
+    .summary {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-top: 16px;
+      font-size: 0.95em;
+    }
+    .summary-item {
+      background: #2a2a2a;
+      padding: 12px;
+      border-radius: 6px;
+      text-align: center;
+    }
+    .summary-label { color: var(--subtext); font-size: 0.9em; }
+    .summary-value { font-size: 1.2em; font-weight: 600; margin-top: 4px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="main-content">
+      <div class="card">
+        <h1>📦 Sales Order Import/Export Tool</h1>
+        <p style="color:var(--subtext); margin-bottom:16px;">
+          Paste sales order text (e.g., from PDF), click <strong>Parse</strong>, edit rows, then <strong>Export CSV</strong> for your report.
+        </p>
+        
+        <h2>Paste Sales Order Text</h2>
+        <textarea id="inputText" placeholder="Paste here (e.g., SO4197 from PDF) — see example below👇
+SALES ORDER
+NUMBER: SO4197 REFERENCE: FM3669- FM3670-MAFANA CLINIC DATE: 19/11/2025 DELIVERY DATE: 30/11/2025 SALES REP: SIMON MOKGOLA
+Description                     Quantity Excl. Price Disc% VAT% ...
+RAD315- RAD 315                 1.00     R 3,052.00  2.50% 15.00% ...
+..."></textarea>
+        <div class="btn-group">
+          <button id="parseBtn">✅ Parse & Preview</button>
+          <button id="clearBtn" class="secondary">⌫ Clear</button>
+        </div>
+
+        <h2 style="margin-top:24px;">Parsed Items (<span id="rowCount">0</span>)</h2>
+        <div class="table-container">
+          <table id="itemTable">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Job Number</th>
+                <th>Doc No.</th>
+                <th>Customer Ref.</th>
+                <th>Customer</th>
+                <th>Item & Description</th>
+                <th>QTY</th>
+                <th>Excl Price</th>
+                <th>Disc%</th>
+                <th>Supplier</th>
+                <th>Sales Rep</th>
+                <th>Status</th>
+                <th>Comments</th>
+                <th>Excl Total</th>
+                <th>Incl Total</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="itemBody"></tbody>
+          </table>
+        </div>
+
+        <div class="summary">
+          <div class="summary-item">
+            <div class="summary-label">Total Excl.</div>
+            <div class="summary-value zar" id="totalExcl">R 0.00</div>
+          </div>
+          <div class="summary-item">
+            <div class="summary-label">Total VAT (15%)</div>
+            <div class="summary-value zar" id="totalVat">R 0.00</div>
+          </div>
+          <div class="summary-item">
+            <div class="summary-label">Grand Total</div>
+            <div class="summary-value zar" id="grandTotal">R 0.00</div>
+          </div>
+          <div class="summary-item">
+            <div class="summary-label">Rows</div>
+            <div class="summary-value" id="summaryCount">0</div>
+          </div>
+        </div>
+
+        <div class="btn-group" style="margin-top:20px;">
+          <button id="exportBtn">📤 Export to CSV (for Report)</button>
+          <button id="addRowBtn" class="secondary">➕ Add Row</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="sidebar">
+      <div class="card">
+        <h2>📌 Quick Tips</h2>
+        <ul style="padding-left:20px; margin-top:12px; font-size:0.95em; color:var(--subtext);">
+          <li>Paste full SO text — tool auto-finds header & items</li>
+          <li>Supports FM#### job numbers (single or double)</li>
+          <li>Press <kbd>Enter</kbd> in QTY/Disc% to recalc</li>
+          <li>CSV matches your <em>Sales Order Detailed Report.xlsx</em></li>
+          <li>Data saved in browser (no server)</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <h2>⚙️ Defaults</h2>
+        <table style="width:100%; font-size:0.9em;">
+          <tr><td>Supplier:</td><td>Ex Stock</td></tr>
+          <tr><td>Supplier PO:</td><td>N/A</td></tr>
+          <tr><td>Status:</td><td>In progress</td></tr>
+          <tr><td>Comments:</td><td>Target completion Date: 27/11/2025</td></tr>
+        </table>
+      </div>
+
+      <div class="card">
+        <h2>📂 History</h2>
+        <p id="historyCount" style="font-size:0.9em; color:var(--subtext);">No orders saved</p>
+        <div class="btn-group" style="margin-top:12px;">
+          <button id="saveBtn" class="secondary" disabled>💾 Save Current</button>
+          <button id="loadBtn" class="secondary">📂 Load Saved</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Format ZAR: R 1,234.56
+    const formatZAR = (num) => {
+      return 'R ' + num.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    };
+
+    // Parse date: ensure dd/mm/yyyy
+    const parseDate = (str) => {
+      if (!str) return '';
+      const d = new Date(str);
+      if (isNaN(d)) return str;
+      return ('0' + d.getDate()).slice(-2) + '/' + ('0' + (d.getMonth()+1)).slice(-2) + '/' + d.getFullYear();
+    };
+
+    let items = JSON.parse(localStorage.getItem('soItems')) || [];
+    const statusOptions = ['Invoiced', 'In progress', 'ON HOLD', 'Cancelled'];
+
+    const updateSummary = () => {
+      const excl = items.reduce((sum, i) => sum + (parseFloat(i.exclTotal) || 0), 0);
+      const vat = excl * 0.15;
+      const total = excl + vat;
+      document.getElementById('totalExcl').textContent = formatZAR(excl);
+      document.getElementById('totalVat').textContent = formatZAR(vat);
+      document.getElementById('grandTotal').textContent = formatZAR(total);
+      document.getElementById('summaryCount').textContent = items.length;
+      document.getElementById('rowCount').textContent = items.length;
+      document.getElementById('historyCount').textContent = 
+        localStorage.getItem('soHistory') ? 'Orders saved: ' + JSON.parse(localStorage.getItem('soHistory')).length : 'No orders saved';
+    };
+
+    const renderTable = () => {
+      const tbody = document.getElementById('itemBody');
+      tbody.innerHTML = items.map((item, idx) => `
+        <tr>
+          <td>${idx + 1}</td>
+          <td><input type="text" value="${item.jobNumber}" data-id="${idx}" data-field="jobNumber" style="width:100px;"></td>
+          <td><input type="text" value="${item.docNo}" data-id="${idx}" data-field="docNo" style="width:80px;"></td>
+          <td><input type="text" value="${item.customerRef}" data-id="${idx}" data-field="customerRef"></td>
+          <td><input type="text" value="${item.customer}" data-id="${idx}" data-field="customer" style="width:120px;"></td>
+          <td><input type="text" value="${item.description}" data-id="${idx}" data-field="description" style="min-width:200px;"></td>
+          <td><input type="number" step="1" min="0" value="${item.qty}" data-id="${idx}" data-field="qty" style="width:60px;"></td>
+          <td><input type="number" step="0.01" min="0" value="${item.exclPrice}" data-id="${idx}" data-field="exclPrice" style="width:80px;"></td>
+          <td><input type="number" step="0.1" min="0" max="100" value="${item.discPct}" data-id="${idx}" data-field="discPct" style="width:60px;"></td>
+          <td><input type="text" value="${item.supplier}" data-id="${idx}" data-field="supplier" style="width:80px;"></td>
+          <td><input type="text" value="${item.salesRep}" data-id="${idx}" data-field="salesRep" style="width:100px;"></td>
+          <td>
+            <select data-id="${idx}" data-field="status" class="status-cell status-${item.status.replace(/\s/g,'\\ ')}">
+              ${statusOptions.map(opt => `<option value="${opt}" ${opt === item.status ? 'selected' : ''}>${opt}</option>`).join('')}
+            </select>
+          </td>
+          <td><input type="text" value="${item.comments}" data-id="${idx}" data-field="comments" style="min-width:150px;"></td>
+          <td class="zar">${formatZAR(item.exclTotal)}</td>
+          <td class="zar">${formatZAR(item.inclTotal)}</td>
+          <td class="actions">
+            <button class="action-btn delete-row" data-id="${idx}" title="Delete">🗑️</button>
+          </td>
+        </tr>
+      `).join('');
+      
+      // Add event listeners
+      tbody.querySelectorAll('input, select').forEach(el => {
+        el.addEventListener('change', updateItemField);
+        el.addEventListener('keydown', e => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            updateItemField({ target: el });
+          }
+        });
+      });
+      tbody.querySelectorAll('.delete-row').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const id = parseInt(btn.dataset.id);
+          items.splice(id, 1);
+          renderTable();
+          updateSummary();
+        });
+      });
+      updateSummary();
+    };
+
+    const updateItemField = (e) => {
+      const el = e.target;
+      const idx = parseInt(el.dataset.id);
+      const field = el.dataset.field;
+      const value = el.type === 'checkbox' ? el.checked : el.value;
+      
+      if (field === 'qty' || field === 'exclPrice' || field === 'discPct') {
+        items[idx][field] = parseFloat(value) || 0;
+        // Recalculate
+        const qty = items[idx].qty;
+        const price = items[idx].exclPrice;
+        const disc = items[idx].discPct / 100;
+        items[idx].exclTotal = qty * price * (1 - disc);
+        items[idx].inclTotal = items[idx].exclTotal * 1.15;
+      } else if (field === 'status') {
+        items[idx][field] = value;
+        el.className = `status-cell status-${value.replace(/\s/g,'\\ ')}`;
+      } else {
+        items[idx][field] = value;
+      }
+      renderTable(); // refresh to update totals & classes
+    };
+
+    // Parse SO text (handles SO4197 format)
+    const parseSalesOrder = (text) => {
+      const lines = text.split(/\r?\n/).map(l => l.trim()).filter(l => l);
+      let items = [];
+      
+      // Extract header info
+      let soNumber = '', jobRef = '', date = '', deliveryDate = '', salesRep = '', customer = '';
+      
+      for (const line of lines) {
+        if (line.toUpperCase().includes('NUMBER:')) {
+          const match = line.match(/NUMBER:\s*(\S+)/i);
+          soNumber = match ? match[1] : '';
+        }
+        if (line.toUpperCase().includes('REFERENCE:')) {
+          const match = line.match(/REFERENCE:\s*([^D]+)/i); // stop at "DATE:"
+          jobRef = match ? match[1].trim().replace(/[-–—]/g, ' ').replace(/\s+/g, ' ') : '';
+          // Extract FM#### patterns
+          const fmMatch = jobRef.match(/(FM\d+)/g) || [];
+          jobRef = fmMatch.length ? fmMatch.join(' ') : 'Unknown';
+        }
+        if (line.toUpperCase().includes('DATE:') && !line.toUpperCase().includes('DELIVERY')) {
+          const match = line.match(/DATE:\s*(\d{1,2}\/\d{1,2}\/\d{4})/i);
+          date = match ? parseDate(match[1]) : '';
+        }
+        if (line.toUpperCase().includes('DELIVERY DATE:')) {
+          const match = line.match(/DELIVERY DATE:\s*(\d{1,2}\/\d{1,2}\/\d{4})/i);
+          deliveryDate = match ? parseDate(match[1]) : '';
+        }
+        if (line.toUpperCase().includes('SALES REP:')) {
+          const match = line.match(/SALES REP:\s*(.+)/i);
+          salesRep = match ? match[1].trim() : '';
+        }
+        // Try to guess customer from address lines (heuristic)
+        if (!customer && line.length > 10 && !line.includes('VAT') && !line.includes('NUMBER') && !line.includes('DATE')) {
+          const maybeCustomer = line.split('DELIVERY ADDRESS')[0].split('POSTAL ADDRESS')[0];
+          if (maybeCustomer.trim().length > 5 && !/\d{4}/.test(maybeCustomer)) {
+            customer = maybeCustomer.trim();
+          }
+        }
+      }
+      
+      // Find table start — look for lines with price patterns
+      let inTable = false;
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        // Skip headers
+        if (line.match(/Description\s+Quantity\s+Excl\.\s*Price/i)) {
+          inTable = true;
+          continue;
+        }
+        if (!inTable) continue;
+        if (line.match(/Total\s+(Discount|Exclusive|VAT|Sub|Grand)/i)) break;
+        
+        // Try to parse item line
+        // Example: "RAD315- RAD 315                 1.00     R 3,052.00  2.50% 15.00% R 2,975.70 R 3,422.06"
+        const parts = line.trim().split(/\s{2,}/); // split on 2+ spaces
+        if (parts.length < 3) continue;
+        
+        // Heuristic: last numeric fields are prices
+        let qty = 1, exclPrice = 0, discPct = 0;
+        const numericParts = parts.filter(p => /\d/.test(p));
+        if (numericParts.length >= 3) {
+          qty = parseFloat(numericParts[0]) || 1;
+          // Find price: contains R or ,
+          const pricePart = parts.find(p => p.includes('R') || p.includes(',')) || numericParts[1];
+          if (pricePart) {
+            exclPrice = parseFloat(pricePart.replace(/[R,]/g, '')) || 0;
+          }
+          // Find disc%: contains % and number
+          const discPart = parts.find(p => p.includes('%') && /\d/.test(p)) || numericParts[2];
+          if (discPart) {
+            discPct = parseFloat(discPart.replace(/[%]/g, '')) || 0;
+          }
+        }
+        
+        // Description is first part (before qty)
+        let desc = parts[0];
+        // Clean up item code
+        desc = desc.replace(/-\s*/, ' - ').replace(/\s+/g, ' ').trim();
+        
+        items.push({
+          date: date || new Date().toLocaleDateString('en-ZA'),
+          deliveryDate: deliveryDate || '',
+          jobNumber: jobRef || 'Unknown',
+          docNo: soNumber || 'SO???',
+          customerRef: 'PO-???',
+          customer: customer || 'Dynatron Group',
+          description: desc,
+          qty: qty,
+          exclPrice: exclPrice,
+          discPct: discPct,
+          supplier: 'Ex Stock',
+          supplierPONumber: 'N/A',
+          salesRep: salesRep || 'Simon Mokgola',
+          status: 'In progress',
+          comments: deliveryDate ? `Target completion Date: ${new Date(deliveryDate.split('/').reverse().join('-')).setDate(new Date(deliveryDate.split('/').reverse().join('-')).getDate() - 3) > 0 ? new Date(new Date(deliveryDate.split('/').reverse().join('-')).setDate(new Date(deliveryDate.split('/').reverse().join('-')).getDate() - 3)).toLocaleDateString('en-ZA') : '27/11/2025'}` : 'Target completion Date: 27/11/2025',
+          exclTotal: qty * exclPrice * (1 - discPct/100),
+          inclTotal: qty * exclPrice * (1 - discPct/100) * 1.15
+        });
+      }
+      
+      return items;
+    };
+
+    // Export to CSV (matches your Excel report format)
+    const exportToCSV = () => {
+      if (items.length === 0) {
+        alert('No items to export.');
+        return;
+      }
+      
+      const headers = [
+        'Date', 'Delivery Date', 'Job Number', 'Document No.', 'Customer Ref.', 'Customer',
+        'Item & Description', 'QTY', 'Supplier', 'Supplier PO Number', 'Sales Rep', 'Status', 'Comments',
+        'Excl Price', 'Disc%', 'Excl Total', 'Incl Total'
+      ];
+      
+      const rows = items.map(item => [
+        item.date,
+        item.deliveryDate,
+        `"${item.jobNumber}"`,
+        item.docNo,
+        `"${item.customerRef}"`,
+        `"${item.customer}"`,
+        `"${item.description}"`,
+        item.qty,
+        item.supplier,
+        item.supplierPONumber,
+        item.salesRep,
+        item.status,
+        `"${item.comments}"`,
+        item.exclPrice.toFixed(2).replace('.', ','),
+        item.discPct.toFixed(1),
+        item.exclTotal.toFixed(2).replace('.', ','),
+        item.inclTotal.toFixed(2).replace('.', ',')
+      ]);
+      
+      const csvContent = [
+        headers.join(','),
+        ...rows.map(row => row.join(','))
+      ].join('\n');
+      
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      const now = new Date();
+      a.download = `Sales_Order_Report_${now.getDate()}-${now.getMonth()+1}-${now.getFullYear()}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    };
+
+    // Event listeners
+    document.getElementById('parseBtn').addEventListener('click', () => {
+      const text = document.getElementById('inputText').value.trim();
+      if (!text) {
+        alert('Please paste sales order text first.');
+        return;
+      }
+      const parsed = parseSalesOrder(text);
+      if (parsed.length === 0) {
+        alert('⚠️ Could not parse any items. Check format (see example).');
+        return;
+      }
+      items = parsed;
+      renderTable();
+      document.getElementById('inputText').value = '';
+    });
+
+    document.getElementById('clearBtn').addEventListener('click', () => {
+      items = [];
+      renderTable();
+      document.getElementById('inputText').value = '';
+    });
+
+    document.getElementById('exportBtn').addEventListener('click', exportToCSV);
+
+    document.getElementById('addRowBtn').addEventListener('click', () => {
+      items.push({
+        date: new Date().toLocaleDateString('en-ZA'),
+        deliveryDate: '',
+        jobNumber: 'FM????',
+        docNo: 'SO????',
+        customerRef: 'PO-???',
+        customer: 'Dynatron Group',
+        description: 'New Item',
+        qty: 1,
+        exclPrice: 0.00,
+        discPct: 0.0,
+        supplier: 'Ex Stock',
+        supplierPONumber: 'N/A',
+        salesRep: 'Simon Mokgola',
+        status: 'In progress',
+        comments: 'Target completion Date: ' + new Date(Date.now() + 8*24*60*60*1000).toLocaleDateString('en-ZA'),
+        exclTotal: 0.00,
+        inclTotal: 0.00
+      });
+      renderTable();
+    });
+
+    document.getElementById('saveBtn').addEventListener('click', () => {
+      const name = prompt('Enter a name for this order (e.g., SO4197):');
+      if (!name) return;
+      
+      const history = JSON.parse(localStorage.getItem('soHistory') || '[]');
+      history.push({
+        name: name,
+        timestamp: new Date().toISOString(),
+        items: JSON.parse(JSON.stringify(items))
+      });
+      localStorage.setItem('soHistory', JSON.stringify(history));
+      alert(`✅ Saved "${name}"`);
+      document.getElementById('historyCount').textContent = `Orders saved: ${history.length}`;
+    });
+
+    document.getElementById('loadBtn').addEventListener('click', () => {
+      const history = JSON.parse(localStorage.getItem('soHistory') || '[]');
+      if (history.length === 0) {
+        alert('No saved orders.');
+        return;
+      }
+      
+      const names = history.map((h, i) => `${i+1}. ${h.name} (${new Date(h.timestamp).toLocaleDateString()})`).join('\n');
+      const choice = prompt(`Select order to load (enter number):\n\n${names}\n\nCancel to abort`);
+      if (!choice) return;
+      const idx = parseInt(choice) - 1;
+      if (idx >= 0 && idx < history.length) {
+        items = JSON.parse(JSON.stringify(history[idx].items));
+        renderTable();
+        alert(`✅ Loaded "${history[idx].name}"`);
+      } else {
+        alert('Invalid selection.');
+      }
+    });
+
+    // Initialize
+    renderTable();
+  </script>
+</body>
+</html>

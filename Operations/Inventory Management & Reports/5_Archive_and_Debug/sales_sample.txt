@@ -1,0 +1,32 @@
+Total lines: 16449
+
+[  0] sep=,
+[  1] "Name
+[  2] 
+[  3]                     Date","Reference","Status","Description","Qty","Total Selling"
+[  4] "52 Engneering",,,,,
+[  5] "06/02/2023","SO1966","Invoiced",,,
+[  6] ,,,"class 4 Impeller","1","23320"
+[  7] "Total for SO1966",,,,"1","23320"
+[  8] "Total for 52 Engneering",,,,"1","23320"
+[  9] "9 South African Infantry Battalion Base",,,,,
+[ 10] "27/07/2023","SO2346","Invoiced",,,
+[ 11] ,,,"GLF 7 - c/w 0.45kW 960rpm 380V Motor + Louvre and screen","2","19242"
+[ 12] ,,,"Delivery","1","1050"
+[ 13] "Total for SO2346",,,,"3","20292"
+[ 14] "Total for 9 South African Infantry Battalion Base",,,,"3","20292"
+[ 15] "A-Z Office & Home Renovations",,,,,
+[ 16] "14/06/2024","SO3087","Invoiced",,,
+[ 17] ,,,"DEUMIDO 20","1","7629"
+[ 18] ,,,"V 150/6 AR","1","1764"
+[ 19] "Total for SO3087",,,,"2","9393"
+[ 20] "Total for A-Z Office & Home Renovations",,,,"2","9393"
+[ 21] "ABMS ENGINEERING",,,,,
+[ 22] "17/10/2025","SO4094","Invoiced",,,
+[ 23] ,,,"RAD 315-EF1","1","3391"
+[ 24] ,,,"RAD 315-EF2","1","3391"
+[ 25] "Total for SO4094",,,,"2","6782"
+[ 26] "Total for ABMS ENGINEERING",,,,"2","6782"
+[ 27] "ABMS Maintenance Services",,,,,
+[ 28] "01/12/2021","SO1099","Invoiced",,,
+[ 29] ,,,"KSB315","1","4313"

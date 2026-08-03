@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sales Order PDF Extractor</title>
+  <style>
+    :root {
+      --bg: #121212;
+      --card: #1e1e1e;
+      --text: #e0e0e0;
+      --subtext: #b0b0b0;
+      --accent: #4caf50;
+      --accent-hover: #43a047;
+      --border: #2c2c2c;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      padding: 20px;
+    }
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 20px;
+    }
+    @media (max-width: 900px) {
+      .container { grid-template-columns: 1fr; }
+    }
+    .card {
+      background: var(--card);
+      border-radius: 12px;
+      padding: 20px;
+      border: 1px solid var(--border);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+    }
+    h1, h2 {
+      margin-bottom: 16px;
+      font-weight: 600;
+    }
+    h1 { font-size: 1.5em; }
+    h2 { font-size: 1.2em; border-bottom: 1px solid var(--border); padding-bottom: 8px; }
+    .drop-area {
+      border: 2px dashed var(--border);
+      border-radius: 8px;
+      padding: 40px 20px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.3s;
+      background: rgba(76, 175, 80, 0.05);
+    }
+    .drop-area:hover, .drop-area.dragover {
+      border-color: var(--accent);
+      background: rgba(76, 175, 80, 0.1);
+    }
+    .drop-area p {
+      margin-top: 12px;
+      color: var(--subtext);
+      font-size: 0.95em;
+    }
+    #fileInput { display: none; }
+    .btn {
+      background: var(--accent);
+      color: #000;
+      border: none;
+      border-radius: 6px;
+      padding: 12px 20px;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .btn:hover { background: var(--accent-hover); }
+    .btn.secondary {
+      background: #3a3a3a;
+      color: var(--text);
+    }
+    .btn.secondary:hover { background: #4a4a4a; }
+    .table-container {
+      overflow-x: auto;
+      margin-top: 16px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.9em;
+    }
+    th, td {
+      padding: 10px 8px;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+    }
+    th {
+      background: rgba(76, 175, 80, 0.1);
+      color: var(--subtext);
+      font-weight: 500;
+      position: sticky;
+      top: 0;
+    }
+    tr:hover td { background: rgba(255,255,255,0.03); }
+    input, select {
+      background: #121212;
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 6px 8px;
+      width: 100%;
+    }
+    .zar { font-family: monospace; }
+    #status { margin-top: 12px; font-size: 0.9em; color: var(--subtext); }
+    #status.processing { color: #ff9800; }
+    #status.success { color: #4caf50; }
+    #status.error { color: #f44336; }
+    .summary {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-top: 16px;
+      font-size: 0.95em;
+    }
+    .summary-item {
+      background: #2a2a2a;
+      padding: 12px;
+      border-radius: 6px;
+      text-align: center;
+    }
+    .summary-label { color: var(--subtext); font-size: 0.9em; }
+    .summary-value { font-size: 1.2em; font-weight: 600; margin-top: 4px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="main-content">
+      <div class="card">
+        <h1>📎 Sales Order PDF Extractor</h1>
+        <p style="color:var(--subtext); margin-bottom:16px;">
+          Upload a sales order PDF (e.g., SO4197) → auto-extract items → export CSV for your report.
+        </p>
+
+        <div class="drop-area" id="dropArea">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="17 8 12 3 7 8"></polyline>
+            <line x1="12" y1="3" x2="12" y2="15"></line>
+          </svg>
+          <h3>Drag & Drop PDF Here</h3>
+          <p>or click to browse</p>
+          <input type="file" id="fileInput" accept=".pdf">
+        </div>
+        <div id="status">Ready</div>
+
+        <div class="btn-group" style="margin-top:20px;">
+          <button id="exportBtn" class="btn" disabled>📤 Export CSV (for Report)</button>
+        </div>
+
+        <h2 style="margin-top:24px;">Extracted Items (<span id="rowCount">0</span>)</h2>
+        <div class="table-container">
+          <table id="itemTable">
+            <thead>
+              <tr>
+                <th>Job Number</th>
+                <th>Doc No.</th>
+                <th>Customer Ref.</th>
+                <th>Customer</th>
+                <th>Item & Description</th>
+                <th>QTY</th>
+                <th>Excl Price</th>
+                <th>Disc%</th>
+                <th>Supplier</th>
+                <th>Sales Rep</th>
+                <th>Status</th>
+                <th>Comments</th>
+                <th>Excl Total</th>
+                <th>Incl Total</th>
+              </tr>
+            </thead>
+            <tbody id="itemBody"></tbody>
+          </table>
+        </div>
+
+        <div class="summary">
+          <div class="summary-item">
+            <div class="summary-label">Total Excl.</div>
+            <div class="summary-value zar" id="totalExcl">R 0.00</div>
+          </div>
+          <div class="summary-item">
+            <div class="summary-label">Total VAT (15%)</div>
+            <div class="summary-value zar" id="totalVat">R 0.00</div>
+          </div>
+          <div class="summary-item">
+            <div class="summary-label">Grand Total</div>
+            <div class="summary-value zar" id="grandTotal">R 0.00</div>
+          </div>
+          <div class="summary-item">
+            <div class="summary-label">Rows</div>
+            <div class="summary-value" id="summaryCount">0</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sidebar">
+      <div class="card">
+        <h2>✅ Works With Your Files</h2>
+        <ul style="padding-left:20px; margin-top:12px; font-size:0.95em; color:var(--subtext);">
+          <li>📥 SO4197.pdf (FM3669/FM3670)</li>
+          <li>📥 Any Fan Movement sales order</li>
+          <li>📤 CSV matches Excel report columns</li>
+          <li>🇿🇦 ZAR (R) & SA date format</li>
+          <li>🔧 Edit rows before export</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <h2>⚙️ Defaults (Auto-filled)</h2>
+        <table style="width:100%; font-size:0.9em;">
+          <tr><td>Supplier:</td><td>Ex Stock</td></tr>
+          <tr><td>Supplier PO:</td><td>N/A</td></tr>
+          <tr><td>Status:</td><td>In progress</td></tr>
+          <tr><td>Comments:</td><td>Target completion Date: 27/11/2025</td></tr>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- PDF.js v3.4.120 (minified) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
+  <script>
+    // Set worker source (required for PDF.js)
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
+
+    const formatZAR = (num) => `R ${num.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    const parseDate = (str) => {
+      if (!str) return '';
+      const d = new Date(str.split('/').reverse().join('-'));
+      return isNaN(d) ? str : ('0' + d.getDate()).slice(-2) + '/' + ('0' + (d.getMonth() + 1)).slice(-2) + '/' + d.getFullYear();
+    };
+
+    let items = [];
+    const statusOptions = ['Invoiced', 'In progress', 'ON HOLD', 'Cancelled'];
+
+    const updateSummary = () => {
+      const excl = items.reduce((sum, i) => sum + (i.exclTotal || 0), 0);
+      const vat = excl * 0.15;
+      const total = excl + vat;
+      document.getElementById('totalExcl').textContent = formatZAR(excl);
+      document.getElementById('totalVat').textContent = formatZAR(vat);
+      document.getElementById('grandTotal').textContent = formatZAR(total);
+      document.getElementById('summaryCount').textContent = items.length;
+      document.getElementById('rowCount').textContent = items.length;
+      document.getElementById('exportBtn').disabled = items.length === 0;
+    };
+
+    const renderTable = () => {
+      const tbody = document.getElementById('itemBody');
+      tbody.innerHTML = items.map(item => `
+        <tr>
+          <td>${item.jobNumber}</td>
+          <td>${item.docNo}</td>
+          <td>${item.customerRef}</td>
+          <td>${item.customer}</td>
+          <td>${item.description}</td>
+          <td>${item.qty}</td>
+          <td class="zar">${formatZAR(item.exclPrice)}</td>
+          <td>${item.discPct.toFixed(1)}%</td>
+          <td>${item.supplier}</td>
+          <td>${item.salesRep}</td>
+          <td>${item.status}</td>
+          <td>${item.comments}</td>
+          <td class="zar">${formatZAR(item.exclTotal)}</td>
+          <td class="zar">${formatZAR(item.inclTotal)}</td>
+        </tr>
+      `).join('');
+      updateSummary();
+    };
+
+    // Parse text extracted from PDF
+    const parseSalesOrderText = (text) => {
+      // Normalize whitespace
+      text = text.replace(/\u00A0/g, ' ').replace(/\s+/g, ' ').trim();
+
+      // Extract header fields
+      const soNumber = (text.match(/NUMBER:\s*([A-Z0-9]+)/i) || [null, 'SO???'])[1];
+      const refMatch = text.match(/REFERENCE:\s*([^D]+)/i);
+      let jobRef = 'FM????', customerRef = '';
+      if (refMatch) {
+        const ref = refMatch[1].trim();
+        const fmMatches = ref.match(/FM\d+/g);
+        jobRef = fmMatches ? fmMatches.join(' ') : 'FM????';
+        const parts = ref.split('-').map(s => s.trim());
+        const lastIdx = parts.findIndex(p => /clinic|hospital|po/i.test(p));
+        customerRef = lastIdx > 0 ? parts.slice(lastIdx).join(' - ') : 'PO-???';
+      }
+
+      const dateMatch = text.match(/DATE:\s*(\d{1,2}\/\d{1,2}\/\d{4})/i);
+      const date = dateMatch ? parseDate(dateMatch[1]) : new Date().toLocaleDateString('en-ZA');
+
+      const delivMatch = text.match(/DELIVERY DATE:\s*(\d{1,2}\/\d{1,2}\/\d{4})/i);
+      const deliveryDate = delivMatch ? parseDate(delivMatch[1]) : '';
+
+      const repMatch = text.match(/SALES REP:\s*([A-Z\s]+)/i);
+      const salesRep = repMatch ? repMatch[1].trim() : 'Simon Mokgola';
+
+      const customer = /DYNATRON/i.test(text) ? 'Dynatron Group' : 'Dynatron Group';
+
+      // Extract item lines
+      const lines = text.split(/\n/).filter(l => l.trim());
+      const itemLines = [];
+      let inTable = false;
+      for (let line of lines) {
+        if (line.includes('Description') && line.includes('Quantity')) {
+          inTable = true;
+          continue;
+        }
+        if (inTable && line.includes('Total')) break;
+        if (inTable && line.includes('R ') && /\d/.test(line)) {
+          itemLines.push(line);
+        }
+      }
+
+      const parsedItems = [];
+      for (let line of itemLines) {
+        // Clean and split
+        line = line.replace(/\s+/g, ' ');
+        const parts = line.split(/\s+/);
+        if (parts.length < 5) continue;
+
+        // Find qty (first numeric with decimal)
+        let qtyIdx = -1;
+        for (let i = 0; i < parts.length; i++) {
+          if (!isNaN(parseFloat(parts[i])) && parts[i].includes('.')) {
+            qtyIdx = i;
+            break;
+          }
+        }
+        if (qtyIdx === -1) continue;
+
+        // Find price (contains R)
+        let priceIdx = -1;
+        for (let i = qtyIdx + 1; i < parts.length; i++) {
+          if (parts[i].startsWith('R') || parts[i-1] === 'R') {
+            priceIdx = parts[i].startsWith('R') ? i : i;
+            break;
+          }
+        }
+        if (priceIdx === -1) continue;
+
+        const description = parts.slice(0, qtyIdx).join(' ').replace(/-\s*/, ' - ').trim();
+        const qty = parseFloat(parts[qtyIdx]) || 1;
+        const exclPrice = parseFloat(parts[priceIdx].replace(/[R,]/g, '')) || 0;
+        let discPct = 0;
+        for (let i = priceIdx + 1; i < parts.length; i++) {
+          if (parts[i].endsWith('%') && !parts[i].includes('VAT')) {
+            discPct = parseFloat(parts[i].replace('%', '')) || 0;
+            break;
+          }
+        }
+
+        const exclTotal = qty * exclPrice * (1 - discPct / 100);
+        const inclTotal = exclTotal * 1.15;
+
+        parsedItems.push({
+          date,
+          deliveryDate,
+          jobNumber: jobRef,
+          docNo: soNumber,
+          customerRef,
+          customer,
+          description,
+          qty,
+          exclPrice,
+          discPct,
+          exclTotal,
+          inclTotal,
+          supplier: 'Ex Stock',
+          supplierPONumber: 'N/A',
+          salesRep,
+          status: 'In progress',
+          comments: deliveryDate ? `Target completion Date: ${
+            new Date(deliveryDate.split('/').reverse().join('-')).setDate(
+              new Date(deliveryDate.split('/').reverse().join('-')).getDate() - 3
+            ) > 0 ? new Date(
+              new Date(deliveryDate.split('/').reverse().join('-')).setDate(
+                new Date(deliveryDate.split('/').reverse().join('-')).getDate() - 3
+              )
+            ).toLocaleDateString('en-ZA') : '27/11/2025'
+          }` : 'Target completion Date: 27/11/2025'
+        });
+      }
+      return parsedItems;
+    };
+
+    const exportToCSV = () => {
+      if (items.length === 0) return;
+      const headers = [
+        'Date', 'Delivery Date', 'Job Number', 'Document No.', 'Customer Ref.', 'Customer',
+        'Item & Description', 'QTY', 'Supplier', 'Supplier PO Number', 'Sales Rep', 'Status', 'Comments',
+        'Excl Price', 'Disc%', 'Excl Total', 'Incl Total'
+      ];
+      const rows = items.map(item => [
+        item.date,
+        item.deliveryDate,
+        `"${item.jobNumber}"`,
+        item.docNo,
+        `"${item.customerRef}"`,
+        `"${item.customer}"`,
+        `"${item.description}"`,
+        item.qty,
+        item.supplier,
+        item.supplierPONumber,
+        item.salesRep,
+        item.status,
+        `"${item.comments}"`,
+        item.exclPrice.toFixed(2).replace('.', ','),
+        item.discPct.toFixed(1),
+        item.exclTotal.toFixed(2).replace('.', ','),
+        item.inclTotal.toFixed(2).replace('.', ',')
+      ]);
+      const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `SO_${items[0]?.docNo || 'Export'}_${new Date().toLocaleDateString('en-GB').replace(/\//g, '-')}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    };
+
+    // PDF processing
+    const processPDF = async (file) => {
+      const statusEl = document.getElementById('status');
+      statusEl.textContent = 'Processing PDF...';
+      statusEl.className = 'processing';
+
+      try {
+        const arrayBuffer = await file.arrayBuffer();
+        const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+        let fullText = '';
+        for (let i = 1; i <= pdf.numPages; i++) {
+          const page = await pdf.getPage(i);
+          const textContent = await page.getTextContent();
+          fullText += textContent.items.map(item => item.str).join(' ') + '\n';
+        }
+
+        items = parseSalesOrderText(fullText);
+        renderTable();
+
+        statusEl.textContent = `✅ Success: ${items.length} items extracted`;
+        statusEl.className = 'success';
+      } catch (err) {
+        statusEl.textContent = `❌ Error: ${err.message || 'Failed to process PDF'}`;
+        statusEl.className = 'error';
+        console.error(err);
+      }
+    };
+
+    // Setup UI
+    document.addEventListener('DOMContentLoaded', () => {
+      const dropArea = document.getElementById('dropArea');
+      const fileInput = document.getElementById('fileInput');
+      const exportBtn = document.getElementById('exportBtn');
+
+      dropArea.addEventListener('click', () => fileInput.click());
+      dropArea.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        dropArea.classList.add('dragover');
+      });
+      dropArea.addEventListener('dragleave', () => dropArea.classList.remove('dragover'));
+      dropArea.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropArea.classList.remove('dragover');
+        const files = e.dataTransfer.files;
+        if (files.length && files[0].type === 'application/pdf') {
+          processPDF(files[0]);
+        }
+      });
+
+      fileInput.addEventListener('change', (e) => {
+        if (e.target.files.length && e.target.files[0].type === 'application/pdf') {
+          processPDF(e.target.files[0]);
+        }
+      });
+
+      exportBtn.addEventListener('click', exportToCSV);
+    });
+  </script>
+</body>
+</html>

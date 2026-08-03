@@ -1,0 +1,10 @@
+0: {}
+1: {'📊 CATEGORY SUMMARY': 'Category', 'Unnamed: 1': 'Items', 'Unnamed: 2': 'Items on order', 'Unnamed: 3': 'Total Stock Value', 'Unnamed: 4': 'Total Order Value'}
+2: {'📊 CATEGORY SUMMARY': 'FM - DONKIN', 'Unnamed: 1': 15, 'Unnamed: 2': 0, 'Unnamed: 3': 36604.48, 'Unnamed: 4': 9269}
+3: {'📊 CATEGORY SUMMARY': 'FM - FPZ', 'Unnamed: 1': 128, 'Unnamed: 2': 0, 'Unnamed: 3': 1478427.895, 'Unnamed: 4': 2305231.11}
+4: {'📊 CATEGORY SUMMARY': 'FM - KAYITES', 'Unnamed: 1': 119, 'Unnamed: 2': 0, 'Unnamed: 3': 501658.5249, 'Unnamed: 4': 422910.8559}
+5: {'📊 CATEGORY SUMMARY': 'FM - NICOTRA', 'Unnamed: 1': 56, 'Unnamed: 2': 0, 'Unnamed: 3': 89745.75, 'Unnamed: 4': 394563.75}
+6: {'📊 CATEGORY SUMMARY': 'FM - OSTBERG', 'Unnamed: 1': 13, 'Unnamed: 2': 0, 'Unnamed: 3': 1237.5, 'Unnamed: 4': 51279.75}
+7: {'📊 CATEGORY SUMMARY': 'FM - SODECA', 'Unnamed: 1': 216, 'Unnamed: 2': 16, 'Unnamed: 3': 1971940.90275, 'Unnamed: 4': 2119229.10225}
+8: {'📊 CATEGORY SUMMARY': 'FM - VORTICE', 'Unnamed: 1': 189, 'Unnamed: 2': 0, 'Unnamed: 3': 2281208.34047, 'Unnamed: 4': 1096758.56308125}
+9: {'📊 CATEGORY SUMMARY': 'GRAND TOTAL', 'Unnamed: 1': 736, 'Unnamed: 2': 16, 'Unnamed: 3': 6360823.39312, 'Unnamed: 4': 6399242.13123125}

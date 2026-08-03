@@ -1,0 +1,121 @@
+
+============================================================
+Sheet: Summary
+============================================================
+Dimensions: A1:E16
+Frozen panes: None
+
+Column widths:
+  A: width=12.5546875
+  B: width=5.77734375
+  C: width=12.88671875
+  D: width=15.33203125
+
+Row heights:
+  Row 1: height=21.0
+  Row 2: height=None
+  Row 3: height=None
+
+Header cells (row 1):
+  A1: value='📊 CATEGORY SUMMARY' | font=Aptos Narrow, size=16.0, bold=True, color=<openpyxl.styles.colors.Color object>
+Parameters:
+rgb='FFFFFFFF', indexed=None, auto=None, theme=None, tint=0.0, type='rgb' | fill=FF1F4E79 | alignment=h:center, v:None, wrap:None | border_bottom=None
+  B1: value='None' | font=Aptos Narrow, size=11.0, bold=False, color=<openpyxl.styles.colors.Color object>
+Parameters:
+rgb=None, indexed=None, auto=None, theme=1, tint=0.0, type='theme' | fill=00000000 | alignment=h:None, v:None, wrap:None | border_bottom=None
+  C1: value='None' | font=Aptos Narrow, size=11.0, bold=False, color=<openpyxl.styles.colors.Color object>
+Parameters:
+rgb=None, indexed=None, auto=None, theme=1, tint=0.0, type='theme' | fill=00000000 | alignment=h:None, v:None, wrap:None | border_bottom=None
+  D1: value='None' | font=Aptos Narrow, size=11.0, bold=False, color=<openpyxl.styles.colors.Color object>
+Parameters:
+rgb=None, indexed=None, auto=None, theme=1, tint=0.0, type='theme' | fill=00000000 | alignment=h:None, v:None, wrap:None | border_bottom=None
+  E1: value='None' | font=Aptos Narrow, size=11.0, bold=False, color=<openpyxl.styles.colors.Color object>
+Parameters:
+rgb=None, indexed=None, auto=None, theme=1, tint=0.0, type='theme' | fill=00000000 | alignment=h:None, v:None, wrap:None | border_bottom=None
+
+Data cells (row 2):
+  A2: value='None' | font=Aptos Narrow, size=11.0, bold=False | fill=00000000 | alignment=h:None, v:None, wrap:None | number_format=General
+  B2: value='None' | font=Aptos Narrow, size=11.0, bold=False | fill=00000000 | alignment=h:None, v:None, wrap:None | number_format=General
+  C2: value='None' | font=Aptos Narrow, size=11.0, bold=False | fill=00000000 | alignment=h:None, v:None, wrap:None | number_format=General
+  D2: value='None' | font=Aptos Narrow, size=11.0, bold=False | fill=00000000 | alignment=h:None, v:None, wrap:None | number_format=General
+  E2: value='None' | font=Aptos Narrow, size=11.0, bold=False | fill=00000000 | alignment=h:None, v:None, wrap:None | number_format=General
+
+============================================================
+Sheet: FPZ
+============================================================
+Dimensions: A1:N134
+Frozen panes: None
+
+Column widths:
+  A: width=22.44140625
+  B: width=40.21875
+  C: width=11.0
+  D: width=12.5546875
+  E: width=15.5546875
+  F: width=10.33203125
+  L: width=15.5546875
+
+Row heights:
+  Row 1: height=15.6
+  Row 2: height=43.2
+  Row 3: height=None
+
+Header cells (row 1):
+  A1: value='FM - FPZ' | font=Aptos Narrow, size=12.0, bold=True, color=<openpyxl.styles.colors.Color object>
+Parameters:
+rgb=None, indexed=None, auto=None, theme=1, tint=0.0, type='theme' | fill=00000000 | alignment=h:center, v:None, wrap:None | border_bottom=None
+  B1: value='None' | font=Aptos Narrow, size=11.0, bold=False, color=<openpyxl.styles.colors.Color object>
+Parameters:
+rgb=None, indexed=None, auto=None, theme=1, tint=0.0, type='theme' | fill=00000000 | alignment=h:None, v:None, wrap:None | border_bottom=None
+  C1: value='None' | font=Aptos Narrow, size=11.0, bold=False, color=<openpyxl.styles.colors.Color object>
+Parameters:
+rgb=None, indexed=None, auto=None, theme=1, tint=0.0, type='theme' | fill=00000000 | alignment=h:None, v:None, wrap:None | border_bottom=None
+  D1: value='None' | font=Aptos Narrow, size=11.0, bold=False, color=<openpyxl.styles.colors.Color object>
+Parameters:
+rgb=None, indexed=None, auto=None, theme=1, tint=0.0, type='theme' | fill=00000000 | alignment=h:None, v:None, wrap:None | border_bottom=None
+  E1: value='None' | font=Aptos Narrow, size=11.0, bold=False, color=<openpyxl.styles.colors.Color object>
+Parameters:
+rgb=None, indexed=None, auto=None, theme=1, tint=0.0, type='theme' | fill=00000000 | alignment=h:None, v:None, wrap:None | border_bottom=None
+  F1: value='None' | font=Aptos Narrow, size=11.0, bold=False, color=<openpyxl.styles.colors.Color object>
+Parameters:
+rgb=None, indexed=None, auto=None, theme=1, tint=0.0, type='theme' | fill=00000000 | alignment=h:None, v:None, wrap:None | border_bottom=None
+  G1: value='None' | font=Aptos Narrow, size=11.0, bold=False, color=<openpyxl.styles.colors.Color object>
+Parameters:
+rgb=None, indexed=None, auto=None, theme=1, tint=0.0, type='theme' | fill=00000000 | alignment=h:None, v:None, wrap:None | border_bottom=None
+  H1: value='None' | font=Aptos Narrow, size=11.0, bold=False, color=<openpyxl.styles.colors.Color object>
+Parameters:
+rgb=None, indexed=None, auto=None, theme=1, tint=0.0, type='theme' | fill=00000000 | alignment=h:None, v:None, wrap:None | border_bottom=None
+  I1: value='None' | font=Aptos Narrow, size=11.0, bold=False, color=<openpyxl.styles.colors.Color object>
+Parameters:
+rgb=None, indexed=None, auto=None, theme=1, tint=0.0, type='theme' | fill=00000000 | alignment=h:None, v:None, wrap:None | border_bottom=None
+  J1: value='None' | font=Aptos Narrow, size=11.0, bold=False, color=<openpyxl.styles.colors.Color object>
+Parameters:
+rgb=None, indexed=None, auto=None, theme=1, tint=0.0, type='theme' | fill=00000000 | alignment=h:None, v:None, wrap:None | border_bottom=None
+  K1: value='None' | font=Aptos Narrow, size=11.0, bold=False, color=<openpyxl.styles.colors.Color object>
+Parameters:
+rgb=None, indexed=None, auto=None, theme=1, tint=0.0, type='theme' | fill=00000000 | alignment=h:None, v:None, wrap:None | border_bottom=None
+  L1: value='None' | font=Aptos Narrow, size=11.0, bold=False, color=<openpyxl.styles.colors.Color object>
+Parameters:
+rgb=None, indexed=None, auto=None, theme=1, tint=0.0, type='theme' | fill=00000000 | alignment=h:None, v:None, wrap:None | border_bottom=None
+  M1: value='None' | font=Aptos Narrow, size=11.0, bold=False, color=<openpyxl.styles.colors.Color object>
+Parameters:
+rgb=None, indexed=None, auto=None, theme=1, tint=0.0, type='theme' | fill=00000000 | alignment=h:None, v:None, wrap:None | border_bottom=None
+  N1: value='None' | font=Aptos Narrow, size=11.0, bold=False, color=<openpyxl.styles.colors.Color object>
+Parameters:
+rgb=None, indexed=None, auto=None, theme=1, tint=0.0, type='theme' | fill=00000000 | alignment=h:None, v:None, wrap:None | border_bottom=None
+
+Data cells (row 2):
+  A2: value='Item' | font=Aptos Narrow, size=11.0, bold=False | fill=00000000 | alignment=h:None, v:top, wrap:True | number_format=General
+  B2: value='Description' | font=Aptos Narrow, size=11.0, bold=False | fill=00000000 | alignment=h:None, v:top, wrap:None | number_format=General
+  C2: value='Supplier' | font=Aptos Narrow, size=11.0, bold=False | fill=00000000 | alignment=h:center, v:top, wrap:True | number_format=General
+  D2: value='Category' | font=Aptos Narrow, size=11.0, bold=False | fill=00000000 | alignment=h:center, v:top, wrap:True | number_format=General
+  E2: value='Cost Price' | font=Aptos Narrow, size=11.0, bold=False | fill=00000000 | alignment=h:center, v:top, wrap:True | number_format=General
+  F2: value='Safety Stock' | font=Aptos Narrow, size=11.0, bold=False | fill=00000000 | alignment=h:center, v:top, wrap:True | number_format=General
+  G2: value='Reorder Point (ROP)' | font=Aptos Narrow, size=11.0, bold=False | fill=00000000 | alignment=h:center, v:top, wrap:True | number_format=General
+  H2: value='Maximum Stock (MAX)' | font=Aptos Narrow, size=11.0, bold=False | fill=00000000 | alignment=h:center, v:top, wrap:True | number_format=General
+  I2: value='Current Stock' | font=Aptos Narrow, size=11.0, bold=False | fill=00000000 | alignment=h:center, v:top, wrap:True | number_format=General
+  J2: value='On Order' | font=Aptos Narrow, size=11.0, bold=False | fill=00000000 | alignment=h:center, v:top, wrap:True | number_format=General
+  K2: value='Order Quantity' | font=Aptos Narrow, size=11.0, bold=False | fill=00000000 | alignment=h:center, v:top, wrap:True | number_format=General
+  L2: value='Stock Value' | font=Aptos Narrow, size=11.0, bold=False | fill=00000000 | alignment=h:center, v:top, wrap:True | number_format=_-"R"* #,##0.00_-;\-"R"* #,##0.00_-;_-"R"* "-"??_-;_-@_-
+  M2: value='Order Value' | font=Aptos Narrow, size=11.0, bold=False | fill=00000000 | alignment=h:center, v:top, wrap:True | number_format=General
+  N2: value='None' | font=Aptos Narrow, size=11.0, bold=False | fill=00000000 | alignment=h:center, v:top, wrap:True | number_format=_-"R"* #,##0.00_-;\-"R"* #,##0.00_-;_-"R"* "-"??_-;_-@_-

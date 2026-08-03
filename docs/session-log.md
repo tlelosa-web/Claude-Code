@@ -476,3 +476,104 @@ of the two SOPS items).
 **Blockers:** NamePlateTool sub-repo has staged-but-uncommitted changes
 (`docs/todo.md` merge resolution + `docs/bugs/connection-lookup-no-manual-
 override.md`) awaiting Tebello's go-ahead to commit.
+
+## 2026-08-03 — Machine consolidation: Operations subtree-merged into O-P-C
+
+Tebello consolidated Operations and Pappa T onto one physical machine
+(`TshepangLelosa`) and started building a single merged vault, `O-P-C`
+(`C:\Users\tlelo\Desktop\O-P-C`), meant to fully replace the separate
+`Claude-Code`/`Operations`/`Pappa T` Desktop folders once migration
+finishes. Not run through a Claude session — found mid-flight at the start
+of this `/continue` run (`docs/todo.md`/`session-log.md` above still
+reflect the pre-migration state; this hub's own root `CLAUDE.md`/`docs/`/
+`knowledge/` are unaffected, still current). Pappa T had already been
+subtree-merged in (commit `5688803`, full `master`-branch history
+preserved under `Pappa T/`) before this session; Operations had not.
+
+Tebello confirmed O-P-C is the intended eventual replacement and asked to
+continue with the Operations merge, which had been interrupted (a prior
+terminal session doing it got closed accidentally — checked for leftover
+`MERGE_HEAD`/lock files/temp remotes first; none found, nothing was
+actually broken, just not started).
+
+**Structural difference from the Pappa T merge:** `Operations/` itself
+isn't a git repo (unlike Pappa T, which was one unified repo) — it's a
+folder holding its own hub docs (`CLAUDE.md`, `docs/todo.md`,
+`docs/session-log.md`, `docs/decisions/`, etc.) plus three independently-
+versioned nested repos (`2. SOPS` → `sops.git`, `3. Nameplate & Test
+Sheet` → `NamePlateTool.git`, `7. DELIVERY NOTE/delivery-note-system` →
+local-only, no remote) plus several plain-data folders with no git
+tracking (Daily Sales Order Files, Casing Analysis, AvgMovement, FM
+Planning & Stock Control, General - Info, IDE, Inventory Management &
+Reports, Sage Inventory Report, Stock Report Reference, Workshop Stock).
+
+Per Tebello's confirmation: committed two small pending fixes first
+(`CLAUDE.md`'s hub-path reference, `C:\Dev\Operations` →
+`C:\Users\tlelo\Desktop\Operations`, present as an unstaged diff in both
+NamePlateTool and delivery-note-system) directly in their own repos, then
+ran one subtree-merge per independent repo (mirroring the Pappa T
+approach exactly: `git fetch <local-path> <branch>` + `git merge -s ours
+--no-commit --allow-unrelated-histories FETCH_HEAD` + `git read-tree
+--prefix=... -u FETCH_HEAD` + `git commit`, producing a true 2-parent
+merge commit that preserves full history) — SOPS (`b2b91bb`), NamePlateTool
+(`3134bf8`), delivery-note-system (`35fe0dc`) — then one regular commit
+(`6ce7753`) adding everything else (Operations' own hub shell + the
+plain-data folders + two stray root files Tebello confirmed including,
+`headers.txt`/`response.pdf`) as fresh files with no separate history to
+preserve.
+
+**Caught and fixed one real mistake:** the first SOPS merge attempt
+silently produced a single-parent commit instead of a real merge —
+`git merge -s ours` had failed (a `.gitmodules` file was still staged
+from before this session, and git refuses to start a merge against a
+dirty index) but the subsequent `read-tree`+`commit` succeeded anyway,
+masking the failure. Caught by checking the resulting commit's parent
+count before moving on (`git cat-file -p <sha>` showed only one `parent`
+line). Fixed by `git reset --hard` back to the pre-attempt commit,
+committing `.gitmodules` on its own first (recreated from content read
+earlier in the session — the reset had discarded the never-committed
+staged file), then redoing the SOPS merge cleanly. The other two merges
+were verified to have real 2-parent commits before committing further.
+
+Also caught `__pycache__`/`.pyc` build artifacts swept in by the raw
+`cp -r` of the Daily Sales Order Files plain-data folder — unstaged and
+deleted before the final commit. Deliberately excluded `.venv` (a real
+Python virtualenv found under `7. DELIVERY NOTE/`, confirmed via
+`Lib`/`Scripts`/`pyvenv.cfg`) from the copy — standard practice, not
+asked about explicitly but a clear-cut call.
+
+**Verified after:** working tree clean, `Pappa T/` byte-identical to
+before (`git diff <pre-merge-sha> -- "Pappa T"` empty), `git count-objects`
+sane (49 MiB, no runaway blobs), all three merged sub-repos' history
+reachable as real second parents.
+
+**Not done, deliberately flagged rather than guessed at:**
+- Local `main` now diverges further from `origin`
+  (`tlelosa-web/Claude-Code`) — 475 commits ahead (up from 216, since the
+  three sub-repos' full histories are now included), still 12 behind. Not
+  a clean fast-forward; not attempted this session. Needs a real decision
+  from Tebello on how (or whether) to reconcile/push this to GitHub, given
+  the repo's identity is changing (single-project hub → multi-vault
+  consolidation).
+- The old `Claude-Code`/`Operations`/`Pappa T` Desktop folders were left
+  untouched — Tebello said O-P-C is meant to *eventually* replace them,
+  not that this session should delete/retire them yet.
+- `docs/todo.md`'s existing queue (codex-gate, NamePlateTool test suite,
+  TebelloReborn scope, Ollama timeout, two SOPS items) is unchanged by
+  this entry — machine-bound flags on those items may now be stale given
+  the consolidation (this machine can reach both Pappa T's and
+  Operations' content), but redoing that queue wasn't part of this task.
+
+**Last completed:** Operations subtree-merge into O-P-C (this entry) —
+SOPS, NamePlateTool, and delivery-note-system fully merged with history
+preserved; Operations' hub docs and plain-data folders added.
+**Next task:** Tebello's call — reconcile the `origin` divergence, decide
+what happens to the old Desktop folders, or pick up a `docs/todo.md` item
+(re-flagging machine-boundness given the consolidation first).
+**Known risks:** `origin` divergence (see above) — no data-loss risk
+locally, but the eventual push/reconciliation to GitHub needs a real plan,
+not an on-the-fly pull.
+**Blockers:** None for further local work. NamePlateTool's previous
+staged-uncommitted blocker (noted in the entry above) no longer applies —
+that repo's working tree was clean before this merge, only the unrelated
+path-reference fix was pending, now committed.

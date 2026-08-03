@@ -1099,3 +1099,50 @@ directly, or pick one up as-is.
 per Tebello's explicit go-ahead; keep that in mind for any future work
 that touches repo visibility or sharing.
 **Blockers:** None.
+
+## 2026-08-03 — Decided the fate of the old Desktop folders
+
+Investigated before deciding, since deleting the wrong thing here would be
+irreversible: checked each old Desktop folder (`Claude-Code`, `Operations`,
+`Pappa T`) for git-ignored/untracked content the subtree-merges wouldn't
+have captured — subtree-merging (`git fetch` + `read-tree`) only pulls
+*committed* history, never gitignored runtime state.
+
+Found real, live, uniquely-located data in two of the three:
+- **SOPS** (`Operations/2. SOPS/.gitignore`): `instance/` (the production
+  SQLite database — real Sales Orders/Purchase Orders/stock data),
+  `uploads/`.
+- **NamePlateTool**: generated `3_Live_Reports/`, `5_Archive_and_Debug/`,
+  `doc_history.json`, backend logs.
+- **delivery-note-system**: `.env` (secrets), `dev.db` (live database).
+- **Pappa T** (checked its `.gitignore` too, since it was merged in a
+  prior session without this check): `TebelloReborn/.env`,
+  `TebelloReborn/career.db` (+ `data/career.db`), `ai-outreach-agency/.env`,
+  `ai-outreach-agency/credentials.json`, `ai-outreach-agency/outreach.db`,
+  `MIMS App/.env.local`, `Tenders/cache.db`, and more.
+
+None of this exists anywhere else. Decided: `Operations` and `Pappa T`
+Desktop folders stay, not superseded by O-P-C — O-P-C is a source-code
+consolidation, not a full data migration, and deleting either now would
+permanently destroy live business data and credentials with zero backup.
+Deliberately did not copy the live secrets/databases into O-P-C either,
+even though that's non-destructive — duplicating `credentials.json`/`.env`
+files across two directory trees is its own decision with real security
+surface-area implications, not something to bundle into a "clean up old
+folders" task without being asked.
+
+`Claude-Code` (the old bare hub clone) was different: checked directly,
+no untracked or ignored files at all, sitting at commit `fe380f8` — a
+direct ancestor already fully contained in O-P-C's history and already
+pushed to `origin`. Confirmed with Tebello, then deleted
+`C:\Users\tlelo\Desktop\Claude-Code`.
+
+**Last completed:** Old-Desktop-folder decision (this entry) —
+`Claude-Code` removed, `Operations`/`Pappa T` deliberately kept.
+**Next task:** Re-flag the machine-bound ⚠️ items in `docs/todo.md`
+"Next up" now that this machine can reach both Pappa T's and Operations'
+content directly, or pick one up as-is.
+**Known risks:** `Operations`/`Pappa T` remain the sole location for live
+runtime data (databases, secrets) — any future work that assumes O-P-C is
+a complete mirror of those projects needs to account for that gap.
+**Blockers:** None.

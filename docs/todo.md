@@ -11,12 +11,18 @@ Per DCOE: update after every completed task; one task = one commit.
 
 - [ ] **O-P-C machine consolidation** — Operations and Pappa T subtree-
       merged into this repo (`Pappa T/`, `Operations/`, both with full
-      history preserved for their git sub-repos); `Claude-Code`,
-      `Operations`, `Pappa T` still exist as separate Desktop folders on
-      this machine, not yet retired. One follow-up remains:
-      1. [ ] Decide what happens to the old `Claude-Code`/`Operations`/
-            `Pappa T` Desktop folders once migration is confirmed
-            complete (leave as backups vs. remove).
+      history preserved for their git sub-repos). Old `Claude-Code` Desktop
+      folder removed 2026-08-03 (redundant clone, nothing untracked, fully
+      superseded by O-P-C's already-pushed history). `Operations` and
+      `Pappa T` Desktop folders deliberately **kept, not superseded** —
+      both hold live gitignored data with no other copy (SOPS's production
+      `instance/sops.db`, delivery-note-system's `.env`/`dev.db`, Pappa T's
+      `.env` files/`credentials.json`/`career.db`/`outreach.db`/etc.) that
+      the git-based subtree-merges never captured, since that only pulls
+      committed history. See `docs/session-log.md`, 2026-08-03 entry. Not
+      a task to revisit unless Tebello decides to deliberately migrate that
+      live runtime state too (and repoint whatever scripts/services use
+      those paths) — no urgency stated.
       Also: every machine-bound ⚠️ flag on the "Next up" items below may
       now be stale, since this machine can reach both Pappa T's and
       Operations' content directly — not re-verified yet.

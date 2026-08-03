@@ -23,35 +23,53 @@ Per DCOE: update after every completed task; one task = one commit.
       a task to revisit unless Tebello decides to deliberately migrate that
       live runtime state too (and repoint whatever scripts/services use
       those paths) — no urgency stated.
-      Also: every machine-bound ⚠️ flag on the "Next up" items below may
-      now be stale, since this machine can reach both Pappa T's and
-      Operations' content directly — not re-verified yet.
+      The "Next up" items' machine flags were re-checked 2026-08-03 — see
+      that section's own note.
 
-## Next up (priority order, set 2026-07-28; specs added 2026-07-29 so each
-machine-bound item is ready to hand to an executor the moment `/continue`
-runs on the right machine)
+## Next up (priority order, set 2026-07-28; specs added 2026-07-29; machine
+flags re-checked 2026-08-03 after the O-P-C consolidation — see note below)
 
-1. [ ] **codex-gate: Pappa T install + network-off smoke-test.** ⚠️ Pappa T
-      only. Spec (ready):
+> **2026-08-03 re-flag:** the old ⚠️ "Pappa T only"/"Operations only" flags
+> meant "unreachable from a cloud session on a different machine." That's
+> gone — Operations and Pappa T are now physically on this same machine.
+> But O-P-C's `Operations/`/`Pappa T/` folders are a **historical
+> consolidation snapshot** (git history only), not the live working copy —
+> per `docs/session-log.md`'s 2026-08-03 "old Desktop folders" entry, the
+> live databases/secrets/generated output only exist in the original
+> `Desktop/Operations/`/`Desktop/Pappa T/` folders. So every item below now
+> gets a 📍 flag instead: reachable from this machine, but work must
+> happen in the **live** Desktop copy, not O-P-C's snapshot, or the fix
+> won't reach the actual running project and O-P-C will need re-merging
+> afterward to pick it up.
+
+1. [ ] **codex-gate: Pappa T install + network-off smoke-test.** 📍 Install
+      into the live `Desktop/Pappa T/` (not O-P-C's `Pappa T/` copy) — it's
+      where Tebello actually runs Claude Code day-to-day. Spec (ready):
       `docs/specs/2026-07-29-codex-gate-pappa-t-smoketest.md`.
-      codex-gate itself stays Pappa T-only regardless — Fan Movement IT
-      still needs to confirm OpenAI-egress coverage for Operations before
-      install there (no spec for this one — it's a pending external
-      answer, not a task any session can execute). Detail:
-      `knowledge/tlelosa-claude-config.md`.
+      codex-gate itself stays Pappa T-only by design regardless of machine
+      — Fan Movement IT still needs to confirm OpenAI-egress coverage for
+      Operations before install there (no spec for this one — it's a
+      pending external answer, not a task any session can execute).
+      Detail: `knowledge/tlelosa-claude-config.md`.
 2. [ ] **NamePlateTool: add a real automated test suite** — not urgent;
-      `tests/` is ad-hoc manual-check scripts only. ⚠️ Operations only.
-      Spec (ready, starter scope — confirm before building):
-      `docs/specs/2026-07-29-nameplatetool-test-suite.md`.
+      `tests/` is ad-hoc manual-check scripts only. 📍 Build in the live
+      `Desktop/Operations/3. Nameplate & Test Sheet/`, then push (its
+      GitHub remote is the source of truth O-P-C's copy gets re-merged
+      from, not O-P-C directly). Spec (ready, starter scope — confirm
+      before building): `docs/specs/2026-07-29-nameplatetool-test-suite.md`.
 3. [ ] **TebelloReborn: decide on post-MVP scope** — Playwright auto-submit,
       recruiter/cold-outreach revival, and a doc-gen volume-cap/scheduler
-      are all undecided backlog items, no urgency behind them yet. ⚠️
-      Pappa T only. Spec (ready, decision brief — not a build spec):
-      `docs/specs/2026-07-29-tebelloreborn-scope-decision.md`. Detail:
-      `knowledge/tebelloreborn.md`.
+      are all undecided backlog items, no urgency behind them yet. 📍
+      Decision brief only, no build — reading either copy is fine, but any
+      resulting code work belongs in the live `Desktop/Pappa T/`. Spec
+      (ready): `docs/specs/2026-07-29-tebelloreborn-scope-decision.md`.
+      Detail: `knowledge/tebelloreborn.md`.
 4. [ ] **ai-outreach-agency: bump Ollama `READ_TIMEOUT` 60s→120s + add
-      `keep_alive: "30m"`** to `/api/generate`. Small, single-file fix. ⚠️
-      Pappa T only. Spec (ready):
+      `keep_alive: "30m"`** to `/api/generate`. Small, single-file fix. 📍
+      Edit in the live `Desktop/Pappa T/ai-outreach-agency/` — Pappa T has
+      no GitHub remote (local-only history), so a fix made only in O-P-C's
+      copy would need a fresh subtree-merge to ever reach the live project;
+      simpler to fix at the source. Spec (ready):
       `docs/specs/2026-07-29-ollama-timeout-fix.md`. Detail:
       `knowledge/ai-outreach-agency.md`.
 5. [ ] **SOPS: give the go-ahead to run the AvgMovement migration against
@@ -59,17 +77,22 @@ runs on the right machine)
       and fully tested (Batch 32/33, commits `fe06eaa`/`112e321`), held for
       Tebello per SOPS's standing schema-change convention. This is the
       blocking step before `8. AvgMovement` (already Retired in the
-      Operations hub project index) can be decommissioned. ⚠️ Operations
-      only. Spec (ready, but gated — do not run without explicit
-      in-session go-ahead):
-      `docs/specs/2026-07-29-sops-avgmovement-migration.md`. Detail:
-      `2. SOPS/docs/todo.md`, `knowledge/sops.md`.
+      Operations hub project index) can be decommissioned. 📍 **Must** run
+      against `Desktop/Operations/2. SOPS/instance/sops.db` — O-P-C's
+      `Operations/2. SOPS/` has no `instance/` at all (gitignored, never
+      merged), so running this from O-P-C would either fail outright or
+      silently create a fresh empty database instead of migrating the real
+      one. Spec (ready, but gated — do not run without explicit
+      in-session go-ahead): `docs/specs/2026-07-29-sops-avgmovement-migration.md`.
+      Detail: `2. SOPS/docs/todo.md`, `knowledge/sops.md`.
 6. [ ] **SOPS: Payment Status data-migration review** — a batch of
       historical Sales Orders need human review of migrated/backfilled
-      payment-status values before being treated as fully validated. ⚠️
-      Operations only. Spec (ready):
-      `docs/specs/2026-07-29-sops-payment-status-review.md`. Detail:
-      `2. SOPS/docs/todo.md` (2026-07-14 entry onward), `knowledge/sops.md`.
+      payment-status values before being treated as fully validated. 📍
+      Same live-database caveat as item 5 above — review against
+      `Desktop/Operations/2. SOPS/instance/sops.db`, not O-P-C's copy.
+      Spec (ready): `docs/specs/2026-07-29-sops-payment-status-review.md`.
+      Detail: `2. SOPS/docs/todo.md` (2026-07-14 entry onward),
+      `knowledge/sops.md`.
 
 ## Backlog / ideas (not committed)
 

@@ -76,6 +76,104 @@ runs on the right machine)
 
 ## Done
 
+- [x] **2026-07-31** — pitwall-companion: made the Loadouts GP Event
+      availability filter collapsible (renamed to just "GP Event") — merged
+      as PR #19; doesn't need to be visible all the time per Tebello's
+      direction. Reused the Boosts tab's "New Boost" `<details>`/`<summary>`
+      collapsible pattern (generalized its CSS from `.nb-*` to `.coll-*`
+      since it's now shared by two features), collapsed by default with the
+      active tier still shown in the summary line. Found and fixed a
+      state-loss bug while testing: the app's full re-render on every
+      tier/legendary-checkbox click would have snapped the panel shut after
+      each interaction, so added an explicit `gpFilterOpen` state variable
+      instead of relying on the native `<details>` open attribute surviving
+      a DOM rebuild. Not its own queue item for the same reason as the
+      entries below. See `docs/session-log.md` for full detail.
+- [x] **2026-07-31** — pitwall-companion: added a Boosts scope to Tools →
+      Compare, alongside Drivers/Components — sortable table of owned
+      consumable Boosts (qty > 0) across all 13 boost stats plus a computed
+      Total, reusing the same table markup/sort mechanic as the existing
+      two scopes. Merged as PR #18 (together with the Spa entry below — both
+      landed on the same branch and were opened as one PR). Not its own
+      queue item for the same reason as the entries below. See
+      `docs/session-log.md` for full detail.
+- [x] **2026-07-31** — pitwall-companion: added Spa (Belgium) to the `TRACKS`
+      Track Stats list (driver stat Overtaking, component stat Power Unit),
+      transcribed from an in-game screenshot — merged as PR #18. Not its own
+      queue item for the same reason as the entries below. See
+      `docs/session-log.md` for full detail.
+- [x] **2026-07-31** — pitwall-companion: made the Loadouts → By Track
+      loadout customizable, matching By Attribute — merged as PR #15 (final
+      pitwall-companion change of the day; the app was then shared to
+      Tebello's Discord for a trusted-tester trial week). The loadout card
+      was previously locked to the track's single official component stat;
+      it now has its own attribute toggle bar (independent of By Attribute
+      mode's selection), defaulting to the track's stat but adjustable from
+      there, and resetting to that default whenever the track changes. The
+      driver ranking and Suggested Boost stay tied to the track's official
+      stats by design — only the loadout became customizable. Hit the same
+      class of merge-conflict issue as PR #14 (long-lived branch, several of
+      its own prior PRs squash-merged into `main` without the branch ever
+      restarting from it) — resolved the same way: keep the branch's newer
+      code, then verify with an executability check + full regression pass
+      rather than trusting a clean "no conflict markers" diff alone. Not its
+      own queue item for the same reason as the entries below. See
+      `docs/session-log.md` for full detail.
+- [x] **2026-07-31** — pitwall-companion: Loadouts → By Track, Suggested
+      Boost, and a Boosts-ownership tab — merged as PR #14 (after resolving a
+      real merge conflict that briefly resurrected already-superseded code;
+      see `docs/session-log.md` for how). Loadouts gained a mode switch (By
+      Attribute / By Track); By Track adds a 21-circuit dropdown showing the
+      best 2 owned drivers for the track's driver stat, a Suggested Boost
+      (top 3 owned consumable Boosts ranked by driver stat then component
+      stat), and the same full loadout card as before for the component
+      stat. New 4th Tools tab "Boosts" tracks quantities owned per consumable
+      Boost (dropdown picker, not a 65-item scroll) and includes a New Boost
+      form for boosts the game adds faster than this app can track — custom
+      entries compete in Suggested Boost rankings alongside built-ins. Added
+      4 newly-discovered boosts (Livewire Plus, Midnight, Mushroom,
+      Succession) transcribed from Tebello's own in-game screenshots.
+      Overhauled README.md, which had gone stale across the last several
+      merges (still described single-mode Loadouts, no mention of Boosts tab
+      or Track Spec, undercounted boosts at 65 instead of 69). Not its own
+      queue item for the same reason as the entries below. See
+      `docs/session-log.md` for full detail.
+- [x] **2026-07-31** — pitwall-companion: follow-up polish batch after the
+      workbook audit + Loadouts picker (below) — merged as PRs #11 and #12:
+      fixed the header's small icon (was still the pre-rename inline-SVG
+      placeholder, now uses the real `icons/icon-192.png` pit-wall artwork)
+      and centered the header title; renamed the app's user-facing branding
+      from "F1 Clash Resource Sheet" to **PitWall Companion** (title, header,
+      manifest name/short_name, export filename/tag, QR alt text) per
+      Tebello's copyright-exposure concern about the app's own name leaning
+      on the game's trademark — left factual/disclaimed game and workbook
+      references untouched (already covered by the existing "unaffiliated
+      fan tool" disclaimer), and left the internal `localStorage` keys /
+      cache-version string (`f1sheet.*`) untouched since renaming those
+      would silently wipe existing users' saved card levels; and laid out
+      both the Loadouts attribute-toggle buttons and the aggregate stat
+      chips as equal-size grids (2x2 and 2x3) instead of uneven flex-wrap
+      rows. Not its own queue item for the same reason as below. See
+      `docs/session-log.md` for full detail.
+- [x] **2026-07-31** — pitwall-companion: audited the app against the
+      community "F1 Clash 2026 Resource Sheet" workbook (v1.1, the
+      confirmed source-of-truth version) — no gaps found, driver/part
+      rosters, per-level stats, Series unlocks, and CCData/rewards
+      constants all in sync. Then, per Tebello's direction, replaced the
+      Suggested Loadouts tool's 9 stacked fixed-strategy cards with 4
+      multi-select attribute toggle buttons (Speed/Cornering/Power
+      Unit/Qualifying) rendering a single live card, removing the need to
+      scroll; selection persists via its own localStorage key. Verified
+      with a headless-browser smoke test (single-card render, multi-select
+      combine, last-attribute deselect guard, reload persistence, zero
+      console errors) before pushing. Merged as PR #9
+      (tlelosa-web/pitwall-companion), then updated `README.md`'s Loadouts
+      description to match (PR #10, merged) since it still described the
+      old fixed-strategy list. Not tracked as its own queue item since
+      pitwall-companion isn't part of this hub's machine-bound spec queue
+      and has no `docs/todo.md` of its own — logged here per Hard Rule 5
+      since Tebello asked for the hub log to be updated. See
+      `docs/session-log.md` for full detail.
 - [x] **2026-07-29** — NamePlateTool Excel-import spot-check completed
       (Operations session): ran a live `uvicorn` backend against the real
       `NAME PLATE PROCEDURE.xlsx`, confirmed `GET /api/nameplate/from-excel`

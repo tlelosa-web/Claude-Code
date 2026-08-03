@@ -13,13 +13,8 @@ Per DCOE: update after every completed task; one task = one commit.
       merged into this repo (`Pappa T/`, `Operations/`, both with full
       history preserved for their git sub-repos); `Claude-Code`,
       `Operations`, `Pappa T` still exist as separate Desktop folders on
-      this machine, not yet retired. Two follow-ups, no urgency stated:
-      1. [ ] Reconcile local `main`'s divergence from `origin`
-            (`tlelosa-web/Claude-Code`) — 475 ahead / 12 behind, not a
-            clean fast-forward. Needs Tebello's decision on how (or
-            whether) to push this to GitHub given the repo's identity is
-            changing. See `docs/session-log.md`, 2026-08-03 entry.
-      2. [ ] Decide what happens to the old `Claude-Code`/`Operations`/
+      this machine, not yet retired. One follow-up remains:
+      1. [ ] Decide what happens to the old `Claude-Code`/`Operations`/
             `Pappa T` Desktop folders once migration is confirmed
             complete (leave as backups vs. remove).
       Also: every machine-bound ⚠️ flag on the "Next up" items below may

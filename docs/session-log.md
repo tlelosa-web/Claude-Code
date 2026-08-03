@@ -1051,3 +1051,51 @@ not an on-the-fly pull.
 staged-uncommitted blocker (noted in the entry above) no longer applies —
 that repo's working tree was clean before this merge, only the unrelated
 path-reference fix was pending, now committed.
+
+## 2026-08-03 — Origin divergence resolved: pushed the consolidated O-P-C history
+
+Tebello confirmed `tlelosa-web/Claude-Code` is private and OK to hold the
+full consolidated vault (raw SOPS/NamePlateTool/delivery-note-system data,
+Pappa T's personal content included) — the concern flagged in the entry
+above about the repo's original knowledge-only scope. Cleared to merge and
+push.
+
+Found the divergence was small in practice: `origin`'s 12 commits only
+touched `docs/session-log.md`, `docs/todo.md`, and `knowledge/tenders-sa.md`
+(pitwall-companion logging entries dated 2026-07-31, plus one tenders-sa
+correction) — no overlap with `knowledge/nameplatetool.md`, the only other
+file local `main` had touched since the merge-base. Ran `git merge
+origin/main`; got real conflicts in `session-log.md` and `todo.md` as
+expected (both sides appended to the same files). Resolved both as a real
+union per Hard Rule 6:
+
+- `todo.md`'s "Done" section is most-recent-first — put origin's 2026-07-31
+  pitwall entries above this hub's existing 2026-07-29 NamePlateTool
+  entry. First attempt via a partial-string `Edit` left the file with a
+  duplicated pitwall block and an orphaned half of the NamePlateTool entry
+  (matched too little of the conflict block) — caught by grepping for
+  leftover `<<<<<<<`/`=======`/`>>>>>>>` markers and duplicate entry text
+  after the edit, then rebuilt the section cleanly via `sed` line-range
+  concatenation instead of a fragile string match.
+- `session-log.md` is chronological (oldest first) — the correct order was
+  NamePlateTool (07-29) → pitwall entries (07-31) → this session's own
+  migration entry (08-03), which meant splitting HEAD's conflict block in
+  two around origin's block rather than a simple keep-both concatenation.
+  Same `sed` line-range approach, verified after by grepping section
+  headers in order.
+
+Verified the merge commit has two real parents (`git cat-file -p HEAD`)
+before pushing. `git push origin main` succeeded cleanly:
+`afa0e20..85c32f0 main -> main`. Local `main` and `origin/main` are now
+identical — no more divergence.
+
+**Last completed:** Origin divergence resolved and pushed (this entry).
+**Next task:** Decide what happens to the old `Claude-Code`/`Operations`/
+`Pappa T` Desktop folders now that O-P-C holds everything (`docs/todo.md`
+"In progress"); otherwise re-flag the machine-bound items in "Next up"
+now that this machine can reach both Pappa T's and Operations' content
+directly, or pick one up as-is.
+**Known risks:** None new — the repo now holds raw company/personal data
+per Tebello's explicit go-ahead; keep that in mind for any future work
+that touches repo visibility or sharing.
+**Blockers:** None.

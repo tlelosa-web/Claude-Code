@@ -6,7 +6,7 @@
 
 > Loaded at the start of every Claude Code session opened inside this project
 > folder. Takes precedence over the root hub `CLAUDE.md`
-> (`C:\Dev\Operations\CLAUDE.md`) for anything under this project — see hub
+> (`C:\Users\tlelo\Desktop\Operations\CLAUDE.md`) for anything under this project — see hub
 > hard rule 1. Onboarded to DCOE 2026-07-15 per
 > `docs/decisions/ADR-001-dcoe-onboarding.md`.
 

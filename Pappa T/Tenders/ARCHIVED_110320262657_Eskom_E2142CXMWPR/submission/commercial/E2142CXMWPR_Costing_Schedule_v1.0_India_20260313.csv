@@ -1,0 +1,15 @@
+Annexure M - Costing Schedule
+"Project: Eskom GIT Enterprise Historian Licence, Maintenance & Support"
+Prepared by: India (Commercial Lead)
+
+Item No,Description,Qty,Unit Price (ZAR),Total Price (ZAR),Notes
+1,Enterprise Historian Core License (Perpetual),1,1500000.00,1500000.00,Includes HA/DR base
+2,Site Connector Licenses (OT Integration),15,50000.00,750000.00,Covers predefined Eskom plant stations
+3,Implementation & Professional Services,1,1200000.00,1200000.00,Based on Alpha/Echo WBS
+4,Annual Maintenance & Support (Year 1),1,350000.00,350000.00,24x7 SLA coverage
+5,Annual Maintenance & Support (Year 2),1,375000.00,375000.00,With standard escalation
+6,Annual Maintenance & Support (Year 3),1,400000.00,400000.00,With standard escalation
+
+,,,Sub-Total,4575000.00,
+,,,VAT (15%),686250.00,
+,,,Total Negotiated Price,5261250.00,

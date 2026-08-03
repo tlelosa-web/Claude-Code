@@ -1,0 +1,662 @@
+"""RED: src/vacancy_search/apify_client.py doesn't exist yet — these imports
+must fail first."""
+
+import json
+from unittest.mock import MagicMock, patch
+
+import pytest
+
+from src.vacancy_search.apify_client import (
+    FIXTURE_VACANCIES,
+    SEARCH_TITLES,
+    fetch_vacancies,
+    normalize_url,
+)
+from src.vacancy_search.extractor import VacancyExtractionError
+from src.vacancy_search.schema import Vacancy
+
+
+def _mock_response(json_data):
+    resp = MagicMock()
+    resp.status_code = 200
+    resp.json.return_value = json_data
+    resp.raise_for_status.side_effect = None
+    return resp
+
+
+@pytest.fixture(autouse=True)
+def _no_crawler_platforms_by_default(monkeypatch):
+    """Stops fetch_vacancies()'s pnet/careers24 fold-in (Phase 14) from
+    touching the real discovery/crawler/extraction pipeline — and therefore
+    real network — in tests below that don't explicitly exercise it. Tests
+    that do apply their own `@patch("...apify_client.get_job_urls")`
+    decorator, which overrides this stub for their own duration."""
+    monkeypatch.setattr(
+        "src.vacancy_search.apify_client.get_job_urls",
+        lambda platform, limit, **kwargs: [],
+    )
+
+
+class TestOfflineMode:
+    def test_offline_mode_returns_fixture_vacancies(self, monkeypatch):
+        monkeypatch.setenv("OFFLINE_MODE", "true")
+
+        results = fetch_vacancies(limit=25)
+
+        assert 2 <= len(results) <= 3
+        assert all(isinstance(v, Vacancy) for v in results)
+        platforms = {v.platform for v in results}
+        assert platforms <= {"indeed", "careers24"}
+
+    def test_offline_mode_respects_limit(self, monkeypatch):
+        monkeypatch.setenv("OFFLINE_MODE", "true")
+
+        results = fetch_vacancies(limit=1)
+
+        assert len(results) == 1
+
+
+class TestMissingApiKey:
+    def test_missing_api_key_falls_back_to_fixture_with_warning(self, monkeypatch):
+        monkeypatch.delenv("OFFLINE_MODE", raising=False)
+        monkeypatch.delenv("APIFY_API_KEY", raising=False)
+
+        with pytest.warns(UserWarning, match="APIFY_API_KEY"):
+            results = fetch_vacancies(limit=25)
+
+        assert len(results) == len(FIXTURE_VACANCIES)
+
+
+class TestRealCallPath:
+    @patch("src.vacancy_search.apify_client.requests.post")
+    def test_calls_rate_limiter_before_each_real_request(self, mock_post, monkeypatch):
+        monkeypatch.setenv("APIFY_API_KEY", "test-key")
+        monkeypatch.delenv("OFFLINE_MODE", raising=False)
+        mock_post.return_value = _mock_response([])
+
+        with patch("src.vacancy_search.apify_client._limiter.acquire") as mock_acquire:
+            fetch_vacancies(limit=25)
+
+        # one Indeed call per search title — LinkedIn dropped 2026-08-01
+        # (its Apify actor's free trial expired, 403 actor-is-not-rented;
+        # decision was to drop, not rent, see docs/todo.md's Resolved Items)
+        assert mock_acquire.call_count == len(SEARCH_TITLES)
+
+    @patch("src.vacancy_search.apify_client.requests.post")
+    def test_sends_correct_actor_payload_fields(self, mock_post, monkeypatch):
+        """Regression test: fetch_vacancies() used to send {"maxItems": limit}
+        to the Indeed actor, which isn't a valid field — Indeed needs
+        position/location/maxItemsPerSearch. HTTP errors from the wrong
+        payload were being silently swallowed, so a real run returned zero
+        results with no visible failure."""
+        monkeypatch.setenv("APIFY_API_KEY", "test-key")
+        monkeypatch.delenv("OFFLINE_MODE", raising=False)
+        monkeypatch.setattr(
+            "src.vacancy_search.apify_client.SEARCH_TITLES", ["Operations Foreman"]
+        )
+        mock_post.return_value = _mock_response([])
+
+        fetch_vacancies(limit=10)
+
+        (indeed_call,) = mock_post.call_args_list
+        indeed_payload = indeed_call.kwargs["json"]
+
+        assert indeed_payload["position"] == "Operations Foreman"
+        assert indeed_payload["location"]
+        assert indeed_payload["maxItemsPerSearch"] == 10
+        assert "maxItems" not in indeed_payload
+
+    @patch("src.vacancy_search.apify_client.requests.post")
+    def test_indeed_payload_includes_country_za(self, mock_post, monkeypatch):
+        """Real-run bug (2026-07-31, first non-offline fetch-vacancies run):
+        the Indeed actor's `location` field is a free-text city/locality
+        filter, not a domain selector — without a separate `country` field
+        it defaults to the US Indeed site, regardless of `location`'s
+        value. All 10 results in that real run came back as US indeed.com
+        postings (Denver/Maui/southeast-US) despite SEARCH_LOCATION being
+        "Gauteng, South Africa". Fix: send "country": "ZA" explicitly."""
+        monkeypatch.setenv("APIFY_API_KEY", "test-key")
+        monkeypatch.delenv("OFFLINE_MODE", raising=False)
+        monkeypatch.setattr(
+            "src.vacancy_search.apify_client.SEARCH_TITLES", ["Operations Foreman"]
+        )
+        mock_post.return_value = _mock_response([])
+
+        fetch_vacancies(limit=10)
+
+        indeed_call = mock_post.call_args_list[0]
+        indeed_payload = indeed_call.kwargs["json"]
+
+        assert indeed_payload["country"] == "ZA"
+
+    @patch("src.vacancy_search.apify_client.requests.post")
+    def test_normalizes_indeed_results(self, mock_post, monkeypatch):
+        monkeypatch.setenv("APIFY_API_KEY", "test-key")
+        monkeypatch.delenv("OFFLINE_MODE", raising=False)
+        monkeypatch.setattr(
+            "src.vacancy_search.apify_client.SEARCH_TITLES", ["Operations Foreman"]
+        )
+
+        indeed_items = [
+            {
+                "company": "Acme Engineering",
+                "positionName": "Operations Foreman",
+                "url": "https://za.indeed.com/viewjob?jk=1",
+                "description": "Run the workshop.",
+                "salary": "R50,000 CTC",
+            }
+        ]
+        mock_post.return_value = _mock_response(indeed_items)
+
+        results = fetch_vacancies(limit=25)
+
+        assert len(results) == 1
+        indeed_result = results[0]
+        assert indeed_result.platform == "indeed"
+        assert indeed_result.company == "Acme Engineering"
+        assert indeed_result.title == "Operations Foreman"
+
+    @patch("src.vacancy_search.apify_client.requests.post")
+    def test_dedupes_by_company_title_url(self, mock_post, monkeypatch):
+        monkeypatch.setenv("APIFY_API_KEY", "test-key")
+        monkeypatch.delenv("OFFLINE_MODE", raising=False)
+        monkeypatch.setattr(
+            "src.vacancy_search.apify_client.SEARCH_TITLES", ["Operations Foreman"]
+        )
+
+        duplicate_item = {
+            "company": "Acme Engineering",
+            "positionName": "Operations Foreman",
+            "url": "https://za.indeed.com/viewjob?jk=1",
+            "description": "Run the workshop.",
+        }
+        mock_post.return_value = _mock_response([duplicate_item, duplicate_item])
+
+        results = fetch_vacancies(limit=25)
+
+        assert len(results) == 1
+
+    @patch("src.vacancy_search.apify_client.extract_vacancy_fields")
+    @patch("src.vacancy_search.apify_client.fetch_raw_page")
+    @patch("src.vacancy_search.apify_client.get_job_urls")
+    @patch("src.vacancy_search.apify_client.requests.post")
+    def test_request_error_on_indeed_still_returns_other_sources(
+        self,
+        mock_post,
+        mock_get_job_urls,
+        mock_fetch_raw_page,
+        mock_extract_vacancy_fields,
+        monkeypatch,
+    ):
+        """LinkedIn (the second real actor) was dropped 2026-08-01 — the
+        remaining "does one source's failure still let other sources
+        through" regression coverage is now against Indeed erroring while
+        the pnet/careers24 pipeline still contributes."""
+        monkeypatch.setenv("APIFY_API_KEY", "test-key")
+        monkeypatch.delenv("OFFLINE_MODE", raising=False)
+        monkeypatch.setattr(
+            "src.vacancy_search.apify_client.SEARCH_TITLES", ["Operations Foreman"]
+        )
+
+        import requests as _requests
+
+        mock_post.side_effect = _requests.ConnectionError("indeed actor unreachable")
+        mock_get_job_urls.side_effect = lambda platform, limit, **_kwargs: (
+            ["https://example.co.za/pnet-job-1"] if platform == "pnet" else []
+        )
+        mock_fetch_raw_page.return_value = {
+            "url": "https://example.co.za/pnet-job-1",
+            "title": "t",
+            "text_content": "body",
+            "html": "",
+            "_source_mode": "live",
+        }
+        mock_extract_vacancy_fields.return_value = {
+            "company": "PNet Employer",
+            "title": "Operations Foreman",
+            "description": "desc",
+            "url": "https://example.co.za/pnet-job-1",
+            "salary": None,
+            "deadline": None,
+        }
+
+        results = fetch_vacancies(limit=25)
+
+        assert len(results) == 1
+        assert results[0].company == "PNet Employer"
+
+
+class TestFairInterleaveTruncation:
+    @patch("src.vacancy_search.apify_client.extract_vacancy_fields")
+    @patch("src.vacancy_search.apify_client.fetch_raw_page")
+    @patch("src.vacancy_search.apify_client.get_job_urls")
+    @patch("src.vacancy_search.apify_client.requests.post")
+    def test_other_sources_survive_truncation_when_indeed_alone_exceeds_limit(
+        self,
+        mock_post,
+        mock_get_job_urls,
+        mock_fetch_raw_page,
+        mock_extract_vacancy_fields,
+        monkeypatch,
+    ):
+        """Real-run bug (2026-07-31): fetch_vacancies() built one flat
+        `results` list (Indeed extend, then other sources extend) and
+        truncated with `[:limit]` at the very end. If Indeed alone returns
+        >= limit items, it fills the entire truncation window before other
+        (already paid-for) sources are ever appended — starved out by list
+        position, not relevance. The real run returned 10/10 Indeed results
+        with LinkedIn/PNet/Careers24 contributing zero despite real, billed
+        network calls. Fix: round-robin interleave across sources before the
+        final dedupe/truncate. (LinkedIn itself dropped 2026-08-01 — pnet
+        now stands in as "the other source" for this regression test.)"""
+        monkeypatch.setenv("APIFY_API_KEY", "test-key")
+        monkeypatch.delenv("OFFLINE_MODE", raising=False)
+        monkeypatch.setattr(
+            "src.vacancy_search.apify_client.SEARCH_TITLES", ["Operations Foreman"]
+        )
+
+        indeed_items = [
+            {
+                "company": f"Indeed Employer {i}",
+                "positionName": "Operations Foreman",
+                "url": f"https://za.indeed.com/viewjob?jk={i}",
+                "description": "Run the workshop.",
+            }
+            for i in range(5)
+        ]
+        mock_post.return_value = _mock_response(indeed_items)
+        mock_get_job_urls.side_effect = lambda platform, limit, **_kwargs: (
+            [f"https://example.co.za/pnet-job-{i}" for i in range(2)]
+            if platform == "pnet"
+            else []
+        )
+        mock_fetch_raw_page.side_effect = [
+            {
+                "url": f"https://example.co.za/pnet-job-{i}",
+                "title": "t",
+                "text_content": "body",
+                "html": "",
+                "_source_mode": "live",
+            }
+            for i in range(2)
+        ]
+        mock_extract_vacancy_fields.side_effect = [
+            {
+                "company": f"PNet Employer {i}",
+                "title": "Operations Foreman",
+                "description": "desc",
+                "url": f"https://example.co.za/pnet-job-{i}",
+                "salary": None,
+                "deadline": None,
+            }
+            for i in range(2)
+        ]
+
+        results = fetch_vacancies(limit=3)
+
+        assert len(results) == 3
+        platforms = {v.platform for v in results}
+        assert "pnet" in platforms, (
+            "PNet results were fully starved out by Indeed filling the "
+            "truncation window — round-robin interleave is missing"
+        )
+
+
+class TestNormalizeUrl:
+    def test_strips_known_tracking_params(self):
+        assert normalize_url(
+            "https://example.co.za/job1?utm_source=x&utm_medium=email"
+        ) == normalize_url("https://example.co.za/job1")
+
+    def test_preserves_significant_query_params_like_indeed_jk(self):
+        # Codex Review Follow-up (W2): jk is Indeed's canonical job
+        # identifier — stripping the whole query string collapsed the
+        # dedupe key to (company, title) only for Indeed, silently merging
+        # genuinely distinct postings. Only known tracking params should be
+        # stripped, not the entire query string.
+        assert normalize_url("https://za.indeed.com/viewjob?jk=1") != normalize_url(
+            "https://za.indeed.com/viewjob?jk=2"
+        )
+
+    def test_tracking_param_stripped_alongside_preserved_jk(self):
+        assert normalize_url("https://za.indeed.com/viewjob?jk=1") == normalize_url(
+            "https://za.indeed.com/viewjob?jk=1&utm_source=x"
+        )
+
+    def test_strips_trailing_slash(self):
+        assert normalize_url("https://example.co.za/job1/") == normalize_url(
+            "https://example.co.za/job1"
+        )
+
+    def test_strips_fragment(self):
+        assert normalize_url("https://example.co.za/job1#section") == normalize_url(
+            "https://example.co.za/job1"
+        )
+
+
+class TestDedupeUsesNormalizedUrl:
+    @patch("src.vacancy_search.apify_client.requests.post")
+    def test_dedupes_vacancies_differing_only_by_utm_query_string(
+        self, mock_post, monkeypatch
+    ):
+        monkeypatch.setenv("APIFY_API_KEY", "test-key")
+        monkeypatch.delenv("OFFLINE_MODE", raising=False)
+        monkeypatch.setattr(
+            "src.vacancy_search.apify_client.SEARCH_TITLES", ["Operations Foreman"]
+        )
+
+        indeed_item = {
+            "company": "Acme Engineering",
+            "positionName": "Operations Foreman",
+            "url": "https://za.indeed.com/viewjob?jk=1",
+            "description": "Run the workshop.",
+        }
+        indeed_item_with_utm = {
+            "company": "Acme Engineering",
+            "positionName": "Operations Foreman",
+            "url": "https://za.indeed.com/viewjob?jk=1&utm_source=newsletter",
+            "description": "Run the workshop.",
+        }
+        mock_post.return_value = _mock_response([indeed_item, indeed_item_with_utm])
+
+        results = fetch_vacancies(limit=25)
+
+        assert len(results) == 1
+
+    @patch("src.vacancy_search.apify_client.requests.post")
+    def test_dedupes_vacancies_differing_only_by_trailing_slash(
+        self, mock_post, monkeypatch
+    ):
+        monkeypatch.setenv("APIFY_API_KEY", "test-key")
+        monkeypatch.delenv("OFFLINE_MODE", raising=False)
+        monkeypatch.setattr(
+            "src.vacancy_search.apify_client.SEARCH_TITLES", ["Operations Foreman"]
+        )
+
+        indeed_item = {
+            "company": "Acme Engineering",
+            "positionName": "Operations Foreman",
+            "url": "https://za.indeed.com/viewjob/1",
+            "description": "Run the workshop.",
+        }
+        indeed_item_with_slash = {
+            "company": "Acme Engineering",
+            "positionName": "Operations Foreman",
+            "url": "https://za.indeed.com/viewjob/1/",
+            "description": "Run the workshop.",
+        }
+        mock_post.return_value = _mock_response([indeed_item, indeed_item_with_slash])
+
+        results = fetch_vacancies(limit=25)
+
+        assert len(results) == 1
+
+
+class TestPnetCareers24DiscoveryIntegration:
+    """fetch_vacancies() now folds pnet/careers24 in via
+    discovery.get_job_urls() -> crawler_client.fetch_raw_page() ->
+    extractor.extract_vacancy_fields(), combined with Indeed/LinkedIn before
+    the single shared _dedupe(...)[:limit] call. No `if platform == "pnet"`
+    branching exists in apify_client.py — both platforms go through the
+    identical pipeline (Amendment, judgment call #3)."""
+
+    @patch("src.vacancy_search.apify_client.extract_vacancy_fields")
+    @patch("src.vacancy_search.apify_client.fetch_raw_page")
+    @patch("src.vacancy_search.apify_client.get_job_urls")
+    @patch("src.vacancy_search.apify_client.requests.post")
+    def test_folds_pnet_and_careers24_into_combined_results(
+        self,
+        mock_post,
+        mock_get_job_urls,
+        mock_fetch_raw_page,
+        mock_extract_vacancy_fields,
+        monkeypatch,
+    ):
+        monkeypatch.setenv("APIFY_API_KEY", "test-key")
+        monkeypatch.delenv("OFFLINE_MODE", raising=False)
+        monkeypatch.setattr(
+            "src.vacancy_search.apify_client.SEARCH_TITLES", ["Operations Foreman"]
+        )
+        mock_post.return_value = _mock_response([])
+
+        def _get_job_urls_side_effect(platform, limit, **_kwargs):
+            if platform == "pnet":
+                return ["https://example.co.za/pnet-job-1"]
+            if platform == "careers24":
+                return ["https://example.co.za/careers24-job-1"]
+            raise AssertionError(f"unexpected platform {platform}")
+
+        mock_get_job_urls.side_effect = _get_job_urls_side_effect
+        mock_fetch_raw_page.side_effect = [
+            {
+                "url": "https://example.co.za/pnet-job-1",
+                "title": "t",
+                "text_content": "body",
+                "_source_mode": "live",
+            },
+            {
+                "url": "https://example.co.za/careers24-job-1",
+                "title": "t",
+                "text_content": "body",
+                "_source_mode": "live",
+            },
+        ]
+        mock_extract_vacancy_fields.side_effect = [
+            {
+                "company": "PNet Employer",
+                "title": "Operations Foreman",
+                "description": "desc",
+                "url": "https://example.co.za/pnet-job-1",
+                "salary": None,
+                "deadline": None,
+            },
+            {
+                "company": "Careers24 Employer",
+                "title": "Operations Foreman",
+                "description": "desc",
+                "url": "https://example.co.za/careers24-job-1",
+                "salary": None,
+                "deadline": None,
+            },
+        ]
+
+        results = fetch_vacancies(limit=25)
+
+        companies = {v.company for v in results}
+        platforms = {v.platform for v in results}
+        assert "PNet Employer" in companies
+        assert "Careers24 Employer" in companies
+        assert "pnet" in platforms
+        assert "careers24" in platforms
+        assert mock_get_job_urls.call_args_list[0].args[0] in ("pnet", "careers24")
+
+    @patch("src.vacancy_search.apify_client.extract_vacancy_fields")
+    @patch("src.vacancy_search.apify_client.fetch_raw_page")
+    @patch("src.vacancy_search.apify_client.get_job_urls")
+    @patch("src.vacancy_search.apify_client.requests.post")
+    def test_extraction_error_on_one_page_is_skipped_not_fatal(
+        self,
+        mock_post,
+        mock_get_job_urls,
+        mock_fetch_raw_page,
+        mock_extract_vacancy_fields,
+        monkeypatch,
+    ):
+        monkeypatch.setenv("APIFY_API_KEY", "test-key")
+        monkeypatch.delenv("OFFLINE_MODE", raising=False)
+        monkeypatch.setattr(
+            "src.vacancy_search.apify_client.SEARCH_TITLES", ["Operations Foreman"]
+        )
+        mock_post.return_value = _mock_response([])
+
+        def _get_job_urls_side_effect(platform, limit, **_kwargs):
+            if platform == "pnet":
+                return [
+                    "https://example.co.za/pnet-job-1",
+                    "https://example.co.za/pnet-job-2",
+                ]
+            return []
+
+        mock_get_job_urls.side_effect = _get_job_urls_side_effect
+        mock_fetch_raw_page.side_effect = [
+            {
+                "url": "https://example.co.za/pnet-job-1",
+                "title": "t1",
+                "text_content": "body1",
+                "_source_mode": "live",
+            },
+            {
+                "url": "https://example.co.za/pnet-job-2",
+                "title": "t2",
+                "text_content": "body2",
+                "_source_mode": "live",
+            },
+        ]
+        mock_extract_vacancy_fields.side_effect = [
+            VacancyExtractionError("malformed output"),
+            {
+                "company": "PNet Employer 2",
+                "title": "Operations Foreman",
+                "description": "desc",
+                "url": "https://example.co.za/pnet-job-2",
+                "salary": None,
+                "deadline": None,
+            },
+        ]
+
+        results = fetch_vacancies(limit=25)
+
+        companies = {v.company for v in results}
+        assert companies == {"PNet Employer 2"}
+
+    @patch("src.vacancy_search.apify_client.extract_vacancy_fields")
+    @patch("src.vacancy_search.apify_client.fetch_raw_page")
+    @patch("src.vacancy_search.apify_client.get_job_urls")
+    @patch("src.vacancy_search.apify_client.requests.post")
+    def test_pnet_fallback_path_works_end_to_end_through_fetch_vacancies(
+        self,
+        mock_post,
+        mock_get_job_urls,
+        mock_fetch_raw_page,
+        mock_extract_vacancy_fields,
+        monkeypatch,
+        tmp_path,
+    ):
+        """discovery_config.json's pnet.mode = "manual_pending_verification"
+        must still return PNet vacancies sourced from
+        data/crawler_seed_urls.json's existing entries, exercised through
+        the real (unmocked) discovery.get_job_urls() config-driven branch —
+        not just re-asserted in isolation (already covered by
+        test_discovery.py) but proven to actually get called and threaded
+        through by fetch_vacancies() itself."""
+        monkeypatch.setenv("APIFY_API_KEY", "test-key")
+        monkeypatch.delenv("OFFLINE_MODE", raising=False)
+        monkeypatch.setattr(
+            "src.vacancy_search.apify_client.SEARCH_TITLES", ["Operations Foreman"]
+        )
+        mock_post.return_value = _mock_response([])
+
+        discovery_config_path = tmp_path / "discovery_config.json"
+        discovery_config_path.write_text(
+            json.dumps(
+                {
+                    "pnet": {"mode": "manual_pending_verification"},
+                    "careers24": {"mode": "auto"},
+                }
+            )
+        )
+        seed_urls_path = tmp_path / "crawler_seed_urls.json"
+        seed_urls_path.write_text(
+            json.dumps({"pnet": ["https://example.co.za/pnet-seed-job"]})
+        )
+
+        # Real get_job_urls for "pnet" only — exercises the actual
+        # config-driven fallback branch against the fixture files above.
+        # "careers24" is short-circuited to [] here purely to keep this test
+        # offline (careers24 has no gate and would otherwise attempt a real
+        # listing-page discovery fetch) — that path is covered separately by
+        # the "folds pnet and careers24" test above.
+        from src.vacancy_search.discovery import get_job_urls as _real_get_job_urls
+
+        def _get_job_urls_side_effect(platform, limit, **_kwargs):
+            if platform == "pnet":
+                return _real_get_job_urls(
+                    "pnet",
+                    limit,
+                    discovery_config_path=str(discovery_config_path),
+                    seed_urls_path=str(seed_urls_path),
+                )
+            return []
+
+        mock_get_job_urls.side_effect = _get_job_urls_side_effect
+        mock_fetch_raw_page.return_value = {
+            "url": "https://example.co.za/pnet-seed-job",
+            "title": "t",
+            "text_content": "body",
+            "_source_mode": "live",
+        }
+        mock_extract_vacancy_fields.return_value = {
+            "company": "PNet Fallback Employer",
+            "title": "Operations Foreman",
+            "description": "desc",
+            "url": "https://example.co.za/pnet-seed-job",
+            "salary": None,
+            "deadline": None,
+        }
+
+        results = fetch_vacancies(limit=25)
+
+        assert any(v.platform == "pnet" for v in results)
+        assert any(v.company == "PNet Fallback Employer" for v in results)
+
+
+class TestFixtureModeDegradedWarning:
+    @patch("src.vacancy_search.apify_client.extract_vacancy_fields")
+    @patch("src.vacancy_search.apify_client.fetch_raw_page")
+    @patch("src.vacancy_search.apify_client.get_job_urls")
+    @patch("src.vacancy_search.apify_client.requests.post")
+    def test_warns_when_a_non_offline_run_returns_fixture_tagged_pages(
+        self,
+        mock_post,
+        mock_get_job_urls,
+        mock_fetch_raw_page,
+        mock_extract_vacancy_fields,
+        monkeypatch,
+        caplog,
+    ):
+        monkeypatch.setenv("APIFY_API_KEY", "test-key")
+        monkeypatch.delenv("OFFLINE_MODE", raising=False)
+        monkeypatch.setattr(
+            "src.vacancy_search.apify_client.SEARCH_TITLES", ["Operations Foreman"]
+        )
+        mock_post.return_value = _mock_response([])
+        mock_get_job_urls.side_effect = lambda platform, limit, **_kwargs: (
+            ["https://example.co.za/pnet-job-1"] if platform == "pnet" else []
+        )
+        mock_fetch_raw_page.return_value = {
+            "url": "https://example.co.za/pnet-job-1",
+            "title": "t",
+            "text_content": "body",
+            "_source_mode": "fixture",
+        }
+        mock_extract_vacancy_fields.return_value = {
+            "company": "Degraded Employer",
+            "title": "Operations Foreman",
+            "description": "desc",
+            "url": "https://example.co.za/pnet-job-1",
+            "salary": None,
+            "deadline": None,
+        }
+
+        with caplog.at_level("WARNING"):
+            fetch_vacancies(limit=25)
+
+        assert any("fixture" in record.message.lower() for record in caplog.records)
+
+    def test_offline_mode_never_triggers_the_warning(self, monkeypatch, caplog):
+        monkeypatch.setenv("OFFLINE_MODE", "true")
+
+        with caplog.at_level("WARNING"):
+            fetch_vacancies(limit=25)
+
+        assert not any("fixture" in record.message.lower() for record in caplog.records)

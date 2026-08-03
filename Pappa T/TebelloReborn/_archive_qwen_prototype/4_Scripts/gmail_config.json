@@ -1,0 +1,10 @@
+{
+    "gmail_address": "tlelosa@gmail.com",
+    "gmail_app_password": "YOUR_APP_PASSWORD_HERE",
+    "cv_attachment_path": "3_Live_Reports/Tebello_Lelosa_CV_2026.pdf",
+    "sender_name": "Tebello Lelosa",
+    "sender_phone": "078 481 8711",
+    "sender_linkedin": "linkedin.com/in/tebello-lelosa-45613a26",
+    "daily_limit": 5,
+    "log_file": "3_Live_Reports/Email_Send_Log.md"
+}

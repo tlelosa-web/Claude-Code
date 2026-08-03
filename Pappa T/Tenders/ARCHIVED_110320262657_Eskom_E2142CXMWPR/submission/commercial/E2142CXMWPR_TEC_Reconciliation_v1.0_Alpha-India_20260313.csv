@@ -1,0 +1,9 @@
+Annexure O - TEC Reconciliation
+Prepared by: Alpha (Solution Architect) & India (Commercial Lead)
+
+TEC Requirement,Proposed Solution Item,Costing Schedule Ref,Compliance Status,Comments
+High Availability Support,Enterprise Historian Core w/ HA,Item 1,Compliant,Tested during SAT
+Data Ingestion from 15 remote plants,Site Connector Licenses x15,Item 2,Compliant,Matches plant breakdown
+Turnkey Implementation,Professional Services Pack,Item 3,Compliant,Aligned with project plan
+24x7 Support and SLA,Maintenance & Support (Y1-Y3),"Item 4,5,6",Compliant,Foxtrot SLA referenced
+Overall TEC Cost Cap,"Total Cost: 5,261,250 ZAR",Sub-Total,Compliant,Within budget allocation

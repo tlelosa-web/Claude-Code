@@ -1,0 +1,1235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="mobile-web-app-capable" content="yes">
+    <title>Quest v3.0.0</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation;
+        }
+
+        html {
+            touch-action: manipulation;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0f172a;
+            color: #e2e8f0;
+            padding: 12px;
+            line-height: 1.6;
+            font-size: 16px; /* Increased base font size [file:1] */
+            -webkit-text-size-adjust: 100%;
+            letter-spacing: 0.01em; /* Subtle letter-spacing for premium feel [file:1] */
+        }
+
+        .container {
+            max-width: 560px;
+            margin: 0 auto;
+        }
+
+        /* Toast */
+        #toast {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%) translateY(20px);
+            background: #1e3a5f;
+            color: #bfdbfe;
+            padding: 12px 20px;
+            border-radius: 12px;
+            font-weight: 600;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+            z-index: 1000;
+            opacity: 0;
+            pointer-events: none;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        #toast.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+
+        /* Header */
+        header {
+            text-align: center;
+            margin-bottom: 20px; /* Increased spacing [file:1] */
+            position: relative;
+        }
+
+        h1 {
+            font-size: 28px; /* Slightly larger */
+            color: #fbbf24;
+            margin-bottom: 4px;
+            text-shadow: 0 2px 12px rgba(251, 191, 36, 0.5); /* Enhanced glow [file:1] */
+            letter-spacing: 0.05em;
+        }
+
+        .version-text {
+            font-size: 13px;
+            color: #94a3b8;
+            font-weight: 500;
+            margin: 0 0 12px 0;
+            display: block;
+            letter-spacing: 0.03em;
+        }
+
+        .datetime {
+            font-size: 15px;
+            color: #cbd5e1;
+            margin-bottom: 16px;
+            font-family: 'SF Mono', monospace;
+        }
+
+        /* Progress Ring Enhanced */
+        .progress-ring-container {
+            position: relative;
+            width: 140px; /* Larger for better visual */
+            height: 140px;
+            margin: 0 auto 24px; /* More breathing room [file:1] */
+        }
+
+        .progress-ring {
+            transform: rotate(-90deg);
+        }
+
+        .progress-ring circle {
+            transition: stroke-dashoffset 0.8s cubic-bezier(0.4, 0, 0.2, 1), stroke 0.3s ease;
+            stroke: #334155;
+        }
+
+        .progress-ring-fill {
+            stroke: url(#gradient);
+            stroke-linecap: round;
+            transition: stroke-dashoffset 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+            filter: drop-shadow(0 0 8px rgba(251, 191, 36, 0.4)); /* Glow effect [file:1] */
+            /* Animated gradient rotation */
+            animation: rotateGradient 3s linear infinite;
+        }
+
+        @keyframes rotateGradient {
+            0% { filter: hue-rotate(0deg) drop-shadow(0 0 8px rgba(251, 191, 36, 0.4)); }
+            100% { filter: hue-rotate(360deg) drop-shadow(0 0 8px rgba(251, 191, 36, 0.4)); }
+        }
+
+        .progress-ring-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-weight: 800;
+            font-size: 22px;
+            color: #fbbf24;
+            text-shadow: 0 2px 8px rgba(251, 191, 36, 0.6);
+            font-variant-numeric: tabular-nums; /* Tabular figures [file:1] */
+        }
+
+        /* Quest Metrics - Enhanced Cards */
+        .quest-metrics {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 12px; /* Increased gap */
+            margin-bottom: 20px; /* More spacing [file:1] */
+        }
+
+        .metric-card {
+            background: linear-gradient(135deg, #1e293b 0%, #334155 100%); /* Subtle gradient [file:1] */
+            padding: 16px;
+            border-radius: 16px;
+            text-align: center;
+            font-size: 14px;
+            border: 1px solid rgba(251, 191, 36, 0.2); /* Better gold contrast */
+            box-shadow: 0 8px 24px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.1);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); /* Smooth transitions [file:1] */
+            position: relative;
+            overflow: hidden;
+        }
+
+        .metric-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(251,191,36,0.1), transparent);
+            transition: left 0.6s;
+        }
+
+        .metric-card:hover::before {
+            left: 100%;
+        }
+
+        .metric-card:hover {
+            transform: translateY(-4px) scale(1.02);
+            box-shadow: 0 16px 40px rgba(251,191,36,0.3), 0 0 20px rgba(251,191,36,0.2); /* Glow on hover [file:1] */
+            border-color: #fbbf24;
+        }
+
+        .metric-label {
+            display: block;
+            color: #94a3b8;
+            margin-bottom: 4px;
+            font-size: 13px;
+            font-weight: 500;
+            letter-spacing: 0.02em;
+        }
+
+        .metric-value {
+            font-weight: 800;
+            font-size: 20px;
+            font-variant-numeric: tabular-nums; /* Consistent alignment [file:1] */
+        }
+
+        .gold { color: #fbbf24; }
+        .treasure { color: #10b981; }
+        .total-wealth { color: #818cf8; }
+        .loss { color: #f87171; } /* Softened red from #ef4444 [file:1] */
+
+        /* Sections */
+        .section {
+            background: linear-gradient(135deg, #1e293b 0%, #1e293b 100%);
+            padding: 20px; /* Increased padding */
+            border-radius: 20px;
+            margin-bottom: 20px; /* Increased margin [file:1] */
+            box-shadow: 0 12px 32px rgba(0,0,0,0.5);
+            border: 1px solid #334155;
+            transition: transform 0.3s ease;
+        }
+
+        .section:hover {
+            transform: translateY(-2px);
+        }
+
+        .section-title {
+            font-size: 18px;
+            font-weight: 800;
+            margin-bottom: 16px;
+            color: #fbbf24;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            letter-spacing: 0.03em;
+        }
+
+        .section-title::before {
+            content: '✦';
+            font-size: 14px;
+            color: #fbbf24;
+        }
+
+        /* Streak Badges */
+        .streak-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 16px;
+            font-size: 11px;
+            font-weight: 800;
+            text-transform: uppercase;
+            margin-left: 6px;
+            vertical-align: middle;
+            animation: pulse 2s infinite; /* Pulsing for important metrics [file:1] */
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        .streak-fire {
+            background: #f97316;
+            color: white;
+            box-shadow: 0 0 12px #f97316;
+        }
+
+        .streak-ice {
+            background: #3b82f6;
+            color: white;
+            box-shadow: 0 0 12px #3b82f6;
+        }
+
+        /* Quest Row & Levels */
+        .quest-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
+        .level-item {
+            background: rgba(51, 65, 85, 0.6);
+            padding: 12px;
+            border-radius: 12px;
+            font-size: 13px;
+            border: 1px solid #475569;
+            transition: all 0.3s ease;
+        }
+
+        .level-item:hover {
+            background: rgba(251, 191, 36, 0.1);
+            border-color: #fbbf24;
+        }
+
+        .level-label {
+            color: #94a3b8;
+            font-size: 12px;
+            margin-bottom: 4px;
+            display: block;
+            font-weight: 500;
+        }
+
+        .level-value {
+            font-weight: 700;
+            font-size: 14px;
+            font-variant-numeric: tabular-nums;
+        }
+
+        /* Input Groups */
+        .input-group {
+            margin-bottom: 16px;
+        }
+
+        label {
+            display: block;
+            font-weight: 700;
+            margin-bottom: 6px;
+            font-size: 15px;
+            color: #cbd5e1;
+            letter-spacing: 0.01em;
+        }
+
+        input {
+            width: 100%;
+            padding: 14px 16px;
+            font-size: 16px; /* Larger for touch [file:1] */
+            border: 1px solid #475569;
+            border-radius: 12px;
+            background: #1e293b;
+            color: white;
+            outline: none;
+            transition: all 0.3s ease;
+            min-height: 48px; /* Larger touch targets 48px min [file:1] */
+            font-variant-numeric: tabular-nums;
+        }
+
+        input:focus {
+            border-color: #fbbf24;
+            box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.2);
+            transform: scale(1.01);
+        }
+
+        /* Buttons - Enhanced Interactive */
+        .btn-group {
+            display: flex;
+            gap: 12px;
+            margin: 12px 0;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 16px;
+            font-size: 16px;
+            font-weight: 800;
+            border: none;
+            border-radius: 16px;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+            min-height: 52px; /* Larger touch [file:1] */
+            font-variant-numeric: tabular-nums;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        /* Ripple effect */
+        .btn::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.3);
+            transform: translate(-50%, -50%);
+            transition: width 0.6s, height 0.6s;
+        }
+
+        .btn:active::after {
+            width: 300px;
+            height: 300px;
+        }
+
+        .btn:hover:not(.btn-disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 32px rgba(0,0,0,0.4);
+        }
+
+        .btn:active {
+            transform: scale(0.96);
+        }
+
+        .btn-loss {
+            background: linear-gradient(135deg, #f87171, #ef4444);
+            color: white;
+            box-shadow: 0 6px #dc2626;
+        }
+
+        .btn-win {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+            box-shadow: 0 6px #047857;
+        }
+
+        .btn-secondary {
+            background: #475569;
+            color: white;
+            font-size: 15px;
+        }
+
+        .btn-save {
+            background: linear-gradient(135deg, #fbbf24, #f59e0b);
+            color: #0f172a;
+            font-weight: 900;
+            box-shadow: 0 6px #d97706;
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            box-shadow: none;
+            transform: translateY(2px);
+            cursor: not-allowed;
+        }
+
+        /* Settings Modal - Enhanced Glassmorphism */
+        .settings-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(15, 23, 42, 0.9);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            z-index: 2000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+            animation: fadeInBackdrop 0.4s ease;
+        }
+
+        @keyframes fadeInBackdrop {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .settings-overlay.show {
+            display: flex;
+        }
+
+        .settings-card {
+            background: rgba(30, 41, 59, 0.85);
+            backdrop-filter: blur(24px);
+            border: 1px solid rgba(251, 191, 36, 0.3);
+            border-radius: 24px;
+            padding: 32px;
+            width: 100%;
+            max-width: 440px;
+            max-height: 92vh;
+            overflow-y: auto;
+            box-shadow: 0 32px 64px -16px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(251, 191, 36, 0.2);
+            transform: scale(0.9) translateY(20px);
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); /* Smooth slide-in [file:1] */
+            animation: slideInModal 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+        }
+
+        .settings-overlay.show .settings-card {
+            transform: scale(1) translateY(0);
+        }
+
+        @keyframes slideInModal {
+            to {
+                transform: scale(1) translateY(0);
+            }
+        }
+
+        /* Group dividers in settings */
+        .input-group + .input-group {
+            border-top: 1px solid rgba(255,255,255,0.08);
+            padding-top: 16px;
+            margin-top: -8px;
+        }
+
+        /* Toggle Button */
+        .toggle-btn {
+            background: rgba(51, 65, 85, 0.8);
+            color: #cbd5e1;
+            font-size: 15px;
+            padding: 14px;
+            border-radius: 12px;
+            cursor: pointer;
+            margin-top: 12px;
+            text-align: center;
+            font-weight: 700;
+            border: 1px solid #475569;
+            transition: all 0.3s ease;
+            width: 100%;
+        }
+
+        .toggle-btn:hover {
+            background: rgba(251, 191, 36, 0.15);
+            border-color: #fbbf24;
+            transform: translateY(-1px);
+        }
+
+        /* Result Pills */
+        .result-pill {
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-weight: 900;
+            font-size: 14px;
+        }
+
+        .win-glow {
+            background: rgba(16, 185, 129, 0.2);
+            color: #34d399;
+            box-shadow: 0 0 16px rgba(16, 185, 129, 0.4);
+            animation: successGlow 1.5s ease-in-out;
+        }
+
+        @keyframes successGlow {
+            0%, 100% { box-shadow: 0 0 16px rgba(16, 185, 129, 0.4); }
+            50% { box-shadow: 0 0 24px rgba(16, 185, 129, 0.6); }
+        }
+
+        .loss-glow {
+            background: rgba(239, 68, 68, 0.2);
+            color: #f87171;
+            box-shadow: 0 0 16px rgba(239, 68, 68, 0.4);
+            animation: shake 0.5s ease-in-out;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-4px); }
+            75% { transform: translateX(4px); }
+        }
+
+        /* Hint Box */
+        .hint-box {
+            background: #1e3a5f;
+            border-left: 5px solid #3b82f6;
+            padding: 16px;
+            border-radius: 0 12px 12px 0;
+            margin-top: 12px;
+            font-size: 15px;
+            transition: all 0.4s ease;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .hint-title {
+            font-weight: 800;
+            color: #93c5fd;
+            margin-bottom: 6px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .hint-detail {
+            font-weight: 700;
+            color: #bfdbfe;
+            font-family: 'SF Mono', monospace;
+            font-size: 14px;
+        }
+
+        /* Rows */
+        .row {
+            display: flex;
+            justify-content: space-between;
+            margin: 8px 0;
+            font-size: 15px;
+            align-items: center;
+        }
+
+        .label {
+            font-weight: 700;
+            color: #94a3b8;
+        }
+
+        .value {
+            font-weight: 800;
+        }
+
+        .trade-win { color: #10b981; }
+        .trade-loss { color: #f87171; }
+        .trade-current { color: #fbbf24; }
+
+        /* History Section Enhanced */
+        .history {
+            margin-top: 16px;
+            font-size: 13px;
+            max-height: 240px;
+            overflow-y: auto;
+            padding: 16px;
+            background: rgba(15, 23, 42, 0.8);
+            border-radius: 16px;
+            border: 1px solid #334155;
+            /* Alternating backgrounds simulated via odd/even [file:1] */
+        }
+
+        .history-item:nth-child(odd) {
+            background: rgba(30, 41, 59, 0.3);
+        }
+
+        .history-item:nth-child(even) {
+            background: rgba(51, 65, 85, 0.2);
+        }
+
+        .history-item {
+            padding: 12px;
+            border-bottom: 1px solid rgba(30, 41, 59, 0.5);
+            display: grid;
+            grid-template-columns: 35px 1fr 80px 90px 55px;
+            align-items: center;
+            gap: 8px;
+            opacity: 0;
+            animation: fadeInUp 0.6s ease forwards; /* Fade-in new entries [file:1] */
+            animation-fill-mode: both;
+        }
+
+        .history-item:last-child {
+            border-bottom: none;
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .history-number {
+            font-weight: 800;
+            color: #475569;
+            font-size: 14px;
+        }
+
+        .history-action {
+            font-weight: 800;
+            text-transform: uppercase;
+        }
+
+        /* Switch Enhanced */
+        .switch-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-top: 1px solid rgba(255,255,255,0.1);
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 56px; /* Larger */
+            height: 28px;
+        }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #475569;
+            transition: 0.4s;
+            border-radius: 28px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 22px;
+            width: 22px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: 0.4s;
+            border-radius: 50%;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        }
+
+        input:checked + .slider {
+            background-color: #fbbf24;
+            box-shadow: 0 0 12px rgba(251, 191, 36, 0.4);
+        }
+
+        input:checked + .slider:before {
+            transform: translateX(28px);
+        }
+
+        /* Accessibility Improvements */
+        *:focus-visible {
+            outline: 3px solid #fbbf24;
+            outline-offset: 2px;
+            border-radius: 4px;
+        }
+
+        /* Patterns for color-only */
+        .gold::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-image: repeating-linear-gradient(45deg, transparent, transparent 2px, rgba(251,191,36,0.05) 2px, rgba(251,191,36,0.05) 4px);
+            pointer-events: none;
+            opacity: 0;
+        }
+
+        .gold:focus-within::after,
+        .gold:hover::after {
+            opacity: 1;
+        }
+
+        /* Mobile Optimizations */
+        @media (max-width: 480px) {
+            body {
+                padding: 16px;
+            }
+
+            .quest-metrics {
+                grid-template-columns: 1fr;
+                gap: 16px;
+            }
+
+            .btn {
+                padding: 18px;
+                font-size: 17px;
+            }
+        }
+
+        /* Loading states */
+        .loading {
+            opacity: 0.7;
+            pointer-events: none;
+        }
+
+        .btn.loading::after {
+            background: rgba(255,255,255,0.5);
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            100% { transform: translate(-50%, -50%) rotate(360deg); }
+        }
+
+        /* Number counting animation (used in JS) */
+        .animate-number {
+            transition: all 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="progress-ring-container">
+                <svg class="progress-ring" width="140" height="140">
+                    <defs>
+                        <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" stop-color="#3b82f6" />
+                            <stop offset="100%" stop-color="#10b981" />
+                        </linearGradient>
+                    </defs>
+                    <circle class="progress-ring-circle" stroke-width="10" fill="transparent" r="60" cx="70" cy="70" />
+                    <circle class="progress-ring-fill" stroke-width="10" stroke-dasharray="377" stroke-dashoffset="377" fill="transparent" r="60" cx="70" cy="70" id="ring-fill" />
+                </svg>
+                <div class="progress-ring-text" id="ring-percent">0</div>
+            </div>
+            <h1><span>Quest</span></h1>
+            <p class="version-text">v3.0.0</p>
+            <div class="datetime" id="datetime">Loading...</div>
+        </header>
+
+        <div class="quest-metrics">
+            <div class="metric-card">
+                <span class="metric-label">Account R</span>
+                <span class="metric-value gold" id="account-balance">R100.00</span>
+            </div>
+            <div class="metric-card vault-card">
+                <span class="metric-label">Vault R</span>
+                <span class="metric-value treasure" id="saved-balance">R0.00</span>
+            </div>
+            <div class="metric-card">
+                <span class="metric-label">Total Wealth</span>
+                <span class="metric-value total-wealth" id="total-wealth-display">R100.00</span>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2 class="section-title">Performance</h2>
+            <div class="quest-metrics">
+                <div class="metric-card">
+                    <span class="metric-label">Wins</span>
+                    <span class="metric-value treasure" id="total-wins-display">0</span>
+                </div>
+                <div class="metric-card">
+                    <span class="metric-label">Losses</span>
+                    <span class="metric-value loss" id="total-losses-display">0</span>
+                </div>
+                <div class="metric-card">
+                    <span class="metric-label">Win Rate</span>
+                    <span class="metric-value gold" id="actual-win-rate-display">NA</span>
+                </div>
+            </div>
+            <div id="streak-container"></div>
+        </div>
+
+        <div class="section">
+            <h2 class="section-title">Timeline Goal</h2>
+            <div class="quest-row">
+                <div class="level-item">
+                    <span class="level-label">Quest Day / Remaining</span>
+                    <div class="level-value" id="level-display">Day 1 / 30 days Left</div>
+                </div>
+                <div class="level-item">
+                    <span class="level-label">Target Progress (Req vs Goal)</span>
+                    <div class="level-value" id="daily-target-display">Req R0 / Goal R0</div>
+                </div>
+            </div>
+            <div class="quest-row">
+                <div class="level-item">
+                    <span class="level-label">Start Date</span>
+                    <div class="level-value" id="start-date-display">NA</div>
+                </div>
+                <div class="level-item">
+                    <span class="level-label">Predicted Completion</span>
+                    <div class="level-value" id="predicted-end-date-display">NA</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2 class="section-title">Trade Parameters</h2>
+            <div class="row">
+                <span class="label">Risk %</span>
+                <span class="value trade-current" id="risk-percent-display">3.53</span>
+            </div>
+            <div class="row">
+                <span class="label">Profit %</span>
+                <span class="value trade-win" id="multiplier-display">100.0</span>
+            </div>
+            <div class="row" style="margin-top: 12px;">
+                <span class="label">Trade Amount</span>
+                <span class="value trade-current" id="current-trade" style="font-size: 20px;">R3.53</span>
+            </div>
+            <div class="row" style="padding-left: 18px;">
+                <span class="label">Trade H</span>
+                <span class="value trade-current" id="trade-h-display">R1.81</span>
+            </div>
+            <div class="row" style="padding-left: 18px;">
+                <span class="label">Trade L</span>
+                <span class="value trade-current" id="trade-l-display">R1.72</span>
+            </div>
+            <div class="row" style="margin-top: 12px;">
+                <span class="label">If Win Next</span>
+                <span class="value result-pill win-glow" id="next-trade-win">R3.66</span>
+            </div>
+            <div class="row">
+                <span class="label">If Loss Next</span>
+                <span class="value result-pill loss-glow" id="next-trade-loss">R3.40</span>
+            </div>
+            <div class="hint-box" id="context-box">
+                <div class="hint-title" id="context-title">Trade Context</div>
+                <div class="hint-detail" id="trade-context-hint">Stay disciplined.</div>
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="btn-group">
+                <button class="btn btn-loss" id="loss-btn">Record Loss</button>
+                <button class="btn btn-win" id="win-btn">Record Win</button>
+            </div>
+            <div class="btn-group" style="margin-top: 12px;">
+                <button class="btn btn-save" id="save-btn" disabled>Save Profit</button>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2 class="section-title">Journal</h2>
+            <div id="history" class="history"></div>
+            <button class="toggle-btn" id="open-settings-btn">⚙️ Open Settings</button>
+        </div>
+
+        <div id="settings-overlay" class="settings-overlay">
+            <div class="settings-card">
+                <h2 class="section-title">Quest Settings</h2>
+                <div class="switch-container">
+                    <span class="label">Manual Adjustments</span>
+                    <label class="switch">
+                        <input type="checkbox" id="custom-mode-checkbox">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <div class="input-group">
+                    <label>Opening Balance R</label>
+                    <input type="number" id="openingInput" value="100" step="0.01">
+                </div>
+                <div class="input-group">
+                    <label>Target Amount R</label>
+                    <input type="number" id="targetInput" value="150000">
+                </div>
+                <div class="input-group">
+                    <label>Goal Profit/Day %</label>
+                    <input type="number" id="targetProfitPctInput" value="0" step="0.1">
+                </div>
+                <div class="input-group">
+                    <label>Start Date</label>
+                    <input type="date" id="startDateInput">
+                </div>
+                <div class="input-group">
+                    <label>End Date</label>
+                    <input type="date" id="completionDateInput">
+                </div>
+                <div class="input-group">
+                    <label>Risk % of Acc</label>
+                    <input type="number" id="riskPercent" value="3.53" step="0.1">
+                </div>
+                <div class="input-group">
+                    <label>Profit of Risk %</label>
+                    <input type="number" id="profitPercent" value="100">
+                </div>
+                <div class="input-group">
+                    <label>Vault Save %</label>
+                    <input type="number" id="savePercent" value="50">
+                </div>
+                <div class="btn-group">
+                    <button class="btn btn-secondary" id="close-settings-btn">Cancel</button>
+                    <button class="btn btn-win" id="apply-custom" style="box-shadow: none;">Apply & Save</button>
+                </div>
+                <div style="margin-top: 24px; border-top: 1px solid rgba(255,255,255,0.15); padding-top: 20px;">
+                    <button class="btn btn-secondary" style="width: 100%; margin-bottom: 12px;" id="export-btn">📋 Export Log</button>
+                    <button class="btn btn-loss" style="width: 100%; box-shadow: none;" id="reset-btn">🔄 Full Reset</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast"></div>
+
+    <script>
+        // Enhanced JS with number animations and micro-interactions
+        function getTodayYMD() {
+            const d = new Date();
+            return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+        }
+
+        function getFutureYMD(days) {
+            const d = new Date();
+            d.setDate(d.getDate() + days);
+            return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+        }
+
+        function formatZAR(num) {
+            return 'R' + Math.abs(num).toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+
+        function animateNumber(el, start, end, duration = 800) {
+            el.classList.add('animate-number');
+            let startTime = null;
+            function step(timestamp) {
+                if (!startTime) startTime = timestamp;
+                const progress = Math.min((timestamp - startTime) / duration, 1);
+                const easeProgress = 1 - Math.pow(1 - progress, 3); // Ease out cubic
+                el.textContent = formatZAR(start + (end - start) * easeProgress);
+                if (progress < 1) requestAnimationFrame(step);
+                else el.textContent = formatZAR(end);
+            }
+            requestAnimationFrame(step);
+        }
+
+        function showToast(msg) {
+            const t = document.getElementById('toast');
+            t.textContent = msg;
+            t.classList.add('show');
+            setTimeout(() => t.classList.remove('show'), 2500);
+        }
+
+        // State variables (same as original)
+        let openingBalance = 100, targetAmount = 150000, durationDays = 30, savedBalance = 0;
+        let riskPercent = 3.53, profitPercent = 100, savePercent = 50, targetProfitPct = 0;
+        let currentBalance = 100, currentDay = 1, nextId = 1, totalWins = 0, totalLosses = 0, currentStreak = 0;
+        let customMode = false;
+        let userDefinedStartDate = getTodayYMD(), userDefinedCompletionDate = getFutureYMD(30);
+        let tradeLog = [];
+
+        // DOM elements
+        const accountBalanceEl = document.getElementById('account-balance');
+        const savedBalanceEl = document.getElementById('saved-balance');
+        const totalWealthDisplayEl = document.getElementById('total-wealth-display');
+        const levelDisplayEl = document.getElementById('level-display');
+        const dailyTargetDisplayEl = document.getElementById('daily-target-display');
+        const startDateDisplayEl = document.getElementById('start-date-display');
+        const predictedEndDateDisplayEl = document.getElementById('predicted-end-date-display');
+        const totalWinsDisplayEl = document.getElementById('total-wins-display');
+        const totalLossesDisplayEl = document.getElementById('total-losses-display');
+        const actualWinRateDisplayEl = document.getElementById('actual-win-rate-display');
+        const currentTradeEl = document.getElementById('current-trade');
+        const historyEl = document.getElementById('history');
+        const ringFill = document.getElementById('ring-fill');
+        const ringPercentText = document.getElementById('ring-percent');
+        const contextBox = document.getElementById('context-box');
+        const contextTitle = document.getElementById('context-title');
+        const contextHint = document.getElementById('trade-context-hint');
+        const streakContainer = document.getElementById('streak-container');
+
+        function setProgress(percent) {
+            const circumference = 60 * 2 * Math.PI;
+            const offset = circumference - (percent / 100) * circumference;
+            ringFill.style.strokeDashoffset = Math.max(0, offset);
+            ringPercentText.textContent = percent.toFixed(1) + '%';
+        }
+
+        function recalculate() {
+            // Current day logic
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const start = new Date(userDefinedStartDate);
+            start.setHours(0, 0, 0, 0);
+            const diffTime = today - start;
+            currentDay = Math.max(1, Math.floor(diffTime / (1000 * 60 * 60 * 24)) + 1);
+
+            const totalWealth = currentBalance + savedBalance;
+            const idealDailyRate = Math.pow(targetAmount / openingBalance, 1 / (durationDays - 1)) - 1;
+            const targetWealthToday = openingBalance * Math.pow(1 + idealDailyRate, currentDay);
+            const reqTargetVal = Math.max(0, targetWealthToday - totalWealth);
+            const customGoalVal = currentBalance * (targetProfitPct / 100);
+            const totalTrades = totalWins + totalLosses;
+            const actualWinRate = totalTrades === 0 ? 'NA' : (totalWins / totalTrades * 100).toFixed(1);
+            const currentRiskAmount = currentBalance * (riskPercent / 100);
+            const profitPerTrade = currentRiskAmount * (profitPercent / 100);
+            const balanceAfterWin = currentBalance + profitPerTrade;
+            const balanceAfterLoss = currentBalance - currentRiskAmount;
+            const progressPct = Math.min((totalWealth / targetAmount) * 100, 100);
+
+            setProgress(progressPct);
+
+            if (totalWealth < targetWealthToday) {
+                contextBox.style.background = '#1e3a5f';
+                contextTitle.innerHTML = '⚠️ Recovery Mode';
+                contextHint.textContent = `R${(targetWealthToday - totalWealth).toFixed(2)} behind curve.`;
+            } else {
+                contextBox.style.background = '#3d3215';
+                contextTitle.innerHTML = '✅ Ahead of Curve';
+                contextHint.textContent = `Target reached for Day ${currentDay}.`;
+            }
+
+            // Animate numbers
+            animateNumber(accountBalanceEl, parseFloat(accountBalanceEl.textContent.replace(/[^d.-]/g, '') || 0), currentBalance);
+            animateNumber(savedBalanceEl, parseFloat(savedBalanceEl.textContent.replace(/[^d.-]/g, '') || 0), savedBalance);
+            animateNumber(totalWealthDisplayEl, parseFloat(totalWealthDisplayEl.textContent.replace(/[^d.-]/g, '') || 0), totalWealth);
+
+            levelDisplayEl.textContent = `Day ${currentDay} / ${Math.max(0, durationDays - currentDay + 1)} days Left`;
+            dailyTargetDisplayEl.textContent = `Req R${reqTargetVal.toFixed(2)} / Goal R${customGoalVal.toFixed(2)}`;
+            startDateDisplayEl.textContent = new Date(userDefinedStartDate).toLocaleDateString();
+            predictedEndDateDisplayEl.textContent = new Date(userDefinedCompletionDate).toLocaleDateString();
+            document.getElementById('risk-percent-display').textContent = riskPercent.toFixed(2);
+            document.getElementById('multiplier-display').textContent = profitPercent.toFixed(1);
+            currentTradeEl.textContent = formatZAR(currentRiskAmount);
+            const tradeL = currentRiskAmount * 0.95 * (1 - 0.05);
+            const tradeH = currentRiskAmount - tradeL;
+            document.getElementById('trade-h-display').textContent = formatZAR(tradeH);
+            document.getElementById('trade-l-display').textContent = formatZAR(tradeL);
+            document.getElementById('next-trade-win').textContent = formatZAR(balanceAfterWin * (riskPercent / 100));
+            document.getElementById('next-trade-loss').textContent = formatZAR(balanceAfterLoss * (riskPercent / 100));
+            animateNumber(totalWinsDisplayEl, parseInt(totalWinsDisplayEl.textContent) || 0, totalWins);
+            animateNumber(totalLossesDisplayEl, parseInt(totalLossesDisplayEl.textContent) || 0, totalLosses);
+            actualWinRateDisplayEl.textContent = actualWinRate;
+            streakContainer.innerHTML = Math.abs(currentStreak) >= 2 ? `<span class="streak-badge ${currentStreak >= 0 ? 'streak-fire' : 'streak-ice'}">${Math.abs(currentStreak)}</span>` : '';
+
+            // Save button
+            const totalProfitAvailable = totalWealth - openingBalance;
+            document.getElementById('save-btn').disabled = totalProfitAvailable <= 0;
+            document.getElementById('save-btn').textContent = totalProfitAvailable <= 0 ? 'No Profit to Save' : `Save ${savePercent}% Profit (${formatZAR(totalProfitAvailable * savePercent / 100)})`;
+        }
+
+        function saveState() {
+            const state = {
+                openingBalance, targetAmount, durationDays, savedBalance,
+                riskPercent, profitPercent, savePercent, targetProfitPct,
+                currentBalance, tradeLog, nextId, customMode,
+                totalWins, totalLosses, currentStreak,
+                userDefinedStartDate, userDefinedCompletionDate
+            };
+            localStorage.setItem('questStateV3.0', JSON.stringify(state)); // Updated version
+        }
+
+        function renderHistory() {
+            historyEl.innerHTML = tradeLog.slice(-20).reverse().map((item, index) => {
+                const delay = index * 0.1;
+                return `<div class="history-item" style="animation-delay: ${delay}s;"> 
+                    <span class="history-number">${item.id}</span>
+                    <span class="history-action">${item.type.toUpperCase()}</span>
+                    <span class="history-change">${item.change !== 0 ? formatZAR(item.change) : ''}</span>
+                    <span class="history-balance">${formatZAR(item.balance)}</span>
+                    <span class="history-time">${new Date(item.time).toLocaleTimeString('en-ZA', {hour12: false, hour: '2-digit', minute: '2-digit'})}</span>
+                </div>`;
+            }).join('');
+        }
+
+        function init() {
+            const saved = localStorage.getItem('questStateV3.0') || localStorage.getItem('questStateV202');
+            if (saved) {
+                const s = JSON.parse(saved);
+                openingBalance = s.openingBalance || 100;
+                targetAmount = s.targetAmount || 150000;
+                durationDays = s.durationDays || 30;
+                savedBalance = s.savedBalance || 0;
+                riskPercent = s.riskPercent || 3.53;
+                profitPercent = s.profitPercent || 100;
+                savePercent = s.savePercent || 50;
+                targetProfitPct = s.targetProfitPct || 0;
+                currentBalance = s.currentBalance || 100;
+                nextId = s.nextId || 1;
+                totalWins = s.totalWins || 0;
+                totalLosses = s.totalLosses || 0;
+                currentStreak = s.currentStreak || 0;
+                customMode = s.customMode || false;
+                userDefinedStartDate = s.userDefinedStartDate || getTodayYMD();
+                userDefinedCompletionDate = s.userDefinedCompletionDate || getFutureYMD(30);
+                tradeLog = (s.tradeLog || []).map(l => ({...l, time: new Date(l.time)}));
+            } else {
+                tradeLog = [{id: nextId++, type: 'init', change: 0, balance: currentBalance, time: new Date()}];
+            }
+
+            // Set input values
+            document.getElementById('openingInput').value = openingBalance;
+            document.getElementById('targetInput').value = targetAmount;
+            document.getElementById('targetProfitPctInput').value = targetProfitPct;
+            document.getElementById('startDateInput').value = userDefinedStartDate;
+            document.getElementById('completionDateInput').value = userDefinedCompletionDate;
+            document.getElementById('riskPercent').value = riskPercent;
+            document.getElementById('profitPercent').value = profitPercent;
+            document.getElementById('savePercent').value = savePercent;
+            document.getElementById('custom-mode-checkbox').checked = customMode;
+
+            recalculate();
+            renderHistory();
+        }
+
+        // Event listeners
+        document.getElementById('win-btn').onclick = function() {
+            this.classList.add('loading');
+            setTimeout(() => this.classList.remove('loading'), 300);
+            const profit = currentBalance * (riskPercent / 100) * (profitPercent / 100);
+            currentBalance += profit;
+            totalWins++;
+            currentStreak = currentStreak >= 0 ? currentStreak + 1 : 1;
+            tradeLog.push({id: nextId++, type: 'win', change: profit, balance: currentBalance, time: new Date()});
+            recalculate();
+            renderHistory();
+            saveState();
+            showToast('✅ Win Recorded');
+        };
+
+        document.getElementById('loss-btn').onclick = function() {
+            this.classList.add('loading');
+            setTimeout(() => this.classList.remove('loading'), 300);
+            const loss = currentBalance * (riskPercent / 100);
+            currentBalance -= loss;
+            totalLosses++;
+            currentStreak = currentStreak > 0 ? -1 : currentStreak - 1;
+            tradeLog.push({id: nextId++, type: 'loss', change: -loss, balance: currentBalance, time: new Date()});
+            recalculate();
+            renderHistory();
+            saveState();
+            showToast('❌ Loss Recorded');
+        };
+
+        document.getElementById('save-btn').onclick = function() {
+            const totalProfit = currentBalance + savedBalance - openingBalance;
+            const amt = totalProfit * (savePercent / 100);
+            savedBalance += amt;
+            currentBalance -= amt;
+            tradeLog.push({id: nextId++, type: 'save', change: -amt, balance: currentBalance, time: new Date()});
+            recalculate();
+            renderHistory();
+            saveState();
+            showToast('💰 Profit Saved');
+        };
+
+        document.getElementById('open-settings-btn').onclick = () => {
+            document.getElementById('settings-overlay').classList.add('show');
+        };
+
+        document.getElementById('close-settings-btn').onclick = () => {
+            document.getElementById('settings-overlay').classList.remove('show');
+        };
+
+        document.getElementById('apply-custom').onclick = function() {
+            openingBalance = parseFloat(document.getElementById('openingInput').value) || 100;
+            targetAmount = parseFloat(document.getElementById('targetInput').value) || 150000;
+            riskPercent = parseFloat(document.getElementById('riskPercent').value) || 3.53;
+            profitPercent = parseFloat(document.getElementById('profitPercent').value) || 100;
+            savePercent = parseFloat(document.getElementById('savePercent').value) || 50;
+            targetProfitPct = parseFloat(document.getElementById('targetProfitPctInput').value) || 0;
+            userDefinedStartDate = document.getElementById('startDateInput').value || getTodayYMD();
+            userDefinedCompletionDate = document.getElementById('completionDateInput').value || getFutureYMD(30);
+            durationDays = Math.ceil((new Date(userDefinedCompletionDate) - new Date(userDefinedStartDate)) / 86400000) || 30;
+            customMode = document.getElementById('custom-mode-checkbox').checked;
+            recalculate();
+            saveState();
+            showToast('⚙️ Settings Updated');
+            document.getElementById('settings-overlay').classList.remove('show');
+        };
+
+        document.getElementById('reset-btn').onclick = () => {
+            if (confirm('Reset all progress? This cannot be undone.')) {
+                localStorage.removeItem('questStateV3.0');
+                localStorage.removeItem('questStateV202');
+                location.reload();
+            }
+        };
+
+        document.getElementById('export-btn').onclick = () => {
+            let txt = `Quest Log v3.0.0
+Wealth: ${formatZAR(currentBalance)} + ${formatZAR(savedBalance)}
+
+`;
+            txt += tradeLog.map(l => `${l.id} ${l.type.toUpperCase()} ${formatZAR(l.change)} | ${formatZAR(l.balance)} | ${new Date(l.time).toLocaleString()}`).join('
+');
+            navigator.clipboard.writeText(txt).then(() => showToast('📋 Log Copied'));
+        };
+
+        // Update datetime
+        setInterval(() => {
+            document.getElementById('datetime').textContent = new Date().toLocaleString('en-ZA');
+        }, 1000);
+
+        window.onload = init;
+    </script>
+</body>
+</html>

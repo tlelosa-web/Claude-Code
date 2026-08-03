@@ -1,0 +1,46 @@
+flowchart TD
+    A[Google Sheets / Apollo.io<br/>CSV input] --> B[lead_import]
+    B --> C[(SQLite DB<br/>leads table)]
+
+    C --> D[research module]
+    D --> D1{{Ollama local<br/>qwen3:8b + nomic-embed-text}}
+    D1 --> D2[Enriched lead data<br/>industry, signals, pain points]
+    D2 --> C
+
+    C --> E{Scheduler check<br/>handoff_scheduler.py}
+    E -->|reads| F[[config/handoff_settings.json<br/>weekly_lead_cap, daily_lead_cap,<br/>min_interval_minutes, run_days]]
+    E -->|reads| G[(handoff_log table<br/>past runs this week/day)]
+
+    E -->|cap/interval/day OK| H[Write handoff/lead_id.md<br/>research + instructions]
+    E -->|blocked| E2[Skip run, log reason<br/>try next scheduled slot]
+
+    H --> I[run_handoff.bat]
+    I --> J{{Claude Code headless<br/>claude -p --allowedTools Read,Write}}
+    J -->|reads| H
+    J -->|writes| K[handoff/output_id.md<br/>ASSET + EMAIL draft]
+    J -->|writes| L[handoff/result_id.json<br/>cost_usd, duration_ms, session_id]
+
+    L --> M[Parse result JSON]
+    M --> G
+    M -->|status: success/throttled/error| G
+
+    K --> N[Human approval gate]
+    N -->|quality_flag: pass| O[email_draft finalized]
+    N -->|quality_flag: edit_heavy| N1[Manual edit]
+    N -->|quality_flag: reject| N2[Discard, log only]
+    N1 --> O
+    N2 --> G
+
+    O --> P[Gmail OAuth2 send]
+    P --> C
+
+    G --> Q[weekly_report.py<br/>Sunday review]
+    Q --> R[docs/reports/<br/>handoff-week-date.md]
+    R --> S[Tebello reviews:<br/>volume vs cap, cost, quality %,<br/>throttle events, cap recommendation]
+    S -.->|adjust| F
+
+    style D1 fill:#e8f4ea,stroke:#5a9c6e
+    style J fill:#e8eef4,stroke:#5a7ba0
+    style F fill:#fdf3e0,stroke:#c99b3d
+    style G fill:#fdf3e0,stroke:#c99b3d
+    style S fill:#f4e8f0,stroke:#a05a8e

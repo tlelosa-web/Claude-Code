@@ -1,0 +1,61 @@
+,ESKOM eDNA to PI Upgrade – Clarification Questions and Answers,Unnamed: 1,Unnamed: 2,Unnamed: 3,Unnamed: 4,Unnamed: 5
+0,,,,,,
+1,This document lists all formal questions and clarification requests related to the ESKOM eDNA to PI Upgrade RFP.,,,,,
+2,,,,,,
+3,No.,RFP Section / Reference,Question / Clarification,Person raising the question,Impact Level,Client Response
+4,8,2,"Can a  technical system architecture diagram for the current environment, including integrations be provided ?",,,See sheet named: High Level Overview
+5,12,4,"Is the expectation of the deployment across the 16 locations is that it will be simultaneous or phased? If phased, what is the expectation on the  sequence and timeline for each site?",,,"Phased is acceptable, with minimal downtime.  All sites to be setup for data collection within 3 weeks.  The supplier should provide the proposed project plan.  The sequence can be determined together with the customer."
+6,9,2,"Can the existing AVEVA PI system architecture, including hardware, software, and network components be provided?",,,The existing AVEVA PI installation is obsolete and will not be reused.  No data migration will be required from this installation. Eskom is moving to a single centralised PI architecture
+7,29,9,"There is a discrepancy in the project timeline, as the technical and pricing documents mention different durations (12 vs. 24 months), and to confirm the official project start date (T0)",,,Execution will be for the first 12 months.  Subscription will only commence after system is placed into Production and will be for a duration of  60 months thereafter.
+8,31,13,"Will the solution support scope includes infrastructure (infra) support, or if the client will be responsible for hardware support, especially since the client is procuring the hardware",,,No hardware is in scope. Eskom will provision the Hardware. No hardware support is required to be quoted for
+9,30,10,"Do existing legacy AVEVA PI data  migrated or upgraded, and what versions are currently in use?",,,The existing AVEVA PI installation is obsolete and will not be reused.  No data migration will be required from this installation. Eskom is moving to a single centralised PI architecture
+10,20,7,Will access to PI data will be provided as part of the AMS scope?,,,This is a future requirement. Not in scope
+11,28,8,"Could you please confirm whether there is a plan to implement OpenID Connect (OIDC) authentication for the AVEVA PI System, considering the latest PI release supports OIDC?",,,"Eskoms standard is MFA, which must be implemented"
+12,21,7,How many predictive analytics models are currently deployed and running on the existing eDNA Historian environment?,,,Approximately 5000 valid models.  Migration of the eDNA Predicative Analytics tags is included.  This should be moved to the Predicative Analytics PI historian. 
+13,22,7.2,"Given that eDNA analytics logic generally requires translation and re‑creation when migrating to AVEVA PI AF/Analytics, could you please confirm whether you expect these predictive models to be fully re‑developed in PI AF/Analytics, or whether an alternative analytics platform should be used?",,,This is a future requirement. Not in scope
+14,16,5.2,How many DataLink reports and PI Vision displays are expected to be developed as part of this scope? Please specify the number for each.,,,We need to include datalink reports and displays as part of the testing process. A screen per powerstation and an overview is required (17)
+15,13,4,"We understand that eDNA and AVEVA PI were deployed in 2016 and 2010 respectively, and eDNA currently holds approximately 1.5 million tags. Is this accurate? ",,,Aveva has been provided the tag count information
+16,14,4,Could you please confirm the current tag count in the existing AVEVA PI System?,,,Aveva has been provided the tag count information
+17,27,7.5,"Is High Availability (HA) expected for the lower environments such as Pre-Production and Dev/QA, or only Production?",,,"Yes for all environments, including Disaster Recovery"
+18,1,1,The RFP does not mention SQL Server licensing. Could you clarify who will be responsible for procuring the required SQL Server licenses?,,,SQL licensing will be provided by Eskom
+19,23,7.2,"Across the 16 locations, how many interfaces/connectors are currently in use?",,,As per Section 7.2. Interfaces Requirements.  However all PI  out of the box interfaces should be included
+20,24,7.2,"Please specify all communication protocols currently in use (e.g., OPC UA, Modbus, DNP3, IEC 61850, etc.).",,,As per Section 7.2. Interfaces Requirements.  However this is not limited to this list.  
+21,25,7.2,Please provide site-specific tag counts for each location to assist with server specification and sizing.,,,"No site eDNA or PI historians are in scope, as there are currently none deployed to site. PI interface servers are to be specified per site.  Refer to Sheet eDNA Sites"
+22,10,3,At how many of the 16 sites has the current AVEVA PI historian solution already been deployed? Please list the sites.,,,No sites have AVEVA PI data collectors deployed. All sites only have eDNA (Aveva AOS) data collectors deployed. The PI data collectors will be expected to operate in parallel with the existing eDNA (Aveva AOS) data collectors.
+23,11,3,Could you please confirm whether the migration of historical data from the existing AVEVA PI System to the new AVEVA PI Server is included in the project scope?,,,No migration of PI data is in scope. Only the MWP eDNA data migration is in scope
+24,15,4,What is the total number of assets across all locations? Please provide a breakdown by site if available.,,,Centalised PI AF structure needs to be migrated from the RMDC System Platform plant breakdown hierarchy.  See Sheet Asset Plant BreakDown Structure for an example of 4 site asset breakdowns.  A similar extract will be provided for all thermal sites.  The Nuclear and Peaking breakdown will need to be developed by the vendor and approved by Eskom.
+25,18,6,Please list all third-party integrations required for the solution.,,,As per Section 7.2. Interfaces Requirements.
+26,19,6,Third-party integrations may be required. How many integrations are expected? Are these centralized integrations or site-specific?,,,As per Section 7.2. Interfaces Requirements.
+27,2,1,How many users and concurrent users are expected at each site? Please provide numbers per site.,,,Total users requirement is as per the specification
+28,3,1,Can Eskom share business statistics per site/plant,,,No
+29,4,1,What is a time coverage expected in Application support for 5 years?   24/7 or 8x5 (GMT+2),,,Customer First Premium Support is required.  Lebo to confirm 3rd line support 8/5 and adhoc is upon request
+30,5,1,Please can you specify the number the average number tickets per month that is expected to the logged with the application support team. This is a very important statistic that we need as it used to determine the size of the team need to support the solution,,,Average of 100 calls per month
+31,6,1,"Please clarify our understanding of the application support service:
+When a ticket is logged by a user for the new OSI PI platform it will first go to the Eskom Service Desk
+The Eskom service desk will anlayse the ticket and determine if it is an application issue to infrastructure issue
+If it is a infrastructure issue it will be handled completely by the Eskom infra support team
+If it is an application issue it will be passed onto the Eskom application support team
+The Eskom application support team will then try to resolve the ticket
+If the Eskom application support team cannot resolve the ticket it will then get passed onto the Vendor (i.e. this support contract) for resolution. 
+",,,"
+The Eskom service desk will analyse the ticket and assign the ticket to the relevant application team.
+The Eskom application support team will determine if it is an infrastructure issue or application issue.
+If it is a infrastructure issue it will be handled by the Eskom infra support team in conjunction with the application support team to confirm it is resolved.
+If the Eskom application support team cannot resolve the ticket it will then get passed onto the Vendor (i.e. this support contract) for resolution. 
+"
+32,7,1,What are the current versions of the existing eDNA & AVEVA PI Historians ?,,,eDNA: 21.01.0100
+33,17,5.2,What are the Cybersecurity standards the architecture needs to conform to?,,,Refer to Page 20
+34,26,7.2,"Across the 16 Locations, is there an established segregation of networks (Prod, DMZ, Corp)? ",,,Yes a DMZ is present at every powerstation
+35,32,,From an infra perspective is Eskom looking for a complete on premise solution or will Eskom consider a hybrid on prem/cloud solution,,,Complete on-premise solution
+36,33,,Can Eskom provide a table of exactly what protocols are used at each power station as these need to be licensed and have a cost impact - i.e. We want to provide an efficient model where Eskom does not pay for unnecessary licenses,,,As per Section 7.2. Interfaces Requirements.  However all PI  out of the box interfaces should be included
+37,,,Which part of the current system landscape is the alarm management module configured - i.e. Is it currently done in System Platform?,,,Yes it is in system platform
+38,,,Please provide volumetrics on the number of alarms currently configured per power station,,,eDNA does not generate any alarms
+39,,,"Please provide details on the complexity of alarms (i.e.. A simple alarm is defined as an alarm that just requires simple Boolean logic i.e. HH,LL alarm - A complex alarm is regarded as an alarm that requires complex logic which defines when an alarm is triggered such as the combination of several Boolean and/or integer states) - It would be good if we could get a table that shows number of alarms per power station as well as the complexity of alarms  - E.g. Power station X has 300 alarms of which 50 are complex and 250 are simple",,,eDNA does not generate any alarms
+40,,,Is the vendor expected to understand the logic that drives the current alarms by reverse-engineering the code from the current platform or will Eskom provide the logic for each alarm - The latter is preferred as it will be very time consuming to reverse engineer logic,,,eDNA does not generate any alarms
+41,,,Are the alarms configured for each power station?,,,Yes it is in system platform
+42,35,,What is the current protocol/mechanism used for alarm and event data that is transferred to eDNA/PI,,,eDNA does not generate any alarms
+43,,,Is OPC AE supported at all power stations for Alarm and Event data? ,,,No
+44,,,Does Eskom expect a centralized enterprise-wise AF structure or separate AF hierarchies?,,,Centalised PI data base with AF structure migrated from the RMDC System Platform plant breakdown hierarchy.
+45,,13.1,"RFP mentions -'Ten percent (10%) penalty will be imposed if the SLA of 98% availability over a 30-day period is not met.' SLA of 98% availability- what does it refers to is it for the Application Availability ?
+1. The 10% penalty will be imposed if the Application Availability of 98% not met or
+2. The 10% penalty applied if all the SLAs (Enhancement, Incident Management, Service Request) not met? Please suggest ",,,This refers to the SLA and not application availability. 

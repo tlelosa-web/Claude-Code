@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+  <meta name="mobile-web-app-capable" content="yes">
+  <title>🪙 Quest v2.1</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+    html { touch-action: manipulation; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: #e2e8f0; padding: 16px; line-height: 1.6; min-height: 100vh; }
+    .container { max-width: 600px; margin: 0 auto; }
+
+    #toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(20px); background: linear-gradient(135deg, #1e3a5f 0%, #2a4a7c 100%); color: #bfdbfe; padding: 14px 24px; border-radius: 12px; font-weight: 600; box-shadow: 0 8px 24px rgba(0,0,0,0.4); z-index: 1000; opacity: 0; pointer-events: none; transition: opacity 0.3s, transform 0.3s; }
+    #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    header { text-align: center; margin-bottom: 20px; }
+    h1 { font-size: 28px; color: #fbbf24; margin-bottom: 4px; text-shadow: 0 0 20px rgba(251,191,36,0.5); font-weight: 800; }
+    .version-text { font-size: 13px; color: #94a3b8; font-weight: 600; margin: -2px 0 12px 0; display: block; }
+    .datetime { font-size: 15px; color: #cbd5e1; margin-bottom: 16px; font-family: 'SF Mono', monospace; font-weight: 500; }
+    
+    .progress-ring-container { position: relative; width: 140px; height: 140px; margin: 0 auto 20px; filter: drop-shadow(0 4px 12px rgba(59, 130, 246, 0.3)); }
+    .progress-ring { transform: rotate(-90deg); }
+    .progress-ring__circle { transition: stroke-dashoffset 0.8s ease; stroke: #1e293b; }
+    .progress-ring__fill { stroke: url(#gradient); stroke-linecap: round; }
+    .progress-ring-text { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-weight: 800; font-size: 22px; color: #fbbf24; text-shadow: 0 0 12px rgba(251, 191, 36, 0.6); font-variant-numeric: tabular-nums; }
+
+    .wealth-showcase { background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(16, 185, 129, 0.1)); border: 2px solid rgba(59, 130, 246, 0.3); border-radius: 16px; padding: 20px; margin-bottom: 20px; box-shadow: 0 8px 24px rgba(0,0,0,0.3); position: relative; overflow: hidden; }
+    .wealth-showcase::before { content: ''; position: absolute; top: -50%; left: -50%; width: 200%; height: 200%; background: linear-gradient(45deg, transparent, rgba(255,255,255,0.03), transparent); animation: shimmer 3s infinite; }
+    @keyframes shimmer { 0% { transform: translateX(-100%) translateY(-100%) rotate(45deg); } 100% { transform: translateX(100%) translateY(100%) rotate(45deg); } }
+    .total-wealth-main { text-align: center; position: relative; z-index: 1; }
+    .total-wealth-label { font-size: 13px; color: #94a3b8; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
+    .total-wealth-value { font-size: 42px; font-weight: 900; background: linear-gradient(135deg, #3b82f6, #10b981); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-variant-numeric: tabular-nums; margin-bottom: 16px; line-height: 1.1; }
+    .wealth-breakdown { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 16px; }
+    .wealth-item { background: rgba(15, 23, 42, 0.6); padding: 12px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.05); transition: transform 0.2s; }
+    .wealth-item:hover { transform: translateY(-2px); }
+    .wealth-item-label { font-size: 12px; color: #94a3b8; margin-bottom: 4px; font-weight: 600; }
+    .wealth-item-value { font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums; }
+    .account-color { color: #fbbf24; }
+    .vault-color { color: #10b981; }
+
+    .quest-metrics { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 20px; }
+    .metric-card { background: linear-gradient(135deg, #1e293b, #1a2332); padding: 14px 12px; border-radius: 12px; text-align: center; border: 1px solid rgba(255,255,255,0.05); box-shadow: 0 4px 12px rgba(0,0,0,0.2); transition: transform 0.2s; }
+    .metric-card:hover { transform: translateY(-2px); }
+    .metric-label { display: block; color: #94a3b8; margin-bottom: 6px; font-weight: 600; font-size: 11px; text-transform: uppercase; }
+    .metric-value { font-weight: 800; font-size: 18px; font-variant-numeric: tabular-nums; }
+    .gold { color: #fbbf24; }
+    .treasure { color: #10b981; }
+    .loss { color: #ef4444; } 
+
+    .section { background: linear-gradient(135deg, #1e293b, #1a2332); padding: 18px; border-radius: 16px; margin-bottom: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.05); }
+    .section-title { font-size: 17px; font-weight: 800; margin-bottom: 16px; color: #fbbf24; display: flex; align-items: center; gap: 8px; }
+    .section-title::before { content: "▶"; font-size: 11px; color: #fbbf24; }
+
+    .streak-badge { display: inline-block; padding: 4px 10px; border-radius: 16px; font-size: 11px; font-weight: 800; text-transform: uppercase; margin-left: 6px; }
+    .streak-fire { background: linear-gradient(135deg, #f97316, #ea580c); color: white; box-shadow: 0 0 12px rgba(249, 115, 22, 0.6); animation: pulse 2s infinite; }
+    .streak-ice { background: linear-gradient(135deg, #3b82f6, #2563eb); color: white; box-shadow: 0 0 12px rgba(59, 130, 246, 0.6); animation: pulse 2s infinite; }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.85; } }
+
+    .quest-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+    .level-item { background: rgba(51, 65, 85, 0.5); padding: 12px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.05); transition: transform 0.2s; }
+    .level-item:hover { transform: translateY(-1px); }
+    .level-label { color: #94a3b8; font-size: 11px; margin-bottom: 6px; display: block; font-weight: 600; text-transform: uppercase; }
+    .level-value { font-weight: 700; font-size: 14px; color: #e2e8f0; }
+    
+    .input-group { margin-bottom: 14px; }
+    label { display: block; font-weight: 700; margin-bottom: 6px; font-size: 14px; color: #cbd5e1; }
+    input { width: 100%; padding: 12px 14px; font-size: 16px; border: 2px solid #334155; border-radius: 10px; background: rgba(15, 23, 42, 0.8); color: white; outline: none; transition: border-color 0.2s; font-variant-numeric: tabular-nums; }
+    input:focus { border-color: #fbbf24; }
+
+    .btn-group { display: flex; gap: 12px; margin: 10px 0; }
+    .btn { flex: 1; padding: 16px; font-size: 16px; font-weight: 800; border: none; border-radius: 12px; cursor: pointer; transition: all 0.2s; min-height: 48px; position: relative; overflow: hidden; }
+    .btn:active { transform: scale(0.98); }
+    .btn:hover:not(:disabled) { transform: translateY(-2px); }
+    .btn-loss { background: linear-gradient(135deg, #dc2626, #b91c1c); color: white; box-shadow: 0 4px 0 #991b1b; }
+    .btn-win { background: linear-gradient(135deg, #10b981, #059669); color: white; box-shadow: 0 4px 0 #047857; }
+    .btn-secondary { background: linear-gradient(135deg, #475569, #334155); color: white; box-shadow: 0 4px 0 #1e293b; }
+    .btn-save { background: linear-gradient(135deg, #fbbf24, #f59e0b); color: #0f172a; font-weight: 900; box-shadow: 0 4px 0 #d97706; }
+    .btn:disabled { opacity: 0.5; box-shadow: none; transform: translateY(2px); cursor: not-allowed; }
+
+    .settings-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(12px); z-index: 2000; display: none; align-items: center; justify-content: center; padding: 20px; }
+    .settings-overlay.show { display: flex; }
+    .settings-card { background: linear-gradient(135deg, rgba(30, 41, 59, 0.95), rgba(15, 23, 42, 0.95)); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 20px; padding: 24px; width: 100%; max-width: 440px; max-height: 90vh; overflow-y: auto; box-shadow: 0 25px 50px rgba(0, 0, 0, 0.7); }
+    .toggle-btn { background: linear-gradient(135deg, #334155, #1e293b); color: #cbd5e1; font-size: 15px; padding: 14px; border-radius: 12px; cursor: pointer; margin-top: 12px; text-align: center; font-weight: 700; border: 1px solid rgba(255,255,255,0.05); transition: all 0.2s; }
+    .toggle-btn:hover { transform: translateY(-2px); }
+
+    .trade-params-section { background: linear-gradient(135deg, rgba(30, 41, 59, 0.6), rgba(15, 23, 42, 0.6)); border: 1px solid rgba(255,255,255,0.08); border-radius: 14px; padding: 16px; margin-bottom: 16px; }
+    .params-header { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; padding-bottom: 14px; border-bottom: 1px solid rgba(255,255,255,0.08); }
+    .param-item { background: rgba(15, 23, 42, 0.6); padding: 10px 12px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.05); }
+    .param-label { font-size: 11px; color: #94a3b8; font-weight: 600; text-transform: uppercase; margin-bottom: 4px; }
+    .param-value { font-size: 16px; font-weight: 800; font-variant-numeric: tabular-nums; }
+    
+    .current-trade-hero { background: linear-gradient(135deg, rgba(251, 191, 36, 0.15), rgba(245, 158, 11, 0.15)); border: 2px solid rgba(251, 191, 36, 0.4); border-radius: 14px; padding: 18px 20px; margin-bottom: 14px; box-shadow: 0 4px 16px rgba(251, 191, 36, 0.2); }
+    .trade-with-context { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 8px; }
+    .current-trade-main { flex: 1; text-align: center; }
+    .current-trade-label { font-size: 12px; color: #94a3b8; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; }
+    .current-trade-value { font-size: 36px; font-weight: 900; color: #fbbf24; text-shadow: 0 0 16px rgba(251, 191, 36, 0.5); font-variant-numeric: tabular-nums; letter-spacing: -1px; }
+    .wealth-context { background: rgba(15, 23, 42, 0.7); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; padding: 10px 14px; min-width: 140px; }
+    .wealth-context-label { font-size: 10px; color: #64748b; font-weight: 600; text-transform: uppercase; margin-bottom: 4px; }
+    .wealth-context-value { font-size: 18px; font-weight: 800; background: linear-gradient(135deg, #3b82f6, #10b981); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-variant-numeric: tabular-nums; }
+    
+    .trade-breakdown { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+    .trade-component { background: rgba(51, 65, 85, 0.3); padding: 10px 12px; border-radius: 10px; text-align: center; border: 1px solid rgba(255,255,255,0.05); }
+    .trade-component-label { font-size: 11px; color: #94a3b8; font-weight: 600; margin-bottom: 4px; text-transform: uppercase; }
+    .trade-component-value { font-size: 16px; font-weight: 700; color: #fbbf24; font-variant-numeric: tabular-nums; }
+
+    .result-rows { display: grid; gap: 10px; }
+    .result-row { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 12px; border: 2px solid; }
+    .result-row.win-row { background: rgba(16, 185, 129, 0.1); border-color: rgba(16, 185, 129, 0.3); }
+    .result-row.loss-row { background: rgba(220, 38, 38, 0.1); border-color: rgba(220, 38, 38, 0.3); }
+    .result-icon { font-size: 20px; }
+    .result-details { flex: 1; }
+    .result-label { font-weight: 700; font-size: 13px; color: #cbd5e1; margin-bottom: 2px; }
+    .result-wealth-preview { font-size: 11px; color: #64748b; font-weight: 600; }
+    .result-values { text-align: right; }
+    .result-pill { padding: 4px 12px; border-radius: 8px; font-weight: 900; font-size: 16px; font-variant-numeric: tabular-nums; display: inline-block; margin-bottom: 2px; }
+    .win-glow { background: rgba(16, 185, 129, 0.2); color: #34d399; box-shadow: 0 0 12px rgba(16, 185, 129, 0.3); }
+    .loss-glow { background: rgba(220, 38, 38, 0.2); color: #f87171; box-shadow: 0 0 12px rgba(220, 38, 38, 0.3); }
+    .result-wealth-total { font-size: 10px; color: #64748b; font-weight: 600; }
+
+    .hint-box { background: linear-gradient(135deg, #1e3a5f, #1a2f4d); border-left: 4px solid #3b82f6; padding: 14px 16px; border-radius: 0 12px 12px 0; margin-top: 16px; box-shadow: 0 4px 12px rgba(30, 58, 95, 0.4); }
+    .hint-title { font-weight: 800; color: #93c5fd; margin-bottom: 6px; display: flex; align-items: center; gap: 6px; font-size: 14px; }
+    .hint-detail { font-weight: 700; color: #bfdbfe; font-family: 'SF Mono', monospace; font-size: 14px; }
+
+    .history { margin-top: 12px; font-size: 13px; max-height: 280px; overflow-y: auto; padding: 12px; background: rgba(15, 23, 42, 0.6); border-radius: 12px; border: 1px solid rgba(255,255,255,0.05); }
+    .history::-webkit-scrollbar { width: 6px; }
+    .history::-webkit-scrollbar-track { background: rgba(0,0,0,0.2); border-radius: 3px; }
+    .history::-webkit-scrollbar-thumb { background: rgba(251, 191, 36, 0.3); border-radius: 3px; }
+    .history-item { padding: 10px 8px; border-bottom: 1px solid rgba(30, 41, 59, 0.5); display: grid; grid-template-columns: 40px 1fr 85px 90px 55px; align-items: center; gap: 8px; transition: background 0.2s; }
+    .history-item:hover { background: rgba(30, 41, 59, 0.3); border-radius: 8px; }
+    .history-item:last-child { border-bottom: none; }
+    .history-number { font-weight: 800; color: #64748b; font-size: 12px; }
+    .history-action { font-weight: 700; text-transform: uppercase; font-size: 11px; }
+    .history-action.win { color: #10b981; }
+    .history-action.loss { color: #ef4444; }
+    .history-action.save { color: #fbbf24; }
+    .history-action.init { color: #64748b; }
+    .history-change { font-weight: 800; font-variant-numeric: tabular-nums; font-size: 14px; }
+    .history-change.win { color: #10b981; }
+    .history-change.loss { color: #ef4444; }
+    .history-change.save { color: #fbbf24; }
+    .history-balance { font-weight: 700; color: #cbd5e1; font-variant-numeric: tabular-nums; font-size: 14px; }
+    .history-time { font-size: 12px; color: #64748b; font-family: 'SF Mono', monospace; }
+
+    .switch-container { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
+    .switch { position: relative; display: inline-block; width: 52px; height: 28px; }
+    .switch input { opacity: 0; width: 0; height: 0; }
+    .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #475569; transition: .4s; border-radius: 28px; }
+    .slider:before { position: absolute; content: ""; height: 22px; width: 22px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%; }
+    input:checked + .slider { background-color: #fbbf24; }
+    input:checked + .slider:before { transform: translateX(24px); }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="progress-ring-container">
+        <svg class="progress-ring" width="140" height="140">
+          <defs>
+            <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stop-color="#3b82f6" />
+              <stop offset="100%" stop-color="#10b981" />
+            </linearGradient>
+          </defs>
+          <circle class="progress-ring__circle" stroke-width="8" fill="transparent" r="56" cx="70" cy="70"/>
+          <circle class="progress-ring__circle progress-ring__fill" stroke-width="8" stroke-dasharray="351.9" stroke-dashoffset="351.9" fill="transparent" r="56" cx="70" cy="70" id="ring-fill"/>
+        </svg>
+        <div class="progress-ring-text" id="ring-percent">0%</div>
+      </div>
+      <h1><span>🪙 Quest</span></h1>
+      <p class="version-text">v2.1 - Enhanced UI</p>
+      <div class="datetime" id="datetime">Loading…</div>
+      
+      <div class="wealth-showcase">
+        <div class="total-wealth-main">
+          <div class="total-wealth-label">💎 Total Wealth</div>
+          <div class="total-wealth-value" id="total-wealth-display">R100.00</div>
+        </div>
+        <div class="wealth-breakdown">
+          <div class="wealth-item">
+            <div class="wealth-item-label">Account Balance</div>
+            <div class="wealth-item-value account-color" id="account-balance">R100.00</div>
+          </div>
+          <div class="wealth-item">
+            <div class="wealth-item-label">🔒 Vault Savings</div>
+            <div class="wealth-item-value vault-color" id="saved-balance">R0.00</div>
+          </div>
+        </div>
+      </div>
+    </header>
+    
+    <div class="section">
+      <h2 class="section-title">📊 Performance</h2>
+      <div class="quest-metrics">
+        <div class="metric-card"><span class="metric-label">Wins</span><span class="metric-value treasure" id="total-wins-display">0</span></div>
+        <div class="metric-card"><span class="metric-label">Losses</span><span class="metric-value loss" id="total-losses-display">0</span></div>
+        <div class="metric-card">
+          <span class="metric-label">Win Rate</span>
+          <span class="metric-value gold" id="actual-win-rate-display">N/A</span>
+          <div id="streak-container"></div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="section">
+      <h2 class="section-title">✨ Timeline & Goal</h2>
+      <div class="quest-row">
+        <div class="level-item">
+          <span class="level-label">Quest Day / Remaining</span>
+          <div class="level-value" id="level-display">Day 1 (30 days Left)</div>
+        </div>
+        <div class="level-item">
+          <span class="level-label">Target Progress</span>
+          <div class="level-value" id="daily-target-display">Req: R0 | Goal: R0</div>
+        </div>
+      </div>
+      <div class="quest-row">
+        <div class="level-item">
+          <span class="level-label">Start Date</span>
+          <div class="level-value" id="start-date-display">N/A</div>
+        </div>
+        <div class="level-item">
+          <span class="level-label">Predicted Completion</span>
+          <div class="level-value" id="predicted-end-date-display">N/A</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2 class="section-title">🛡️ Trade Parameters</h2>
+      <div class="trade-params-section">
+        <div class="params-header">
+          <div class="param-item">
+            <div class="param-label">Risk %</div>
+            <div class="param-value gold" id="risk-percent-display">3.53%</div>
+          </div>
+          <div class="param-item">
+            <div class="param-label">Profit %</div>
+            <div class="param-value treasure" id="multiplier-display">100.0%</div>
+          </div>
+        </div>
+        
+        <div class="current-trade-hero">
+          <div class="trade-with-context">
+            <div class="current-trade-main">
+              <div class="current-trade-label">Current Trade</div>
+              <div class="current-trade-value" id="current-trade">R3.53</div>
+            </div>
+            <div class="wealth-context">
+              <div class="wealth-context-label">Total Wealth</div>
+              <div class="wealth-context-value" id="context-total-wealth">R100.00</div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="trade-breakdown">
+          <div class="trade-component">
+            <div class="trade-component-label">Trade (H)</div>
+            <div class="trade-component-value" id="trade-h-display">R1.81</div>
+          </div>
+          <div class="trade-component">
+            <div class="trade-component-label">Trade (L)</div>
+            <div class="trade-component-value" id="trade-l-display">R1.72</div>
+          </div>
+        </div>
+        
+        <div class="result-rows">
+          <div class="result-row win-row">
+            <div class="result-icon">🟩</div>
+            <div class="result-details">
+              <div class="result-label">If Win (Next Trade)</div>
+              <div class="result-wealth-preview">Total: <span id="win-total-preview">R103.53</span></div>
+            </div>
+            <div class="result-values">
+              <div class="result-pill win-glow" id="next-trade-win">R3.66</div>
+              <div class="result-wealth-total">Next trade amount</div>
+            </div>
+          </div>
+          
+          <div class="result-row loss-row">
+            <div class="result-icon">🟥</div>
+            <div class="result-details">
+              <div class="result-label">If Loss (Next Trade)</div>
+              <div class="result-wealth-preview">Total: <span id="loss-total-preview">R96.47</span></div>
+            </div>
+            <div class="result-values">
+              <div class="result-pill loss-glow" id="next-trade-loss">R3.40</div>
+              <div class="result-wealth-total">Next trade amount</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="hint-box" id="context-box">
+        <div class="hint-title" id="context-title">💡 Trade Context</div>
+        <div class="hint-detail" id="trade-context-hint">Stay disciplined.</div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="btn-group">
+        <button class="btn btn-loss" id="loss-btn">🟥 Record Loss</button>
+        <button class="btn btn-win" id="win-btn">🟩 Record Win</button>
+      </div>
+      <div class="btn-group">
+        <button class="btn btn-save" id="save-btn" disabled>💰 Save Profit</button>
+      </div>
+    </div>
+    
+    <div class="section">
+        <h2 class="section-title">📜 Journal</h2>
+        <div id="history" class="history"></div>
+        <div class="toggle-btn" id="open-settings-btn">⚙️ Open Settings</div>
+    </div>
+
+    <div id="settings-overlay" class="settings-overlay">
+      <div class="settings-card">
+        <h2 class="section-title">⚙️ Quest Settings</h2>
+        <div class="switch-container">
+            <span class="label">🛠️ Manual Adjustments</span>
+            <label class="switch"><input type="checkbox" id="custom-mode-checkbox"><span class="slider"></span></label>
+        </div>
+        <div class="input-group"><label>Opening Balance (R)</label><input type="number" id="openingInput" value="100" step="0.01"></div>
+        <div class="input-group"><label>Target Amount (R)</label><input type="number" id="targetInput" value="150000"></div>
+        <div class="input-group"><label>Goal Profit/Day (%)</label><input type="number" id="targetProfitPctInput" value="0" step="0.1"></div>
+        <div class="input-group"><label>Start Date</label><input type="date" id="startDateInput"></div>
+        <div class="input-group"><label>End Date</label><input type="date" id="completionDateInput"></div>
+        <div class="input-group"><label>Risk (% of Acc)</label><input type="number" id="riskPercent" value="3.53" step="0.1"></div>
+        <div class="input-group"><label>Profit (% of Risk)</label><input type="number" id="profitPercent" value="100"></div>
+        <div class="input-group"><label>Vault Save %</label><input type="number" id="savePercent" value="50"></div>
+        <div class="btn-group">
+          <button class="btn btn-secondary" id="close-settings-btn">Cancel</button>
+          <button class="btn btn-win" id="apply-custom">Apply & Save</button>
+        </div>
+        <div style="margin-top: 20px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 15px;">
+          <button class="btn btn-secondary" style="width:100%; margin-bottom: 8px;" id="export-btn">📤 Export Log</button>
+          <button class="btn btn-loss" style="width:100%;" id="reset-btn">↺ Full Reset</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div id="toast">Settings Saved</div>
+
+  <script>
+    function getTodayYMD() { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; }
+    function getFutureYMD(days) { const d = new Date(); d.setDate(d.getDate() + days); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; }
+    function formatZAR(num) { return 'R' + Math.abs(num).toFixed(2); }
+    function showToast(msg) { const t = document.getElementById('toast'); t.textContent = msg; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 2000); }
+
+    let openingBalance = 100, targetAmount = 150000, durationDays = 30, savedBalance = 0;
+    let riskPercent = 3.53, profitPercent = 100, savePercent = 50, targetProfitPct = 0;
+    let currentBalance = 100, currentDay = 1, nextId = 1, totalWins = 0, totalLosses = 0, currentStreak = 0;
+    let lastWinProfit = 0, customMode = false;
+    let userDefinedStartDate = getTodayYMD(), userDefinedCompletionDate = getFutureYMD(30);
+    let tradeLog = [];
+
+    const accountBalanceEl = document.getElementById('account-balance'), savedBalanceEl = document.getElementById('saved-balance'), totalWealthDisplayEl = document.getElementById('total-wealth-display');
+    const levelDisplayEl = document.getElementById('level-display'), dailyTargetDisplayEl = document.getElementById('daily-target-display'), startDateDisplayEl = document.getElementById('start-date-display');
+    const predictedEndDateDisplayEl = document.getElementById('predicted-end-date-display'), totalWinsDisplayEl = document.getElementById('total-wins-display'), totalLossesDisplayEl = document.getElementById('total-losses-display');
+    const actualWinRateDisplayEl = document.getElementById('actual-win-rate-display'), currentTradeEl = document.getElementById('current-trade');
+    const historyEl = document.getElementById('history'), ringFill = document.getElementById('ring-fill'), ringPercentText = document.getElementById('ring-percent');
+    const contextBox = document.getElementById('context-box'), contextTitle = document.getElementById('context-title'), contextHint = document.getElementById('trade-context-hint');
+    const streakContainer = document.getElementById('streak-container');
+    const contextTotalWealthEl = document.getElementById('context-total-wealth');
+    const winTotalPreviewEl = document.getElementById('win-total-preview');
+    const lossTotalPreviewEl = document.getElementById('loss-total-preview');
+
+    function setProgress(percent) {
+      const circumference = 56 * 2 * Math.PI;
+      const offset = circumference - (percent / 100 * circumference);
+      ringFill.style.strokeDashoffset = Math.max(0, offset);
+      ringPercentText.textContent = `${percent.toFixed(1)}%`;
+    }
+
+    function recalculate() {
+      const today = new Date();
+      today.setHours(0,0,0,0);
+      const start = new Date(userDefinedStartDate);
+      start.setHours(0,0,0,0);
+      const diffTime = today - start;
+      currentDay = Math.max(1, Math.floor(diffTime / (1000 * 60 * 60 * 24)) + 1);
+
+      const totalWealth = currentBalance + savedBalance;
+      const idealDailyRate = Math.pow(targetAmount / openingBalance, 1 / durationDays) - 1;
+      const targetWealthToday = openingBalance * Math.pow(1 + idealDailyRate, currentDay);
+      const reqTargetVal = Math.max(0, targetWealthToday - totalWealth);
+      const customGoalVal = currentBalance * (targetProfitPct / 100);
+      
+      const totalTrades = totalWins + totalLosses;
+      const actualWinRate = totalTrades > 0 ? ((totalWins / totalTrades) * 100).toFixed(1) + '%' : 'N/A';
+      
+      const currentRiskAmount = currentBalance * (riskPercent / 100);
+      const profitPerTrade = currentRiskAmount * (profitPercent / 100);
+      
+      const balanceAfterWin = currentBalance + profitPerTrade;
+      const balanceAfterLoss = currentBalance - currentRiskAmount;
+      
+      const progressPct = Math.min((totalWealth / targetAmount) * 100, 100);
+      setProgress(progressPct);
+
+      if (totalWealth < targetWealthToday) {
+        contextBox.style.background = "linear-gradient(135deg, #1e3a5f, #1a2f4d)";
+        contextTitle.innerHTML = "💡 Recovery Mode";
+        contextHint.textContent = `${formatZAR(targetWealthToday - totalWealth)} behind curve.`;
+      } else {
+        contextBox.style.background = "linear-gradient(135deg, #3d3215, #2d2510)";
+        contextTitle.innerHTML = "🏆 Ahead of Curve";
+        contextHint.textContent = `Target reached for Day ${currentDay}.`;
+      }
+
+      accountBalanceEl.textContent = formatZAR(currentBalance);
+      savedBalanceEl.textContent = formatZAR(savedBalance);
+      totalWealthDisplayEl.textContent = formatZAR(totalWealth);
+      contextTotalWealthEl.textContent = formatZAR(totalWealth);
+      
+      levelDisplayEl.textContent = `Day ${currentDay} (${Math.max(0, durationDays - (currentDay-1))} Left)`;
+      dailyTargetDisplayEl.textContent = `Req: ${formatZAR(reqTargetVal)} | Goal: ${formatZAR(customGoalVal)}`;
+      startDateDisplayEl.textContent = new Date(userDefinedStartDate).toLocaleDateString();
+      predictedEndDateDisplayEl.textContent = new Date(userDefinedCompletionDate).toLocaleDateString();
+      
+      document.getElementById('risk-percent-display').textContent = `${riskPercent.toFixed(2)}%`;
+      document.getElementById('multiplier-display').textContent = `${profitPercent.toFixed(1)}%`;
+      currentTradeEl.textContent = formatZAR(currentRiskAmount);
+      
+      const tradeL = (currentRiskAmount * 0.95) / (1 + 0.95);
+      const tradeH = currentRiskAmount - tradeL;
+      document.getElementById('trade-h-display').textContent = formatZAR(tradeH);
+      document.getElementById('trade-l-display').textContent = formatZAR(tradeL);
+      
+      const nextTradeWin = balanceAfterWin * (riskPercent / 100);
+      const nextTradeLoss = balanceAfterLoss * (riskPercent / 100);
+      document.getElementById('next-trade-win').textContent = formatZAR(nextTradeWin);
+      document.getElementById('next-trade-loss').textContent = formatZAR(nextTradeLoss);
+      
+      winTotalPreviewEl.textContent = formatZAR(balanceAfterWin + savedBalance);
+      lossTotalPreviewEl.textContent = formatZAR(balanceAfterLoss + savedBalance);
+      
+      totalWinsDisplayEl.textContent = totalWins;
+      totalLossesDisplayEl.textContent = totalLosses;
+      actualWinRateDisplayEl.textContent = actualWinRate;
+      
+      streakContainer.innerHTML = Math.abs(currentStreak) >= 2 ? `<span class="streak-badge ${currentStreak > 0 ? 'streak-fire' : 'streak-ice'}">${currentStreak > 0 ? '🔥' : '❄️'} ${Math.abs(currentStreak)}</span>` : '';
+
+      const totalProfitAvailable = totalWealth - openingBalance;
+      document.getElementById('save-btn').disabled = totalProfitAvailable <= 0;
+      document.getElementById('save-btn').textContent = totalProfitAvailable > 0 
+        ? `💰 Save ${savePercent}% Profit (${formatZAR(totalProfitAvailable * savePercent / 100)})`
+        : `💰 No Profit to Save`;
+    }
+
+    function saveState() {
+      const s = { openingBalance, targetAmount, durationDays, savedBalance, riskPercent, profitPercent, savePercent, targetProfitPct, currentBalance, tradeLog, nextId, customMode, totalWins, totalLosses, currentStreak, userDefinedStartDate, userDefinedCompletionDate };
+      localStorage.setItem('questStateV21', JSON.stringify(s));
+    }
+
+    function init() {
+      const saved = localStorage.getItem('questStateV21');
+      if (saved) {
+        const s = JSON.parse(saved);
+        openingBalance = s.openingBalance; targetAmount = s.targetAmount; durationDays = s.durationDays;
+        savedBalance = s.savedBalance; riskPercent = s.riskPercent; profitPercent = s.profitPercent;
+        savePercent = s.savePercent; targetProfitPct = s.targetProfitPct || 0;
+        currentBalance = s.currentBalance; nextId = s.nextId;
+        totalWins = s.totalWins; totalLosses = s.totalLosses; currentStreak = s.currentStreak || 0;
+        customMode = s.customMode; userDefinedStartDate = s.userDefinedStartDate; userDefinedCompletionDate = s.userDefinedCompletionDate;
+        tradeLog = s.tradeLog.map(l => ({ ...l, time: new Date(l.time) }));
+      } else {
+        tradeLog = [{ id: nextId++, type: 'init', change: 0, balance: currentBalance, time: new Date() }];
+      }
+      document.getElementById('openingInput').value = openingBalance;
+      document.getElementById('targetInput').value = targetAmount;
+      document.getElementById('targetProfitPctInput').value = targetProfitPct;
+      document.getElementById('startDateInput').value = userDefinedStartDate;
+      document.getElementById('completionDateInput').value = userDefinedCompletionDate;
+      document.getElementById('riskPercent').value = riskPercent;
+      document.getElementById('profitPercent').value = profitPercent;
+      document.getElementById('savePercent').value = savePercent;
+      document.getElementById('custom-mode-checkbox').checked = customMode;
+      recalculate(); renderHistory();
+    }
+
+    function renderHistory() {
+      historyEl.innerHTML = tradeLog.slice().reverse().map(item => `
+        <div class="history-item">
+          <span class="history-number">#${item.id}</span>
+          <span class="history-action ${item.type}">${item.type.toUpperCase()}</span>
+          <span class="history-change ${item.type}">${(item.change >= 0 ? '+' : '') + formatZAR(item.change)}</span>
+          <span class="history-balance">${formatZAR(item.balance)}</span>
+          <span class="history-time">${item.time.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</span>
+        </div>`).join('');
+    }
+
+    document.getElementById('win-btn').onclick = () => {
+      const profit = (currentBalance * (riskPercent / 100)) * (profitPercent / 100);
+      currentBalance += profit; totalWins++;
+      currentStreak = currentStreak < 0 ? 1 : currentStreak + 1;
+      tradeLog.push({ id: nextId++, type: 'win', change: profit, balance: currentBalance, time: new Date() });
+      recalculate(); renderHistory(); saveState();
+    };
+    document.getElementById('loss-btn').onclick = () => {
+      const loss = currentBalance * (riskPercent / 100);
+      currentBalance -= loss; totalLosses++;
+      currentStreak = currentStreak > 0 ? -1 : currentStreak - 1;
+      tradeLog.push({ id: nextId++, type: 'loss', change: -loss, balance: currentBalance, time: new Date() });
+      recalculate(); renderHistory(); saveState();
+    };
+    document.getElementById('save-btn').onclick = () => {
+        const totalProfit = (currentBalance + savedBalance) - openingBalance;
+        const amt = totalProfit * (savePercent / 100);
+        savedBalance += amt; currentBalance -= amt;
+        tradeLog.push({ id: nextId++, type: 'save', change: -amt, balance: currentBalance, time: new Date() });
+        recalculate(); renderHistory(); saveState();
+    };
+
+    document.getElementById('open-settings-btn').onclick = () => document.getElementById('settings-overlay').classList.add('show');
+    document.getElementById('close-settings-btn').onclick = () => document.getElementById('settings-overlay').classList.remove('show');
+    document.getElementById('apply-custom').onclick = () => {
+      openingBalance = parseFloat(document.getElementById('openingInput').value);
+      targetAmount = parseFloat(document.getElementById('targetInput').value);
+      riskPercent = parseFloat(document.getElementById('riskPercent').value);
+      profitPercent = parseFloat(document.getElementById('profitPercent').value);
+      savePercent = parseFloat(document.getElementById('savePercent').value);
+      targetProfitPct = parseFloat(document.getElementById('targetProfitPctInput').value);
+      userDefinedStartDate = document.getElementById('startDateInput').value;
+      userDefinedCompletionDate = document.getElementById('completionDateInput').value;
+      durationDays = Math.ceil((new Date(userDefinedCompletionDate) - new Date(userDefinedStartDate)) / 86400000) || 30;
+      customMode = document.getElementById('custom-mode-checkbox').checked;
+      recalculate(); saveState(); showToast('Settings Updated');
+      document.getElementById('settings-overlay').classList.remove('show');
+    };
+    document.getElementById('reset-btn').onclick = () => { if(confirm('Reset all progress?')) { localStorage.removeItem('questStateV21'); location.reload(); } };
+    document.getElementById('export-btn').onclick = () => {
+      let txt = `Quest Log v2.1\nTotal Wealth: ${formatZAR(currentBalance + savedBalance)}\n` + tradeLog.map(l => `#${l.id} ${l.type.toUpperCase()} ${formatZAR(l.change)}`).join('\n');
+      navigator.clipboard.writeText(txt).then(() => showToast('Log Copied'));
+    };
+
+    window.onload = init;
+    setInterval(() => { document.getElementById('datetime').textContent = new Date().toLocaleString(); }, 1000);
+  </script>
+</body>
+</html>

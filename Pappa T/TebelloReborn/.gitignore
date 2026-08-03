@@ -1,0 +1,20 @@
+# Secrets — never commit real values
+.env
+
+# Generated SQLite database (source of truth lives in data/, not this)
+*.db
+*.db-shm
+*.db-wal
+
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+
+# Generated PDF exports — data/ itself stays tracked, this is output only
+exports/
+
+# NOTE: do NOT add `data/` here. Unlike ai-outreach-agency, this project's
+# data/ directory holds tracked source content (Master CV, profile_seed.json,
+# legacy_reference/) that must stay committed.

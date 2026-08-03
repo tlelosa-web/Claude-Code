@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>F1 Clash Crate Tracker</title>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { background-color: #020617; color: white; font-family: sans-serif; }
+        .crate-slot { transition: all 0.3s ease; }
+        .premium-glow { filter: drop-shadow(0 0 8px rgba(234, 179, 8, 0.6)); }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        const App = () => {
+            const CYCLE_LENGTH = 12;
+            const [history, setHistory] = useState(() => {
+                const saved = localStorage.getItem('f1_crate_history');
+                return saved ? JSON.parse(saved) : [];
+            });
+
+            useEffect(() => {
+                localStorage.setItem('f1_crate_history', JSON.stringify(history));
+            }, [history]);
+
+            const addCrate = (type) => {
+                if (history.length < CYCLE_LENGTH) {
+                    setHistory([...history, type]);
+                }
+            };
+
+            const reset = () => {
+                if(confirm("Start a new 12-win cycle?")) setHistory([]);
+            };
+
+            const remaining = CYCLE_LENGTH - history.length;
+
+            return (
+                <div className="min-h-screen flex items-center justify-center p-4">
+                    <div className="w-full max-w-md bg-slate-900 border-2 border-slate-800 rounded-2xl overflow-hidden shadow-2xl">
+                        
+                        {/* Header */}
+                        <div className="bg-gradient-to-r from-red-600 to-red-800 p-6 text-center">
+                            <h1 className="text-white text-2xl font-black italic uppercase tracking-tighter">
+                                Crate Predictor
+                            </h1>
+                            <p className="text-red-100 text-xs font-bold uppercase tracking-widest mt-1 opacity-80">
+                                Offline Utility Tool
+                            </p>
+                        </div>
+
+                        <div className="p-6">
+                            {/* Visual Grid */}
+                            <div className="grid grid-cols-4 gap-3 mb-8">
+                                {[...Array(CYCLE_LENGTH)].map((_, i) => (
+                                    <div key={i} className={`relative aspect-square rounded-xl border-2 flex items-center justify-center ${
+                                        history[i] === 'premium' ? 'border-yellow-400 bg-yellow-400/10' : 
+                                        history[i] === 'basic' ? 'border-blue-400 bg-blue-400/10' : 'border-slate-700 bg-slate-800/50'
+                                    }`}>
+                                        {history[i] === 'premium' ? (
+                                            <span className="text-2xl premium-glow">⭐</span>
+                                        ) : history[i] === 'basic' ? (
+                                            <span className="text-2xl">📦</span>
+                                        ) : (
+                                            <span className="text-slate-600 font-bold text-sm">{i + 1}</span>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+
+                            {/* Dashboard */}
+                            <div className="bg-slate-800 rounded-xl p-4 mb-6 border border-slate-700">
+                                <p className="text-slate-400 text-xs uppercase font-bold">Next Premium In</p>
+                                <p className="text-3xl font-black text-white italic">
+                                    {remaining === 0 ? "READY!" : `${remaining} WINS`}
+                                </p>
+                            </div>
+
+                            {/* Actions */}
+                            <div className="space-y-3">
+                                <button 
+                                    disabled={history.length >= CYCLE_LENGTH}
+                                    onClick={() => addCrate('basic')}
+                                    className="w-full bg-blue-600 hover:bg-blue-500 disabled:opacity-50 py-4 rounded-xl font-bold transition-all active:scale-95"
+                                >
+                                    + BASIC CRATE
+                                </button>
+                                
+                                <button 
+                                    disabled={history.length < 11 || history.length >= CYCLE_LENGTH}
+                                    onClick={() => addCrate('premium')}
+                                    className="w-full bg-yellow-500 hover:bg-yellow-400 disabled:opacity-20 py-4 rounded-xl font-bold text-slate-950 transition-all active:scale-95"
+                                >
+                                    + PREMIUM CRATE
+                                </button>
+                            </div>
+
+                            <button onClick={reset} className="w-full mt-8 text-slate-500 hover:text-red-400 text-xs font-bold uppercase">
+                                ↺ Reset Sequence
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>

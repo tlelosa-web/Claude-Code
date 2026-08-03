@@ -1,0 +1,97 @@
+-- === INSTRUMENT SETTINGS ===
+instrument {
+    name = "JBS Quant-Flow Momentum Elite", 
+    overlay = true
+}
+
+-- === 1. SIGNAL & COLOR SETTINGS ===
+call_color = input { default = "#0bd104", type = input.color, title = "01. Call Pattern Color" }
+put_color  = input { default = "#f70202", type = input.color, title = "02. Put Pattern Color" }
+break_color = input { default = "#00ffcc", type = input.color, title = "03. Breakout GO Color" }
+ema_fast_color   = input { default = "#00ff00", type = input.color, title = "04. Fast EMA Color" }
+ema_slow_color   = input { default = "#ff0000", type = input.color, title = "05. Slow EMA Color" }
+
+-- === 2. MOMENTUM & ENVELOPE PARAMETERS ===
+fast_ema_len = input { default = 8, type = input.integer, title = "06. Momentum Fast EMA" }
+slow_ema_len = input { default = 21, type = input.integer, title = "07. Momentum Slow EMA" }
+env_ema_len  = input { default = 144, type = input.integer, title = "08. Envelope EMA (144)" }
+env_pct      = input { default = 1.0, type = input.double, step = 0.1, title = "09. Envelope % (1.0)" }
+vol_sma_len  = input { default = 14, type = input.integer, title = "10. Volume SMA Filter" }
+
+-- === 3. S/R & ORDER FLOW SETTINGS ===
+lookback = input { default = 15, type = input.integer, title = "11. Dynamic Lookback" }
+poc_color = input { default = "#ffeb3b", type = input.color, title = "12. POC Line (Yellow)" }
+of_threshold  = input { default = 1.5, type = input.double, title = "13. Order Flow Intensity (x Avg)" }
+
+-- === CORE CALCULATIONS ===
+ema_f = ema(close, fast_ema_len)
+ema_s = ema(close, slow_ema_len)
+ema_env = ema(close, env_ema_len)
+dev = ema_env * (env_pct / 100)
+vol_avg = sma(volume, 20)
+
+-- Plotting Moving Averages
+plot(ema_f, "Fast EMA", ema_fast_color, 1)
+plot(ema_s, "Slow EMA", ema_slow_color, 2)
+plot(ema_env + dev, "Upper Env", "#4caf50", 1, 0, style.dash_line)
+plot(ema_env - dev, "Lower Env", "#f44336", 1, 0, style.dash_line)
+
+-- === FETCH 5-MINUTE STRUCTURAL DATA ===
+sec_5m = security(current_ticker_id, "5m")
+if not sec_5m then return end
+o5 = sec_5m.open
+h5 = sec_5m.high
+l5 = sec_5m.low
+c5 = sec_5m.close
+v5 = sec_5m.volume
+v5_sma = sma(v5, vol_sma_len)
+
+-- === CANDLESTICK PATTERNS (5M RE-INTEGRATED) ===
+body = abs(c5 - o5)
+range = h5 - l5
+bull_eng = (c5[1] < o5[1]) and (c5 > o5) and (c5 > h5[1])
+bear_eng = (c5[1] > o5[1]) and (c5 < o5) and (c5 < l5[1])
+hammer = body < range/3 and min(o5, c5) > h5 - range/3 and (o5-l5) > 2*body
+s_star = body < range/3 and max(o5, c5) < l5 + range/3 and (h5-c5) > 2*body
+
+-- === BREAKOUT & ORDER FLOW LOGIC ===
+vol_ok = v5 > v5_sma
+is_intense = volume > (vol_avg * of_threshold)
+momo_up = ema_f > ema_s
+momo_dn = ema_f < ema_s
+
+-- Detect 5M High/Low Breakout
+break_up = c5 > h5[1] and momo_up and vol_ok
+break_dn = c5 < l5[1] and momo_dn and vol_ok
+
+-- === POINT OF CONTROL (POC) ===
+local poc_price = make_series()
+if v5 == highest(v5, 14) then poc_price:set(c5)
+else poc_price:set(nz(poc_price[1], c5)) end
+plot(poc_price, "POC", poc_color, 1, 0, style.dash_line)
+
+-- === PLOTTING SIGNALS ===
+-- 5M Structural Levels
+plot(h5, "5M High", "#f70202", 2)
+plot(l5, "5M Low", "#0bd104", 2)
+
+-- Dynamic S/R for Retests
+res_dyn = highest(high, lookback)
+sup_dyn = lowest(low, lookback)
+plot(res_dyn, "Dyn Res", "#1976d2", 1)
+plot(sup_dyn, "Dyn Sup", "#ff9800", 1)
+
+-- Reversal Pattern Shapes
+plot_shape(bull_eng or hammer, "Bull Pattern", shape_style.triangleup, shape_size.small, call_color, shape_location.belowbar)
+plot_shape(bear_eng or s_star, "Bear Pattern", shape_style.triangledown, shape_size.small, put_color, shape_location.abovebar)
+
+-- Order Flow Intensity (White Dots)
+plot_shape(is_intense, "OF Surge", shape_style.circle, shape_size.tiny, "#ffffff", shape_location.bottom)
+
+-- Final GO Signals (Continuation)
+if break_up then
+    plot_shape(true, "MOMO CALL", shape_style.triangleup, shape_size.huge, break_color, shape_location.belowbar, 0, "5M-GO", "white")
+end
+if break_dn then
+    plot_shape(true, "MOMO PUT", shape_style.triangledown, shape_size.huge, break_color, shape_location.abovebar, 0, "5M-GO", "white")
+end

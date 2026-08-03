@@ -1,0 +1,76 @@
+========================================
+  QUICK START GUIDE
+  IQ Option Signal Generator
+========================================
+
+1. OPEN COMMAND PROMPT
+   - Press Win + R
+   - Type: cmd
+   - Press Enter
+
+2. NAVIGATE TO THE FOLDER
+   cd c:\Users\tlelo\Desktop\IQ
+
+3. RUN THE SIGNAL GENERATOR
+   python main.py
+
+4. FOLLOW THE PROMPTS
+   - Enter your account balance (e.g., 100)
+   - Accept default risk settings (2.5%, 25%)
+   - Enter asset pair (e.g., EUR/USD)
+   - Choose expiry time (5 minutes recommended)
+
+5. ENTER CANDLE DATA
+   - You need 30 candles from IQ Option chart
+   - Format: OPEN HIGH LOW CLOSE
+   - Example: 1.0850 1.0865 1.0840 1.0845
+   - Separate with spaces or commas
+
+   TIP: Type 'skip' during entry to load demo data for testing
+
+6. GET YOUR SIGNAL
+   If conditions are met, you'll see:
+   - Asset (e.g., EUR/USD)
+   - Direction (CALL or PUT)
+   - Expiry time
+   - Confidence %
+   - Market regime
+
+7. EXECUTE THE TRADE
+   - Go to IQ Option platform
+   - Manually place the trade
+   - Come back and record the outcome
+
+8. REVIEW YOUR LOGS
+   - Check signals_YYYYMMDD.csv file
+   - Review which signals worked and which didn't
+   - Use this to improve your strategy
+
+========================================
+  KEY RULES (DON'T BREAK THESE)
+========================================
+
+❌ NEVER ignore the 25% daily stop-loss
+❌ NEVER continue past martingale step 4
+✅ ONLY trade when confidence is 60%+
+✅ REVIEW your CSV log after every session
+✅ STOP trading when you hit daily limit
+
+========================================
+  TROUBLESHOOTING
+========================================
+
+Q: "No signal detected"
+A: Market conditions don't meet criteria.
+   This is NORMAL - wait for better setup.
+
+Q: "Need at least 30 candles"
+A: Enter more historical candles from the chart.
+
+Q: "Daily loss limit reached"
+A: STOP TRADING for today. Review your strategy.
+
+Q: Python not found?
+A: Install Python from python.org (version 3.7+)
+
+========================================

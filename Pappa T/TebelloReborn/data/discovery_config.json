@@ -1,0 +1,5 @@
+{
+  "_comment": "careers24 is always automated (mode is ignored/treated as 'auto' for this platform — no robots.txt blocker, confirmed 2026-07-29). pnet flipped to 'auto' on 2026-07-31 — Tebello personally verified in a browser that https://www.pnet.co.za/jobs/operations-foreman/in-gauteng (bare path, no '?' query string) renders a working results page with real matches (see docs/specs/pnet-careers24-coverage.md Amendment, Open Item 4, now resolved). If PNet ever stops rendering usably, revert this to 'manual_pending_verification' and pnet falls back to sourcing from data/crawler_seed_urls.json indefinitely — a supported, intentional end state, not a stopgap.",
+  "pnet": { "mode": "auto" },
+  "careers24": { "mode": "auto" }
+}

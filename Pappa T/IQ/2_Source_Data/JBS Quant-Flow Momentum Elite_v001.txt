@@ -1,0 +1,91 @@
+-- === INSTRUMENT SETTINGS ===
+instrument {
+    name = "JBS Quant-Flow Momentum Elite", 
+    overlay = true
+}
+
+-- === 1. SIGNAL & COLOR SETTINGS ===
+call_color = input { default = "#0bd104", type = input.color, title = "01. Bullish Pattern Color" }
+put_color  = input { default = "#f70202", type = input.color, title = "02. Bearish Pattern Color" }
+break_color = input { default = "#00ffcc", type = input.color, title = "03. Breakout GO Color" }
+
+-- === 2. MOMENTUM & ENVELOPE ===
+fast_ema_len = 8
+slow_ema_len = 21
+env_ema_len  = 144
+env_pct      = 1.0
+vol_sma_len  = 14
+
+-- === 3. CORE CALCULATIONS ===
+ema_f = ema(close, fast_ema_len)
+ema_s = ema(close, slow_ema_len)
+ema_env = ema(close, env_ema_len)
+vol_avg = sma(volume, 20)
+dev = ema_env * (env_pct / 100)
+
+plot(ema_f, "Fast EMA", "#00ff00", 1)
+plot(ema_s, "Slow EMA", "#ff0000", 2)
+plot(ema_env + dev, "Upper Env", "#4caf50", 1, 0, style.dash_line)
+plot(ema_env - dev, "Lower Env", "#f44336", 1, 0, style.dash_line)
+
+-- === 4. FETCH 5-MINUTE DATA ===
+sec_5m = security(current_ticker_id, "5m")
+if not sec_5m then return end
+o5 = sec_5m.open
+h5 = sec_5m.high
+l5 = sec_5m.low
+c5 = sec_5m.close
+v5 = sec_5m.volume
+
+-- === 5. EXTENDED PATTERN LIBRARY (FROM YOUR LIST) ===
+body = abs(c5 - o5)
+range = h5 - l5
+is_doji = body <= (range * 0.1)
+
+-- Bullish Patterns
+bull_eng = (c5[1] < o5[1]) and (c5 > o5) and (c5 > h5[1])
+tweezer_bot = (abs(l5 - l5[1]) < (range * 0.1)) and (c5 > o5)
+morning_star = (c5[2] < o5[2]) and is_doji[1] and (c5 > o5)
+three_soldiers = (c5 > c5[1]) and (c5[1] > c5[2]) and (c5 > o5)
+hammer = body < range/3 and min(o5, c5) > h5 - range/3 and (o5-l5) > 2*body
+
+-- Bearish Patterns
+bear_eng = (c5[1] > o5[1]) and (c5 < o5) and (c5 < l5[1])
+tweezer_top = (abs(h5 - h5[1]) < (range * 0.1)) and (c5 < o5)
+evening_star = (c5[2] > o5[2]) and is_doji[1] and (c5 < o5)
+three_crows = (c5 < c5[1]) and (c5[1] < c5[2]) and (c5 < o5)
+shooting_star = body < range/3 and max(o5, c5) < l5 + range/3 and (h5-c5) > 2*body
+
+-- === 6. MOMENTUM & ORDER FLOW ===
+v5_sma = sma(v5, vol_sma_len)
+vol_ok = v5 > v5_sma
+is_intense = volume > (vol_avg * 1.5)
+break_up = c5 > h5[1] and ema_f > ema_s and vol_ok
+break_dn = c5 < l5[1] and ema_f < ema_s and vol_ok
+
+-- === 7. POC & LEVELS ===
+local poc_price = make_series()
+if v5 == highest(v5, 14) then poc_price:set(c5)
+else poc_price:set(nz(poc_price[1], c5)) end
+plot(poc_price, "POC", "#ffeb3b", 1, 0, style.dash_line)
+plot(h5, "5M High", "#f70202", 2)
+plot(l5, "5M Low", "#0bd104", 2)
+
+-- === 8. VISUAL OUTPUTS ===
+-- Order Flow Intensity (White Dots)
+plot_shape(is_intense, "OF Surge", shape_style.circle, shape_size.tiny, "#ffffff", shape_location.bottom)
+
+-- Pattern Triangles
+bull_signal = bull_eng or tweezer_bot or morning_star or three_soldiers or hammer
+bear_signal = bear_eng or tweezer_top or evening_star or three_crows or shooting_star
+
+plot_shape(bull_signal, "Bullish", shape_style.triangleup, shape_size.small, call_color, shape_location.belowbar)
+plot_shape(bear_signal, "Bearish", shape_style.triangledown, shape_size.small, put_color, shape_location.abovebar)
+
+-- Large MOMO GO Labels
+if break_up then
+    plot_shape(true, "MOMO CALL", shape_style.triangleup, shape_size.huge, break_color, shape_location.belowbar, 0, "5M-GO", "white")
+end
+if break_dn then
+    plot_shape(true, "MOMO PUT", shape_style.triangledown, shape_size.huge, break_color, shape_location.abovebar, 0, "5M-GO", "white")
+end

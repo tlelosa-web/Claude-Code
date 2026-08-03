@@ -1,0 +1,122 @@
+# Session Log — ai-outreach-agency
+
+> Chronological record of durable context changes.
+
+---
+
+## 2026-06-28 — Project initialisation
+
+- Created DCOE v3.0 scaffold: docs, src modules, tests, .claude config
+- Wrote CLAUDE.md with project definition, inference routing, offline-first rule, human approval gate
+- Wrote architecture.md documenting the 6-stage pipeline and data flow
+- Wrote todo.md with initial task queue
+- Pending decision: ADR-001 (lead store format)
+- No application logic written yet — scaffold and docs only
+
+- [2026-06-28 07:15 UTC] Imported 2 leads from leads.csv (0 duplicates skipped)
+- [2026-06-28 07:15 UTC] Imported 1 leads from leads.csv (0 duplicates skipped)
+- [2026-06-28 07:15 UTC] Imported 0 leads from leads.csv (1 duplicates skipped)
+- [2026-06-28 07:19 UTC] Imported 2 leads from leads.csv (0 duplicates skipped)
+- [2026-06-28 07:19 UTC] Imported 1 leads from leads.csv (0 duplicates skipped)
+- [2026-06-28 07:19 UTC] Imported 0 leads from leads.csv (1 duplicates skipped)
+- [2026-06-28 07:22 UTC] Imported 2 leads from leads.csv (0 duplicates skipped)
+- [2026-06-28 07:22 UTC] Imported 1 leads from leads.csv (0 duplicates skipped)
+- [2026-06-28 07:22 UTC] Imported 0 leads from leads.csv (1 duplicates skipped)
+- [2026-06-28 07:22 UTC] Imported 2 leads from leads.csv (0 duplicates skipped)
+- [2026-06-28 07:22 UTC] Imported 1 leads from leads.csv (0 duplicates skipped)
+- [2026-06-28 07:22 UTC] Imported 0 leads from leads.csv (1 duplicates skipped)
+- [2026-06-28 07:23 UTC] Imported 2 leads from leads.csv (0 duplicates skipped)
+- [2026-06-28 07:23 UTC] Imported 1 leads from leads.csv (0 duplicates skipped)
+- [2026-06-28 07:23 UTC] Imported 0 leads from leads.csv (1 duplicates skipped)
+- [2026-06-28 07:23 UTC] Imported 2 leads from leads.csv (0 duplicates skipped)
+- [2026-06-28 07:23 UTC] Imported 1 leads from leads.csv (0 duplicates skipped)
+- [2026-06-28 07:23 UTC] Imported 0 leads from leads.csv (1 duplicates skipped)
+- [2026-06-28 07:26 UTC] Imported 2 leads from leads.csv (0 duplicates skipped)
+- [2026-06-28 07:26 UTC] Imported 1 leads from leads.csv (0 duplicates skipped)
+- [2026-06-28 07:26 UTC] Imported 0 leads from leads.csv (1 duplicates skipped)
+- [2026-06-28 07:50 UTC] Imported 2 leads from leads.csv (0 duplicates skipped)
+- [2026-06-28 07:50 UTC] Imported 1 leads from leads.csv (0 duplicates skipped)
+- [2026-06-28 07:50 UTC] Imported 0 leads from leads.csv (1 duplicates skipped)
+
+## 2026-06-28 — Network integrations wired in
+
+- `feat: scaffold email_draft module with Gmail stub` — composer, pipeline guard on approval decision, `GmailClient.create_draft` still a stub (fake draft id, no OAuth)
+- `feat: config layer and main CLI runner` — `src/config.py` (Settings via python-dotenv), `src/main.py` CLI (import/list/run/run-all), `.env.example` + `.gitignore`
+- `feat: wire OpenRouter API into research and asset_gen` — added `src/shared/openrouter_client.py`, real inference calls from `claude_summariser.py` and `asset_gen/generator.py`
+- `feat: wire Apify scraper into research module` — `research/apify_client.py` now calls the real Apify website-content-crawler actor, with `OFFLINE_MODE` fixture and fallback on missing key or request failure
+- `feat: lead status lifecycle tracking` — added `VALID_TRANSITIONS` state machine to `lead_import/db.py` (`new → researched → asset_ready → approved/rejected → drafted`), enforced across research/asset_gen/approval/email_draft pipelines
+
+Remaining before end-to-end run: Gmail OAuth2 + real draft creation, `pyproject.toml`.
+
+## 2026-07-04 — Closed remaining gaps
+
+- **Security fix**: `.env.example` had a real OpenRouter API key pasted into it (working tree only, not committed — the committed version already had the `sk-or-replace-me` placeholder). Restored the placeholder; the real key remains only in gitignored `.env`.
+- Added `pyproject.toml` — core deps (`requests`, `python-dotenv`, `google-api-python-client`, `google-auth-httplib2`, `google-auth-oauthlib`), `pytest` as a dev extra, `ai-outreach` console script entry point.
+- Implemented Gmail OAuth2 in `email_draft/gmail_client.py`: `InstalledAppFlow` against `credentials.json`, token cached/refreshed via `token.json` (gitignored), real `drafts().create()` call using the `gmail.compose` scope only. `OFFLINE_MODE` path unchanged (returns `draft_{timestamp}` stub) so existing tests keep passing offline.
+- Added `TestGmailClient` cases to `tests/unit/test_email_draft.py` (offline stub id, and `FileNotFoundError` when credentials are missing in online mode). Full suite: 81 passed.
+- Installed the new Google API packages into the local environment.
+
+Pipeline is now code-complete for all 6 stages; only remaining setup step for a real end-to-end run is dropping a real `credentials.json` (Google Cloud OAuth client) in place and completing the one-time browser consent flow.
+
+## 2026-07-04 — Gmail OAuth2 verified live
+
+- Created a dedicated `ai-outreach-agency` GCP project (separate from `MIMS-ERP`), enabled the Gmail API, configured the OAuth consent screen (External audience), added `tlelosa@gmail.com` as a test user, and created a Desktop app OAuth client.
+- Placed the downloaded `credentials.json` in the project root and ran the real (non-`OFFLINE_MODE`) `GmailClient.create_draft()` path for the first time.
+- First attempt hit `Error 403: access_denied` — the signing-in account wasn't yet on the consent screen's test user list (required while the app is in "Testing" publish status). Fixed by adding `tlelosa@gmail.com` under Audience > Test users.
+- Second attempt succeeded: completed the browser consent flow, `token.json` cached in the project root (gitignored), and a real Gmail draft was created (id `r6796278908385378625`) with the `gmail.compose` scope only. Confirms the OAuth2 integration works end-to-end, not just in `OFFLINE_MODE`.
+
+## 2026-07-04 — Rate limiting added
+
+- New `src/shared/rate_limiter.py` — token-bucket `RateLimiter` (configurable rate/period/capacity), thread-safe, sleeps only when the bucket is exhausted.
+- Wired into all three external clients ahead of each real network call: `shared/openrouter_client.py` (60/min default), `research/apify_client.py` (30/min), `email_draft/gmail_client.py` (20/min). Each is overridable via `OPENROUTER_RATE_LIMIT_PER_MIN` / `APIFY_RATE_LIMIT_PER_MIN` / `GMAIL_RATE_LIMIT_PER_MIN`.
+- Added `tests/unit/test_rate_limiter.py` (3 tests, fake monotonic clock — no real sleeping). Full suite: 84 passed, including the existing 429-retry test that mocks the shared `time.sleep`.
+- Documented in `docs/api-patterns.md` under Common Patterns.
+
+## 2026-07-04 — Live end-to-end pipeline test + bug fix
+
+- **Bug found and fixed**: `src/main.py`'s `_run_single_lead` never passed `db_path` to `research_lead`/`run_asset_gen`/`run_approval_gate`/`run_email_draft`, so each fell back to `lead_import/db.py`'s `DEFAULT_DB_PATH` (`data/leads.db`) instead of `settings.DB_PATH` (`outreach.db`) — the DB the CLI actually reads leads from. That path has no `leads` table, so the first real `update_lead_status()` call would raise `sqlite3.OperationalError: no such table: leads`. Unit tests never caught this because `conftest.py`'s autouse fixture mocks `update_lead_status` out entirely. Fixed by threading `db_path=str(Path(settings.DB_PATH))` through all four calls.
+- Added a regression test, `TestMainCLIRunCommand` in `tests/integration/test_full_pipeline.py`, that runs `main(["run", "--lead-id", ...])` through the real CLI entry point (not calling pipeline stages directly like the existing integration tests do) and asserts the real DB file ends with status `drafted`. This is the only test that would have caught the bug above.
+- Ran a genuine live (non-`OFFLINE_MODE`) pipeline test: imported one lead (`Apify (Live Pipeline Smoke Test)`, a real crawl-friendly public site, contact email set to `tlelosa@gmail.com` so no real prospect was involved) → real Apify scrape → real OpenRouter summary + asset generation → human approval (genuinely reviewed by Tebello, not auto-approved) → real Gmail draft (`r2903087794821991922`) via the OAuth2 integration. Lead status progressed `new → researched → asset_ready → approved → drafted` correctly.
+- **Found along the way**: the OpenRouter account is out of credits for the default 4096-token request (only ~2659 tokens affordable) — returns HTTP 402. Worked around for this one test by lowering `max_tokens` to 500; not a code bug, but blocks any real batch run until credits are topped up at openrouter.ai/settings/credits.
+- Full suite: 85 passed.
+
+## 2026-07-04 — Lead deduplication logic
+
+- The existing dedup (SQLite `UNIQUE(company_name, email)` + `IntegrityError` catch in `cmd_import`) only caught byte-for-byte identical company names. Added `normalize_company_name()` in `lead_import/db.py` — lowercases, collapses whitespace, and strips a trailing legal suffix (Pty Ltd, (Pty) Ltd, CC, Inc, LLC, Corp) — so "Acme Engineering" and "ACME ENGINEERING (PTY) LTD" are recognized as the same company. `find_duplicate()` matches on email + normalized company name (both required, per the architecture doc's "company name + contact email" dedup spec) and is checked in `cmd_import` before every insert; the raw `UNIQUE` constraint stays as a backstop.
+- TDD: added 6 failing tests first (`TestDeduplication` in `test_lead_import.py`, one CLI-level case in `test_main.py`), confirmed RED, then implemented GREEN. Full suite: 91 passed.
+- **Bug found and fixed along the way**: `_log_session()` in `main.py` writes to the real `docs/session-log.md` unconditionally and was never mocked in tests, so every test run touching `cmd_import`/`_run_single_lead` appended "Imported N leads..." noise to this file (visible above as repeated entries with fake-looking timestamps — removed as cleanup). Added `tests/conftest.py` with an autouse fixture that mocks `src.main._log_session` for the whole suite.
+
+## 2026-07-04 — Closed out remaining Future backlog (planned, then executed)
+
+Goal: clear everything codeable from the Future list so only two things are left — topping up OpenRouter credits to run the pipeline for real leads, and building the visual dashboard. Planned via plan mode before touching code (no schema change without a migration file, no large multi-file work without a plan — both hard rules were directly implicated).
+
+- **ADR-002** (`docs/decisions/ADR-002-retire-n8n.md`): retired n8n from the stack, resolving the "Confirm/retire this in an ADR" note that had been sitting unresolved in CLAUDE.md's Architecture Decisions section. Orchestration stays in-process via the `ai-outreach` CLI. `docs/architecture.md`'s n8n section replaced with a pointer to the ADR.
+- **Google Sheets sync**: closed out without being built. It directly conflicted with ADR-001's explicit rejection of a live Sheets integration ("not by re-introducing Sheets as a data layer"), and the Future item itself was already marked optional. Confirmed with Tebello before closing rather than building it silently.
+- **Migration convention**: `src/lead_import/migrations.py` — the first real migration file this project has had, despite CLAUDE.md asserting the "no schema change without a migration file" rule since day one. Tracks `(version, sql)` tuples applied via `PRAGMA user_version` in `init_db()`, so both fresh and pre-existing DBs (including the real `outreach.db`) pick up new migrations automatically and idempotently.
+- **Campaign management**: first migration adds a `campaign` column (default `'default'`) to `leads`. Rather than a persisted per-campaign config file/table, asset type stays a single value but is now overridable per invocation via `--asset-type` on `run`/`run-all` (validated against `AssetType` members); `--campaign` on `import`/`list`/`run-all` assigns/filters leads by campaign. Simpler than a config-file approach and avoids over-engineering for a single-operator CLI.
+- **PDF export**: neither `asset_text` nor the un-edited approved text is persisted to the DB (only `approvals.edited_asset_text`, and only when a human edits), so export happens in-process in `_run_single_lead` right after the approval gate, using whichever text is actually final. New `src/asset_gen/pdf_export.py` (fpdf2 dependency) does simple line-based rendering — no full markdown parser needed for a single-page insight doc. Output dir is `Settings.EXPORTS_DIR` (default `exports/`, gitignored) so tests can redirect it instead of writing into the repo — same fix pattern as the `_log_session` bug above.
+- TDD throughout: each piece got failing tests first (confirmed RED), then implementation (GREEN), committed as its own atomic commit. Full suite grew from 91 → 113 passing across this batch.
+- Remaining: OpenRouter credit top-up + a real batch run, and the visual dashboard (deferred per ADR-001).
+
+## 2026-07-04 — Visual dashboard + approval-persistence fix
+
+Planned via plan mode before touching code (per the hard rule on no large multi-file work without a plan). Confirmed scope with Tebello first: static self-contained HTML report (no new server/dependency) over a Streamlit app or TUI, covering the pipeline funnel + per-campaign breakdown + approval/rejection history.
+
+- **Bug found while building the approval-history view**: `run_approval_gate` (`src/approval/cli.py`) has always returned an `ApprovalResult` without ever calling `save_approval`/`init_approvals_table` — the `approvals` table was only ever created and populated inside tests, never by a real pipeline run. Confirmed with Tebello before fixing (would have shipped the dashboard's approval-history section permanently empty otherwise). Added `_persist_approval()`, called from the approve/reject/edit branches. TDD: added two integration assertions to `test_full_pipeline.py` first (confirmed RED with `sqlite3.OperationalError: no such table: approvals`), then implemented (GREEN). Added a new autouse `mock_persist_approval` fixture to `tests/unit/conftest.py` so existing unit tests that call `run_approval_gate` without an explicit `db_path` don't fall through to writing the real `data/leads.db` — same pattern already used for `update_lead_status`.
+- **New `src/dashboard/` package**: `data.py` (pure SQLite query functions — `get_status_counts`, `get_campaign_matrix`, `get_approval_history`, `get_summary`, all zero-division/missing-table safe) and `generator.py` (`generate_dashboard_html`, plain f-string HTML with inline CSS, no Jinja2 or other new dependency). New `ai-outreach dashboard [--output PATH] [--open]` CLI command; new `Settings.DASHBOARD_PATH` (default `dashboard.html`, gitignored, override via env var, same pattern as `EXPORTS_DIR`).
+- TDD throughout: 14 new tests in `tests/unit/test_dashboard.py` (written RED, confirmed failing on `ModuleNotFoundError`, then implemented GREEN) plus 2 new CLI-level tests in `test_main.py`. Full suite: 113 → 129 passing.
+- Manual smoke test: ran `ai-outreach dashboard --output dashboard.html` against the real `outreach.db` — correctly showed 1 lead, status `drafted`, 100% approval rate, and (as expected, since the fix above only affects runs going forward) an empty approval-history section for that pre-fix historic draft.
+- `black`/`ruff` could not be run in this session — not installed (and not declared in `pyproject.toml`'s `dev` extras, which only lists `pytest`); flagging so this can be run manually before commit.
+- Remaining: OpenRouter credit top-up + a real batch run is now the only open item.
+
+## 2026-07-19 — Build Queue B: local Ollama inference for `research` (ADR-004)
+
+Second of two parallel OpenRouter cost-elimination tracks (the first, `asset_gen` → headless Claude Code, is Build Queue A / ADR-003, planned but not yet built — see the `docs/todo.md` entry above and its own Future note). Branch: `feature/handoff-tracking` (shared with Build Queue A but file-disjoint — no module overlap).
+
+- **ADR-004** (`docs/decisions/ADR-004-local-ollama-research-inference.md`): decided to replace `research/claude_summariser.py`'s OpenRouter call with a local Ollama call (`qwen3:8b`, native `/api/generate`). Key reasoning worth preserving for future sessions: `nomic-embed-text`/embeddings from Tebello's original draft diagram were investigated and confirmed to have **no consumer** anywhere in the codebase (`ResearchResult` has no vector field; lead dedup is string-normalization based, not similarity-based) — deliberately scoped out, not forgotten, and flagged as a candidate for its own future ADR if a real retrieval feature ever gets specified. Client placed in `research/` (not `shared/`) because it has exactly one consumer, mirroring the existing `apify_client.py` precedent rather than the two-consumer `openrouter_client.py` precedent.
+- **Built** (TDD throughout, RED before GREEN, per spec `docs/specs/ollama-research-build.md`): `src/config.py` gained `OLLAMA_BASE_URL`/`OLLAMA_MODEL`; new `src/research/ollama_client.py` (`call_ollama`, `OllamaError`, `OllamaUnreachableError`, module-level `RateLimiter` at `OLLAMA_RATE_LIMIT_PER_MIN`, default 120/min, no API key since Ollama is a local daemon); `research/claude_summariser.py`'s non-offline branch swapped `call_openrouter` → `call_ollama`, with the `OFFLINE_MODE` stub guard left byte-for-byte untouched so the whole suite still runs offline with zero Ollama dependency; `.env.example` got both new vars as non-secret local defaults.
+- **Deliberate design decision — fail loud, no fallback**: if Ollama is unreachable, `summarise_lead()` lets `OllamaUnreachableError` propagate instead of silently retrying against `call_openrouter`. Reasoning worth remembering: OpenRouter is *also* currently out of credits (HTTP 402, see Known Issues), so a silent fallback would swap one dead backend for another and surface as a confusing OpenRouter error instead of the actionable "Ollama isn't running" message. If a deliberate paid fallback is ever wanted, it must be an explicit opt-in setting proposed in its own change — never a silent default.
+- **Bug caught and fixed during the acceptance pass, commit `338002f`**: the client's original error handling treated Ollama read-timeout (daemon up, generation just slow/cold-loading) the same as connection-refused/connect-timeout (daemon not running at all) — both raised `OllamaUnreachableError` with the "is it running?" message, which is actively misleading on a slow-but-live daemon. Fixed so a read-timeout now raises the base `OllamaError` with a distinct "model may be slow to respond or still cold-loading" message, while connect-timeout/connection-refused keeps `OllamaUnreachableError`'s "is it running?" message. These are genuinely different failure modes with different remediation and must not be collapsed into one code path or one message — documented explicitly in `docs/api-patterns.md`'s new Ollama section so this isn't re-litigated later.
+- **Docs updated this session** (this doc-writer pass): new "Local Ollama Inference (research)" section in `docs/api-patterns.md`; `docs/architecture.md`'s Stage 2 description and External Integrations table now show `research` on local Ollama, not OpenRouter; this project's own `CLAUDE.md` updated across Pipeline Stages, External Client Patterns table, Environment & Secrets table, Inference Routing section, Architecture Decisions (new ADR-004 bullet), Directory Structure, and the stale "85 passing" baseline corrected to the current **153 passing**. `asset_gen` was deliberately left describing OpenRouter throughout — it has not moved, and conflating it with this track would misdocument Build Queue A's actual (not-yet-built) status.
+- Full suite: **153 tests passing**. Reviewer (Opus) approved before merge to `feature/handoff-tracking` (not yet merged to `master`).
+- **What's still open**: Build Queue A (`asset_gen` → headless Claude Code, ADR-003) is planned but not built — that's the only remaining piece before the pipeline runs fully OpenRouter-independent end-to-end. Real (non-offline) `research` runs additionally require Tebello to complete the one-time local setup in `docs/specs/ollama-research-build.md` §Prerequisites (install Ollama, `ollama pull qwen3:8b`) — not yet confirmed done on this machine as of this session; the code and full test suite do not depend on it (offline-first), only a genuine live batch run would.

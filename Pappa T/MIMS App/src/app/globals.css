@@ -1,0 +1,115 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+@import url('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; font-family: 'Inter', sans-serif; }
+  body { background-color: #f5f7fb; color: #333; line-height: 1.6; }
+}
+
+@layer components {
+  /* ── Sidebar ─────────────────────────────────── */
+  .sidebar {
+    @apply fixed left-0 top-0 h-screen w-64 flex flex-col z-40 overflow-y-auto;
+    background: linear-gradient(180deg, #1d3557 0%, #3f37c9 100%);
+  }
+
+  /* ── Buttons ────────────────────────────────── */
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-semibold text-sm
+           border-0 cursor-pointer transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  .btn-primary   { @apply bg-primary text-white hover:bg-primary-dark active:scale-95; }
+  .btn-outline   { @apply bg-transparent border border-primary text-primary hover:bg-primary/10; }
+  .btn-danger    { @apply bg-danger text-white hover:bg-red-600 active:scale-95; }
+  .btn-success   { @apply bg-success text-white hover:bg-emerald-600 active:scale-95; }
+  .btn-ghost     { @apply bg-transparent text-muted hover:bg-gray-100; }
+  .btn-sm        { @apply px-2 py-1 text-xs rounded; }
+
+  /* ── Cards / Sections ───────────────────────── */
+  .card {
+    @apply bg-white rounded-xl shadow-card p-6;
+  }
+
+  /* ── Status Badges ──────────────────────────── */
+  .badge {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold whitespace-nowrap;
+  }
+  .badge-r1          { @apply bg-emerald-100 text-emerald-700; }
+  .badge-medium      { @apply bg-yellow-100 text-yellow-700; }
+  .badge-high        { @apply bg-red-100 text-red-700; }
+  .badge-ordered     { @apply bg-blue-100 text-blue-700; }
+  .badge-received    { @apply bg-emerald-100 text-emerald-700; }
+  .badge-cancelled   { @apply bg-red-100 text-red-600; }
+  .badge-pending     { @apply bg-orange-100 text-orange-700; }
+  .badge-in-progress { @apply bg-gray-100 text-gray-600; }
+  .badge-completed   { @apply bg-emerald-100 text-emerald-700; }
+  .badge-confirmed   { @apply bg-blue-100 text-blue-700; }
+  .badge-dispatch    { @apply bg-purple-100 text-purple-700; }
+  .badge-dispatched  { @apply bg-gray-100 text-gray-500; }
+
+  /* ── Table ──────────────────────────────────── */
+  .data-table {
+    @apply w-full border-collapse text-sm;
+  }
+  .data-table thead th {
+    @apply bg-gray-50 text-navy font-semibold text-left px-3 py-3 border-b border-gray-200
+           sticky top-0 z-10 whitespace-nowrap cursor-pointer select-none;
+  }
+  .data-table thead th:hover { @apply bg-gray-100; }
+  .data-table tbody tr { @apply border-b border-gray-100 hover:bg-primary/5 transition-colors; }
+  .data-table tbody td { @apply px-3 py-3 align-middle; }
+
+  /* ── Table container with scroll ───────────── */
+  .table-wrap {
+    @apply overflow-x-auto overflow-y-auto rounded-lg;
+    max-height: 62vh;
+  }
+
+  /* ── Form elements ──────────────────────────── */
+  .form-label  { @apply block text-sm font-medium text-gray-700 mb-1; }
+  .form-input  {
+    @apply w-full px-3 py-2 rounded-lg border border-gray-300 text-sm
+           focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary
+           transition-colors;
+  }
+  .form-select { @apply form-input; }
+
+  /* ── Modal ──────────────────────────────────── */
+  .modal-backdrop {
+    @apply fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50;
+    animation: fade-in 0.15s ease-out;
+  }
+  .modal-box {
+    @apply bg-white rounded-2xl w-full max-w-2xl shadow-dropdown;
+    animation: slide-in 0.2s ease-out;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+  }
+  .modal-header { @apply flex items-center justify-between p-6 pb-4 border-b border-gray-100; }
+  .modal-body   { @apply p-6 overflow-y-auto flex-1; }
+  .modal-footer { @apply flex justify-end gap-3 p-6 pt-4 border-t border-gray-100; }
+
+  /* ── Toast ──────────────────────────────────── */
+  #toast {
+    @apply fixed bottom-5 right-5 px-4 py-3 rounded-xl text-white font-medium text-sm
+           shadow-dropdown z-[9999] transition-all duration-300;
+    transform: translateY(120px);
+    opacity: 0;
+  }
+  #toast.show { transform: translateY(0); opacity: 1; }
+  #toast.success { @apply bg-success; }
+  #toast.error   { @apply bg-danger; }
+
+  /* ── KPI Stat card ──────────────────────────── */
+  .stat-card {
+    @apply card flex items-center gap-4 cursor-pointer hover:shadow-md transition-shadow;
+  }
+  .stat-icon {
+    @apply w-14 h-14 rounded-xl flex items-center justify-center text-2xl shrink-0;
+  }
+}

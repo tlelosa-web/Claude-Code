@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+    <title>✈️ AviatorQuest - Pilot v1.2</title>
+    <style>
+        :root {
+            /* Default Aviator Theme */
+            --primary: #ef4444; /* Aviator Red */
+            --secondary: #10b981; /* Cashout Green */
+            --accent: #fbbf24;
+            --bg: #0f172a;
+            --panel: #1e293b;
+            --text: #f8fafc;
+            --glass: rgba(255, 255, 255, 0.05);
+        }
+
+        /* Space Crash Theme Override */
+        body.theme-space {
+            --primary: #a855f7; /* Purple */
+            --secondary: #22d3ee; /* Cyan */
+            --bg: #020617;
+            --panel: #1e1b4b;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+        body { 
+            font-family: 'Inter', system-ui, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            padding: 15px;
+            transition: background 0.3s ease;
+        }
+
+        .container { width: 100%; max-width: 500px; margin: 0 auto; }
+
+        /* UI Elements */
+        header { text-align: center; margin-bottom: 15px; }
+        .rank-badge { font-size: 10px; font-weight: 900; color: var(--accent); letter-spacing: 2px; text-transform: uppercase; }
+        
+        .nav-bar { display: flex; gap: 5px; margin-bottom: 15px; background: rgba(0,0,0,0.2); padding: 4px; border-radius: 10px; }
+        .nav-btn { flex: 1; padding: 10px; border: none; border-radius: 6px; background: transparent; color: #64748b; font-weight: 700; cursor: pointer; }
+        .nav-btn.active { background: var(--panel); color: white; box-shadow: 0 2px 8px rgba(0,0,0,0.3); }
+
+        .cockpit-panel { background: var(--panel); border-radius: 20px; padding: 18px; border: 1px solid var(--glass); box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+
+        /* Progress & Bankroll */
+        .stats-banner { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; }
+        .stat-card { background: rgba(0,0,0,0.2); padding: 10px; border-radius: 12px; text-align: center; border: 1px solid var(--glass); }
+        .stat-label { font-size: 9px; color: #94a3b8; text-transform: uppercase; font-weight: 800; }
+        .stat-val { font-size: 18px; font-weight: 800; color: var(--secondary); }
+
+        .progress-track { height: 6px; background: #000; border-radius: 10px; margin: 10px 0; overflow: hidden; }
+        .progress-bar { height: 100%; background: linear-gradient(90deg, var(--primary), var(--secondary)); width: 0%; transition: 1s; }
+
+        /* Execution Styles */
+        .bet-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 15px; }
+        .bet-card { background: rgba(15, 23, 42, 0.4); padding: 12px; border-radius: 15px; border: 1px solid var(--glass); }
+        .bet-card label { display: block; font-size: 10px; font-weight: 800; color: #94a3b8; margin-bottom: 4px; }
+        .unit-input { width: 100%; background: transparent; border: none; color: white; font-size: 20px; font-weight: 800; outline: none; }
+        
+        .auto-cash-input { width: 100%; background: rgba(0,0,0,0.2); border: 1px solid var(--glass); color: var(--accent); padding: 4px; border-radius: 4px; font-size: 12px; font-weight: 700; margin-top: 5px; text-align: center; }
+
+        .btn-action { width: 100%; padding: 16px; border-radius: 12px; border: none; font-weight: 900; text-transform: uppercase; cursor: pointer; transition: 0.1s; }
+        .btn-cashout { background: var(--secondary); color: #064e3b; margin-top: 8px; font-size: 12px; }
+        .btn-crash { background: var(--primary); color: white; font-size: 18px; box-shadow: 0 4px 0 #991b1b; }
+        .btn-action:active { transform: translateY(2px); box-shadow: none; }
+        .btn-disabled { opacity: 0.3; pointer-events: none; filter: grayscale(1); }
+
+        /* Mission Config Row Alignment */
+        .config-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid var(--glass); }
+        .config-row label { font-size: 12px; font-weight: 700; color: #94a3b8; text-align: left; flex: 1; }
+        .config-row input, .config-row select { width: 120px; padding: 8px; background: #0f172a; border: 1px solid #334155; color: white; border-radius: 6px; text-align: right; }
+
+        .log-item { display: flex; justify-content: space-between; padding: 10px; background: var(--glass); border-radius: 8px; margin-bottom: 5px; font-size: 13px; }
+        .hidden { display: none; }
+    </style>
+</head>
+<body id="body-main">
+
+    <div class="container">
+        <header>
+            <div class="rank-badge" id="pilot-rank">Rookie Pilot</div>
+            <h1 id="game-title">✈️ AVIATOR QUEST</h1>
+        </header>
+
+        <nav class="nav-bar">
+            <button class="nav-btn active" onclick="showView('execution')">COCKPIT</button>
+            <button class="nav-btn" onclick="showView('stats')">HISTORY</button>
+            <button class="nav-btn" onclick="showView('settings')">CONFIG</button>
+        </nav>
+
+        <div class="cockpit-panel" style="margin-bottom: 15px; padding: 12px;">
+            <div class="stats-banner">
+                <div class="stat-card"><div class="stat-label">Bankroll</div><div class="stat-val" id="total-bankroll">R1000</div></div>
+                <div class="stat-card"><div class="stat-label">Total Stake</div><div class="stat-val" id="total-stake" style="color:var(--accent)">R0.00</div></div>
+            </div>
+            <div class="progress-track"><div class="progress-bar" id="main-progress"></div></div>
+            <div style="text-align: center; font-size: 9px; font-weight: 800; color: #64748b;" id="prog-detail">0% TO DESTINATION</div>
+        </div>
+
+        <div id="view-execution" class="view-content">
+            <div class="bet-grid">
+                <div class="bet-card">
+                    <label>BET A (UNITS)</label>
+                    <input type="number" id="unit-a" class="unit-input" value="2" oninput="handleBetAInput()">
+                    <div class="stat-label" id="cash-a-val">R0.00</div>
+                    <input type="number" id="auto-a" class="auto-cash-input" value="1.50" step="0.1" title="Auto Cashout A">
+                    <button class="btn-action btn-cashout" id="btn-cash-a" onclick="cashout(1)">CASHOUT</button>
+                </div>
+                <div class="bet-card">
+                    <label>BET B (UNITS)</label>
+                    <input type="number" id="unit-b" class="unit-input" value="1" oninput="calculateStakes()">
+                    <div class="stat-label" id="cash-b-val">R0.00</div>
+                    <input type="number" id="auto-b" class="auto-cash-input" value="5.00" step="0.1" title="Auto Cashout B">
+                    <button class="btn-action btn-cashout" id="btn-cash-b" onclick="cashout(2)">CASHOUT</button>
+                </div>
+            </div>
+            <button class="btn-action btn-crash" onclick="crash()">CRASH</button>
+        </div>
+
+        <div id="view-stats" class="view-content hidden">
+            <div class="cockpit-panel">
+                <h3 style="margin-bottom:10px; font-size:14px;">FLIGHT JOURNAL</h3>
+                <div id="log-list"></div>
+            </div>
+        </div>
+
+        <div id="view-settings" class="view-content hidden">
+            <div class="cockpit-panel">
+                <h3 style="margin-bottom:15px; font-size:14px;">MISSION CONFIG</h3>
+                
+                <div class="config-row">
+                    <label>Bankroll (R)</label>
+                    <input type="number" id="set-start" value="1000">
+                </div>
+                <div class="config-row">
+                    <label>Target Goal (R)</label>
+                    <input type="number" id="set-target" value="5000">
+                </div>
+                <div class="config-row">
+                    <label>Unit Size (%)</label>
+                    <input type="number" id="set-unit-pct" value="1">
+                </div>
+                <div class="config-row">
+                    <label>Auto-Set B (%)</label>
+                    <input type="number" id="set-auto-b-pct" value="50">
+                </div>
+                <div class="config-row">
+                    <label>Game Theme</label>
+                    <select id="set-theme" onchange="applyTheme()">
+                        <option value="aviator">Classic Aviator</option>
+                        <option value="space">Space Crash</option>
+                    </select>
+                </div>
+
+                <button class="btn-action btn-cashout" onclick="applySettings()" style="background: var(--accent); color: #000;">SAVE MISSION</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let bankroll = 1000, startBankroll = 1000, targetGoal = 5000, unitPct = 1;
+        let autoBPct = 50, wins = 0, roundCounter = 1, tradeLog = [];
+        let betAActive = true, betBActive = true, roundProfit = 0;
+
+        function showView(name) {
+            document.querySelectorAll('.view-content').forEach(v => v.classList.add('hidden'));
+            document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById('view-' + name).classList.remove('hidden');
+            event.target.classList.add('active');
+        }
+
+        function handleBetAInput() {
+            const aVal = parseFloat(document.getElementById('unit-a').value) || 0;
+            document.getElementById('unit-b').value = (aVal * (autoBPct / 100)).toFixed(2);
+            calculateStakes();
+        }
+
+        function calculateStakes() {
+            const unitVal = (bankroll * (unitPct / 100));
+            const uA = parseFloat(document.getElementById('unit-a').value) || 0;
+            const uB = parseFloat(document.getElementById('unit-b').value) || 0;
+            const total = (uA + uB) * unitVal;
+            
+            document.getElementById('total-bankroll').textContent = 'R' + bankroll.toFixed(0);
+            document.getElementById('total-stake').textContent = 'R' + total.toFixed(2);
+            document.getElementById('cash-a-val').textContent = 'R' + (uA * unitVal).toFixed(2);
+            document.getElementById('cash-b-val').textContent = 'R' + (uB * unitVal).toFixed(2);
+        }
+
+        function cashout(num) {
+            // Check Auto Multiplier
+            const autoVal = parseFloat(document.getElementById(num === 1 ? 'auto-a' : 'auto-b').value);
+            const mult = prompt(`Cashout Multiplier for Bet ${num === 1 ? 'A' : 'B'}?`, autoVal);
+            if (!mult || isNaN(mult)) return;
+
+            const unitVal = (bankroll * (unitPct / 100));
+            const uA = parseFloat(document.getElementById('unit-a').value) || 0;
+            const uB = parseFloat(document.getElementById('unit-b').value) || 0;
+
+            // NEW LOGIC: If B is cashed but A is still active, A automatically cashes at its Auto Point
+            if (num === 2 && betAActive) {
+                const aAuto = parseFloat(document.getElementById('auto-a').value);
+                roundProfit += (uA * unitVal * aAuto) - (uA * unitVal);
+                betAActive = false;
+                document.getElementById('btn-cash-a').classList.add('btn-disabled');
+            }
+
+            const stake = (num === 1 ? uA : uB) * unitVal;
+            roundProfit += (stake * mult) - stake;
+
+            if (num === 1) {
+                betAActive = false;
+                document.getElementById('btn-cash-a').classList.add('btn-disabled');
+            } else {
+                betBActive = false;
+                document.getElementById('btn-cash-b').classList.add('btn-disabled');
+            }
+
+            if (!betAActive && !betBActive) finalize("WIN");
+        }
+
+        function crash() {
+            const unitVal = (bankroll * (unitPct / 100));
+            const uA = betAActive ? parseFloat(document.getElementById('unit-a').value) || 0 : 0;
+            const uB = betBActive ? parseFloat(document.getElementById('unit-b').value) || 0 : 0;
+            roundProfit -= (uA + uB) * unitVal;
+            finalize("CRASH");
+        }
+
+        function finalize(status) {
+            bankroll += roundProfit;
+            if (roundProfit > 0) wins++;
+            tradeLog.push({ id: roundCounter++, status, profit: roundProfit, bal: bankroll });
+            
+            roundProfit = 0; betAActive = true; betBActive = true;
+            document.querySelectorAll('.btn-cashout').forEach(b => b.classList.remove('btn-disabled'));
+            updateUI();
+        }
+
+        function applyTheme() {
+            const theme = document.getElementById('set-theme').value;
+            const body = document.getElementById('body-main');
+            const title = document.getElementById('game-title');
+            
+            if (theme === 'space') {
+                body.className = 'theme-space';
+                title.textContent = '🚀 SPACE CRASH';
+            } else {
+                body.className = '';
+                title.textContent = '✈️ AVIATOR QUEST';
+            }
+        }
+
+        function updateUI() {
+            const progress = ((bankroll - startBankroll) / (targetGoal - startBankroll)) * 100;
+            const cp = Math.max(0, Math.min(progress, 100));
+            document.getElementById('main-progress').style.width = cp + '%';
+            document.getElementById('prog-detail').textContent = cp.toFixed(1) + '% TO TARGET';
+            
+            let rank = "Rookie";
+            if (wins > 20) rank = "Pilot";
+            if (wins > 50) rank = "Captain";
+            document.getElementById('pilot-rank').textContent = rank;
+
+            renderLog();
+            calculateStakes();
+            localStorage.setItem('aviatorPilot_v12', JSON.stringify({ bankroll, startBankroll, targetGoal, unitPct, autoBPct, tradeLog, wins, roundCounter }));
+        }
+
+        function renderLog() {
+            document.getElementById('log-list').innerHTML = tradeLog.slice().reverse().map(l => `
+                <div class="log-item">
+                    <span>#${l.id} ${l.status}</span>
+                    <span style="color:${l.profit > 0 ? 'var(--secondary)' : 'var(--primary)'}">${l.profit > 0 ? '+' : ''}R${l.profit.toFixed(2)}</span>
+                </div>
+            `).join('');
+        }
+
+        function applySettings() {
+            bankroll = parseFloat(document.getElementById('set-start').value);
+            startBankroll = bankroll;
+            targetGoal = parseFloat(document.getElementById('set-target').value);
+            unitPct = parseFloat(document.getElementById('set-unit-pct').value);
+            autoBPct = parseFloat(document.getElementById('set-auto-b-pct').value);
+            applyTheme();
+            updateUI();
+            showView('execution');
+        }
+
+        window.onload = () => {
+            const saved = localStorage.getItem('aviatorPilot_v12');
+            if (saved) {
+                const d = JSON.parse(saved);
+                Object.assign(window, d);
+                document.getElementById('set-start').value = startBankroll;
+                document.getElementById('set-target').value = targetGoal;
+            }
+            updateUI();
+        };
+    </script>
+</body>
+</html>

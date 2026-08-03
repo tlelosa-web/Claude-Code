@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chief of Staff — Operations Interface</title>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #0a0e27;
+            --secondary: #1a1f3a;
+            --accent: #00d4aa;
+            --accent-dim: #008b72;
+            --warning: #ff6b35;
+            --text: #e8eaf6;
+            --text-dim: #9aa5ce;
+            --border: #2a2f4a;
+            --success: #4caf50;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'DM Sans', sans-serif;
+            background: linear-gradient(135deg, var(--primary) 0%, #0d1229 100%);
+            color: var(--text);
+            min-height: 100vh;
+            padding: 2rem;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        header {
+            margin-bottom: 3rem;
+            border-bottom: 2px solid var(--border);
+            padding-bottom: 2rem;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            color: var(--accent);
+            font-family: 'IBM Plex Mono', monospace;
+            letter-spacing: -1px;
+        }
+
+        .subtitle {
+            color: var(--text-dim);
+            font-size: 1rem;
+            font-family: 'IBM Plex Mono', monospace;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .card {
+            background: var(--secondary);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.5rem;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+            background: var(--accent);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .card:hover {
+            border-color: var(--accent);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(0, 212, 170, 0.15);
+        }
+
+        .card:hover::before {
+            opacity: 1;
+        }
+
+        .card-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .icon {
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--accent);
+            color: var(--primary);
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 0.875rem;
+        }
+
+        .metric {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--accent);
+            margin-bottom: 0.5rem;
+            font-family: 'IBM Plex Mono', monospace;
+        }
+
+        .label {
+            color: var(--text-dim);
+            font-size: 0.875rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .status-critical {
+            background: rgba(255, 107, 53, 0.2);
+            color: var(--warning);
+            border: 1px solid var(--warning);
+        }
+
+        .status-active {
+            background: rgba(0, 212, 170, 0.2);
+            color: var(--accent);
+            border: 1px solid var(--accent);
+        }
+
+        .status-pending {
+            background: rgba(154, 165, 206, 0.2);
+            color: var(--text-dim);
+            border: 1px solid var(--text-dim);
+        }
+
+        .input-section {
+            background: var(--secondary);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .input-group {
+            margin-bottom: 1.5rem;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: var(--text);
+            font-weight: 500;
+            font-size: 0.875rem;
+        }
+
+        select, textarea, input {
+            width: 100%;
+            background: var(--primary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 0.75rem 1rem;
+            color: var(--text);
+            font-family: 'DM Sans', sans-serif;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+        }
+
+        select:focus, textarea:focus, input:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(0, 212, 170, 0.1);
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 120px;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 0.875rem;
+        }
+
+        button {
+            background: var(--accent);
+            color: var(--primary);
+            border: none;
+            padding: 1rem 2rem;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-family: 'DM Sans', sans-serif;
+        }
+
+        button:hover {
+            background: var(--accent-dim);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 212, 170, 0.3);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        .task-list {
+            list-style: none;
+        }
+
+        .task-item {
+            background: var(--primary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 0.75rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.3s ease;
+        }
+
+        .task-item:hover {
+            border-color: var(--accent);
+            transform: translateX(4px);
+        }
+
+        .task-text {
+            flex: 1;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 0.875rem;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: var(--primary);
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 0.5rem;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--accent), var(--accent-dim));
+            transition: width 0.5s ease;
+        }
+
+        .pillars-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .pillar {
+            background: var(--primary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1rem;
+            text-align: center;
+        }
+
+        .pillar-name {
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: var(--accent);
+        }
+
+        .pillar-status {
+            font-size: 0.75rem;
+            color: var(--text-dim);
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .card {
+            animation: fadeIn 0.5s ease;
+        }
+
+        .card:nth-child(1) { animation-delay: 0s; }
+        .card:nth-child(2) { animation-delay: 0.1s; }
+        .card:nth-child(3) { animation-delay: 0.2s; }
+        .card:nth-child(4) { animation-delay: 0.3s; }
+
+        .output-area {
+            background: var(--primary);
+            border: 1px solid var(--accent);
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-top: 1.5rem;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 0.875rem;
+            line-height: 1.8;
+            min-height: 200px;
+            max-height: 400px;
+            overflow-y: auto;
+            display: none;
+        }
+
+        .output-area.active {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .timestamp {
+            color: var(--text-dim);
+            font-size: 0.75rem;
+            margin-bottom: 0.5rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>CHIEF OF STAFF — OPERATIONS INTERFACE</h1>
+            <p class="subtitle">Tebello Lelosa | Life Project Management System</p>
+        </header>
+
+        <!-- Dashboard Overview -->
+        <div class="grid">
+            <div class="card">
+                <div class="card-title">
+                    <span class="icon">$</span>
+                    Financial Status
+                </div>
+                <div class="metric">R1.49M</div>
+                <div class="label">Total Debt</div>
+                <div style="margin-top: 1rem;">
+                    <span class="status-badge status-critical">Critical Priority</span>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill" style="width: 5%;"></div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-title">
+                    <span class="icon">⏱</span>
+                    Timeline
+                </div>
+                <div class="metric">3.3 yrs</div>
+                <div class="label">To Age 45 Target</div>
+                <div style="margin-top: 1rem;">
+                    <span class="status-badge status-active">On Track</span>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-title">
+                    <span class="icon">↗</span>
+                    Income Target
+                </div>
+                <div class="metric">R50K+</div>
+                <div class="label">Monthly Goal</div>
+                <div style="margin-top: 1rem;">
+                    <span class="status-badge status-pending">In Progress</span>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill" style="width: 30%;"></div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-title">
+                    <span class="icon">🎯</span>
+                    Primary Objective
+                </div>
+                <div class="metric">R5.5M</div>
+                <div class="label">Assets by 45-50</div>
+                <div style="margin-top: 1rem;">
+                    <span class="status-badge status-active">Active</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Core Pillars -->
+        <div class="card" style="margin-bottom: 2rem;">
+            <div class="card-title">
+                <span class="icon">⚡</span>
+                Core Life Pillars (Charter Aligned)
+            </div>
+            <div class="pillars-grid">
+                <div class="pillar">
+                    <div class="pillar-name">Health</div>
+                    <div class="pillar-status">Monitoring Required</div>
+                </div>
+                <div class="pillar">
+                    <div class="pillar-name">Wealth</div>
+                    <div class="pillar-status">Critical Focus</div>
+                </div>
+                <div class="pillar">
+                    <div class="pillar-name">Relationships</div>
+                    <div class="pillar-status">Stable</div>
+                </div>
+                <div class="pillar">
+                    <div class="pillar-name">Purpose</div>
+                    <div class="pillar-status">AI Business Development</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Active Tasks -->
+        <div class="card" style="margin-bottom: 2rem;">
+            <div class="card-title">
+                <span class="icon">✓</span>
+                Active Tasks & Priorities
+            </div>
+            <ul class="task-list">
+                <li class="task-item">
+                    <span class="task-text">1. CV Update & Job Applications (30+ positions)</span>
+                    <span class="status-badge status-pending">Pending</span>
+                </li>
+                <li class="task-item">
+                    <span class="task-text">2. Contact Debt Counselor (Free Consultation)</span>
+                    <span class="status-badge status-critical">Urgent</span>
+                </li>
+                <li class="task-item">
+                    <span class="task-text">3. Market Research: Interview 5 Engineering Contacts</span>
+                    <span class="status-badge status-pending">This Week</span>
+                </li>
+                <li class="task-item">
+                    <span class="task-text">4. Define AI Engineering Solution Specifics</span>
+                    <span class="status-badge status-active">In Progress</span>
+                </li>
+                <li class="task-item">
+                    <span class="task-text">5. Negotiate Bond Arrears Payment Plan</span>
+                    <span class="status-badge status-critical">Urgent</span>
+                </li>
+            </ul>
+        </div>
+
+        <!-- Input Interface -->
+        <div class="input-section">
+            <h2 style="margin-bottom: 1.5rem; color: var(--accent);">Submit Task or Challenge</h2>
+            
+            <div class="input-group">
+                <label for="category">Category</label>
+                <select id="category">
+                    <option value="income">Income Generation</option>
+                    <option value="debt">Debt Management</option>
+                    <option value="career">Career Development</option>
+                    <option value="business">AI Business Development</option>
+                    <option value="personal">Personal Development</option>
+                    <option value="decision">Decision Preparation</option>
+                    <option value="risk">Risk Assessment</option>
+                    <option value="other">Other</option>
+                </select>
+            </div>
+
+            <div class="input-group">
+                <label for="priority">Priority Level</label>
+                <select id="priority">
+                    <option value="critical">Critical (Immediate Action Required)</option>
+                    <option value="high">High (This Week)</option>
+                    <option value="medium">Medium (This Month)</option>
+                    <option value="low">Low (Planned)</option>
+                </select>
+            </div>
+
+            <div class="input-group">
+                <label for="task">Task or Challenge Description</label>
+                <textarea id="task" placeholder="Describe the task, decision, or challenge you need help with...
+
+Example:
+- Need to prepare options for X decision
+- Stuck on Y problem, need analysis
+- Want to explore Z opportunity
+- Need research on [topic]"></textarea>
+            </div>
+
+            <div class="input-group">
+                <label for="context">Additional Context (Optional)</label>
+                <textarea id="context" placeholder="Any relevant background, constraints, or specific requirements..."></textarea>
+            </div>
+
+            <button onclick="submitTask()">Submit to Rudy (Chief of Staff)</button>
+
+            <div id="output" class="output-area"></div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="grid">
+            <div class="card" style="cursor: pointer;" onclick="quickAction('cv')">
+                <div class="card-title">
+                    <span class="icon">📄</span>
+                    Update CV
+                </div>
+                <p style="font-size: 0.875rem; color: var(--text-dim);">Modernize CV for job applications</p>
+            </div>
+
+            <div class="card" style="cursor: pointer;" onclick="quickAction('debt')">
+                <div class="card-title">
+                    <span class="icon">💰</span>
+                    Debt Strategy
+                </div>
+                <p style="font-size: 0.875rem; color: var(--text-dim);">Review debt management options</p>
+            </div>
+
+            <div class="card" style="cursor: pointer;" onclick="quickAction('income')">
+                <div class="card-title">
+                    <span class="icon">📈</span>
+                    Income Ideas
+                </div>
+                <p style="font-size: 0.875rem; color: var(--text-dim);">Explore AI business opportunities</p>
+            </div>
+
+            <div class="card" style="cursor: pointer;" onclick="quickAction('baseline')">
+                <div class="card-title">
+                    <span class="icon">📊</span>
+                    Daily Baseline
+                </div>
+                <p style="font-size: 0.875rem; color: var(--text-dim);">Review current status & objectives</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function submitTask() {
+            const category = document.getElementById('category').value;
+            const priority = document.getElementById('priority').value;
+            const task = document.getElementById('task').value;
+            const context = document.getElementById('context').value;
+
+            if (!task.trim()) {
+                alert('Please enter a task description');
+                return;
+            }
+
+            const output = document.getElementById('output');
+            const timestamp = new Date().toLocaleString();
+            
+            output.innerHTML = `
+                <div class="timestamp">${timestamp}</div>
+                <div style="color: var(--accent); font-weight: 600; margin-bottom: 1rem;">TASK SUBMITTED</div>
+                <div><strong>Category:</strong> ${category.toUpperCase()}</div>
+                <div><strong>Priority:</strong> ${priority.toUpperCase()}</div>
+                <div style="margin-top: 1rem;"><strong>Description:</strong></div>
+                <div style="margin-top: 0.5rem; padding: 1rem; background: var(--secondary); border-radius: 6px;">${task}</div>
+                ${context ? `<div style="margin-top: 1rem;"><strong>Context:</strong></div><div style="margin-top: 0.5rem; padding: 1rem; background: var(--secondary); border-radius: 6px;">${context}</div>` : ''}
+                <div style="margin-top: 1.5rem; padding: 1rem; background: rgba(0, 212, 170, 0.1); border-left: 3px solid var(--accent); border-radius: 4px;">
+                    <strong>→ Rudy (Chief of Staff) will process this task according to Charter protocols.</strong><br><br>
+                    Please continue this conversation in the main chat to receive:
+                    <ul style="margin-left: 1.5rem; margin-top: 0.5rem;">
+                        <li>Analysis and options</li>
+                        <li>Risk assessment if applicable</li>
+                        <li>Action plan with timelines</li>
+                        <li>Resource requirements</li>
+                    </ul>
+                </div>
+            `;
+            output.classList.add('active');
+
+            // Scroll to output
+            output.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+
+        function quickAction(type) {
+            const output = document.getElementById('output');
+            const timestamp = new Date().toLocaleString();
+            let message = '';
+
+            switch(type) {
+                case 'cv':
+                    message = `
+                        <div style="color: var(--accent); font-weight: 600; margin-bottom: 1rem;">CV UPDATE REQUEST</div>
+                        <div>Rudy will now update your CV with:</div>
+                        <ul style="margin-left: 1.5rem; margin-top: 0.5rem;">
+                            <li>Modernized format and structure</li>
+                            <li>AI/technology capabilities highlighted</li>
+                            <li>Quantified achievements emphasized</li>
+                            <li>ATS-optimized keywords</li>
+                            <li>Ready for R30K-R50K+ positions</li>
+                        </ul>
+                        <div style="margin-top: 1rem; color: var(--text-dim);">Please confirm in main chat to proceed.</div>
+                    `;
+                    break;
+                case 'debt':
+                    message = `
+                        <div style="color: var(--warning); font-weight: 600; margin-bottom: 1rem;">DEBT STRATEGY REVIEW</div>
+                        <div>Current Status:</div>
+                        <ul style="margin-left: 1.5rem; margin-top: 0.5rem;">
+                            <li>Total Debt: R1,493,032</li>
+                            <li>Bond Arrears: R50,000 (Critical)</li>
+                            <li>Recommended: Debt Review + Income Explosion</li>
+                        </ul>
+                        <div style="margin-top: 1rem;">Next steps will be prepared in main chat.</div>
+                    `;
+                    break;
+                case 'income':
+                    message = `
+                        <div style="color: var(--accent); font-weight: 600; margin-bottom: 1rem;">INCOME GENERATION FOCUS</div>
+                        <div>Active Strategies:</div>
+                        <ul style="margin-left: 1.5rem; margin-top: 0.5rem;">
+                            <li>Track 1: Job upgrade (R30K-R50K/month)</li>
+                            <li>Track 2: AI Engineering Solutions business</li>
+                            <li>Target: R50K-R150K/month within 12 months</li>
+                        </ul>
+                        <div style="margin-top: 1rem;">Awaiting your answers on AI solution specifics in main chat.</div>
+                    `;
+                    break;
+                case 'baseline':
+                    message = `
+                        <div style="color: var(--accent); font-weight: 600; margin-bottom: 1rem;">DAILY BASELINE REVIEW</div>
+                        <div><strong>Current Objectives (Top 3):</strong></div>
+                        <ol style="margin-left: 1.5rem; margin-top: 0.5rem;">
+                            <li>Stabilize finances (debt review + bond arrears)</li>
+                            <li>Secure R30K-R50K/month job</li>
+                            <li>Launch AI engineering consulting/business</li>
+                        </ol>
+                        <div style="margin-top: 1rem;"><strong>Current Constraints:</strong></div>
+                        <ul style="margin-left: 1.5rem; margin-top: 0.5rem;">
+                            <li>Time: 2 hours/evening</li>
+                            <li>Money: R3K/month surplus</li>
+                            <li>Energy: Managing current job + planning</li>
+                        </ul>
+                        <div style="margin-top: 1rem;"><strong>Active Risks:</strong> Debt pressure, bond foreclosure risk, time constraints</div>
+                    `;
+                    break;
+            }
+
+            output.innerHTML = `
+                <div class="timestamp">${timestamp}</div>
+                ${message}
+            `;
+            output.classList.add('active');
+            output.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+    </script>
+</body>
+</html>

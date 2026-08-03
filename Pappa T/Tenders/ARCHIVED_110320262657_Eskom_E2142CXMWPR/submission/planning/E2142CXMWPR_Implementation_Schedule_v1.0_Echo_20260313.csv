@@ -1,0 +1,23 @@
+TaskID,TaskName,Duration,Start,Finish,Predecessors,ResourceNames,Milestone,Phase
+1,Project Kick-off,0d,2026-03-12,2026-03-12,,Echo;Alpha;India;Juliet;Kilo,Yes,Initiation
+2,Discovery Complete,1d,2026-03-12,2026-03-13,1,Echo,Yes,Discovery
+3,Returnables Matrix v1 Circulated,0d,2026-03-12,2026-03-12,1,Echo;Kilo,Yes,Discovery
+4,Technical Proposal Draft,2d,2026-03-13,2026-03-14,2,Alpha;Beta;Charlie;Delta,No,Drafting
+5,SDL Mapping & Template,2d,2026-03-13,2026-03-14,2,Alpha,No,Drafting
+6,Implementation Schedule Build,1d,2026-03-13,2026-03-13,2,Echo,No,Planning
+7,Resource Plan & CV Pack,1d,2026-03-13,2026-03-13,2,Echo,No,Planning
+8,Support & SLA Plan Draft,2d,2026-03-14,2026-03-15,4;5,Foxtrot,No,Drafting
+9,QCP/ITP Draft,2d,2026-03-16,2026-03-17,4;5,Golf,No,Quality
+10,CQP Draft,2d,2026-03-16,2026-03-17,4;5,Golf,No,Quality
+11,SHE Acknowledgement Prepared,1d,2026-03-16,2026-03-16,2,Hotel,No,SHE
+12,Safety File Skeleton,1d,2026-03-16,2026-03-16,11,Hotel,No,SHE
+13,Pricing (Annexure M) Draft,2d,2026-03-17,2026-03-18,4;5,India,No,Commercial
+14,TEC (Annexure O) Alignment Workshop,1d,2026-03-18,2026-03-18,13,Alpha;India,No,Commercial
+15,Internal Reviews (Tech/Quality/Commercial/Legal),1d,2026-03-19,2026-03-19,8;9;10;13;14,Alpha;Golf;India;Juliet,No,Governance
+16,QA Gate: Document Quality Check,0d,2026-03-19,2026-03-19,15,Golf,Yes,Governance
+17,Legal Gate: NEC3 & Conditions Acceptance,0d,2026-03-19,2026-03-19,15;16,Juliet,Yes,Governance
+18,Portal Gate: Packaging Dry-Run,0d,2026-03-19,2026-03-19,16;17,Kilo,Yes,Governance
+19,Final Packaging QA,1d,2026-03-20,2026-03-20,18,Kilo,No,Finalization
+20,Submission & Archive,0d,2026-03-20,2026-03-20,19,Echo;Kilo,Yes,Finalization
+21,Schedule v1 Export to MPP,0d,2026-03-13,2026-03-13,6,Echo,Yes,Planning
+22,Resource Pack v1 Export to PDF,0d,2026-03-13,2026-03-13,7,Echo,Yes,Planning

@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Racing Loadout Optimizer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+</head>
+<body class="bg-gray-900 text-gray-100 font-sans p-4 md:p-8">
+
+    <div class="max-w-5xl mx-auto" x-data="optimizerApp()">
+        <header class="mb-8 border-b border-gray-700 pb-4">
+            <h1 class="text-3xl font-bold text-red-500">F1 Manager: Loadout Optimizer</h1>
+            <p class="text-gray-400">Optimize your car setup and driver selection for the next GP.</p>
+        </header>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+            
+            <div class="space-y-6">
+                <section class="bg-gray-800 p-6 rounded-xl shadow-lg">
+                    <h2 class="text-xl font-semibold mb-4 border-l-4 border-red-500 pl-2">Track Focus</h2>
+                    <label class="block text-sm text-gray-400 mb-1">Select Track Type</label>
+                    <select x-model="trackType" class="w-full bg-gray-700 p-2 rounded border border-gray-600 focus:outline-none focus:border-red-500">
+                        <option value="balanced">Balanced (Interlagos)</option>
+                        <option value="speed">Top Speed (Monza / Spa)</option>
+                        <option value="cornering">High Downforce (Monaco / Singapore)</option>
+                    </select>
+                </section>
+
+                <section class="bg-gray-800 p-6 rounded-xl shadow-lg">
+                    <h2 class="text-xl font-semibold mb-4 border-l-4 border-blue-500 pl-2">Driver Stats</h2>
+                    <template x-for="(stat, index) in driverStats" :key="index">
+                        <div class="mb-4">
+                            <div class="flex justify-between text-sm mb-1">
+                                <span x-text="stat.label" class="capitalize"></span>
+                                <span x-text="stat.value" class="font-bold text-blue-400"></span>
+                            </div>
+                            <input type="range" min="1" max="100" x-model="stat.value" class="w-full accent-blue-500">
+                        </div>
+                    </template>
+                </section>
+            </div>
+
+            <div class="md:col-span-2 space-y-6">
+                <div class="bg-gray-800 p-6 rounded-xl shadow-lg">
+                    <h2 class="text-xl font-semibold mb-6">Total Performance Score</h2>
+                    
+                    <div class="grid grid-cols-3 gap-4 text-center">
+                        <div class="p-4 bg-gray-700 rounded-lg">
+                            <div class="text-xs uppercase text-gray-400">Speed</div>
+                            <div class="text-2xl font-bold" :class="trackType === 'speed' ? 'text-green-400' : ''" x-text="calculateScore('speed')"></div>
+                        </div>
+                        <div class="p-4 bg-gray-700 rounded-lg">
+                            <div class="text-xs uppercase text-gray-400">Cornering</div>
+                            <div class="text-2xl font-bold" :class="trackType === 'cornering' ? 'text-green-400' : ''" x-text="calculateScore('cornering')"></div>
+                        </div>
+                        <div class="p-4 bg-gray-700 rounded-lg">
+                            <div class="text-xs uppercase text-gray-400">Reliability</div>
+                            <div class="text-2xl font-bold" x-text="calculateScore('reliability')"></div>
+                        </div>
+                    </div>
+
+                    <div class="mt-8">
+                        <h3 class="text-sm font-semibold text-gray-400 mb-2">Recommendation Strategy:</h3>
+                        <div class="bg-blue-900/30 border border-blue-800 p-4 rounded-lg">
+                            <p x-show="trackType === 'speed'">Focus on **Rear Wing** and **Engine** upgrades. Sacrifice brake cooling for straight-line speed.</p>
+                            <p x-show="trackType === 'cornering'">Focus on **Front Wing** and **Suspension**. Maximize downforce even if it adds drag.</p>
+                            <p x-show="trackType === 'balanced'">Maintain a high **Reliability** rating to avoid mid-race component failure.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-gray-800 rounded-xl shadow-lg overflow-hidden">
+                    <table class="w-full text-left">
+                        <thead class="bg-gray-700 text-xs uppercase text-gray-400">
+                            <tr>
+                                <th class="p-4">Part Name</th>
+                                <th class="p-4 text-center">Speed Boost</th>
+                                <th class="p-4 text-center">Cost</th>
+                                <th class="p-4">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-700">
+                            <template x-for="part in partsList" :key="part.id">
+                                <tr class="hover:bg-gray-750 transition">
+                                    <td class="p-4 font-medium" x-text="part.name"></td>
+                                    <td class="p-4 text-center text-green-400" x-text="'+' + part.boost"></td>
+                                    <td class="p-4 text-center" x-text="part.cost.toLocaleString() + ' 🪙'"></td>
+                                    <td class="p-4">
+                                        <button class="bg-red-600 hover:bg-red-700 px-3 py-1 rounded text-xs transition">Select</button>
+                                    </td>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function optimizerApp() {
+            return {
+                trackType: 'balanced',
+                driverStats: [
+                    { label: 'Overtaking', value: 75 },
+                    { label: 'Defending', value: 60 },
+                    { label: 'Consistency', value: 85 }
+                ],
+                partsList: [
+                    { id: 1, name: 'Turbocharger MkII', boost: 12, cost: 50000 },
+                    { id: 2, name: 'Carbon Fiber Wing', boost: 8, cost: 35000 },
+                    { id: 3, name: 'Active Suspension', boost: 15, cost: 75000 },
+                ],
+                calculateScore(type) {
+                    let base = 50;
+                    if (type === 'speed' && this.trackType === 'speed') base += 20;
+                    if (type === 'cornering' && this.trackType === 'cornering') base += 20;
+                    // Mock calculation logic
+                    const driverAvg = this.driverStats.reduce((a, b) => a + parseInt(b.value), 0) / 3;
+                    return Math.floor(base + (driverAvg * 0.4));
+                }
+            }
+        }
+    </script>
+</body>
+</html>

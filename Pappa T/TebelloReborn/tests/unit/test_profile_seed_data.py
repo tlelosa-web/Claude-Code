@@ -1,0 +1,56 @@
+"""RED: data/profile_seed.json doesn't exist yet — reading it must fail first."""
+
+import json
+from pathlib import Path
+
+from src.profile.schema import CandidateProfile
+
+SEED_PATH = Path(__file__).parent.parent.parent / "data" / "profile_seed.json"
+
+
+def _load_profile() -> CandidateProfile:
+    data = json.loads(SEED_PATH.read_text(encoding="utf-8"))
+    return CandidateProfile.from_dict(data)
+
+
+class TestProfileSeedData:
+    def test_seed_file_loads_and_validates(self):
+        profile = _load_profile()
+
+        assert profile.name
+        assert profile.region
+        assert profile.skills
+        assert profile.experience
+        assert profile.industries
+
+    def test_experience_timeline_spans_career(self):
+        profile = _load_profile()
+
+        # 19+ years of experience per CLAUDE.md's target candidate profile —
+        # more than a token one- or two-job stub.
+        assert len(profile.experience) >= 5
+
+    def test_operations_foreman_is_primary_lane(self):
+        profile = _load_profile()
+
+        primary = profile.primary_title
+        assert (
+            "Operations Foreman" in primary.title
+            or "Operations Manager" in primary.title
+        )
+
+    def test_project_engineer_present_as_secondary_lane(self):
+        profile = _load_profile()
+
+        secondary_titles = [t.title for t in profile.target_titles if not t.primary]
+        assert any("Project Engineer" in t for t in secondary_titles)
+
+    def test_salary_floor_set(self):
+        profile = _load_profile()
+
+        assert profile.salary_floor == 45000
+
+    def test_region_is_gauteng(self):
+        profile = _load_profile()
+
+        assert "Gauteng" in profile.region

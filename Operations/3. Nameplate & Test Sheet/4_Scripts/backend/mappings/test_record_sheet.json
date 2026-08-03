@@ -1,0 +1,222 @@
+{
+  "global_y_offset": -60.0,
+  "template": "2_Source_Data/raw_sources/Test Sheet Template v4.pdf",
+  "output_name": "TestRecordSheet_filled.pdf",
+  "units": "pdf_points",
+  "page_index": 0,
+  "font": {
+    "name": "Helvetica",
+    "size": 9
+  },
+  "items": [
+    {
+      "key": "date",
+      "x": 518.0,
+      "y": 751.2,
+      "source": "derived.date",
+      "transform": { "type": "date", "format": "DD/MM/YYYY" },
+      "clear": { "w": 60, "h": 13, "baseline_offset": 2 },
+      "align": "right",
+      "required": true
+    },
+    {
+      "key": "contract_no",
+      "x": 135.5,
+      "y": 728.5,
+      "source": "nameplate.serial_no",
+      "align": "center",
+      "font": { "name": "Helvetica-Bold" },
+      "clear": { "w": 58, "h": 13, "baseline_offset": 3 },
+      "required": true
+    },
+    {
+      "key": "fan_series",
+      "x": 261.5,
+      "y": 728.5,
+      "source": "nameplate.series",
+      "transform": { "type": "upper" },
+      "align": "center",
+      "font": { "name": "Helvetica-Bold", "size": 7 },
+      "clear": { "w": 62, "h": 13, "baseline_offset": 3 },
+      "wrap_width": 60.0,
+      "line_height": 10.0,
+      "required": true
+    },
+    {
+      "key": "fan_size",
+      "x": 383.7,
+      "y": 728.5,
+      "source": "nameplate.size",
+      "transform": { "type": "fan_size_primary" },
+      "align": "center",
+      "font": { "name": "Helvetica-Bold" },
+      "clear": { "w": 62, "h": 13, "baseline_offset": 3 },
+      "required": true
+    },
+    {
+      "key": "imp_form",
+      "x": 510.9,
+      "y": 728.5,
+      "source": "derived.imp_form",
+      "transform": { "type": "upper" },
+      "align": "center",
+      "clear": { "w": 65, "h": 13, "baseline_offset": 3 },
+      "required": false
+    },
+    {
+      "key": "customer_name",
+      "x": 136.1,
+      "y": 697.3,
+      "source": "nameplate.customer_name",
+      "font": { "name": "Helvetica-Bold" },
+      "clear": { "w": 54, "h": 13, "baseline_offset": 2 },
+      "align": "left",
+      "required": false
+    },
+    {
+      "key": "motor_current",
+      "x": 136.1,
+      "y": 674.6,
+      "source": "nameplate.fla",
+      "transform": { "type": "number", "decimals": 2 },
+      "align": "center",
+      "clear": { "w": 54, "h": 13, "baseline_offset": 3 },
+      "required": false
+    },
+    {
+      "key": "motor_voltage",
+      "x": 136.1,
+      "y": 652.0,
+      "source": "nameplate.voltage",
+      "transform": { "type": "number" },
+      "align": "center",
+      "clear": { "w": 54, "h": 13, "baseline_offset": 3 },
+      "required": false
+    },
+    {
+      "key": "fan_speed",
+      "x": 136.1,
+      "y": 629.3,
+      "source": "nameplate.op_speed",
+      "transform": { "type": "number" },
+      "align": "center",
+      "clear": { "w": 54, "h": 13, "baseline_offset": 3 },
+      "required": false
+    },
+    {
+      "key": "description",
+      "x": 442.2,
+      "y": 652.0,
+      "source": "derived.motor_description",
+      "clear": { "w": 100, "h": 13, "baseline_offset": 3 },
+      "required": false
+    },
+    {
+      "key": "motor_serial_number",
+      "x": 91.0,
+      "y": 536.5,
+      "source": "derived.motor_serial_number",
+      "align": "center",
+      "clear": { "w": 72, "h": 13, "baseline_offset": 3 },
+      "required": false
+    },
+    {
+      "key": "blade_pitch",
+      "x": 154.4,
+      "y": 536.5,
+      "source": "derived.blade_pitch_deg",
+      "align": "center",
+      "clear": { "w": 34, "h": 13, "baseline_offset": 3 },
+      "required": false
+    },
+    {
+      "key": "tacho_serial",
+      "x": 195.7,
+      "y": 536.5,
+      "source": "derived.tacho_clamp_serial_no",
+      "align": "center",
+      "clear": { "w": 34, "h": 13, "baseline_offset": 3 },
+      "required": false
+    },
+    {
+      "key": "speed_rpm",
+      "x": 237.1,
+      "y": 536.5,
+      "source": "derived.speed_actual",
+      "transform": { "type": "number" },
+      "align": "center",
+      "clear": { "w": 34, "h": 13, "baseline_offset": 3 },
+      "required": false
+    },
+    {
+      "key": "current_ph1",
+      "x": 278.4,
+      "y": 536.5,
+      "source": "derived.current_ph1",
+      "transform": { "type": "number", "decimals": 2 },
+      "align": "center",
+      "clear": { "w": 34, "h": 13, "baseline_offset": 3 },
+      "required": false
+    },
+    {
+      "key": "current_ph2",
+      "x": 319.7,
+      "y": 536.5,
+      "source": "derived.current_ph2",
+      "transform": { "type": "number", "decimals": 2 },
+      "align": "center",
+      "clear": { "w": 34, "h": 13, "baseline_offset": 3 },
+      "required": false
+    },
+    {
+      "key": "current_ph3",
+      "x": 361.1,
+      "y": 536.5,
+      "source": "derived.current_ph3",
+      "transform": { "type": "number", "decimals": 2 },
+      "align": "center",
+      "clear": { "w": 34, "h": 13, "baseline_offset": 3 },
+      "required": false
+    },
+    {
+      "key": "voltage_ph1",
+      "x": 402.4,
+      "y": 536.5,
+      "source": "derived.voltage_ph1",
+      "transform": { "type": "number" },
+      "align": "center",
+      "clear": { "w": 34, "h": 13, "baseline_offset": 3 },
+      "required": false
+    },
+    {
+      "key": "voltage_ph2",
+      "x": 443.7,
+      "y": 536.5,
+      "source": "derived.voltage_ph2",
+      "transform": { "type": "number" },
+      "align": "center",
+      "clear": { "w": 34, "h": 13, "baseline_offset": 3 },
+      "required": false
+    },
+    {
+      "key": "voltage_ph3",
+      "x": 485.1,
+      "y": 536.5,
+      "source": "derived.voltage_ph3",
+      "transform": { "type": "number" },
+      "align": "center",
+      "clear": { "w": 34, "h": 13, "baseline_offset": 3 },
+      "required": false
+    },
+    {
+      "key": "connection",
+      "x": 526.4,
+      "y": 536.5,
+      "source": "derived.connection",
+      "transform": { "type": "upper" },
+      "align": "center",
+      "clear": { "w": 35, "h": 13, "baseline_offset": 3 },
+      "required": false
+    }
+  ]
+}

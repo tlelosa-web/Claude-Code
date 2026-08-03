@@ -1,0 +1,159 @@
+# Nameplate & Test Sheet — Task Queue
+
+> Rewritten at the end of every project-level task (DCOE anti-drift pattern).
+> Hub-level cross-project tasks live in `C:\Dev\Operations\docs\todo.md`,
+> not here.
+
+## In progress
+
+- [ ] None currently.
+
+## Next up
+
+- [ ] Decide fate of orphaned `POST /api/reports/test-record-sheet` endpoint
+      (`main.py` lines 381-438) — a second, unused copy of the
+      `TestLinePayload` array contract, superseded by the quantity-driven
+      `/api/reports/test-record-sheet/from-nameplate` flow (2026-07-15
+      rework, see Done below) but never removed. Not a live bug, but it's a
+      second fragile payload-shape contract sitting unused — pick remove vs.
+      keep-for-future-per-fan-editing deliberately rather than leaving two
+      to drift. Found during the 2026-07-29 bug-hunt pass.
+- [ ] Cosmetic: `pdf_generator.py`'s `_render_test_sheet_direct()` only
+      guards text overflow/auto-shrink for Row 2 fields (line 156); longer
+      free-text fields like `customer_name` and `motor_desc` have no
+      equivalent length guard and can visually overflow their bordered box.
+      No crash/data loss, layout only. Found during the 2026-07-29 bug-hunt
+      pass.
+- [ ] Consider a real automated test suite (pytest for backend, a JS test
+      runner for frontend) — `tests/` currently holds ad-hoc manual-check
+      scripts only, not a gated suite. Not urgent; flagged in `CLAUDE.md` §
+      Testing Standards.
+
+## Backlog / ideas (not committed)
+
+- [ ] `index_work.lock.bak`-style stray artifacts: none known here, but
+      worth a periodic `.git` health check given the OneDrive-era lock
+      issues seen in SOPS (this project's `.git` was never inside OneDrive
+      sync, so lower risk — not urgent).
+
+## Done
+
+- [x] **2026-07-31** — `excel_source.py` datetime fix (fix-plan step 3,
+      the last of the connection-override follow-ups): `date` field in
+      `read_test_sheet_from_excel()` now runs `_cell(ws, 1, 21)` through
+      the existing `_fmt_month_year()` helper instead of returning the raw
+      `datetime`, same fix pattern already applied to the nameplate path
+      (2026-07-28). Currently a dead code path (nothing wires this field
+      up yet) but would have crashed JSON serialization the moment it did.
+      Single-line, single-file change — no spec needed. Verified directly:
+      built a synthetic workbook with a `datetime(2026, 3, 15)` in that
+      cell, confirmed `read_test_sheet_from_excel()` returns `"MAR.2026"`
+      and the result round-trips through `json.dumps()` without error (was
+      a raw `datetime` object before, which `json.dumps` cannot serialize).
+      Commit `49645ac`. All three connection-override fix-plan steps are
+      now closed.
+- [x] **2026-07-31** — Voltage-filtered Motor kW options (fix-plan step 2):
+      `main.py`'s `_options_cached()` now nests `motors_by_pole` as
+      `{pole: {voltage: [kw, ...]}}`, filtering each per-voltage kW list
+      through the existing `suggest_connection()` rule tables so only kW
+      values with a real STAR/DELTA rule at that voltage are offered.
+      `FormFields.jsx`'s `motorOptions` lookup updated to match
+      (`motorsByPole[data.pole][data.voltage]`) — payload-shape contract
+      changed in both files together per this project's Hard Rule 1. Spec:
+      `docs/specs/2026-07-31-voltage-filtered-motor-options.md`. Verified
+      live: `GET /api/options` shows `motors_by_pole["4"]["525"]` capped at
+      4.0kW (excludes 5.5/7.5/9.2) while `["4"]["380"]` keeps the full
+      range; confirmed the same behavior interactively in the running
+      frontend form (Motor kW dropdown updates correctly when switching
+      Voltage between 525 and 380 at Pole=4), no console errors. Known,
+      pre-existing, not-fixed-here gap: no field resets `data.motor` when
+      the filtered list changes under a stale selection (documented in the
+      spec's Out of scope section). Fix-plan step 3 (`excel_source.py`
+      datetime fix) remains open — see Next up.
+- [x] **2026-07-31** — Save Nameplate connection-override fix (fix-plan step
+      1 only): `main.py`'s `api_generate_pdf()` now falls back to
+      `_clean(payload.connection)` when `suggest_connection()` finds no
+      STAR/DELTA rule for the combo, mirroring the existing pattern in
+      `api_test_record_sheet_from_nameplate()`. Spec:
+      `docs/specs/2026-07-31-connection-override-fallback-fix.md`. Bug
+      report: `docs/bugs/connection-lookup-no-manual-override.md`. Verified
+      against a live `uvicorn` server: `POST /api/generate-pdf` with
+      `{motor: "5.5", pole: "4", voltage: "525", connection: "DELTA"}` now
+      returns `200` with a valid PDF (was `400`); confirmed the no-override
+      case (`connection: ""`) still correctly returns `400`, so the fix only
+      rescues a genuine manual override rather than masking real validation
+      failures. Fix-plan steps 2 (voltage-filtered motor options) and 3
+      (`excel_source.py` datetime fix) remain open — see Next up.
+- [x] **2026-07-28** — `/api/nameplate/from-excel` datetime crash fixed.
+      `date_of_manuf` in `excel_source.py`'s `"Info+Data Entry Form"` branch
+      is now formatted via `_fmt_month_year()` before returning (was a raw
+      `datetime`, unlike the `else` branch which already formatted it).
+      Confirmed by direct inspection why the 2026-07-17 attempt regressed:
+      `NamePlateProc` is a static instructions/reference sheet with no real
+      per-job data — `"Info+Data Entry Form"` is the correct data source and
+      stays the effective primary. Also dropped the dead, unreachable
+      `"Table 1"` primary-sheet check (never matches the real workbook) and
+      the now-orphaned `_read_block_by_labels`/`_norm` helpers. Spec:
+      `docs/specs/2026-07-28-excel-import-datetime-and-sheet-check.md`.
+      Verified against the real `NAME PLATE PROCEDURE.xlsx` both directly
+      and via a live `uvicorn` server (`200`, populated fields, no crash).
+- [x] **2026-07-17** — Dirty working tree (flagged by the 2026-07-17
+      hub-level cross-project status pass) reviewed and resolved. Read every
+      file's actual diff before acting, per the pre-commit review discipline:
+      - `main.py`'s stray `/api/speed` endpoint — discarded. Verified the
+        frontend never calls it (computes op-speed locally from a hardcoded
+        pole→RPM map instead); confirmed dead code before dropping it.
+      - `excel_source.py`'s sheet-fallback change (checking for the real
+        `NamePlateProc` sheet name instead of the nonexistent `Table 1`) —
+        **discarded as a regression**, not committed. Verified directly
+        against the real `NAME PLATE PROCEDURE.xlsx`: the committed code
+        (falling through to `Info+Data Entry Form`) correctly extracts real
+        data; the uncommitted diff matched `NamePlateProc` but its
+        label-reading logic returned every field blank. Logged as a proper
+        follow-up item above rather than shipping the broken version.
+      - `1_Documentation/DEPLOYMENT.md` + `CONFLICT_ANALYSIS.md` (stale
+        OneDrive path → `C:\Dev\Operations\...`, from the 2026-07-15 path
+        audit) and `1_Documentation/USER_GUIDE.md` (removed docs for the now-
+        dropped `/api/speed`, fixed stale `motor_kw`→`motor` param names for
+        `/api/fla`/`/api/connection`) — verified `/api/fla` and
+        `/api/connection` against a live server (both return correct values
+        with the documented param names) and committed.
+      - `doc_history.json` and `4_Scripts/backend/logs/backend.log` — these
+        are runtime-generated, not source (2900+ and 400+ line diffs from
+        normal app use). Added both to `.gitignore` and `git rm --cached`
+        them (kept on disk, just untracked going forward) instead of
+        committing another log dump.
+      - Untracked `test_api_fixes.py` (ad-hoc endpoint smoke-test, matches
+        this project's existing `tests/` convention of manual-check scripts)
+        — moved into `tests/`, trimmed the `/api/speed` case since that
+        endpoint was dropped, verified it passes against a live server.
+- [x] **2026-07-16** — Hidden (no-terminal) launcher committed (`0b36ffb`):
+      `Launch_NamePlate_Tool.vbs` / `Stop_NamePlate_Tool.vbs` +
+      `RUN_PIPELINE_HIDDEN.ps1` / `STOP_PIPELINE.ps1`. Root cause found
+      during testing: killing only the port-listening process doesn't stop
+      the app, because `uvicorn --reload` runs a supervisor that respawns a
+      new worker — fixed by recording the root PIDs at launch
+      (`5_Archive_and_Debug/pipeline.pids`, gitignored) and using
+      `taskkill /T` to kill the whole tree. `Nameplate Tool.lnk` (project
+      root) repointed at the hidden launcher; a matching desktop shortcut
+      was also created for Tebello directly (not tracked in git). Documented
+      in `1_Documentation/USER_GUIDE.md` § Launching Without a Terminal.
+      `RUN_PIPELINE.bat` (visible windows) kept as-is for debugging.
+- [x] **2026-07-15** — Test Sheet Fan Lines UI **replaced** by a Quantity
+      field, committed (`d5aab64`) — Tebello clarified the table approach
+      below was still the wrong design; no per-fan UI at all was wanted.
+      Includes the scroll/layout fixes from the same session (wider form
+      column reverted to a 3-column page split once field density made it
+      unnecessary, `align-items` misalignment fix, `field-span-3` on
+      Customer Name). Spec: `docs/specs/2026-07-15-test-sheet-quantity-field.md`.
+- [x] **2026-07-15** — Test Sheet Fan Lines UI fix committed (`7c0f785`),
+      later superseded by the Quantity-field rework above:
+      `App.jsx`/`App.css` per-fan panel replaced with a table matching
+      `pdf_generator.py`'s output. Spec:
+      `docs/specs/2026-07-15-test-sheet-fan-lines-table.md`.
+- [x] **2026-07-15** — DCOE onboarding committed (`5571d63`): `CLAUDE.md`,
+      `docs/` scaffold (`todo.md`, `session-log.md`, `decisions/`, `bugs/`,
+      `research/`, `specs/`), recorded
+      `docs/decisions/ADR-001-dcoe-onboarding.md`. Existing 5-folder
+      GEMINI-era layout (`1_Documentation/` → `5_Archive_and_Debug/`) kept
+      as-is; DCOE `docs/` layered alongside it, not merged into it.

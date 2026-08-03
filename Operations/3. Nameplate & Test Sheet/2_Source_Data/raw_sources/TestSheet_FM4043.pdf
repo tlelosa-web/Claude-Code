@@ -1,0 +1,439 @@
+%PDF-1.3
+%‚„œ”
+1 0 obj
+<<
+/Producer (pypdf)
+>>
+endobj
+2 0 obj
+<<
+/Type /Pages
+/Count 1
+/Kids [ 4 0 R ]
+>>
+endobj
+3 0 obj
+<<
+/Type /Catalog
+/Pages 2 0 R
+>>
+endobj
+4 0 obj
+<<
+/Contents 5 0 R
+/MediaBox [ 0 0 595.2756 841.8898 ]
+/Resources <<
+/Font <<
+/F1 6 0 R
+/F1-0 7 0 R
+/F2 8 0 R
+/F2-0 9 0 R
+>>
+/ProcSet [ /ImageB /ImageC /ImageI /PDF /Text ]
+>>
+/Rotate 0
+/Trans <<
+>>
+/Type /Page
+/Annots [ ]
+/Parent 2 0 R
+>>
+endobj
+5 0 obj
+<<
+/Length 5147
+>>
+stream
+q
+1 0 0 1 0 0 cm  BT /F1 12 Tf 14.4 TL ET
+.65 w
+BT /F2 16 Tf 19.2 TL ET
+BT 1 0 0 1 28.34646 799.3701 Tm (FAN MOVEMENT) Tj T* ET
+BT /F1 8 Tf 9.6 TL ET
+BT 1 0 0 1 28.34646 785.1969 Tm (AIR AND GAS MOVEMENT SOLUTIONS) Tj T* ET
+BT /F2 13 Tf 15.6 TL ET
+BT 1 0 0 1 452.7891 799.3701 Tm (Test Record Sheet) Tj T* ET
+n 274.9606 739.8425 291.9685 34.01575 re S
+n 274.9606 759.685 m 566.9291 759.685 l S
+n 347.9528 739.8425 m 347.9528 773.8583 l S
+n 420.9449 739.8425 m 420.9449 773.8583 l S
+n 493.937 739.8425 m 493.937 773.8583 l S
+BT /F2 6.6 Tf 7.92 TL ET
+BT 1 0 0 1 292.5741 763.685 Tm (Contract No) Tj T* ET
+BT 1 0 0 1 367.7574 763.685 Tm (Fan Series) Tj T* ET
+BT 1 0 0 1 444.0528 763.685 Tm (Fan Size) Tj T* ET
+BT 1 0 0 1 514.4809 763.685 Tm (Imp. Form) Tj T* ET
+n 274.9606 722.8346 291.9685 14.17323 re S
+BT /F2 7 Tf 8.4 TL ET
+BT 1 0 0 1 28.34646 713.4961 Tm (Customer Name) Tj T* ET
+n 28.34646 688.8189 303.3071 22.67717 re S
+BT /F2 7 Tf 8.4 TL ET
+BT 1 0 0 1 360 713.4961 Tm (MAKE) Tj T* ET
+n 360 688.8189 206.9291 22.67717 re S
+BT /F2 9 Tf 10.8 TL ET
+BT 1 0 0 1 28.34646 654.8031 Tm (ACTUAL VALUES) Tj T* ET
+BT /F2 7 Tf 8.4 TL ET
+BT 1 0 0 1 30.34646 639.7953 Tm (Motor Current) Tj T* ET
+n 28.34646 615.1181 134.6457 22.67717 re S
+BT /F2 7 Tf 8.4 TL ET
+BT 1 0 0 1 164.9921 639.7953 Tm (Motor Voltage) Tj T* ET
+n 162.9921 615.1181 134.6457 22.67717 re S
+BT /F2 7 Tf 8.4 TL ET
+BT 1 0 0 1 299.6378 639.7953 Tm (Fan Speed) Tj T* ET
+n 297.6378 615.1181 134.6457 22.67717 re S
+BT /F2 7 Tf 8.4 TL ET
+BT 1 0 0 1 434.2835 639.7953 Tm (Connection) Tj T* ET
+n 432.2835 615.1181 134.6457 22.67717 re S
+BT /F2 7 Tf 8.4 TL ET
+BT 1 0 0 1 28.34646 608.6142 Tm (Motor Description) Tj T* ET
+n 28.34646 583.937 538.5827 22.67717 re S
+n 28.34646 402.5197 538.5827 147.4016 re S
+n 28.34646 527.2441 m 566.9291 527.2441 l S
+n 28.34646 510.2362 m 566.9291 510.2362 l S
+n 93.84976 402.5197 m 93.84976 549.9213 l S
+n 195.7438 402.5197 m 195.7438 549.9213 l S
+n 258.821 402.5197 m 258.821 549.9213 l S
+n 300.0638 402.5197 m 300.0638 549.9213 l S
+n 341.3067 402.5197 m 341.3067 549.9213 l S
+n 382.5495 402.5197 m 382.5495 549.9213 l S
+n 423.7923 402.5197 m 423.7923 549.9213 l S
+n 465.0351 402.5197 m 465.0351 549.9213 l S
+n 506.2779 402.5197 m 506.2779 549.9213 l S
+BT /F2 6.4 Tf 7.68 TL ET
+BT 1 0 0 1 35.84691 535.748 Tm (Blade Pitch Deg.) Tj T* ET
+BT 1 0 0 1 106.7424 535.748 Tm (Tacho & Clamp Serial No) Tj T* ET
+BT 1 0 0 1 206.8344 535.748 Tm (Speed \(r/min\)) Tj T* ET
+BT 1 0 0 1 309.1301 535.748 Tm (Current) Tj T* ET
+BT 1 0 0 1 432.8553 535.748 Tm (Voltage) Tj T* ET
+BT 1 0 0 1 519.0035 535.748 Tm (Connection) Tj T* ET
+BT 1 0 0 1 273.2184 515.9055 Tm (PH1) Tj T* ET
+BT 1 0 0 1 314.4613 515.9055 Tm (PH2) Tj T* ET
+BT 1 0 0 1 355.7041 515.9055 Tm (PH3) Tj T* ET
+BT 1 0 0 1 396.9469 515.9055 Tm (PH1) Tj T* ET
+BT 1 0 0 1 438.1897 515.9055 Tm (PH2) Tj T* ET
+BT 1 0 0 1 479.4325 515.9055 Tm (PH3) Tj T* ET
+BT /F2 7 Tf 8.4 TL ET
+BT 1 0 0 1 28.34646 393.1811 Tm (Testing Operator Signature) Tj T* ET
+BT /F2 7 Tf 8.4 TL ET
+BT 1 0 0 1 189.9213 393.1811 Tm (Remarks) Tj T* ET
+BT /F2 7 Tf 8.4 TL ET
+BT 1 0 0 1 419.5276 393.1811 Tm (Quality Inspector Signature) Tj T* ET
+n 28.34646 365.6693 147.4016 25.51181 re S
+n 189.9213 365.6693 215.4331 25.51181 re S
+n 419.5276 365.6693 147.4016 25.51181 re S
+BT /F2 8 Tf 9.6 TL ET
+BT 1 0 0 1 28.34646 340.1575 Tm (Date Completed:) Tj T* ET
+n 104.8819 339.1575 m 226.7717 339.1575 l S
+ 
+
+Q
+
+q
+0.0 0.0 595.2756 841.8898 re
+W
+n
+1 0 0 1 0 0 cm
+BT
+/F1-0 12 Tf
+14.4 TL
+ET
+BT
+/F1-0 8.5 Tf
+10.2 TL
+ET
+q
+1 1 1 rg
+1 1 1 RG
+n
+279 743 65 13 re
+f*
+Q
+BT
+1 0 0 1 279 746 Tm
+(FM4043) Tj
+T*
+ET
+q
+1 1 1 rg
+1 1 1 RG
+n
+352 743 65 13 re
+f*
+Q
+BT
+1 0 0 1 352 746 Tm
+(MAXFLO) Tj
+T*
+ET
+q
+1 1 1 rg
+1 1 1 RG
+n
+425 743 65 13 re
+f*
+Q
+BT
+1 0 0 1 425 746 Tm
+(315) Tj
+T*
+ET
+q
+1 1 1 rg
+1 1 1 RG
+n
+498 743 65 13 re
+f*
+Q
+BT
+1 0 0 1 498 746 Tm
+(FORM B) Tj
+T*
+ET
+q
+1 1 1 rg
+1 1 1 RG
+n
+279 725 285 13 re
+f*
+Q
+BT
+1 0 0 1 279 728 Tm
+(DATE\072 06\05705\0572026) Tj
+T*
+ET
+q
+1 1 1 rg
+1 1 1 RG
+n
+33 693 295 15 re
+f*
+Q
+BT
+1 0 0 1 33 696 Tm
+(LUFT TECHNIK) Tj
+T*
+ET
+q
+1 1 1 rg
+1 1 1 RG
+n
+365 693 195 15 re
+f*
+Q
+q
+BT
+/F2-0 9 Tf
+10.8 TL
+ET
+BT
+1 0 0 1 365 696 Tm
+(ACTOM) Tj
+T*
+ET
+Q
+q
+1 1 1 rg
+1 1 1 RG
+n
+33 619 120 15 re
+f*
+Q
+BT
+1 0 0 1 33 622 Tm
+(0\05699 Amp) Tj
+T*
+ET
+q
+1 1 1 rg
+1 1 1 RG
+n
+168 619 120 15 re
+f*
+Q
+BT
+1 0 0 1 168 622 Tm
+(380 Volt) Tj
+T*
+ET
+q
+1 1 1 rg
+1 1 1 RG
+n
+302 619 120 15 re
+f*
+Q
+BT
+1 0 0 1 302 622 Tm
+(2880 r\057min) Tj
+T*
+ET
+q
+1 1 1 rg
+1 1 1 RG
+n
+437 619 120 15 re
+f*
+Q
+BT
+1 0 0 1 437 622 Tm
+(STAR) Tj
+T*
+ET
+q
+1 1 1 rg
+1 1 1 RG
+n
+33 588 525 15 re
+f*
+Q
+BT
+1 0 0 1 33 591 Tm
+(0\05637) Tj
+T*
+ET
+q
+1 1 1 rg
+1 1 1 RG
+n
+50 493 25 14 re
+f*
+Q
+BT
+1 0 0 1 50 496 Tm
+(26) Tj
+T*
+ET
+q
+1 1 1 rg
+1 1 1 RG
+n
+105 493 80 14 re
+f*
+Q
+BT
+1 0 0 1 105 496 Tm
+(N\057A) Tj
+T*
+ET
+q
+1 1 1 rg
+1 1 1 RG
+n
+213 493 35 14 re
+f*
+Q
+BT
+1 0 0 1 213 496 Tm
+(1440) Tj
+T*
+ET
+q
+1 1 1 rg
+1 1 1 RG
+n
+395 493 28 14 re
+f*
+Q
+BT
+1 0 0 1 395 496 Tm
+(380) Tj
+T*
+ET
+q
+1 1 1 rg
+1 1 1 RG
+n
+436 493 28 14 re
+f*
+Q
+BT
+1 0 0 1 436 496 Tm
+(380) Tj
+T*
+ET
+q
+1 1 1 rg
+1 1 1 RG
+n
+477 493 28 14 re
+f*
+Q
+BT
+1 0 0 1 477 496 Tm
+(380) Tj
+T*
+ET
+q
+1 1 1 rg
+1 1 1 RG
+n
+518 493 42 14 re
+f*
+Q
+BT
+1 0 0 1 518 496 Tm
+(STAR) Tj
+T*
+ET
+Q
+
+
+endstream
+endobj
+6 0 obj
+<<
+/BaseFont /Helvetica
+/Encoding /WinAnsiEncoding
+/Name /F1
+/Subtype /Type1
+/Type /Font
+>>
+endobj
+7 0 obj
+<<
+/BaseFont /Helvetica
+/Encoding /WinAnsiEncoding
+/Name /F1
+/Subtype /Type1
+/Type /Font
+>>
+endobj
+8 0 obj
+<<
+/BaseFont /Helvetica-Bold
+/Encoding /WinAnsiEncoding
+/Name /F2
+/Subtype /Type1
+/Type /Font
+>>
+endobj
+9 0 obj
+<<
+/BaseFont /Helvetica-Bold
+/Encoding /WinAnsiEncoding
+/Name /F2
+/Subtype /Type1
+/Type /Font
+>>
+endobj
+xref
+0 10
+0000000000 65535 f 
+0000000015 00000 n 
+0000000054 00000 n 
+0000000113 00000 n 
+0000000162 00000 n 
+0000000417 00000 n 
+0000005616 00000 n 
+0000005723 00000 n 
+0000005830 00000 n 
+0000005942 00000 n 
+trailer
+<<
+/Size 10
+/Root 3 0 R
+/Info 1 0 R
+>>
+startxref
+6054
+%%EOF

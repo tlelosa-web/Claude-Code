@@ -1182,3 +1182,47 @@ already fixed, not newly implemented (this entry).
 items Tebello picks — all now 📍-flagged with the live-copy caveat.
 **Known risks:** None new.
 **Blockers:** None.
+
+2026-08-03 codex-review docs/specs/2026-07-29-nameplatetool-test-suite.md: ran
+
+## 2026-08-03 — codex-gate: Pappa T install + network-off smoke-test closed out
+
+Confirmed on this session's machine (`TshepangLelosa`, post-consolidation —
+Operations and Pappa T now physically the same machine): `codex-gate` is
+installed at the user level (`~/.claude/plugins`), so the "install" step
+was already satisfied machine-wide, not per-project. `git rev-list` showed
+this hub's `origin/main` and the `tlelosa-claude-config` marketplace both
+already current, so no update was needed first.
+
+Ran the smoke-test itself via `/codex-review`:
+- **Network-available:** targeted a real spec,
+  `docs/specs/2026-07-29-nameplatetool-test-suite.md`. Codex reached
+  `chatgpt.com`'s backend cleanly and returned a full structured second
+  opinion well under the 90s cap — appended as that spec's own advisory
+  note (logged per the skill's own step 6: `docs/session-log.md`, one line
+  above this entry).
+- **Network-off:** simulated by pointing `HTTP_PROXY`/`HTTPS_PROXY` at a
+  closed local port for one command invocation only (safe/reversible — no
+  actual adapter change). Real finding: `codex exec` doesn't fail fast on
+  its own when unreachable — it logs loud connection-refused errors and
+  keeps retrying its own reconnect logic (5 WebSocket attempts, a fallback
+  to HTTPS, then more retries) rather than giving up, and was still
+  retrying when the skill's external `timeout 90` cap killed it (exit
+  124). Confirms the skill's 90s cap is genuinely load-bearing — without
+  it, an unreachable Codex would hang well past what "fail loud, don't
+  block" implies on its own.
+
+Both paths behave as designed — no defect in the skill. Updated
+`knowledge/tlelosa-claude-config.md` (new dated entry) and `INDEX.md`, and
+closed out `docs/todo.md` item 1, renumbering the remaining four "Next up"
+items. Fan Movement IT's OpenAI-egress confirmation for Operations remains
+open but was never tracked as its own checkbox (external answer, no spec).
+
+**Last completed:** codex-gate install + network-off smoke-test, both paths
+confirmed working (this entry).
+**Next task:** Whichever of the remaining four `docs/todo.md` "Next up"
+items Tebello picks (NamePlateTool test suite, TebelloReborn scope
+decision, or one of the two SOPS items — AvgMovement gated on explicit
+go-ahead).
+**Known risks:** None new.
+**Blockers:** None.

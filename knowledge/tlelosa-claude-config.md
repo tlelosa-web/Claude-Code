@@ -1,3 +1,45 @@
+## 2026-08-03 — codex-gate install + network-off smoke-test: both paths confirmed
+**Source:** session (this machine, `TshepangLelosa`, post-Operations/Pappa T
+consolidation — `codex-gate` is installed at the user level
+(`~/.claude/plugins`), so it applies machine-wide, not per-project)
+**Status:** active
+
+Ran the smoke-test per `docs/specs/2026-07-29-codex-gate-pappa-t-smoketest.md`:
+
+- **Confirmed installed:** `codex-gate` present in both
+  `~/.claude/plugins/marketplaces/tlelosa-claude-config/codex-gate` and the
+  plugin cache; `~/.claude.json` shows `codex-gate:codex-review` already
+  used 3 times previously (last 2026-07-29), confirming it was reachable
+  before this session too. Marketplace was already current (0 commits
+  behind `origin/main` per the Step 1.5 check).
+- **Network-available path:** ran `/codex-review` against a real spec
+  (`docs/specs/2026-07-29-nameplatetool-test-suite.md`). Reached
+  `chatgpt.com`'s Codex backend cleanly, returned a full structured second
+  opinion in well under the 90s cap, appended to that spec file as its own
+  advisory-note section. Confirms the happy path works end to end.
+- **Network-off path:** forced an unreachable state by pointing
+  `HTTP_PROXY`/`HTTPS_PROXY` at a closed local port (`127.0.0.1:1`) for
+  just the one command invocation — a safe, reversible way to simulate
+  network-off without touching the machine's actual adapter. Ran the same
+  underlying `codex exec` call directly (not through the full skill, so it
+  wouldn't append a second real advisory section to the same spec).
+  **Real finding:** `codex exec` does not fail fast when it can't reach
+  Codex — it logs loud `ERROR` lines (WebSocket connection refused, os
+  error 10061) and retries its own reconnect logic ("Reconnecting...
+  1/5" through "5/5", then falls back from WebSockets to HTTPS and retries
+  again), and was still retrying when the skill's external `timeout 90`
+  cap killed it (exit code 124). This confirms the skill's 90s cap is
+  **load-bearing, not a formality** — without it, an unreachable Codex
+  would hang well past 90s on its own internal retry loop. The skill's
+  step 4 correctly treats any of "non-zero exit, empty output, or timeout"
+  as fail-warn, so this path is legitimately caught by the existing
+  design; nothing needs to change in the skill itself.
+
+Both paths behave as designed. This closes the "codex-gate install +
+network-off smoke-test" sub-item — the only remaining open codex-gate
+sub-item is the Fan Movement IT confirmation on Operations egress (external,
+not something a session can execute).
+
 ## 2026-07-29 — codex-gate ADR copied into this hub's docs/decisions/
 **Source:** session (Operations ADR copy, via git — no local Operations
 machine access needed since it was a straight file write through this

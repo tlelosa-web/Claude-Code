@@ -42,29 +42,21 @@ flags re-checked 2026-08-03 after the O-P-C consolidation — see note below)
 > won't reach the actual running project and O-P-C will need re-merging
 > afterward to pick it up.
 
-1. [ ] **codex-gate: Pappa T install + network-off smoke-test.** 📍 Install
-      into the live `Desktop/Pappa T/` (not O-P-C's `Pappa T/` copy) — it's
-      where Tebello actually runs Claude Code day-to-day. Spec (ready):
-      `docs/specs/2026-07-29-codex-gate-pappa-t-smoketest.md`.
-      codex-gate itself stays Pappa T-only by design regardless of machine
-      — Fan Movement IT still needs to confirm OpenAI-egress coverage for
-      Operations before install there (no spec for this one — it's a
-      pending external answer, not a task any session can execute).
-      Detail: `knowledge/tlelosa-claude-config.md`.
-2. [ ] **NamePlateTool: add a real automated test suite** — not urgent;
+1. [ ] **NamePlateTool: add a real automated test suite** — not urgent;
       `tests/` is ad-hoc manual-check scripts only. 📍 Build in the live
       `Desktop/Operations/3. Nameplate & Test Sheet/`, then push (its
       GitHub remote is the source of truth O-P-C's copy gets re-merged
       from, not O-P-C directly). Spec (ready, starter scope — confirm
-      before building): `docs/specs/2026-07-29-nameplatetool-test-suite.md`.
-3. [ ] **TebelloReborn: decide on post-MVP scope** — Playwright auto-submit,
+      before building; now also carries a 2026-08-03 Codex second-opinion
+      advisory note): `docs/specs/2026-07-29-nameplatetool-test-suite.md`.
+2. [ ] **TebelloReborn: decide on post-MVP scope** — Playwright auto-submit,
       recruiter/cold-outreach revival, and a doc-gen volume-cap/scheduler
       are all undecided backlog items, no urgency behind them yet. 📍
       Decision brief only, no build — reading either copy is fine, but any
       resulting code work belongs in the live `Desktop/Pappa T/`. Spec
       (ready): `docs/specs/2026-07-29-tebelloreborn-scope-decision.md`.
       Detail: `knowledge/tebelloreborn.md`.
-4. [ ] **SOPS: give the go-ahead to run the AvgMovement migration against
+3. [ ] **SOPS: give the go-ahead to run the AvgMovement migration against
       `instance/sops.db`** — Supplier/Lead-Time + AMU/Min-Max logic ported
       and fully tested (Batch 32/33, commits `fe06eaa`/`112e321`), held for
       Tebello per SOPS's standing schema-change convention. This is the
@@ -77,10 +69,10 @@ flags re-checked 2026-08-03 after the O-P-C consolidation — see note below)
       one. Spec (ready, but gated — do not run without explicit
       in-session go-ahead): `docs/specs/2026-07-29-sops-avgmovement-migration.md`.
       Detail: `2. SOPS/docs/todo.md`, `knowledge/sops.md`.
-5. [ ] **SOPS: Payment Status data-migration review** — a batch of
+4. [ ] **SOPS: Payment Status data-migration review** — a batch of
       historical Sales Orders need human review of migrated/backfilled
       payment-status values before being treated as fully validated. 📍
-      Same live-database caveat as item 5 above — review against
+      Same live-database caveat as item 3 above — review against
       `Desktop/Operations/2. SOPS/instance/sops.db`, not O-P-C's copy.
       Spec (ready): `docs/specs/2026-07-29-sops-payment-status-review.md`.
       Detail: `2. SOPS/docs/todo.md` (2026-07-14 entry onward),
@@ -92,6 +84,21 @@ flags re-checked 2026-08-03 after the O-P-C consolidation — see note below)
 
 ## Done
 
+- [x] **2026-08-03** — codex-gate: install + network-off smoke-test
+      completed. Confirmed installed (user-level `~/.claude/plugins`,
+      applies machine-wide on `TshepangLelosa` since Operations and Pappa T
+      are now the same physical machine). Ran both paths: network-available
+      `/codex-review` against `docs/specs/2026-07-29-nameplatetool-test-suite.md`
+      succeeded and appended a real advisory note to that spec; network-off
+      (simulated via an unreachable proxy for one command, not a real
+      adapter change) confirmed the fail-warn design — found that `codex
+      exec` doesn't fail fast on its own (retries its own reconnect logic
+      for the full duration), so the skill's 90s `timeout` cap is what
+      actually bounds it, not a formality. See
+      `knowledge/tlelosa-claude-config.md` for full detail. Fan Movement IT
+      confirmation on Operations OpenAI-egress remains open but was never a
+      tracked checkbox here (external answer, no spec, not
+      session-executable).
 - [x] **2026-08-03** — ai-outreach-agency: Ollama `READ_TIMEOUT`/`keep_alive`
       fix — found already implemented and committed (`3ec16cd`, 2026-07-31,
       in a Pappa T session predating the O-P-C consolidation, never logged

@@ -1,3 +1,19 @@
+## 2026-08-03 — Ollama READ_TIMEOUT/keep_alive fix: already done, closing the queue item
+**Source:** session (docs/todo.md item + spec `docs/specs/2026-07-29-ollama-timeout-fix.md`)
+**Status:** active
+
+Went to apply the "bump `READ_TIMEOUT` 60s→120s + add `keep_alive: '30m'`"
+fix noted below (2026-07-28 entry) and found it already done — commit
+`3ec16cd` ("Fix: raise Ollama READ_TIMEOUT to 120s + add keep_alive 30m
+(Known Issues #1+#2)"), dated 2026-07-31, in a session that predates this
+hub's O-P-C consolidation and was never logged back to this hub's
+`docs/todo.md`. `src/research/ollama_client.py` has `READ_TIMEOUT = 120`
+and `"keep_alive": "30m"` in the `/api/generate` payload; 17/17 unit tests
+in `tests/unit/test_ollama_client.py` pass. Superseded the 2026-07-28
+entry's "recommended fix, not yet implemented" line below — the fix is
+implemented and has been for several days. Removed the item from this
+hub's `docs/todo.md`.
+
 ## 2026-07-29 — OpenRouter credits top-up: dropped as a dead end
 **Source:** session (Tebello's direction)
 **Status:** active
@@ -36,13 +52,10 @@ manual, no code).
   migration for `asset_gen`, mirroring TebelloReborn's ADR-003/Phase 5 — see
   `tebelloreborn.md`) lands. `research`'s own OpenRouter dependency is already
   resolved (ADR-004 moved it to local Ollama).
-- **Local Ollama generation latency sits close to the 60s `READ_TIMEOUT` ceiling**
-  on this (CPU-only) machine — a cold-load call can exceed 60s and raise a correctly-
-  typed `OllamaError` (not a false `OllamaUnreachableError`), but this risks
-  intermittent errors on an otherwise-healthy daemon during a real batch. Recommended
-  fix (small, single-file, not yet implemented): bump `READ_TIMEOUT` 60s → 120s, and
-  add `"keep_alive": "30m"` to the `/api/generate` payload to stop Ollama's default
-  5-minute idle-unload from forcing a repeat cold-load mid-batch.
+- ~~**Local Ollama generation latency sits close to the 60s `READ_TIMEOUT`
+  ceiling**~~ — **fixed** in commit `3ec16cd` (2026-07-31): `READ_TIMEOUT`
+  raised to 120s and `"keep_alive": "30m"` added to the `/api/generate`
+  payload. See the 2026-08-03 entry above.
 - **Build Queue A** (headless Claude Code for `asset_gen`) — planned, not yet built;
   full detail in its own `docs/specs/handoff-tracking-build.md`.
 

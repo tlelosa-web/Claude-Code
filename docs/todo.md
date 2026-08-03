@@ -64,15 +64,7 @@ flags re-checked 2026-08-03 after the O-P-C consolidation — see note below)
       resulting code work belongs in the live `Desktop/Pappa T/`. Spec
       (ready): `docs/specs/2026-07-29-tebelloreborn-scope-decision.md`.
       Detail: `knowledge/tebelloreborn.md`.
-4. [ ] **ai-outreach-agency: bump Ollama `READ_TIMEOUT` 60s→120s + add
-      `keep_alive: "30m"`** to `/api/generate`. Small, single-file fix. 📍
-      Edit in the live `Desktop/Pappa T/ai-outreach-agency/` — Pappa T has
-      no GitHub remote (local-only history), so a fix made only in O-P-C's
-      copy would need a fresh subtree-merge to ever reach the live project;
-      simpler to fix at the source. Spec (ready):
-      `docs/specs/2026-07-29-ollama-timeout-fix.md`. Detail:
-      `knowledge/ai-outreach-agency.md`.
-5. [ ] **SOPS: give the go-ahead to run the AvgMovement migration against
+4. [ ] **SOPS: give the go-ahead to run the AvgMovement migration against
       `instance/sops.db`** — Supplier/Lead-Time + AMU/Min-Max logic ported
       and fully tested (Batch 32/33, commits `fe06eaa`/`112e321`), held for
       Tebello per SOPS's standing schema-change convention. This is the
@@ -85,7 +77,7 @@ flags re-checked 2026-08-03 after the O-P-C consolidation — see note below)
       one. Spec (ready, but gated — do not run without explicit
       in-session go-ahead): `docs/specs/2026-07-29-sops-avgmovement-migration.md`.
       Detail: `2. SOPS/docs/todo.md`, `knowledge/sops.md`.
-6. [ ] **SOPS: Payment Status data-migration review** — a batch of
+5. [ ] **SOPS: Payment Status data-migration review** — a batch of
       historical Sales Orders need human review of migrated/backfilled
       payment-status values before being treated as fully validated. 📍
       Same live-database caveat as item 5 above — review against
@@ -100,6 +92,15 @@ flags re-checked 2026-08-03 after the O-P-C consolidation — see note below)
 
 ## Done
 
+- [x] **2026-08-03** — ai-outreach-agency: Ollama `READ_TIMEOUT`/`keep_alive`
+      fix — found already implemented and committed (`3ec16cd`, 2026-07-31,
+      in a Pappa T session predating the O-P-C consolidation, never logged
+      back to this queue). Verified `READ_TIMEOUT = 120` and
+      `"keep_alive": "30m"` are both present in
+      `Pappa T/ai-outreach-agency/src/research/ollama_client.py` and that
+      the fix is already part of O-P-C's merged history (`3ec16cd` is an
+      ancestor of this repo's current `HEAD`). Ran the unit suite fresh
+      (17/17 pass) before closing out. See `knowledge/ai-outreach-agency.md`.
 - [x] **2026-07-31** — pitwall-companion: made the Loadouts GP Event
       availability filter collapsible (renamed to just "GP Event") — merged
       as PR #19; doesn't need to be visible all the time per Tebello's

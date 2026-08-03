@@ -1146,3 +1146,39 @@ content directly, or pick one up as-is.
 runtime data (databases, secrets) — any future work that assumes O-P-C is
 a complete mirror of those projects needs to account for that gap.
 **Blockers:** None.
+
+## 2026-08-03 — Re-flagged Next up items, then closed the Ollama timeout item (already done)
+
+Re-flagged all six `docs/todo.md` "Next up" items: replaced the stale ⚠️
+"Pappa T only"/"Operations only" access-block flags with 📍 notes pointing
+at the *live* `Desktop/Operations/`/`Desktop/Pappa T/` copies specifically
+(not O-P-C's historical snapshot), since gitignored live state never made
+it into last entry's subtree-merges — a fix landed only in O-P-C wouldn't
+reach the actual running project. Gave the two SOPS items an explicit
+warning that `instance/sops.db` (the real production database) only
+exists in `Desktop/Operations/2. SOPS/`.
+
+Tebello then picked up item 4, the ai-outreach-agency Ollama timeout fix.
+Read its spec (`docs/specs/2026-07-29-ollama-timeout-fix.md`), went to
+`Desktop/Pappa T/ai-outreach-agency/src/research/ollama_client.py` to
+apply it, and found it already done: `READ_TIMEOUT = 120` and
+`"keep_alive": "30m"` were both already present, committed as `3ec16cd`
+("Fix: raise Ollama READ_TIMEOUT to 120s + add keep_alive 30m") dated
+2026-07-31 — a session that predated this hub's O-P-C consolidation work
+and was never logged back to this queue. Confirmed `3ec16cd` is already
+an ancestor of this repo's current `HEAD` (via the earlier Pappa T
+subtree-merge), so O-P-C already has the fix too. Ran the unit suite
+fresh anyway (`tests/unit/test_ollama_client.py`, 17/17 pass) before
+closing out, per the spec's "run tests, confirm green" step.
+
+Updated `knowledge/ai-outreach-agency.md` (new entry superseding the
+2026-07-28 "recommended fix, not yet implemented" note, struck through
+the stale line in place), removed the item from `docs/todo.md` and fixed
+the resulting numbering gap.
+
+**Last completed:** Ollama timeout/keep_alive item closed — confirmed
+already fixed, not newly implemented (this entry).
+**Next task:** Whichever of the remaining five `docs/todo.md` "Next up"
+items Tebello picks — all now 📍-flagged with the live-copy caveat.
+**Known risks:** None new.
+**Blockers:** None.

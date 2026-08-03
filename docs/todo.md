@@ -69,14 +69,6 @@ flags re-checked 2026-08-03 after the O-P-C consolidation — see note below)
       one. Spec (ready, but gated — do not run without explicit
       in-session go-ahead): `docs/specs/2026-07-29-sops-avgmovement-migration.md`.
       Detail: `2. SOPS/docs/todo.md`, `knowledge/sops.md`.
-4. [ ] **SOPS: Payment Status data-migration review** — a batch of
-      historical Sales Orders need human review of migrated/backfilled
-      payment-status values before being treated as fully validated. 📍
-      Same live-database caveat as item 3 above — review against
-      `Desktop/Operations/2. SOPS/instance/sops.db`, not O-P-C's copy.
-      Spec (ready): `docs/specs/2026-07-29-sops-payment-status-review.md`.
-      Detail: `2. SOPS/docs/todo.md` (2026-07-14 entry onward),
-      `knowledge/sops.md`.
 
 ## Backlog / ideas (not committed)
 
@@ -84,6 +76,14 @@ flags re-checked 2026-08-03 after the O-P-C consolidation — see note below)
 
 ## Done
 
+- [x] **2026-08-03** — SOPS: Payment Status data-migration review completed.
+      Reviewed all 19 flagged SOs directly against the live
+      `Desktop/Operations/2. SOPS/instance/sops.db` with Tebello: 18
+      confirmed correct as-migrated, 1 (SO4722) corrected — a leftover
+      best-guess mapping from the original migration, fixed after backing
+      up the DB first. Every flagged SO now has an explicit human decision
+      on record. See `knowledge/sops.md` and SOPS's own
+      `docs/todo.md`/`docs/session-log.md` (2026-08-03 entries) for detail.
 - [x] **2026-08-03** — codex-gate: install + network-off smoke-test
       completed. Confirmed installed (user-level `~/.claude/plugins`,
       applies machine-wide on `TshepangLelosa` since Operations and Pappa T

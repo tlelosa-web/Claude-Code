@@ -68,16 +68,27 @@ Ltd. Local-only git repo (`C:\Dev\Operations\2. SOPS`, no remote configured)
   schema-change convention. This is the blocking step before `8. AvgMovement`
   (already marked Retired in the Operations hub's project index) can be
   formally decommissioned.
-- **Payment Status data-migration review:** a batch of historical Sales
-  Orders had payment-status values migrated/backfilled and flagged for human
-  review before being treated as fully validated. Detail (specific SO
-  numbers) stays in SOPS's own `docs/todo.md`/`docs/session-log.md`
-  (2026-07-14 entry onward) per the no-company-data rule — not reproduced
-  here.
-- Full up-to-date detail for both items: see SOPS's own
-  `C:\Dev\Operations\2. SOPS\docs\todo.md`.
+- Full up-to-date detail: see SOPS's own live-copy
+  `Desktop/Operations/2. SOPS/docs/todo.md` (not O-P-C's snapshot copy,
+  which has no `instance/`).
 
 Note: SOPS's own todo.md line ~875 (dated 2026-07-23) says the PO-edit/
 upload-catalogue-picker work was "not yet committed" — this is now stale;
 verified 2026-07-28 that it shipped as commit `46c9acb` (2026-07-24) and the
 working tree is clean. Not carried forward as an outstanding item.
+
+## 2026-08-03 — Payment Status data-migration review: closed out
+**Source:** session (hub `/continue`, live Desktop/Operations copy)
+**Status:** active
+
+Reviewed all 19 flagged SOs directly against the live `instance/sops.db`
+with Tebello, per `docs/specs/2026-07-29-sops-payment-status-review.md`.
+Result: 18 confirmed correct as-migrated, 1 corrected (a leftover
+best-guess mapping fixed to the right value, backed up first). Every
+flagged SO now has an explicit human decision on record — this item is
+closed. Full detail (SO-level) stays in SOPS's own `docs/todo.md`/
+`docs/session-log.md`, 2026-08-03 entries, per the no-company-data rule.
+
+Only remaining outstanding item: the AvgMovement→SOPS migration go-ahead
+(Batch 32/33), still gated on Tebello's explicit go-ahead — unaffected by
+this task.

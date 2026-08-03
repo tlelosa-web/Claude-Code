@@ -1226,3 +1226,39 @@ decision, or one of the two SOPS items — AvgMovement gated on explicit
 go-ahead).
 **Known risks:** None new.
 **Blockers:** None.
+
+## 2026-08-03 — SOPS: Payment Status data-migration review closed out
+
+Ran on `TshepangLelosa` (Operations+Pappa T consolidated machine), picking
+up `docs/specs/2026-07-29-sops-payment-status-review.md` from the "Next up"
+queue via `/continue`'s `AskUserQuestion`. Confirmed the live SOPS project
+is at `Desktop/Operations/2. SOPS` (the spec's `C:\Dev\Operations` path is
+stale, pre-consolidation) and read SOPS's own `docs/todo.md`/
+`docs/session-log.md` (2026-07-14 entry onward) for the 19 flagged SOs from
+the earlier Batch 24 migration/spot-check.
+
+Queried `instance/sops.db` directly for all 19 SOs' current
+`status`/`payment_status`/`amount_paid` and presented the table to Tebello
+via `AskUserQuestion`. Tebello confirmed 18 of 19 correct as-migrated; the
+one exception, SO4722 (flagged in the 2026-07-31 spot-check as `Cash Sale -
+Partial` with `amount_paid=0.0` on an already-`Closed` order), was
+confirmed as a leftover best-guess and corrected to `Cash Sale - Paid`.
+Backed up `instance/sops.db` first
+(`instance/sops.db.pre-payment-status-review-backup-20260803_152101`), then
+applied the single-row correction directly via sqlite3 and verified it.
+
+Every flagged SO now has an explicit Tebello decision on record, closing
+this item for good. Updated SOPS's own `docs/todo.md`/`docs/session-log.md`
+(new dated entries), this hub's `knowledge/sops.md` (new dated entry,
+removed the now-stale detail pointer), and `docs/todo.md` (removed the
+item, renumbered remaining "Next up" items 1-3).
+
+**Last completed:** SOPS Payment Status data-migration review (this entry)
+— 18 confirmed, 1 corrected.
+**Next task:** Whichever of the remaining three `docs/todo.md` "Next up"
+items Tebello picks (NamePlateTool test suite, TebelloReborn scope
+decision, or the SOPS AvgMovement migration go-ahead — still gated on
+explicit go-ahead).
+**Known risks:** None new. Marketplace `tlelosa-claude-config` has 3 new
+commits upstream — not yet pulled on this machine, not blocking.
+**Blockers:** None.

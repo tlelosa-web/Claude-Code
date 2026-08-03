@@ -1,0 +1,147 @@
+{% extends 'base.html' %}
+{% block title %}{% if reupload_mode %}Re-upload{% else %}Upload{% endif %} Sales Order - SOPS{% endblock %}
+{% block page_title %}{% if reupload_mode %}Re-upload PDF for {{ existing_so.so_number }}{% else %}Upload Sales Order PDF{% endif %}{% endblock %}
+
+{% block content %}
+<div class="card animate-fade-in" style="margin-bottom: 24px;">
+    <div class="card-header">
+        <h2 class="card-title">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+            Step 1: Upload PDF
+        </h2>
+    </div>
+    <form method="POST" enctype="multipart/form-data" action="{% if reupload_mode %}{{ url_for('sales_orders.reupload_order', order_id=existing_so.id) }}{% else %}{{ url_for('sales_orders.upload_order') }}{% endif %}">
+        <div class="form-group">
+            <label for="pdf_file">Select Sales Order PDF</label>
+            <input type="file" name="pdf_file" id="pdf_file" accept=".pdf" required style="padding: 10px; border: 2px dashed var(--border-color); border-radius: 8px; width: 100%; background: var(--bg-secondary);">
+        </div>
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">Parse & Review</button>
+            <a href="{% if reupload_mode %}{{ url_for('sales_orders.view_order', order_id=existing_so.id) }}{% else %}{{ url_for('sales_orders.list_orders') }}{% endif %}" class="btn btn-secondary">Cancel</a>
+        </div>
+    </form>
+</div>
+
+{% if parsed %}
+<div class="card animate-fade-in">
+    <div class="card-header">
+        <h2 class="card-title">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
+            Step 2: Review & Save
+        </h2>
+    </div>
+
+    {% if parsed.parse_errors %}
+    <div class="alert alert-warning">
+        <strong>Parsing Notes:</strong>
+        <ul style="margin: 8px 0 0 16px;">
+            {% for err in parsed.parse_errors %}
+            <li>{{ err }}</li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+
+    {% if reupload_mode %}
+    <div class="alert alert-info" style="margin-bottom: 16px; padding: 12px 16px; border-left: 4px solid var(--brand-primary);">
+        <strong>ℹ️ Re-uploading for Sales Order {{ existing_so.so_number }}</strong><br>
+        <small>This will replace the existing data. Line items will be deleted and recreated.</small>
+    </div>
+    {% endif %}
+
+    <form method="POST" action="{% if reupload_mode %}{{ url_for('sales_orders.save_order') }}{% else %}{{ url_for('sales_orders.save_order') }}{% endif %}">
+        <input type="hidden" name="raw_pdf_text" value="{{ parsed.raw_pdf_text or '' }}">
+        
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+            <div class="form-group">
+                <label for="so_number">SO Number *</label>
+                <input type="text" id="so_number" name="so_number" value="{{ parsed.so_number or '' }}" required class="form-input">
+            </div>
+            <div class="form-group">
+                <label for="job_numbers">Job Number(s)</label>
+                <input type="text" id="job_numbers" name="job_numbers" value="{{ parsed.job_numbers or '' }}" class="form-input" placeholder="FM4046 or FM4047-FM4055">
+            </div>
+            <div class="form-group">
+                <label for="reference">Reference</label>
+                <input type="text" id="reference" name="reference" value="{{ parsed.reference or '' }}" class="form-input">
+            </div>
+            <div class="form-group">
+                <label for="so_date">SO Date</label>
+                <input type="date" id="so_date" name="so_date" value="{{ parsed.so_date.strftime('%Y-%m-%d') if parsed.so_date else '' }}" class="form-input">
+            </div>
+            <div class="form-group">
+                <label for="delivery_date">Delivery Date</label>
+                <input type="date" id="delivery_date" name="delivery_date" value="{{ parsed.delivery_date.strftime('%Y-%m-%d') if parsed.delivery_date else '' }}" class="form-input">
+            </div>
+            <div class="form-group">
+                <label for="payment_status">Payment Status</label>
+                <select id="payment_status" name="payment_status" class="form-input">
+                    {% for option in payment_status_options %}
+                    <option value="{{ option }}" {% if option == 'Account - Pending' %}selected{% endif %}>{{ option }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="customer_name">Customer Name</label>
+                <input type="text" id="customer_name" name="customer_name" value="{{ parsed.customer_name or '' }}" class="form-input">
+            </div>
+            <div class="form-group">
+                <label for="customer_vat">Customer VAT</label>
+                <input type="text" id="customer_vat" name="customer_vat" value="{{ parsed.customer_vat or '' }}" class="form-input">
+            </div>
+            <div class="form-group" style="grid-column: span 2;">
+                <label for="delivery_address">Delivery Address</label>
+                <textarea id="delivery_address" name="delivery_address" rows="3" class="form-input">{{ parsed.delivery_address or '' }}</textarea>
+            </div>
+            <div class="form-group">
+                <label for="sales_rep">Sales Rep</label>
+                <input type="text" id="sales_rep" name="sales_rep" value="{{ parsed.sales_rep or '' }}" class="form-input">
+            </div>
+        </div>
+
+        <h3 style="margin-top: 24px; margin-bottom: 12px; color: var(--text-primary);">Line Items</h3>
+        {% if parsed.line_items %}
+        <div style="overflow-x: auto;">
+            <table class="data-table" id="line-items-table">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Description</th>
+                        <th>Qty</th>
+                        <th>Excl. Price</th>
+                        <th>Disc %</th>
+                        <th>VAT %</th>
+                        <th>Excl. Total</th>
+                        <th>Incl. Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in parsed.line_items %}
+                    <tr>
+                        <td>{{ loop.index }}</td>
+                        <td>{{ item.description or '' }}</td>
+                        <td>{{ item.qty }}</td>
+                        <td>{{ currency_symbol }} {{ "%.2f"|format(item.excl_price) }}</td>
+                        <td>{{ item.disc_pct if item.disc_pct else 0 }}%</td>
+                        <td>{{ item.vat_pct }}%</td>
+                        <td>{{ currency_symbol }} {{ "%.2f"|format(item.excl_total) }}</td>
+                        <td>{{ currency_symbol }} {{ "%.2f"|format(item.incl_total) }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p style="color: var(--text-muted);">No line items were parsed. You can add them after saving.</p>
+        {% endif %}
+
+        <input type="hidden" name="line_items_json" value='{{ parsed.line_items | tojson | safe if parsed.line_items else "[]" }}'>
+
+        <div class="form-actions" style="margin-top: 24px;">
+            <button type="submit" class="btn btn-primary">{% if reupload_mode %}Update Sales Order{% else %}Save Sales Order{% endif %}</button>
+            <a href="{% if reupload_mode %}{{ url_for('sales_orders.view_order', order_id=existing_so.id) }}{% else %}{{ url_for('sales_orders.list_orders') }}{% endif %}" class="btn btn-secondary">Cancel</a>
+        </div>
+    </form>
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,117 @@
+{% extends 'base.html' %}
+{% block title %}Movement Report - SOPS{% endblock %}
+{% block page_title %}Stock Movement Report{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='vendor/tabulator/tabulator.min.css') }}">
+<script src="{{ url_for('static', filename='vendor/tabulator/tabulator.min.js') }}"></script>
+{% endblock %}
+
+{% block content %}
+<div class="card animate-fade-in" style="margin-bottom: 24px;">
+    <div class="card-header">
+        <h2 class="card-title">Stock Movement Audit Trail</h2>
+        <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+            <select id="filter-item" class="form-input" style="width: 200px; padding: 6px 10px; font-size: 0.85rem;">
+                <option value="">All Items</option>
+                {% for item in items %}
+                <option value="{{ item.code }}">{{ item.code }} - {{ item.description[:50] }}</option>
+                {% endfor %}
+            </select>
+            <input type="date" id="filter-date-from" class="form-input" style="width: 150px; padding: 6px 10px; font-size: 0.85rem;" placeholder="From">
+            <input type="date" id="filter-date-to" class="form-input" style="width: 150px; padding: 6px 10px; font-size: 0.85rem;" placeholder="To">
+            <select id="filter-type" class="form-input" style="width: 150px; padding: 6px 10px; font-size: 0.85rem;">
+                <option value="">All Types</option>
+                <option value="ISSUE">ISSUE</option>
+                <option value="RECEIPT">RECEIPT</option>
+                <option value="PRODUCTION">PRODUCTION</option>
+                <option value="ADJUSTMENT">ADJUSTMENT</option>
+                <option value="REVERSAL">REVERSAL</option>
+                <option value="OPENING">OPENING</option>
+            </select>
+            <a href="{{ url_for('reports.movements_export_csv') }}" class="btn btn-secondary" style="font-size: 0.85rem;" id="export-csv-link">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                Export CSV
+            </a>
+        </div>
+    </div>
+    <div id="movements-table"></div>
+    <div style="padding: 16px; border-top: 1px solid var(--border-color); display: flex; justify-content: space-between; font-size: 1rem;">
+        <span>Total Records: <strong id="total-records">0</strong></span>
+        <span>Net Movement: <strong id="net-movement" style="font-size: 1.2rem;">0.00</strong></span>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    let movementsTable;
+    
+    function loadMovementData() {
+        const params = new URLSearchParams();
+        const itemCode = document.getElementById('filter-item').value;
+        const dateFrom = document.getElementById('filter-date-from').value;
+        const dateTo = document.getElementById('filter-date-to').value;
+        const type = document.getElementById('filter-type').value;
+        
+        if (itemCode) params.set('item_code', itemCode);
+        if (dateFrom) params.set('date_from', dateFrom);
+        if (dateTo) params.set('date_to', dateTo);
+        if (type) params.set('movement_type', type);
+        
+        // Update CSV export link
+        const exportLink = document.getElementById('export-csv-link');
+        exportLink.href = '{{ url_for("reports.movements_export_csv") }}?' + params.toString();
+        
+        fetch('{{ url_for("reports.movements_data") }}?' + params.toString())
+            .then(r => r.json())
+            .then(data => {
+                if (movementsTable) movementsTable.destroy();
+                
+                movementsTable = new Tabulator('#movements-table', {
+                    data: data.movements,
+                    layout: 'fitColumns',
+                    pagination: 'local',
+                    paginationSize: 25,
+                    paginationSizeSelector: [10, 25, 50, 100],
+                    columns: [
+                        { title: 'Date', field: 'date', width: 150 },
+                        { title: 'Item Code', field: 'item_code' },
+                        { title: 'Description', field: 'description', widthGrow: 2 },
+                        { title: 'Type', field: 'type', width: 100 },
+                        { title: 'Reference', field: 'reference' },
+                        { title: 'Qty Change', field: 'qty_change', formatter: 'number', bottomCalc: 'sum' },
+                        { title: 'Qty After', field: 'qty_after', formatter: 'number' },
+                        { title: 'Notes', field: 'notes', widthGrow: 1.5 },
+                        { title: 'By', field: 'created_by' }
+                    ],
+                    rowFormatter: function(row) {
+                        const qty = row.getData().qty_change;
+                        if (qty < 0) {
+                            row.getElement().style.backgroundColor = 'rgba(220, 38, 38, 0.03)';
+                        } else if (qty > 0) {
+                            row.getElement().style.backgroundColor = 'rgba(22, 163, 74, 0.03)';
+                        }
+                    }
+                });
+                
+                document.getElementById('total-records').textContent = data.total_count;
+                document.getElementById('net-movement').textContent = data.net_movement.toLocaleString('en-ZA', {minimumFractionDigits: 2});
+                if (data.net_movement < 0) {
+                    document.getElementById('net-movement').style.color = 'var(--brand-danger)';
+                } else {
+                    document.getElementById('net-movement').style.color = 'var(--brand-success)';
+                }
+            });
+    }
+    
+    document.getElementById('filter-item').addEventListener('change', loadMovementData);
+    document.getElementById('filter-date-from').addEventListener('change', loadMovementData);
+    document.getElementById('filter-date-to').addEventListener('change', loadMovementData);
+    document.getElementById('filter-type').addEventListener('change', loadMovementData);
+    
+    loadMovementData();
+});
+</script>
+{% endblock %}

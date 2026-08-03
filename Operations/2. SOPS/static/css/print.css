@@ -1,0 +1,147 @@
+/* ============================================
+   SOPS — Print Styles
+   Used for Works Order and Picking List printing
+   ============================================ */
+
+@media print {
+    /* Hide all navigation and chrome */
+    body * {
+        visibility: hidden;
+    }
+    
+    /* Show only the document area */
+    .document-header,
+    .document-header *,
+    .info-table,
+    .info-table *,
+    .components-table,
+    .components-table *,
+    .items-table,
+    .items-table *,
+    .signoff-block,
+    .signoff-block *,
+    .footer-note,
+    .footer-note *,
+    .logo-placeholder,
+    .logo-placeholder * {
+        visibility: visible;
+    }
+    
+    body {
+        background: #fff !important;
+        /* Page margin is set once via @page below. Do NOT also pad the body —
+           doing both stacks to 30mm per side, shrinking the usable area enough
+           that a ~1-page document (e.g. a 14-line stock order) spills its
+           footer onto a near-blank extra page. */
+        margin: 0;
+        padding: 0;
+        font-size: 11pt;
+        color: #000;
+    }
+    
+    /* Page setup */
+    @page {
+        size: A4;
+        margin: 15mm;
+    }
+    
+    /* Ensure document fits on one page */
+    .document-header {
+        page-break-inside: avoid;
+    }
+    
+    /* Large orders (e.g. a 30-line stock order) make these tables taller
+       than one page. page-break-inside:avoid would shove the whole table to
+       the next page, leaving the page before it mostly blank and adding an
+       extra page. Let the table flow across pages instead, but keep each row
+       intact and repeat the header row on every page. */
+    .components-table,
+    .items-table {
+        page-break-inside: auto;
+    }
+
+    .components-table thead,
+    .items-table thead {
+        display: table-header-group;
+    }
+
+    .components-table tr,
+    .items-table tr {
+        page-break-inside: avoid;
+    }
+
+    .signoff-block {
+        page-break-inside: avoid;
+        margin-top: 40px;
+    }
+    
+    /* Remove all action buttons, links, navigation */
+    .btn, 
+    .btn-primary,
+    .btn-secondary,
+    .btn-success,
+    .btn-danger,
+    .no-print,
+    .sidebar,
+    .topbar,
+    .topbar-actions,
+    .card-header .btn,
+    .card-header a.btn {
+        display: none !important;
+    }
+    
+    /* Force links to show as text */
+    a {
+        color: #000 !important;
+        text-decoration: none !important;
+    }
+    
+    /* Clean card borders */
+    .card {
+        border: none !important;
+        box-shadow: none !important;
+        background: transparent !important;
+    }
+    
+    /* Table improvements for print */
+    .components-table th,
+    .items-table th {
+        background: #1A2332 !important;
+        color: #fff !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
+    
+    .components-table td,
+    .items-table td {
+        border-bottom: 1px solid #ccc;
+    }
+    
+    /* Ensure amber/red highlights print */
+    .row-amber {
+        background: rgba(245, 158, 11, 0.15) !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
+    
+    /* Badge colors for print */
+    .status-badge {
+        border: 2px solid #000 !important;
+        color: #000 !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
+    
+    /* Orange title must print */
+    .doc-title {
+        color: #E8610A !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
+    
+    .logo-placeholder span {
+        color: #E8610A !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
+}

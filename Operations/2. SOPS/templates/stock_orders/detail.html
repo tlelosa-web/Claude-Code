@@ -1,0 +1,144 @@
+{% extends 'base.html' %}
+{% block title %}Stock Order: {{ stock_order.stock_order_number }} - SOPS{% endblock %}
+{% block page_title %}Stock Order: {{ stock_order.stock_order_number }}{% endblock %}
+
+{% block content %}
+<div class="card animate-fade-in" style="margin-bottom: 24px;">
+    <div class="card-header">
+        <h2 class="card-title">Stock Order Details</h2>
+        <div style="display: flex; gap: 8px;">
+            <div class="dropdown">
+                <button type="button" class="dropdown-toggle btn-primary-dropdown" onclick="toggleDropdown(this)">
+                    Actions ▾
+                </button>
+                <ul class="dropdown-menu">
+                    <li><a href="{{ url_for('stock_orders.print_order', order_id=stock_order.id) }}" target="_blank">Print</a></li>
+                    {% if stock_order.status in ['Open', 'Released'] %}
+                    <li><a href="{{ url_for('stock_orders.edit_order', order_id=stock_order.id) }}">Edit</a></li>
+                    {% endif %}
+                    {% if stock_order.status in ['Open', 'Released', 'Picking'] %}
+                    <li>
+                        {% if can_complete %}
+                        <form method="POST" action="{{ url_for('stock_orders.complete_order', order_id=stock_order.id) }}" style="display: block;" onsubmit="return confirm('Mark this Stock Order as Complete?')">
+                            <button type="submit">Mark Complete</button>
+                        </form>
+                        {% else %}
+                        <a class="disabled" title="All lines must be picked first.">Mark Complete</a>
+                        {% endif %}
+                    </li>
+                    <li>
+                        <form method="POST" action="{{ url_for('stock_orders.cancel_order', order_id=stock_order.id) }}" style="display: block;" onsubmit="return confirm('Cancel this Stock Order? Any already-picked stock will be reversed.')">
+                            <button type="submit" class="danger">Cancel Order</button>
+                        </form>
+                    </li>
+                    {% else %}
+                    <li><a class="disabled" title="Only Open Stock Orders can be edited, completed, or cancelled.">Edit</a></li>
+                    {% endif %}
+                    {% if stock_order.status in ['Complete', 'Cancelled'] %}
+                    <li>
+                        <form method="POST" action="{{ url_for('stock_orders.reopen_order', order_id=stock_order.id) }}" style="display: block;" onsubmit="return confirm('Reopen {{ stock_order.stock_order_number }}? Any issued stock will be reversed.')">
+                            <button type="submit">Reopen</button>
+                        </form>
+                    </li>
+                    {% endif %}
+                    <li class="divider"></li>
+                    <li><a href="{{ url_for('sales_orders.view_order', order_id=stock_order.so_id) }}">Back to SO</a></li>
+                </ul>
+            </div>
+        </div>
+    </div>
+    
+    <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 24px;">
+        <div>
+            <table class="detail-table">
+                <tr><td class="detail-label">Job Number</td><td class="detail-value">{{ stock_order.job_numbers or '-' }}</td></tr>
+                <tr><td class="detail-label">Stock Order No</td><td class="detail-value">{{ stock_order.stock_order_number }}</td></tr>
+                <tr><td class="detail-label">SO Reference</td><td class="detail-value">
+                    {% if stock_order.sales_order %}
+                        <a href="{{ url_for('sales_orders.view_order', order_id=stock_order.sales_order.id) }}" class="link-primary">
+                            {{ stock_order.sales_order.so_number }}
+                        </a>
+                    {% else %}
+                        -
+                    {% endif %}
+                </td></tr>
+                <tr><td class="detail-label">Customer</td><td class="detail-value">{{ stock_order.sales_order.customer_name if stock_order.sales_order else '-' }}</td></tr>
+                <tr><td class="detail-label">Delivery Date</td><td class="detail-value">{{ (stock_order.sales_order.delivery_date | dmy or '-') if stock_order.sales_order else '-' }}</td></tr>
+            </table>
+        </div>
+        <div>
+            <table class="detail-table">
+                <tr><td class="detail-label">Status</td><td class="detail-value"><span class="badge badge-{{ stock_order.status.lower() }}">{{ stock_order.status }}</span></td></tr>
+                <tr><td class="detail-label">Created</td><td class="detail-value">{{ stock_order.created_at.strftime('%Y-%m-%d %H:%M') if stock_order.created_at else '-' }}</td></tr>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Line Items -->
+<div class="card animate-fade-in">
+    <div class="card-header">
+        <h2 class="card-title">Line Items</h2>
+    </div>
+    {% if stock_order.lines %}
+    {% if stock_order.status in ['Open', 'Released', 'Picking'] %}
+    <form method="POST" action="{{ url_for('stock_orders.pick_lines', order_id=stock_order.id) }}">
+    {% endif %}
+    <div style="overflow-x: auto;">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Item Code</th>
+                    <th>Description</th>
+                    <th>Qty</th>
+                    {% if stock_order.status in ['Open', 'Released', 'Picking'] %}
+                    <th>Picked</th>
+                    <th>Pick Qty</th>
+                    {% endif %}
+                    <th>Comments</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for line in stock_order.lines %}
+                {% set outstanding = (line.qty or 0) - (line.qty_issued or 0) %}
+                {% set extra = line_extras.get(line.id, {}) %}
+                <tr>
+                    <td>{{ loop.index }}</td>
+                    <td>
+                        {% if extra.item_id %}
+                            <a href="{{ url_for('items.detail', item_id=extra.item_id) }}" class="link-primary">{{ line.item_code or '-' }}</a>
+                        {% else %}
+                            {{ line.item_code or '-' }}
+                        {% endif %}
+                    </td>
+                    <td>{{ line.description or '' }}</td>
+                    <td>{{ line.qty }}</td>
+                    {% if stock_order.status in ['Open', 'Released', 'Picking'] %}
+                    <td>{{ line.qty_issued or 0 }}</td>
+                    <td>
+                        <input type="number" class="form-input" name="pick_qty_{{ line.id }}"
+                               value="{{ outstanding if outstanding > 0 else 0 }}" min="0" step="0.1"
+                               style="width: 90px; padding: 4px 6px; font-size: 0.85rem;"
+                               {% if outstanding <= 0 %}disabled{% endif %}>
+                    </td>
+                    {% endif %}
+                    <td>{{ extra.comment or '-' }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% if stock_order.status in ['Open', 'Released', 'Picking'] %}
+    <div style="display: flex; align-items: center; gap: 12px; padding: 16px; flex-wrap: wrap;">
+        <label for="picked_by" style="font-size: 0.85rem; color: var(--text-muted);">Picked By</label>
+        <input type="text" id="picked_by" name="picked_by" class="form-input" placeholder="Your name" style="width: 200px;">
+        <button type="submit" class="btn btn-primary">Confirm Picks</button>
+    </div>
+    </form>
+    {% endif %}
+    {% else %}
+    <p style="padding: 24px; color: var(--text-muted); text-align: center;">No line items.</p>
+    {% endif %}
+</div>
+{% endblock %}

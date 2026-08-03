@@ -1,0 +1,69 @@
+{% extends 'base.html' %}
+{% block title %}Inventory - SOPS{% endblock %}
+{% block page_title %}Inventory{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='vendor/tabulator/tabulator.min.css') }}">
+<script src="{{ url_for('static', filename='vendor/tabulator/tabulator.min.js') }}"></script>
+{% endblock %}
+
+{% block content %}
+<div class="card animate-fade-in" style="margin-bottom: 24px;">
+    <div class="card-header">
+        <h2 class="card-title">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l-7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
+            Inventory
+        </h2>
+        <div style="display: flex; gap: 8px;">
+            <a href="{{ url_for('items.import_csv') }}" class="btn btn-secondary">Import CSV</a>
+            <a href="{{ url_for('items.import_supplier_leadtime') }}" class="btn btn-secondary">Import Supplier/Lead Time</a>
+            <a href="{{ url_for('items.import_movement_history') }}" class="btn btn-secondary">Import Movement History</a>
+        </div>
+    </div>
+    <div id="items-table"></div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Fetch items via AJAX
+    fetch('{{ url_for("items.catalogue") }}', {
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+    })
+    .then(response => response.json())
+    .then(data => {
+        new Tabulator('#items-table', {
+            data: data,
+            layout: 'fitColumns',
+            pagination: 'local',
+            paginationSize: 25,
+            paginationSizeSelector: [10, 25, 50, 100],
+            movableColumns: true,
+            selectable: false,
+            columns: [
+                { title: 'Code', field: 'code', headerFilter: 'input', headerFilterPlaceholder: 'Filter...' },
+                { title: 'Description', field: 'description', widthGrow: 3 },
+                { title: 'Category', field: 'category', headerFilter: 'input' },
+                { title: 'Qty on Hand', field: 'qty_on_hand', formatter: 'number', formatterParams: { decimal: ',', thousand: ' ' }, bottomCalc: 'sum' },
+                { title: 'Avg Cost (R)', field: 'avg_cost' },
+                { title: 'Last Cost (R)', field: 'last_cost' },
+                { title: 'Excl. Price', field: 'excl_price' },
+                { title: 'Active', field: 'active', width: 80 },
+                { 
+                    title: '', field: 'id', width: 60, formatter: function(cell) {
+                        return '<a href="/items/' + cell.getValue() + '" class="btn btn-secondary" style="padding: 2px 6px; font-size: 0.7rem;">View</a>';
+                    }
+                }
+            ],
+            rowFormatter: function(row) {
+                const qty = row.getData().qty_on_hand;
+                if (qty <= 0) {
+                    row.getElement().style.backgroundColor = 'rgba(220, 38, 38, 0.05)';
+                }
+            }
+        });
+    });
+});
+</script>
+{% endblock %}

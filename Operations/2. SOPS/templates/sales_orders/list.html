@@ -1,0 +1,118 @@
+{% extends 'base.html' %}
+{% block title %}Sales Orders - SOPS{% endblock %}
+{% block page_title %}Sales Orders{% endblock %}
+
+{% block content %}
+<div class="card card-sticky-head animate-fade-in">
+    <div class="card-header">
+        <h2 class="card-title">{{ 'Open Sales Orders' if view == 'open' else ('Closed Sales Orders' if view == 'closed' else 'All Sales Orders') }}</h2>
+        <div style="display: flex; gap: 8px; align-items: center;">
+            <input type="text" id="so-search" class="form-input" placeholder="Search SO #, customer, job number..." style="width: 240px; padding: 6px 10px; font-size: 0.8rem;">
+            <div style="display: flex; gap: 4px;">
+                <a href="{{ url_for('sales_orders.list_orders', view='all') }}" class="btn {{ 'btn-primary' if view == 'all' else 'btn-secondary' }}" style="padding: 6px 12px; font-size: 0.8rem;">All</a>
+                <a href="{{ url_for('sales_orders.list_orders', view='open') }}" class="btn {{ 'btn-primary' if view == 'open' else 'btn-secondary' }}" style="padding: 6px 12px; font-size: 0.8rem;">Open</a>
+                <a href="{{ url_for('sales_orders.list_orders', view='closed') }}" class="btn {{ 'btn-primary' if view == 'closed' else 'btn-secondary' }}" style="padding: 6px 12px; font-size: 0.8rem;">Closed</a>
+            </div>
+            <a href="{{ url_for('sales_orders.export_excel', view=view) }}" class="btn btn-secondary">Export Excel</a>
+            <a href="{{ url_for('sales_orders.import_invoices') }}" class="btn btn-secondary">Import Invoices</a>
+            <a href="{{ url_for('sales_orders.upload_order') }}" class="btn btn-primary">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                Upload New SO
+            </a>
+        </div>
+    </div>
+
+    {% if orders %}
+    <div>
+        <table class="data-table" id="so-list-table">
+            <thead>
+                <tr>
+                    <th class="col-date">Date</th>
+                    <th>SO Number</th>
+                    <th>Job Number(s)</th>
+                    <th>Customer Ref.</th>
+                    <th>Customer</th>
+                    <th class="col-date">Delivery Date</th>
+                    <th>Sales Rep</th>
+                    <th>Total</th>
+                    <th>Status</th>
+                    <th>Report Status</th>
+                    <th>Payment Status</th>
+                    <th data-sortable="false">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for so in orders %}
+                <tr data-search="{{ (so.so_number ~ ' ' ~ (so.job_numbers or '') ~ ' ' ~ (so.reference or '') ~ ' ' ~ (so.customer_name or '') ~ ' ' ~ (so.sales_rep or '')) | lower }}">
+                    <td class="col-date" data-sort="{{ so.so_date.isoformat() if so.so_date else '' }}">{{ so.so_date | dmy or '-' }}</td>
+                    <td><a href="{{ url_for('sales_orders.view_order', order_id=so.id) }}" class="link-primary">{{ so.so_number }}</a></td>
+                    <td>{{ so.job_numbers or '-' }}</td>
+                    <td>{{ so.reference or '-' }}</td>
+                    <td>{{ so.customer_name or '-' }}</td>
+                    <td class="col-date" data-sort="{{ so.delivery_date.isoformat() if so.delivery_date else '' }}">{{ so.delivery_date | dmy or '-' }}</td>
+                    <td>{{ so.sales_rep or '-' }}</td>
+                    <td data-sort="{{ so.total_incl }}">{{ currency_symbol }} {{ '%.2f'|format(so.total_incl) }}</td>
+                    <td><span class="badge badge-{{ so.status.lower() }}">{{ so.status }}</span></td>
+                    <td>
+                        {% if so.report_status %}
+                        <span class="badge badge-{{ so.report_status.lower().replace('-', '') }}">{{ so.report_status }}</span>
+                        {% else %}
+                        -
+                        {% endif %}
+                        {% if so.on_hold %}
+                        <span class="badge" style="background: var(--fm-red); color: #fff; margin-left: 4px;" title="{{ so.on_hold_reason or 'On Hold' }}">On Hold</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ so.payment_status or '-' }}</td>
+                    <td>
+                        <div class="dropdown">
+                            <button type="button" class="btn btn-secondary" style="padding: 4px 10px; font-size: 0.75rem;" onclick="toggleDropdown(this)">Actions ▾</button>
+                            <ul class="dropdown-menu">
+                                <li><a href="{{ url_for('sales_orders.view_order', order_id=so.id) }}">View</a></li>
+                                <li><a href="{{ url_for('sales_orders.build_bom', order_id=so.id) }}">Build BOM</a></li>
+                                <li>
+                                    <form method="POST" action="{{ url_for('sales_orders.delete_order', order_id=so.id) }}" style="display: block;" onsubmit="return confirm('Are you sure you want to delete {{ so.so_number }}? This cannot be undone.')">
+                                        <button type="submit" class="danger">Delete Order</button>
+                                    </form>
+                                </li>
+                            </ul>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div style="text-align: center; padding: 60px 20px; color: var(--text-muted);">
+        <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 16px; opacity: 0.4;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+        <p style="font-size: 1.1rem;">No Sales Orders yet.</p>
+        <p style="margin-top: 8px;">Upload a PDF to get started.</p>
+        <a href="{{ url_for('sales_orders.upload_order') }}" class="btn btn-primary" style="margin-top: 16px;">Upload First SO</a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{{ url_for('static', filename='js/resizable_columns.js') }}"></script>
+<script>makeColumnsResizable('so-list-table');</script>
+<script src="{{ url_for('static', filename='js/table_sort_filter.js') }}"></script>
+<script>makeTableSortableFilterable('so-list-table');</script>
+<script>
+    (function() {
+        var searchInput = document.getElementById('so-search');
+        var table = document.getElementById('so-list-table');
+        if (!searchInput || !table) return;
+
+        searchInput.addEventListener('input', function() {
+            var query = this.value.toLowerCase().trim();
+            var rows = table.querySelectorAll('tbody tr[data-search]');
+            rows.forEach(function(row) {
+                row.dataset.hiddenBySearch = row.dataset.search.indexOf(query) !== -1 ? '0' : '1';
+                window.updateTableRowVisibility(row);
+            });
+        });
+    })();
+</script>
+{% endblock %}

@@ -1,0 +1,25 @@
+{% extends 'base.html' %}
+{% block title %}Settings - SOPS{% endblock %}
+{% block page_title %}Settings{% endblock %}
+
+{% block content %}
+<div class="card animate-fade-in" style="max-width: 560px;">
+    <div class="card-header">
+        <h2 class="card-title">System Currency</h2>
+    </div>
+    <div style="padding: 20px;">
+        <form method="POST" action="{{ url_for('settings.update') }}">
+            <div class="form-group">
+                <label for="currency_symbol">Currency Symbol</label>
+                <input type="text" id="currency_symbol" name="currency_symbol" value="{{ currency_symbol }}" required class="form-input" style="max-width: 160px;">
+            </div>
+            <div style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 16px;">
+                Used as the display prefix for every money value across the app (dashboard, Sales Orders, Purchase Orders, Items, Stock Report).
+            </div>
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">Save</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

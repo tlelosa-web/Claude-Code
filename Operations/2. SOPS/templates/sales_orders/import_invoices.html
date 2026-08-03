@@ -1,0 +1,56 @@
+{% extends 'base.html' %}
+{% block title %}Import Invoices - SOPS{% endblock %}
+{% block page_title %}Import Customer Invoices from CSV{% endblock %}
+
+{% block content %}
+<div class="card animate-fade-in" style="margin-bottom: 24px;">
+    <div class="card-header">
+        <h2 class="card-title">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="8" x2="8" y2="8"></line><line x1="16" y1="12" x2="8" y2="12"></line><line x1="16" y1="16" x2="8" y2="16"></line></svg>
+            Import Customer Invoices CSV
+        </h2>
+    </div>
+    <div>
+        <h3 style="margin-bottom: 12px; color: var(--text-primary);">Upload a CSV File</h3>
+        <form method="POST" enctype="multipart/form-data" action="{{ url_for('sales_orders.import_invoices') }}">
+            <div class="form-group">
+                <label for="csv_file">Select CSV File</label>
+                <input type="file" name="csv_file" id="csv_file" accept=".csv" style="padding: 10px; border: 2px dashed var(--border-color); border-radius: 8px; width: 100%; background: var(--bg-secondary);">
+            </div>
+            <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 16px;">
+                Feeds the Monthly INV tab of the Sales Order Report export. Full upsert by Document No. -
+                every field is Sage-sourced, so existing invoices are updated in place, not just enriched.
+            </p>
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">Import File</button>
+                <a href="{{ url_for('sales_orders.list_orders') }}" class="btn btn-secondary">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card animate-fade-in">
+    <div class="card-header">
+        <h2 class="card-title">CSV Format Requirements</h2>
+    </div>
+    <div style="padding: 16px; font-size: 0.9rem; line-height: 1.6;">
+        <p>The CSV file should be exported from Sage's Customer Invoices report (<code>CustomerInvoicesReport.csv</code>).</p>
+        <p style="margin-top: 8px;">Expected columns:</p>
+        <ul style="margin: 12px 0 0 20px; color: var(--text-secondary);">
+            <li><strong>Date</strong> — Invoice date</li>
+            <li><strong>Document No.</strong> — Invoice number, used to match/upsert</li>
+            <li><strong>Customer Ref.</strong></li>
+            <li><strong>Customer</strong></li>
+            <li><strong>Sales Rep</strong></li>
+            <li><strong>Due Date</strong></li>
+            <li><strong>Exclusive</strong></li>
+            <li><strong>VAT</strong></li>
+            <li><strong>Total Selling</strong></li>
+            <li><strong>Total Outstanding</strong></li>
+        </ul>
+        <p style="margin-top: 12px; color: var(--text-muted); font-style: italic;">
+            Rows with a missing Document No. or an unparseable Date/Due Date are skipped, not imported.
+        </p>
+    </div>
+</div>
+{% endblock %}

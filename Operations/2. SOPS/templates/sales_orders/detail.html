@@ -1,0 +1,251 @@
+{% extends 'base.html' %}
+{% block title %}SO {{ so.so_number }} - SOPS{% endblock %}
+{% block page_title %}Sales Order: {{ so.so_number }}{% endblock %}
+
+{% block content %}
+{% if so.status == 'Cancelled' %}
+<div class="alert alert-warning" style="margin-bottom: 16px; padding: 12px 16px; border-left: 4px solid var(--brand-amber);">
+    <strong>⚠️ This Sales Order has been cancelled.</strong>
+</div>
+{% endif %}
+
+<div class="card animate-fade-in" style="margin-bottom: 24px;">
+    <div class="card-header">
+        <h2 class="card-title">Order Details</h2>
+        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+            <div class="dropdown">
+                <button type="button" class="dropdown-toggle btn-primary-dropdown" onclick="toggleDropdown(this)">
+                    Actions ▾
+                </button>
+                <ul class="dropdown-menu">
+                    {% if so.status not in ('Closed', 'Cancelled') %}
+                    <li><a href="{{ url_for('sales_orders.build_bom', order_id=so.id) }}">Build BOM / Works Pack</a></li>
+                    <li><a href="{{ url_for('sales_orders.reupload_order', order_id=so.id) }}">Re-upload PDF</a></li>
+                    <li>
+                        <form method="POST" action="{{ url_for('sales_orders.close_order', order_id=so.id) }}" style="display: block;" onsubmit="return confirm('Close this Sales Order? This will finalize the order. All Works Orders and Stock Orders must be complete.')">
+                            <button type="submit" class="danger">Close Order</button>
+                        </form>
+                    </li>
+                    <li>
+                        <form method="POST" action="{{ url_for('sales_orders.cancel_order', order_id=so.id) }}" style="display: block;" onsubmit="return confirm('Cancel this Sales Order? This will also cancel any open Works Orders.')">
+                            <button type="submit" class="danger">Cancel Order</button>
+                        </form>
+                    </li>
+                    {% endif %}
+                    {% if so.status == 'Closed' %}
+                    <li>
+                        <form method="POST" action="{{ url_for('sales_orders.reopen_order', order_id=so.id) }}" style="display: block;" onsubmit="return confirm('Reopen this Sales Order? Linked Works Orders and Stock Orders are not affected.')">
+                            <button type="submit">Reopen Order</button>
+                        </form>
+                    </li>
+                    {% endif %}
+                    {% if wos %}
+                    <li><a class="disabled" title="Delete all linked Works Orders first.">Delete Order</a></li>
+                    {% else %}
+                    <li>
+                        <form method="POST" action="{{ url_for('sales_orders.delete_order', order_id=so.id) }}" style="display: block;" onsubmit="return confirm('Are you sure you want to delete {{ so.so_number }}? This cannot be undone.')">
+                            <button type="submit" class="danger">Delete Order</button>
+                        </form>
+                    </li>
+                    {% endif %}
+                    <li class="divider"></li>
+                    <li><a href="{{ url_for('sales_orders.list_orders') }}">Back to List</a></li>
+                </ul>
+            </div>
+        </div>
+    </div>
+    
+    <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 24px;">
+        <div>
+            <table class="detail-table">
+                <tr><td class="detail-label">SO Number</td><td class="detail-value">{{ so.so_number }}</td></tr>
+                <tr><td class="detail-label">Job Number(s)</td><td class="detail-value">{{ so.job_numbers or '-' }}</td></tr>
+                <tr><td class="detail-label">Job/SO Ref</td><td class="detail-value">{{ so.job_reference }}</td></tr>
+                <tr><td class="detail-label">Reference</td><td class="detail-value">{{ so.reference or '-' }}</td></tr>
+                <tr><td class="detail-label">Customer</td><td class="detail-value">{{ so.customer_name or '-' }}</td></tr>
+                <tr><td class="detail-label">VAT No.</td><td class="detail-value">{{ so.customer_vat or '-' }}</td></tr>
+                <tr><td class="detail-label">Delivery Address</td><td class="detail-value">{{ so.delivery_address or '-' }}</td></tr>
+                <tr><td class="detail-label">Sales Rep</td><td class="detail-value">{{ so.sales_rep or '-' }}</td></tr>
+            </table>
+        </div>
+        <div>
+            <table class="detail-table">
+                <tr><td class="detail-label">Date</td><td class="detail-value">{{ so.so_date | dmy or '-' }}</td></tr>
+                <tr><td class="detail-label">Delivery Date</td><td class="detail-value">
+                    <form method="POST" action="{{ url_for('sales_orders.update_delivery_date', order_id=so.id) }}" style="display: flex; gap: 8px; align-items: center;">
+                        <input type="date" name="delivery_date" aria-label="Delivery Date" class="form-input" style="width: auto; padding: 4px 8px; font-size: 0.85rem;" value="{{ so.delivery_date.strftime('%Y-%m-%d') if so.delivery_date else '' }}">
+                        <button type="submit" class="btn btn-secondary" style="padding: 4px 10px; font-size: 0.75rem;">Update</button>
+                    </form>
+                </td></tr>
+                <tr><td class="detail-label">Total</td><td class="detail-value">{{ currency_symbol }} {{ '%.2f'|format(so.total_incl) }}</td></tr>
+                {% if so.payment_status == 'Cash Sale - Partial' %}
+                <tr><td class="detail-label">Balance Due</td><td class="detail-value">{{ currency_symbol }} {{ '%.2f'|format(so.balance_due) }}</td></tr>
+                {% endif %}
+                <tr><td class="detail-label">Status</td><td class="detail-value"><span class="badge badge-{{ so.status.lower() }}">{{ so.status }}</span></td></tr>
+                <tr><td class="detail-label">Report Status</td><td class="detail-value">
+                    {% if so.display_report_status %}
+                    <span class="badge badge-{{ so.report_status.lower().replace('-', '') }}">{{ so.display_report_status }}</span>
+                    {% else %}
+                    -
+                    {% endif %}
+                </td></tr>
+                <tr><td class="detail-label">On Hold</td><td class="detail-value">
+                    <form method="POST" action="{{ url_for('sales_orders.update_on_hold', order_id=so.id) }}" style="display: flex; gap: 8px; align-items: flex-start;">
+                        <label style="display: flex; align-items: center; gap: 4px; font-size: 0.85rem;">
+                            <input type="checkbox" name="on_hold" {{ 'checked' if so.on_hold else '' }}>
+                            On Hold
+                        </label>
+                        <textarea name="on_hold_reason" aria-label="On Hold Reason" class="form-input" rows="2" placeholder="Reason (optional)" style="width: 100%; padding: 4px 8px; font-size: 0.85rem;">{{ so.on_hold_reason or '' }}</textarea>
+                        <button type="submit" class="btn btn-secondary" style="padding: 4px 10px; font-size: 0.75rem;">Update</button>
+                    </form>
+                </td></tr>
+                <tr><td class="detail-label">Payment Status</td><td class="detail-value">
+                    <form method="POST" action="{{ url_for('sales_orders.update_payment_status', order_id=so.id) }}" style="display: flex; gap: 8px; align-items: center;">
+                        <select name="payment_status" class="form-input" style="width: auto; padding: 4px 8px; font-size: 0.85rem;" onchange="this.form.submit()">
+                            {% for option in payment_status_options %}
+                            <option value="{{ option }}" {{ 'selected' if so.payment_status == option else '' }}>{{ option }}</option>
+                            {% endfor %}
+                        </select>
+                        {% if so.payment_status == 'Cash Sale - Partial' %}
+                        <input type="number" name="amount_paid" value="{{ so.amount_paid or 0 }}" step="0.01" min="0"
+                               class="form-input" style="width: 100px; padding: 4px 8px; font-size: 0.85rem;" placeholder="Amount paid">
+                        <button type="submit" class="btn btn-secondary" style="padding: 4px 10px; font-size: 0.75rem;">Update</button>
+                        {% endif %}
+                    </form>
+                </td></tr>
+                <tr><td class="detail-label">Created</td><td class="detail-value">{{ so.created_at.strftime('%Y-%m-%d %H:%M') if so.created_at else '-' }}</td></tr>
+                <tr><td class="detail-label">Notes</td><td class="detail-value">
+                    <form method="POST" action="{{ url_for('sales_orders.update_report_notes', order_id=so.id) }}" style="display: flex; gap: 8px; align-items: flex-start;">
+                        <textarea name="report_notes" aria-label="Notes" class="form-input" rows="2" style="width: 100%; padding: 4px 8px; font-size: 0.85rem;">{{ so.report_notes or '' }}</textarea>
+                        <button type="submit" class="btn btn-secondary" style="padding: 4px 10px; font-size: 0.75rem;">Update</button>
+                    </form>
+                </td></tr>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Line Items Table -->
+<div class="card animate-fade-in" style="margin-bottom: 24px;">
+    <div class="card-header">
+        <h2 class="card-title">Line Items</h2>
+    </div>
+    {% if so.line_items %}
+    <div style="overflow-x: auto;">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Description</th>
+                    <th>Qty</th>
+                    <th>Excl. Price</th>
+                    <th>VAT %</th>
+                    <th>Excl. Total</th>
+                    <th>Incl. Total</th>
+                    <th>Job Number</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in so.line_items %}
+                <tr>
+                    <td>{{ loop.index }}</td>
+                    <td>{{ item.description or '' }}</td>
+                    <td>{{ item.qty }}</td>
+                    <td>{{ currency_symbol }} {{ "%.2f"|format(item.excl_price) }}</td>
+                    <td>{{ item.vat_pct }}%</td>
+                    <td>{{ currency_symbol }} {{ "%.2f"|format(item.excl_total) }}</td>
+                    <td>{{ currency_symbol }} {{ "%.2f"|format(item.incl_total) }}</td>
+                    <td>{{ item.job_number or '-' }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p style="padding: 24px; color: var(--text-muted); text-align: center;">No line items recorded.</p>
+    {% endif %}
+</div>
+
+<!-- Related Works Orders / Picking Lists -->
+<div class="card animate-fade-in">
+    <div class="card-header">
+        <h2 class="card-title">Related Works Orders / Picking Lists</h2>
+        {% set has_wo = wos|length > 0 %}
+        <a href="{{ url_for('sales_orders.build_bom', order_id=so.id) }}" 
+           class="btn btn-primary" 
+           {% if has_wo %}disabled style="opacity: 0.5; cursor: not-allowed;" title="A Works Order already exists for this SO"{% endif %}>
+            Create New
+        </a>
+    </div>
+    
+    <!-- Works Orders sub-table -->
+    {% if wos %}
+    <div style="padding: 16px;">
+        <h3 style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 12px;">Works Orders</h3>
+        <div style="overflow-x: auto;">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>WO Number</th>
+                        <th>Type</th>
+                        <th>Status</th>
+                        <th>Created</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for wo in wos %}
+                    <tr>
+                        <td><a href="{{ url_for('works_orders.view_order', order_id=wo.id) }}" class="link-primary">{{ wo.wo_number }}</a></td>
+                        <td><span class="badge" style="background: var(--brand-secondary);">{{ "Assembly" if wo.order_type == "ASSEMBLY" else "Stock" }}</span></td>
+                        <td><span class="badge badge-{{ wo.status.lower().replace(' ', '') }}">{{ wo.status }}</span></td>
+                        <td>{{ wo.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                        <td><a href="{{ url_for('works_orders.view_order', order_id=wo.id) }}" class="btn btn-secondary" style="padding: 4px 10px; font-size: 0.75rem;">View</a></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+    
+    <!-- Divider between tables -->
+    {% if wos and stock_orders %}
+    <hr style="border: none; border-top: 1px solid rgba(255,255,255,0.1); margin: 0 16px;">
+    {% endif %}
+    
+    <!-- Stock Orders sub-table -->
+    {% if stock_orders %}
+    <div style="padding: 16px;">
+        <h3 style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 12px;">Stock Orders</h3>
+        <div style="overflow-x: auto;">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Stock Order No</th>
+                        <th>Status</th>
+                        <th>Created</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for sto in stock_orders %}
+                    <tr>
+                        <td><a href="{{ url_for('stock_orders.view_order', order_id=sto.id) }}" class="link-primary">{{ sto.stock_order_number }}</a></td>
+                        <td><span class="badge badge-{{ sto.status.lower() }}">{{ sto.status }}</span></td>
+                        <td>{{ sto.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                        <td><a href="{{ url_for('stock_orders.view_order', order_id=sto.id) }}" class="btn btn-secondary" style="padding: 4px 10px; font-size: 0.75rem;">View</a></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+    
+    <!-- Empty state -->
+    {% if not wos and not stock_orders %}
+    <p style="padding: 24px; color: var(--text-muted); text-align: center;">No Works Orders or Picking Lists have been created for this Sales Order yet.</p>
+    {% endif %}
+</div>
+{% endblock %}

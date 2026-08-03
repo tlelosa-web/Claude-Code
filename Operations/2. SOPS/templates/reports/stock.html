@@ -1,0 +1,116 @@
+{% extends 'base.html' %}
+{% block title %}Stock Report - SOPS{% endblock %}
+{% block page_title %}Stock Report{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='vendor/tabulator/tabulator.min.css') }}">
+<script src="{{ url_for('static', filename='vendor/tabulator/tabulator.min.js') }}"></script>
+{% endblock %}
+
+{% block content %}
+<div class="card animate-fade-in" style="margin-bottom: 24px;">
+    <div class="card-header">
+        <h2 class="card-title">Inventory Stock Report</h2>
+        <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+            <select id="filter-category" class="form-input" style="width: 180px; padding: 6px 10px; font-size: 0.85rem;">
+                <option value="">All Categories</option>
+                {% for cat in categories %}
+                <option value="{{ cat }}">{{ cat }}</option>
+                {% endfor %}
+            </select>
+            <label style="display: flex; align-items: center; gap: 4px; font-size: 0.85rem;">
+                <input type="checkbox" id="filter-active" checked> Active Only
+            </label>
+            <select id="filter-zerostock" class="form-input" style="width: 160px; padding: 6px 10px; font-size: 0.85rem;">
+                <option value="">All Stock Levels</option>
+                <option value="show">Show Zero Stock Only</option>
+                <option value="hide">Hide Zero Stock</option>
+            </select>
+            <label style="display: flex; align-items: center; gap: 4px; font-size: 0.85rem;">
+                <input type="checkbox" id="filter-below-reorder"> Below Reorder Point
+            </label>
+            <a href="{{ url_for('reports.stock_export_csv') }}" class="btn btn-secondary" style="font-size: 0.85rem;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                Export CSV
+            </a>
+            <form method="POST" action="{{ url_for('purchase_orders.create_from_shortfall') }}" style="display: inline;" onsubmit="return confirm('Create a Draft Purchase Order for every item below its reorder point?')">
+                <button type="submit" class="btn btn-primary" style="font-size: 0.85rem;">Create PO from Shortfall</button>
+            </form>
+        </div>
+    </div>
+    <div id="stock-table"></div>
+    <div style="padding: 16px; border-top: 1px solid var(--border-color); display: flex; justify-content: space-between; font-size: 1rem;">
+        <span>Total Items: <strong id="total-items">0</strong></span>
+        <span>Grand Total Value: <strong id="grand-total" style="color: var(--brand-primary); font-size: 1.3rem;">{{ currency_symbol }} 0.00</strong></span>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    let stockTable;
+    
+    function loadStockData() {
+        const params = new URLSearchParams();
+        const category = document.getElementById('filter-category').value;
+        const activeOnly = document.getElementById('filter-active').checked;
+        const zeroStock = document.getElementById('filter-zerostock').value;
+        
+        const belowReorder = document.getElementById('filter-below-reorder').checked;
+
+        if (category) params.set('category', category);
+        params.set('active_only', activeOnly ? 'true' : 'false');
+        if (zeroStock) params.set('zero_stock', zeroStock);
+        if (belowReorder) params.set('below_reorder', 'show');
+        
+        fetch('{{ url_for("reports.stock_data") }}?' + params.toString())
+            .then(r => r.json())
+            .then(data => {
+                if (stockTable) stockTable.destroy();
+                
+                stockTable = new Tabulator('#stock-table', {
+                    data: data.items,
+                    layout: 'fitColumns',
+                    pagination: 'local',
+                    paginationSize: 25,
+                    paginationSizeSelector: [10, 25, 50, 100, 200],
+                    columns: [
+                        { title: 'Code', field: 'code', headerFilter: 'input' },
+                        { title: 'Description', field: 'description', widthGrow: 2 },
+                        { title: 'Category', field: 'category' },
+                        { title: 'Qty on Hand', field: 'qty_on_hand', formatter: 'number', bottomCalc: 'sum' },
+                        { title: 'Available Qty', field: 'available_qty', formatter: 'number', bottomCalc: 'sum' },
+                        { title: 'Avg Cost ({{ currency_symbol }})', field: 'avg_cost', formatter: 'money', formatterParams: { decimal: '.', thousand: ',', symbol: '{{ currency_symbol }} ' } },
+                        { title: 'Stock Value ({{ currency_symbol }})', field: 'stock_value', formatter: 'money', formatterParams: { decimal: '.', thousand: ',', symbol: '{{ currency_symbol }} ' }, bottomCalc: 'sum' },
+                        { title: 'Reorder Point', field: 'reorder_point' },
+                        { title: 'Supplier', field: 'supplier' },
+                        { title: 'Lead Time (wks)', field: 'lead_time_weeks', formatter: 'number' },
+                        { title: 'AMU', field: 'amu', formatter: 'number' },
+                        { title: 'Suggested Min', field: 'suggested_min', formatter: 'number' },
+                        { title: 'Suggested Max', field: 'suggested_max', formatter: 'number' },
+                        { title: 'Last Movement', field: 'last_movement_date' }
+                    ],
+                    rowFormatter: function(row) {
+                        if (row.getData().qty_on_hand <= 0) {
+                            row.getElement().style.backgroundColor = 'rgba(220, 38, 38, 0.05)';
+                        } else if (row.getData().below_reorder) {
+                            row.getElement().style.backgroundColor = 'rgba(245, 158, 11, 0.08)';
+                        }
+                    }
+                });
+                
+                document.getElementById('total-items').textContent = data.total_items;
+                document.getElementById('grand-total').textContent = '{{ currency_symbol }} ' + data.grand_total.toLocaleString('en-ZA', {minimumFractionDigits: 2});
+            });
+    }
+    
+    document.getElementById('filter-category').addEventListener('change', loadStockData);
+    document.getElementById('filter-active').addEventListener('change', loadStockData);
+    document.getElementById('filter-zerostock').addEventListener('change', loadStockData);
+    document.getElementById('filter-below-reorder').addEventListener('change', loadStockData);
+    
+    loadStockData();
+});
+</script>
+{% endblock %}

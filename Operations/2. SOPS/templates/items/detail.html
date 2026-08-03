@@ -1,0 +1,251 @@
+{% extends 'base.html' %}
+{% block title %}{{ item.code }} - Items - SOPS{% endblock %}
+{% block page_title %}Item: {{ item.code }}{% endblock %}
+
+{% block extra_head %}
+<style>
+    [x-cloak] { display: none !important; }
+    .modal-overlay {
+        position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+        background: rgba(17, 24, 39, 0.5);
+        display: flex; align-items: center; justify-content: center;
+        z-index: 1000;
+    }
+    .modal-box {
+        background: #fff; border-radius: var(--radius); box-shadow: var(--shadow);
+        width: 100%; max-width: 560px; max-height: 90vh; overflow-y: auto;
+        padding: 20px;
+    }
+    .modal-header {
+        display: flex; align-items: center; justify-content: space-between;
+        margin-bottom: 16px;
+    }
+    .modal-header h3 { margin: 0; font-size: 1.1rem; }
+    .modal-close {
+        background: none; border: none; cursor: pointer; font-size: 1.4rem;
+        line-height: 1; color: var(--text-muted); padding: 0 4px;
+    }
+    .modal-divider { border: none; border-top: 1px solid var(--border-color); margin: 20px 0; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div x-data="{ editOpen: false, stockOpen: false, reorderQtyDirty: false }" @keydown.escape.window="editOpen = false; stockOpen = false">
+<div class="card animate-fade-in" style="margin-bottom: 24px;">
+    <div class="card-header">
+        <h2 class="card-title">Item Details</h2>
+        <div style="display: flex; gap: 8px;">
+            <button type="button" class="btn btn-secondary" @click="editOpen = true">Edit Item</button>
+            <a href="{{ url_for('items.catalogue') }}" class="btn btn-secondary">Back to Catalogue</a>
+        </div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 24px;">
+        <div>
+            <table class="detail-table">
+                <tr><td class="detail-label">Code</td><td class="detail-value"><strong>{{ item.code }}</strong></td></tr>
+                <tr><td class="detail-label">Description</td><td class="detail-value">{{ item.description }}</td></tr>
+                <tr><td class="detail-label">Category</td><td class="detail-value">{{ item.category or '-' }}</td></tr>
+                <tr><td class="detail-label">Status</td><td class="detail-value">
+                    <span class="badge {% if item.active %}badge-complete{% else %}badge-cancelled{% endif %}">
+                        {{ 'Active' if item.active else 'Inactive' }}
+                    </span>
+                </td></tr>
+                <tr><td class="detail-label">Supplier</td><td class="detail-value">{{ item.supplier or '-' }}</td></tr>
+                <tr><td class="detail-label">Lead Time</td><td class="detail-value">{{ "%.1f"|format(item.lead_time_weeks or 0) }} weeks</td></tr>
+                <tr><td class="detail-label">AMU (avg. monthly usage)</td><td class="detail-value">{{ "%.1f"|format(item.amu or 0) }}</td></tr>
+                <tr><td class="detail-label">Suggested Min / Max</td><td class="detail-value">{{ item.suggested_min or 0 }} / {{ item.suggested_max or 0 }}</td></tr>
+            </table>
+        </div>
+        <div>
+            <table class="detail-table">
+                <tr><td class="detail-label">Qty on Hand</td><td class="detail-value" style="font-size: 1.5rem; font-weight: 700; color: var(--brand-primary);">{{ item.qty_on_hand }}</td></tr>
+                <tr><td class="detail-label">Last Cost</td><td class="detail-value">{{ currency_symbol }} {{ "%.2f"|format(item.last_cost) }}</td></tr>
+                <tr><td class="detail-label">Avg. Cost</td><td class="detail-value">{{ currency_symbol }} {{ "%.2f"|format(item.avg_cost) }}</td></tr>
+                <tr><td class="detail-label">Excl. Price</td><td class="detail-value">{{ currency_symbol }} {{ "%.2f"|format(item.excl_price) }}</td></tr>
+                <tr><td class="detail-label">Incl. Price</td><td class="detail-value">{{ currency_symbol }} {{ "%.2f"|format(item.incl_price) }}</td></tr>
+                <tr><td class="detail-label">Stock Value</td><td class="detail-value">{{ currency_symbol }} {{ "%.2f"|format(item.qty_on_hand * item.avg_cost) }}</td></tr>
+            </table>
+            <div style="text-align: right; margin-top: 8px;">
+                <button type="button" class="btn btn-primary" @click="stockOpen = true; reorderQtyDirty = false">Adjust Stock &amp; Levels</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Item Modal -->
+<div class="modal-overlay" x-show="editOpen" x-cloak @click.self="editOpen = false">
+    <div class="modal-box">
+        <div class="modal-header">
+            <h3>Edit Item</h3>
+            <button type="button" class="modal-close" @click="editOpen = false" aria-label="Close">&times;</button>
+        </div>
+        <form method="POST" action="{{ url_for('items.update_item', item_id=item.id) }}">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0 16px;">
+                <div class="form-group">
+                    <label for="code">Code</label>
+                    <input type="text" id="code" name="code" value="{{ item.code }}" required class="form-input">
+                </div>
+                <div class="form-group">
+                    <label for="category">Category</label>
+                    <input type="text" id="category" name="category" value="{{ item.category or '' }}" class="form-input">
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="description">Description</label>
+                <input type="text" id="description" name="description" value="{{ item.description }}" class="form-input">
+            </div>
+            <div class="form-group">
+                <label style="display: flex; align-items: center; gap: 8px;">
+                    <input type="checkbox" id="active" name="active" {% if item.active %}checked{% endif %}>
+                    Active
+                </label>
+            </div>
+            <div class="form-group">
+                <label style="display: flex; align-items: center; gap: 8px;">
+                    <input type="checkbox" id="is_stocked_finished_good" name="is_stocked_finished_good" {% if item.is_stocked_finished_good %}checked{% endif %}>
+                    Stocked Finished Good
+                </label>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0 16px;">
+                <div class="form-group">
+                    <label for="last_cost">Last Cost</label>
+                    <input type="number" id="last_cost" name="last_cost" value="{{ item.last_cost or 0 }}" step="0.01" class="form-input">
+                </div>
+                <div class="form-group">
+                    <label for="avg_cost">Avg. Cost</label>
+                    <input type="number" id="avg_cost" name="avg_cost" value="{{ item.avg_cost or 0 }}" step="0.01" class="form-input">
+                </div>
+                <div class="form-group">
+                    <label for="excl_price">Excl. Price</label>
+                    <input type="number" id="excl_price" name="excl_price" value="{{ item.excl_price or 0 }}" step="0.01" class="form-input">
+                </div>
+                <div class="form-group">
+                    <label for="incl_price">Incl. Price</label>
+                    <input type="number" id="incl_price" name="incl_price" value="{{ item.incl_price or 0 }}" step="0.01" class="form-input">
+                </div>
+            </div>
+            <div class="form-actions">
+                <button type="button" class="btn btn-secondary" @click="editOpen = false">Cancel</button>
+                <button type="submit" class="btn btn-primary">Save Changes</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Adjust Stock & Levels Modal -->
+<div class="modal-overlay" x-show="stockOpen" x-cloak @click.self="stockOpen = false">
+    <div class="modal-box">
+        <div class="modal-header">
+            <h3>Adjust Stock &amp; Levels</h3>
+            <button type="button" class="modal-close" @click="stockOpen = false" aria-label="Close">&times;</button>
+        </div>
+
+        <!-- Quantity Adjustment Form -->
+        <h4 style="margin: 0 0 8px 0; font-size: 0.9rem; color: var(--text-secondary);">Manual Stock Adjustment</h4>
+        <form method="POST" action="{{ url_for('items.adjust_stock', item_id=item.id) }}">
+            <div class="form-group">
+                <label for="new_qty">New Qty on Hand</label>
+                <input type="number" id="new_qty" name="new_qty" value="{{ item.qty_on_hand }}" step="0.01" required class="form-input">
+            </div>
+            <div class="form-group">
+                <label for="adjusted_by">Adjusted By</label>
+                <input type="text" id="adjusted_by" name="adjusted_by" class="form-input" placeholder="Your name">
+            </div>
+            <div class="form-group">
+                <label for="reason">Reason *</label>
+                <input type="text" id="reason" name="reason" required class="form-input" placeholder="e.g. Cycle count correction, damaged stock">
+            </div>
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary" onclick="return confirm('Adjust stock for {{ item.code }}? This will create a StockMovement record.')">Apply Adjustment</button>
+            </div>
+        </form>
+
+        <hr class="modal-divider">
+
+        <!-- Reorder Settings (Enhancement 2) -->
+        <h4 style="margin: 0 0 8px 0; font-size: 0.9rem; color: var(--text-secondary);">Reorder Settings</h4>
+        <form method="POST" action="{{ url_for('items.update_reorder_settings', item_id=item.id) }}">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0 16px;">
+                <div class="form-group">
+                    <label for="reorder_point">Reorder Point</label>
+                    <input type="number" id="reorder_point" name="reorder_point" value="{{ item.reorder_point or 0 }}" step="0.01" min="0" class="form-input" x-ref="reorderPoint"
+                        @input="if (!reorderQtyDirty) $refs.reorderQty.value = Math.max(0, (parseFloat($refs.maxLevel.value)||0) - (parseFloat($event.target.value)||0))">
+                </div>
+                <div class="form-group">
+                    <label for="max_level">Max Level</label>
+                    <input type="number" id="max_level" name="max_level" value="{{ item.max_level or 0 }}" step="0.01" min="0" class="form-input" x-ref="maxLevel"
+                        @input="if (!reorderQtyDirty) $refs.reorderQty.value = Math.max(0, (parseFloat($event.target.value)||0) - (parseFloat($refs.reorderPoint.value)||0))">
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="reorder_qty">Reorder Qty</label>
+                <input type="number" id="reorder_qty" name="reorder_qty" value="{{ item.reorder_qty or 0 }}" step="0.01" min="0" class="form-input" x-ref="reorderQty"
+                    @input="reorderQtyDirty = true">
+            </div>
+            <div style="color: var(--text-muted); font-size: 0.85rem;">
+                Set Reorder Point to 0 to disable replenishment flagging for this item. When Qty on Hand falls to or below the Reorder Point, this item appears in the Stock Report's "Below Reorder Point" filter and can be added to a draft Purchase Order via "Create PO from Shortfall". Reorder Qty auto-fills to Max Level minus Reorder Point but can be overridden.
+            </div>
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">Save Reorder Settings</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Movement History -->
+<div class="card animate-fade-in">
+    <div class="card-header">
+        <h2 class="card-title">Stock Movement History</h2>
+    </div>
+    {% if movements %}
+    <div style="overflow-x: auto;">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Type</th>
+                    <th>Reference</th>
+                    <th>Qty Change</th>
+                    <th>Qty After</th>
+                    <th>Notes</th>
+                    <th>By</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for m in movements %}
+                <tr>
+                    <td>{{ m.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                    <td>
+                        <span class="badge" style="background: 
+                            {% if m.movement_type == 'ISSUE' %}var(--brand-danger);
+                            {% elif m.movement_type == 'RECEIPT' %}var(--brand-success);
+                            {% elif m.movement_type == 'ADJUSTMENT' %}var(--brand-amber);
+                            {% elif m.movement_type == 'PRODUCTION' %}var(--brand-primary);
+                            {% elif m.movement_type == 'REVERSAL' %}var(--brand-secondary);
+                            {% else %}var(--text-muted);{% endif %}">
+                            {{ m.movement_type }}
+                        </span>
+                    </td>
+                    <td>{{ m.reference or '-' }}</td>
+                    <td style="color: {% if m.qty_change < 0 %}var(--brand-danger){% else %}var(--brand-success){% endif %}; font-weight: 600;">
+                        {{ "+" if m.qty_change > 0 else "" }}{{ "%.2f"|format(m.qty_change) }}
+                    </td>
+                    <td>{{ "%.2f"|format(m.qty_after) }}</td>
+                    <td>{{ m.notes or '' }}</td>
+                    <td>{{ m.created_by or '-' }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p style="padding: 24px; color: var(--text-muted); text-align: center;">No stock movements recorded for this item.</p>
+    {% endif %}
+</div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{{ url_for('static', filename='js/adjustments.js') }}"></script>
+{% endblock %}

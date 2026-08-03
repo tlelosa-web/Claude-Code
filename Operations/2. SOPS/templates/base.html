@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}SOPS - Sales Order Processing System{% endblock %}</title>
+    
+    <!-- Vendor Libraries (Offline self-hosted) -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='vendor/tabulator/tabulator.min.css') }}">
+    <script src="{{ url_for('static', filename='vendor/tabulator/tabulator.min.js') }}"></script>
+    
+    <link rel="stylesheet" href="{{ url_for('static', filename='vendor/tom-select/tom-select.css') }}">
+    <script src="{{ url_for('static', filename='vendor/tom-select/tom-select.complete.min.js') }}"></script>
+    
+    <script defer src="{{ url_for('static', filename='vendor/alpinejs/alpine.min.js') }}"></script>
+    
+    <!-- Application Stylesheets -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/print.css') }}" media="print">
+    
+    {% block extra_head %}{% endblock %}
+</head>
+<body>
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar">
+        <div class="sidebar-brand">
+            <div class="sidebar-logo-text">
+                FAN <span>MOVEMENT</span>
+            </div>
+        </div>
+        <nav style="flex-grow: 1;">
+            <ul class="sidebar-menu">
+                <li>
+                    <a href="{{ url_for('dashboard.index') }}" class="sidebar-link {% if request.blueprint == 'dashboard' %}active{% endif %}">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9"></rect><rect x="14" y="3" width="7" height="5"></rect><rect x="14" y="12" width="7" height="9"></rect><rect x="3" y="16" width="7" height="5"></rect></svg>
+                        Dashboard
+                    </a>
+                </li>
+                <li>
+                    <a href="{{ url_for('sales_orders.list_orders') }}" class="sidebar-link {% if request.blueprint == 'sales_orders' %}active{% endif %}">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                        Sales Orders
+                    </a>
+                </li>
+                <li>
+                    <a href="{{ url_for('works_orders.list_orders') }}" class="sidebar-link {% if request.blueprint == 'works_orders' %}active{% endif %}">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+                        Works Orders
+                    </a>
+                </li>
+                <li>
+                    <a href="{{ url_for('stock_orders.list_orders') }}" class="sidebar-link {% if request.blueprint == 'stock_orders' %}active{% endif %}">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
+                        Stock Orders
+                    </a>
+                </li>
+                <li>
+                    <a href="{{ url_for('purchase_orders.list_orders') }}" class="sidebar-link {% if request.blueprint == 'purchase_orders' %}active{% endif %}">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"></path><rect x="9" y="3" width="6" height="4" rx="1" ry="1"></rect></svg>
+                        Purchase Orders
+                    </a>
+                </li>
+                <li>
+                    <a href="{{ url_for('items.catalogue') }}" class="sidebar-link {% if request.blueprint == 'items' %}active{% endif %}">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l-7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
+                        Inventory
+                    </a>
+                </li>
+                <li>
+                    <a href="{{ url_for('reports.stock') }}" class="sidebar-link {% if request.endpoint in ('reports.stock', 'reports.movements') %}active{% endif %}">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
+                        Reports
+                    </a>
+                </li>
+                <li>
+                    <a href="{{ url_for('reports.change_log') }}" class="sidebar-link {% if request.endpoint == 'reports.change_log' %}active{% endif %}">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                        Change Log
+                    </a>
+                </li>
+                <li>
+                    <a href="{{ url_for('settings.index') }}" class="sidebar-link {% if request.blueprint == 'settings' %}active{% endif %}">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                        Settings
+                    </a>
+                </li>
+            </ul>
+        </nav>
+        <div class="sidebar-footer">
+            SOPS v1.0.0 (Offline Mode)<br>&copy; 2026 Fan Movement
+        </div>
+    </aside>
+
+    <!-- Main Wrapper -->
+    <div class="main-wrapper">
+        <!-- Top Header Bar -->
+        <header class="topbar">
+            <div class="topbar-title">
+                {% block page_title %}Dashboard{% endblock %}
+            </div>
+            <div class="topbar-actions">
+                <label class="topbar-search" title="Search is not yet available in SOPS">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                    <input type="text" class="topbar-search-input" placeholder="Search (coming soon)" disabled>
+                </label>
+                <button type="button" class="topbar-icon-btn" title="No notifications" disabled>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+                </button>
+                <span class="badge badge-draft" style="font-size: 0.8rem; padding: 6px 12px; background: rgba(255,255,255,0.05); color: var(--text-secondary);">
+                    Local Session
+                </span>
+                <div class="topbar-avatar" title="SOPS runs single-user, offline">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                </div>
+            </div>
+        </header>
+
+        <!-- Dynamic Content Body -->
+        <main class="content-body animate-fade-in">
+            <!-- Flash Message Alerts -->
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    <div class="alerts-container no-print">
+                        {% for category, message in messages %}
+                            <div class="alert alert-{{ category if category != 'error' else 'danger' }}">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+                                <div>{{ message }}</div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            {% endwith %}
+
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+
+    {% block extra_scripts %}{% endblock %}
+    <script>
+    // Global dropdown toggle — used by all action dropdown menus
+    function toggleDropdown(btn) {
+        var dropdown = btn.closest('.dropdown');
+        var menu = dropdown && dropdown.querySelector('.dropdown-menu');
+        if (!dropdown || !menu) return;
+
+        var isOpen = dropdown.classList.contains('open');
+        closeAllDropdowns();
+        if (!isOpen) {
+            dropdown.classList.add('open');
+            menu.classList.add('show');
+            // Create backdrop
+            var backdrop = document.createElement('div');
+            backdrop.className = 'dropdown-backdrop';
+            backdrop.addEventListener('click', closeAllDropdowns);
+            document.body.appendChild(backdrop);
+        }
+    }
+
+    function closeAllDropdowns() {
+        document.querySelectorAll('.dropdown.open, .dropdown-menu.show').forEach(function(el) {
+            el.classList.remove('open', 'show');
+        });
+        var backdrops = document.querySelectorAll('.dropdown-backdrop');
+        backdrops.forEach(function(b) { b.remove(); });
+    }
+
+    // Close on Escape
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') closeAllDropdowns();
+    });
+    </script>
+</body>
+</html>

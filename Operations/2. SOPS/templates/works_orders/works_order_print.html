@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Works Order {{ wo.wo_number }}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/print.css') }}">
+    <style>
+        @page { size: A4; margin: 15mm; }
+        body { font-family: 'Courier New', Courier, monospace; font-size: 11pt; color: #000; background: #fff; }
+        .document-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 3px solid #1A2332; }
+        .doc-title { font-size: 22pt; font-weight: 700; color: #E8610A; text-transform: uppercase; letter-spacing: 2px; }
+        .doc-number { font-size: 14pt; font-weight: 700; text-align: right; }
+        .company-info { font-size: 9pt; line-height: 1.5; }
+        .info-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+        .info-table td { padding: 4px 8px; font-size: 9pt; vertical-align: top; }
+        .info-table td:first-child { font-weight: 600; width: 140px; }
+        .components-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 9pt; }
+        .components-table th { background: #1A2332; color: #fff; padding: 6px 6px; text-align: left; font-size: 8pt; text-transform: uppercase; }
+        /* Row padding trimmed to 4px vertical: on a long BOM this compounds
+           across every component line and is what tips it onto an extra page. */
+        .components-table td { padding: 4px 6px; border-bottom: 1px solid #ccc; }
+        .components-table tfoot td { font-weight: 700; padding: 5px 6px; border-top: 2px solid #1A2332; }
+        .signoff-block { margin-top: 40px; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; }
+        .signoff-line { border-top: 1px solid #000; padding-top: 4px; margin-top: 20px; font-size: 9pt; width: 200px; }
+        .status-badge { display: inline-block; padding: 3px 10px; border: 2px solid #E8610A; color: #E8610A; font-weight: 700; font-size: 10pt; }
+        .status-badge-open { border-color: #2563EB; color: #2563EB; }
+        .status-badge-released { border-color: #0D9488; color: #0D9488; }
+        .status-badge-inprogress { border-color: #E8610A; color: #E8610A; }
+        .status-badge-complete { border-color: #16A34A; color: #16A34A; }
+        .status-badge-cancelled { border-color: #9CA3AF; color: #9CA3AF; }
+        .footer-note { margin-top: 30px; font-size: 7pt; color: #666; text-align: center; border-top: 1px solid #ccc; padding-top: 8px; }
+        .logo-placeholder { font-size: 14pt; font-weight: 700; color: #1A2332; }
+        .logo-placeholder span { color: #E8610A; }
+        .shortfall-badge { color: #DC2626; font-weight: 700; }
+    </style>
+</head>
+<body>
+    <div class="document-header">
+        <div>
+            <div class="logo-placeholder">FAN <span>MOVEMENT</span></div>
+            <div class="company-info">
+                Fan Movement (Pty) Ltd<br>
+                3 Sivewright Ave, Alrode South<br>
+                VAT: 4080272422
+            </div>
+        </div>
+        <div style="text-align: right;">
+            <div class="doc-title">JOB NUMBER(S)</div>
+            <div class="doc-number">{{ so.job_numbers if so and so.job_numbers else '-' }}</div>
+            <div style="margin-top: 6px;"><span class="status-badge status-badge-{{ wo.status.lower().replace(' ', '') }}">{{ wo.status }}</span></div>
+        </div>
+    </div>
+
+    <table class="info-table">
+        <tr>
+            <td>Job/SO Ref:</td>
+            <td>{{ so.job_reference if so else '-' }}</td>
+            <td>Customer:</td>
+            <td>{{ so.customer_name if so else '-' }}</td>
+        </tr>
+        <tr>
+            <td>Works Order:</td>
+            <td>{{ wo.wo_number }}</td>
+            <td>SO Number:</td>
+            <td>{{ so.so_number if so else '-' }}</td>
+        </tr>
+        <tr>
+            <td>Reference:</td>
+            <td>{{ so.reference if so else '-' }}</td>
+            <td>Delivery:</td>
+            <td>{{ so.delivery_address if so else '-' }}</td>
+        </tr>
+        <tr>
+            <td>Date Issued:</td>
+            <td>{{ wo.created_at.strftime('%d/%m/%Y') if wo.created_at else '-' }}</td>
+            <td>Delivery Date:</td>
+            <td>{{ so.delivery_date.strftime('%d/%m/%Y') if so and so.delivery_date else '-' }}</td>
+        </tr>
+        <tr>
+            <td>Sales Rep:</td>
+            <td>{{ so.sales_rep if so and so.sales_rep else '-' }}</td>
+            <td>Issued By:</td>
+            <td>{{ wo.issued_by or '-' }}</td>
+        </tr>
+    </table>
+
+    <table class="components-table">
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>Item Code</th>
+                <th>Description</th>
+                <th>Category</th>
+                <th style="text-align: right;">Qty Required</th>
+                <th style="text-align: right;">Qty Issued</th>
+            </tr>
+        </thead>
+        <tbody>
+            <!-- Assembly Items with nested components -->
+            {% set global_index = [1] %}
+            {% for assembly in assembly_items %}
+            <tr style="background: rgba(232, 97, 10, 0.05);">
+                <td>{{ global_index[0] }}</td>
+                <td colspan="2"><strong>{{ assembly.item_code }} - {{ assembly.description }}</strong></td>
+                <td>{{ assembly.category or '-' }}</td>
+                <td style="text-align: right;">{{ "%.2f"|format(assembly.qty_required) }}</td>
+                <td style="text-align: right;">{{ "%.2f"|format(assembly.qty_issued) }}</td>
+            </tr>
+            <!-- Nested components -->
+            {% for comp in assembly.components %}
+            <tr>
+                <td></td>
+                <td style="padding-left: 20px; color: #666;">└─ {{ comp.item_code }}</td>
+                <td style="color: #666;">{{ comp.description }}</td>
+                <td>{{ comp.category or '-' }}</td>
+                <td style="text-align: right;">{{ "%.2f"|format(comp.qty_required) }}</td>
+                <td style="text-align: right;">{{ "%.2f"|format(comp.qty_issued) }}</td>
+            </tr>
+            {% endfor %}
+            {% if global_index.append(global_index.pop() + 1) %}{% endif %}
+            {% endfor %}
+            
+            <!-- Flat lines (no parent) -->
+            {% for line in flat_lines %}
+            <tr>
+                <td>{{ loop.index }}</td>
+                <td><strong>{{ line.item_code }}</strong></td>
+                <td>{{ line.description }}</td>
+                <td>{{ line.category or '-' }}</td>
+                <td style="text-align: right;">{{ "%.2f"|format(line.qty_required) }}</td>
+                <td style="text-align: right;">{{ "%.2f"|format(line.qty_issued) }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div class="signoff-block">
+        <div>
+            <div style="font-weight: 600; font-size: 9pt; margin-bottom: 4px;">Produced by</div>
+            <div class="signoff-line">_________________________</div>
+            <div style="font-size: 8pt; color: #666; margin-top: 2px;">Name & Signature</div>
+        </div>
+        <div>
+            <div style="font-weight: 600; font-size: 9pt; margin-bottom: 4px;">Checked by</div>
+            <div class="signoff-line">_________________________</div>
+            <div style="font-size: 8pt; color: #666; margin-top: 2px;">Name & Signature</div>
+        </div>
+        <div>
+            <div style="font-weight: 600; font-size: 9pt; margin-bottom: 4px;">Approved by</div>
+            <div class="signoff-line">_________________________</div>
+            <div style="font-size: 8pt; color: #666; margin-top: 2px;">Name & Signature</div>
+        </div>
+    </div>
+
+    <div class="footer-note">
+        This Works Order authorises the production department to release the listed components from stores.
+        All items must be verified against the BOM before production commences.
+    </div>
+
+    <script>
+        window.onload = function() { window.print(); };
+    </script>
+</body>
+</html>

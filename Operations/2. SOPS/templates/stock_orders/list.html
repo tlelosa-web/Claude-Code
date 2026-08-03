@@ -1,0 +1,60 @@
+{% extends 'base.html' %}
+{% block title %}Stock Orders - SOPS{% endblock %}
+{% block page_title %}Stock Orders{% endblock %}
+
+{% block content %}
+<div class="card card-sticky-head animate-fade-in">
+    <div class="card-header">
+        <h2 class="card-title">{{ 'Open Stock Orders' if view == 'open' else ('Closed Stock Orders' if view == 'closed' else 'All Stock Orders') }}</h2>
+        <div style="display: flex; gap: 4px;">
+            <a href="{{ url_for('stock_orders.list_orders', view='all') }}" class="btn {{ 'btn-primary' if view == 'all' else 'btn-secondary' }}" style="padding: 6px 12px; font-size: 0.8rem;">All</a>
+            <a href="{{ url_for('stock_orders.list_orders', view='open') }}" class="btn {{ 'btn-primary' if view == 'open' else 'btn-secondary' }}" style="padding: 6px 12px; font-size: 0.8rem;">Open</a>
+            <a href="{{ url_for('stock_orders.list_orders', view='closed') }}" class="btn {{ 'btn-primary' if view == 'closed' else 'btn-secondary' }}" style="padding: 6px 12px; font-size: 0.8rem;">Closed</a>
+        </div>
+    </div>
+    
+    {% if orders %}
+    <div>
+        <table class="data-table" id="sto-list-table">
+            <thead>
+                <tr>
+                    <th class="col-date">Created</th>
+                    <th>Job Number</th>
+                    <th>Stock Order No</th>
+                    <th>SO Reference</th>
+                    <th>Customer</th>
+                    <th class="col-date">Delivery Date</th>
+                    <th>Status</th>
+                    <th data-sortable="false">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for order in orders %}
+                <tr>
+                    <td class="col-date" data-sort="{{ order.created_at.isoformat() if order.created_at else '' }}">{{ order.created_at | dmy or '-' }}</td>
+                    <td>{{ order.job_numbers or '-' }}</td>
+                    <td><a href="{{ url_for('stock_orders.view_order', order_id=order.id) }}" class="link-primary">{{ order.stock_order_number }}</a></td>
+                    <td>{{ order.sales_order.so_number if order.sales_order else '-' }}</td>
+                    <td>{{ order.sales_order.customer_name if order.sales_order else '-' }}</td>
+                    <td class="col-date" data-sort="{{ order.sales_order.delivery_date.isoformat() if order.sales_order and order.sales_order.delivery_date else '' }}">{{ (order.sales_order.delivery_date | dmy or '-') if order.sales_order else '-' }}</td>
+                    <td><span class="badge badge-{{ order.status.lower() }}">{{ order.status }}</span></td>
+                    <td>
+                        <a href="{{ url_for('stock_orders.view_order', order_id=order.id) }}" class="btn btn-secondary" style="padding: 4px 10px; font-size: 0.75rem;">View</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p style="padding: 24px; color: var(--text-muted); text-align: center;">No stock orders found.</p>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{{ url_for('static', filename='js/resizable_columns.js') }}"></script>
+<script>makeColumnsResizable('sto-list-table');</script>
+<script src="{{ url_for('static', filename='js/table_sort_filter.js') }}"></script>
+<script>makeTableSortableFilterable('sto-list-table');</script>
+{% endblock %}

@@ -1,0 +1,206 @@
+{% extends 'base.html' %}
+{% block title %}{% if wo.order_type == 'ASSEMBLY' %}Works Order{% else %}Picking List{% endif %} {{ wo.wo_number }} - SOPS{% endblock %}
+{% block page_title %}{% if wo.order_type == 'ASSEMBLY' %}Works Order{% else %}Picking List{% endif %}: {{ wo.wo_number }}{% endblock %}
+
+{% block content %}
+<div class="card animate-fade-in" style="margin-bottom: 24px;">
+    <div class="card-header">
+        <h2 class="card-title">{% if wo.order_type == 'ASSEMBLY' %}Assembly Order Details{% else %}Stock Order Details{% endif %}</h2>
+        <div style="display: flex; gap: 8px;">
+            <div class="dropdown">
+                <button type="button" class="dropdown-toggle btn-primary-dropdown" onclick="toggleDropdown(this)">
+                    Actions ▾
+                </button>
+                <ul class="dropdown-menu">
+                    <li><a href="{{ url_for('works_orders.print_order', order_id=wo.id) }}" target="_blank">Print Document</a></li>
+                    {% if wo.status in ['Open', 'Released', 'In Progress'] %}
+                    <li><a href="{{ url_for('works_orders.edit_order', order_id=wo.id) }}">Edit Order</a></li>
+                    {% else %}
+                    <li><a class="disabled" title="Cannot edit a completed or cancelled order.">Edit Order</a></li>
+                    {% endif %}
+                    {% if wo.status in ['Open', 'Released', 'In Progress'] %}
+                        {% if wo.order_type == 'ASSEMBLY' %}
+                        <li>
+                            <form method="POST" action="{{ url_for('works_orders.mark_complete', order_id=wo.id) }}" style="display: block;" onsubmit="return confirm('Mark this Works Order as Complete and deduct stock?')">
+                                <button type="submit">Mark as Complete</button>
+                            </form>
+                        </li>
+                        {% else %}
+                        <li>
+                            <form method="POST" action="{{ url_for('works_orders.confirm_pick', order_id=wo.id) }}" style="display: block;" onsubmit="return confirm('Confirm pick and issue stock?')">
+                                <button type="submit">Confirm Pick & Issue</button>
+                            </form>
+                        </li>
+                        {% endif %}
+                    {% endif %}
+                    {% if wo.status in ['Complete', 'Cancelled'] %}
+                    <li>
+                        <form method="POST" action="{{ url_for('works_orders.reopen_order', order_id=wo.id) }}" style="display: block;" onsubmit="return confirm('Reopen {{ wo.wo_number }}? Any issued stock will be reversed.')">
+                            <button type="submit">Reopen</button>
+                        </form>
+                    </li>
+                    {% endif %}
+                    {% if wo.status in ['Open', 'Released', 'In Progress'] %}
+                    <li>
+                        <form method="POST" action="{{ url_for('works_orders.delete_order', order_id=wo.id) }}" style="display: block;" onsubmit="return confirm('Are you sure you want to delete {{ wo.wo_number }}? This cannot be undone.')">
+                            <button type="submit" class="danger">Delete Order</button>
+                        </form>
+                    </li>
+                    {% else %}
+                    <li><a class="disabled" title="Cannot delete a completed or cancelled order.">Delete Order</a></li>
+                    {% endif %}
+                    <li class="divider"></li>
+                    <li><a href="{{ url_for('works_orders.list_orders') }}">Back to List</a></li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 24px;">
+        <div>
+            <table class="detail-table">
+                <tr><td class="detail-label">Job Number</td><td class="detail-value">{{ wo.job_number or '-' }}</td></tr>
+                <tr><td class="detail-label">WO Number</td><td class="detail-value">{{ wo.wo_number }}</td></tr>
+                <tr><td class="detail-label">Job/SO Ref</td><td class="detail-value">{{ so.job_reference if so else '-' }}</td></tr>
+                <tr><td class="detail-label">Job Number(s) (SO)</td><td class="detail-value">{{ so.job_numbers if so and so.job_numbers else '-' }}</td></tr>
+                <tr><td class="detail-label">Customer</td><td class="detail-value">{{ so.customer_name if so else '-' }}</td></tr>
+                <tr><td class="detail-label">Delivery Address</td><td class="detail-value">{{ so.delivery_address if so else '-' }}</td></tr>
+                {% if wo.related_order %}
+                <tr><td class="detail-label">Related Order</td><td class="detail-value">
+                    <a href="{{ url_for('works_orders.view_order', order_id=wo.related_order.id) }}" style="color: var(--brand-primary); font-weight: 600;">
+                        {{ wo.related_order.wo_number }} 
+                        <span class="badge" style="background: var(--brand-secondary); font-size: 0.75rem;">{{ "Assembly" if wo.related_order.order_type == "ASSEMBLY" else "Stock" }}</span>
+                    </a>
+                </td></tr>
+                {% endif %}
+            </table>
+        </div>
+        <div>
+            <table class="detail-table">
+                <tr><td class="detail-label">Order Type</td><td class="detail-value"><span class="badge" style="background: var(--brand-primary);">{{ "Assembly" if wo.order_type == "ASSEMBLY" else "Stock" }}</span></td></tr>
+                <tr><td class="detail-label">Status</td><td class="detail-value"><span class="badge badge-{{ wo.status.lower().replace(' ', '') }}">{{ wo.status }}</span></td></tr>
+                <tr><td class="detail-label">Issued By</td><td class="detail-value">{{ wo.issued_by or '-' }}</td></tr>
+                <tr><td class="detail-label">Date Issued</td><td class="detail-value">{{ wo.created_at.strftime('%Y-%m-%d') if wo.created_at else '-' }}</td></tr>
+                {% if wo.completed_at %}
+                <tr><td class="detail-label">Completed</td><td class="detail-value">{{ wo.completed_at.strftime('%Y-%m-%d %H:%M') }}</td></tr>
+                {% endif %}
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Components Table -->
+<div class="card animate-fade-in">
+    <div class="card-header">
+        <h2 class="card-title">{% if wo.order_type == 'ASSEMBLY' %}Components{% else %}Items to Pick{% endif %}</h2>
+    </div>
+    {% if assembly_items or flat_lines %}
+    <div style="overflow-x: auto;">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Item Code</th>
+                    <th>Description</th>
+                    <th>Category</th>
+                    <th>Qty Required</th>
+                    {% if wo.order_type == 'ASSEMBLY' %}
+                    <th>Qty Issued</th>
+                    {% endif %}
+                    <th>Qty on Hand</th>
+                    {% if wo.order_type == 'STOCK' %}
+                    <th>Bin/Location</th>
+                    {% endif %}
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Assembly Items with nested components -->
+                {% set global_index = [1] %}
+                {% for assembly in assembly_items %}
+                <tr style="background: rgba(232, 97, 10, 0.05);">
+                    <td>{{ global_index[0] }}</td>
+                    <td colspan="2"><strong><a href="{{ url_for('items.detail', item_id=assembly.item_id) }}" class="link-primary">{{ assembly.item_code }}</a> - {{ assembly.description }}</strong></td>
+                    <td>{{ assembly.category or '-' }}</td>
+                    <td>{{ assembly.qty_required }}</td>
+                    {% if wo.order_type == 'ASSEMBLY' %}
+                    <td>{{ assembly.qty_issued }}</td>
+                    {% endif %}
+                    <td style="{% if assembly.shortfall > 0 %}color: var(--brand-amber); font-weight: 600;{% endif %}">
+                        {{ assembly.qty_on_hand }}
+                        {% if assembly.qty_on_order > 0 %}
+                        <span style="color: var(--brand-blue, #2563eb); font-size: 0.75rem;">(on order {{ assembly.qty_on_order }})</span>
+                        {% endif %}
+                        {% if assembly.shortfall > 0 %}
+                        <span style="color: var(--brand-danger);">(shortfall: {{ assembly.shortfall }})</span>
+                        {% endif %}
+                    </td>
+                    {% if wo.order_type == 'STOCK' %}
+                    <td>-</td>
+                    {% endif %}
+                </tr>
+                <!-- Nested components -->
+                {% for comp in assembly.components %}
+                <tr>
+                    <td></td>
+                    <td style="padding-left: 20px; color: #666;">└─ <a href="{{ url_for('items.detail', item_id=comp.item_id) }}" class="link-primary">{{ comp.item_code }}</a></td>
+                    <td style="color: #666;">{{ comp.description }}</td>
+                    <td>{{ comp.category or '-' }}</td>
+                    <td>{{ comp.qty_required }}</td>
+                    {% if wo.order_type == 'ASSEMBLY' %}
+                    <td>{{ comp.qty_issued }}</td>
+                    {% endif %}
+                    <td style="{% if comp.shortfall > 0 %}color: var(--brand-amber); font-weight: 600;{% endif %}">
+                        {{ comp.qty_on_hand }}
+                        {% if comp.qty_on_order > 0 %}
+                        <span style="color: var(--brand-blue, #2563eb); font-size: 0.75rem;">(on order {{ comp.qty_on_order }})</span>
+                        {% endif %}
+                        {% if comp.shortfall > 0 %}
+                        <span style="color: var(--brand-danger);">(shortfall: {{ comp.shortfall }})</span>
+                        {% endif %}
+                    </td>
+                    {% if wo.order_type == 'STOCK' %}
+                    <td>-</td>
+                    {% endif %}
+                </tr>
+                {% endfor %}
+                {% if global_index.append(global_index.pop() + 1) %}{% endif %}
+                {% endfor %}
+                
+                <!-- Flat lines (no parent) -->
+                {% for line in flat_lines %}
+                <tr class="{% if line.shortfall > 0 %}row-amber{% endif %}">
+                    <td>{{ loop.index }}</td>
+                    <td><strong><a href="{{ url_for('items.detail', item_id=line.item_id) }}" class="link-primary">{{ line.item_code }}</a></strong></td>
+                    <td>{{ line.description }}</td>
+                    <td>{{ line.category or '-' }}</td>
+                    <td>{{ line.qty_required }}</td>
+                    {% if wo.order_type == 'ASSEMBLY' %}
+                    <td>{{ line.qty_issued }}</td>
+                    {% endif %}
+                    <td style="{% if line.shortfall > 0 %}color: var(--brand-amber); font-weight: 600;{% endif %}">
+                        {{ line.qty_on_hand }}
+                        {% if line.qty_on_order > 0 %}
+                        <span style="color: var(--brand-blue, #2563eb); font-size: 0.75rem;">(on order {{ line.qty_on_order }})</span>
+                        {% endif %}
+                        {% if line.shortfall > 0 %}
+                        <span style="color: var(--brand-danger);">(shortfall: {{ line.shortfall }})</span>
+                        {% endif %}
+                    </td>
+                    {% if wo.order_type == 'STOCK' %}
+                    <td>-</td>
+                    {% endif %}
+                </tr>
+                {% endfor %}
+            </tbody>
+            <tfoot>
+                <tr style="font-weight: 700; background: var(--bg-secondary);">
+                    <td colspan="100%" style="text-align: right; padding: 12px;">End of BOM</td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+    {% else %}
+    <p style="padding: 24px; color: var(--text-muted); text-align: center;">No components have been added to this order.</p>
+    {% endif %}
+</div>
+{% endblock %}

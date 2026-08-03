@@ -1,0 +1,55 @@
+{% extends 'base.html' %}
+{% block title %}Import Movement History - SOPS{% endblock %}
+{% block page_title %}Import Movement History from CSV{% endblock %}
+
+{% block content %}
+<div class="card animate-fade-in" style="margin-bottom: 24px;">
+    <div class="card-header">
+        <h2 class="card-title">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="8" x2="8" y2="8"></line><line x1="16" y1="12" x2="8" y2="12"></line><line x1="16" y1="16" x2="8" y2="16"></line></svg>
+            Import Item Movement Report CSV
+        </h2>
+    </div>
+    <div>
+        <h3 style="margin-bottom: 12px; color: var(--text-primary);">Upload a CSV File</h3>
+        <form method="POST" enctype="multipart/form-data" action="{{ url_for('items.import_movement_history') }}">
+            <div class="form-group">
+                <label for="csv_file">Select CSV File</label>
+                <input type="file" name="csv_file" id="csv_file" accept=".csv" style="padding: 10px; border: 2px dashed var(--border-color); border-radius: 8px; width: 100%; background: var(--bg-secondary);">
+            </div>
+            <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 16px;">
+                This only updates AMU (average monthly usage) and Suggested Min/Max for existing catalogue items,
+                matched by item code. Unmatched item codes are skipped, never created. Qty on Hand and Qty on
+                Order are never touched by this import, and the existing Reorder Point / Max Level / Reorder Qty
+                fields are never overwritten - these are informational suggestions only.
+            </p>
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">Import File</button>
+                <a href="{{ url_for('items.catalogue') }}" class="btn btn-secondary">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card animate-fade-in">
+    <div class="card-header">
+        <h2 class="card-title">CSV Format Requirements</h2>
+    </div>
+    <div style="padding: 16px; font-size: 0.9rem; line-height: 1.6;">
+        <p>The CSV file should be exported from Sage's Item Movement report (<code>ItemMovementReport.csv</code>).</p>
+        <p style="margin-top: 8px;">Expected shape: a title row, three metadata rows, then repeating blocks of an item-name row ("Code - Description") followed by transaction rows with these columns:</p>
+        <ul style="margin: 12px 0 0 20px; color: var(--text-secondary);">
+            <li><strong>Date</strong></li>
+            <li><strong>Reference</strong></li>
+            <li><strong>Description</strong> — "Supplier Invoice" rows count as purchased qty, "Tax Invoice" rows count as sold qty</li>
+            <li><strong>Customer/Supplier</strong></li>
+            <li><strong>Qty</strong></li>
+        </ul>
+        <p style="margin-top: 12px; color: var(--text-muted); font-style: italic;">
+            Each item block ends with a "Total for Item:" row. Suggested Min/Max reuses the item's already-imported
+            Lead Time (weeks) — this import does not touch Supplier or Lead Time itself; import those separately via
+            "Import Supplier/Lead Time" first for the most accurate suggestion.
+        </p>
+    </div>
+</div>
+{% endblock %}

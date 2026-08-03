@@ -1,0 +1,408 @@
+{% extends 'base.html' %}
+{% block title %}Build Works Pack — {{ so.so_number }} - SOPS{% endblock %}
+{% block page_title %}Build Works Pack: {{ so.so_number }}{% endblock %}
+
+{% block extra_head %}
+<style>
+    [x-cloak] { display: none !important; }
+    .modal-overlay {
+        position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+        background: rgba(17, 24, 39, 0.5);
+        display: flex; align-items: center; justify-content: center;
+        z-index: 1000;
+    }
+    .modal-box {
+        background: #fff; border-radius: var(--radius); box-shadow: var(--shadow);
+        width: 100%; max-width: 560px; max-height: 90vh; overflow-y: auto;
+        padding: 20px;
+    }
+    .modal-header {
+        display: flex; align-items: center; justify-content: space-between;
+        margin-bottom: 16px;
+    }
+    .modal-header h3 { margin: 0; font-size: 1.1rem; }
+    .modal-close {
+        background: none; border: none; cursor: pointer; font-size: 1.4rem;
+        line-height: 1; color: var(--text-muted); padding: 0 4px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div x-data="{ componentOpen: false }" @keydown.escape.window="componentOpen = false">
+<div class="card animate-fade-in" style="margin-bottom: 24px;">
+    <div class="card-header">
+        <h2 class="card-title">Sales Order Header</h2>
+    </div>
+    <table class="detail-table">
+        <tr><td class="detail-label">SO Number</td><td class="detail-value">{{ so.so_number }}</td></tr>
+        <tr><td class="detail-label">Customer</td><td class="detail-value">{{ so.customer_name or '-' }}</td></tr>
+        <tr><td class="detail-label">Delivery Date</td><td class="detail-value">{{ so.delivery_date | dmy or '-' }}</td></tr>
+        <tr><td class="detail-label">Sales Rep</td><td class="detail-value">{{ so.sales_rep or '-' }}</td></tr>
+    </table>
+</div>
+
+<form method="POST" action="{{ url_for('sales_orders.build_bom', order_id=so.id) }}">
+
+<!-- Section 1b: FM / Job Number (per-line) -->
+<div class="card animate-fade-in" style="margin-bottom: 24px;">
+    <div class="card-header">
+        <h2 class="card-title">Job / FM Numbers</h2>
+    </div>
+    <div style="padding: 16px;">
+        <p style="margin-bottom: 12px; color: var(--text-muted); font-size: 0.85rem;">
+            Assign an FM/Job number to each line below. Lines marked as <strong>Fan / WO Subject</strong>
+            require an FM number. Lines marked as Stock Order or Ignore do not need one.
+        </p>
+        <p style="color: var(--text-muted); font-size: 0.85rem;">
+            Format: <code>FM4046</code> or <code>FM4047-FM4055</code>
+        </p>
+    </div>
+</div>
+
+<!-- Section 2: Classify Line Items -->
+<div class="card animate-fade-in" style="margin-bottom: 24px;">
+    <div class="card-header">
+        <h2 class="card-title">Classify Line Items</h2>
+    </div>
+    <p style="padding: 0 16px 8px; color: var(--text-muted); font-size: 0.85rem;">
+        <strong>Note:</strong> Each line marked as Fan becomes its own Works Order. Default selection is "Stock Order".
+    </p>
+    {% if line_items %}
+    <div style="overflow-x: auto;">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Description</th>
+                    <th>Qty</th>
+                    <th>Role</th>
+                    <th>FM / Job Number</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for line in line_items %}
+                <tr>
+                    <td>{{ loop.index }}</td>
+                    <td>{{ line.description or '' }}</td>
+                    <td>{{ line.qty }}</td>
+                    <td>
+                        <label style="display: inline-flex; align-items: center; gap: 6px; margin-right: 12px;">
+                            <input type="radio" name="line_role_{{ line.id }}" value="fan"
+                                   class="fan-role-radio" data-line-id="{{ line.id }}"
+                                   data-desc="{{ line.description or '' }}"
+                                   onchange="onFanRoleChange({{ line.id }})">
+                            Fan / WO Subject
+                        </label>
+                        <label style="display: inline-flex; align-items: center; gap: 6px; margin-right: 12px;">
+                            <input type="radio" name="line_role_{{ line.id }}" value="stock" checked
+                                   onchange="onFanRoleChange({{ line.id }})">
+                            Stock Order
+                        </label>
+                        <label style="display: inline-flex; align-items: center; gap: 6px;">
+                            <input type="radio" name="line_role_{{ line.id }}" value="ignore"
+                                   onchange="onFanRoleChange({{ line.id }})">
+                            Ignore
+                        </label>
+                    </td>
+                    <td>
+                        <input type="text" name="line_job_number_{{ line.id }}"
+                               value="{{ line.job_number or '' }}"
+                               class="form-input line-job-input"
+                               data-line-id="{{ line.id }}"
+                               placeholder="e.g. FM4046"
+                               style="width: 130px; padding: 6px 8px; font-size: 0.8rem;">
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p style="padding: 24px; color: var(--text-muted); text-align: center;">No line items found.</p>
+    {% endif %}
+</div>
+
+<!-- Section 3: BOM Components -->
+<div class="card animate-fade-in" style="margin-bottom: 24px;">
+    <div class="card-header">
+        <h2 class="card-title">BOM Components (for Fan / Assembly WO)</h2>
+    </div>
+    <p style="padding: 0 16px 8px; color: var(--text-muted); font-size: 0.85rem;">
+        If no Fan line is selected above, this section will be ignored. When more than one Fan line
+        is selected, choose which one each component belongs to.
+    </p>
+
+    <!-- Component add trigger -->
+    <div style="padding: 0 16px 16px; text-align: right;">
+        <button type="button" class="btn btn-primary" @click="componentOpen = true">
+            Add Component
+        </button>
+    </div>
+
+    <!-- Components table -->
+    <div style="overflow-x: auto;">
+        <table class="data-table" id="componentsTable">
+            <thead>
+                <tr>
+                    <th>Item Code</th>
+                    <th>Description</th>
+                    <th>Qty</th>
+                    <th>Fan Line</th>
+                    <th>Remove</th>
+                </tr>
+            </thead>
+            <tbody id="componentsBody">
+                <!-- Dynamic rows added here -->
+            </tbody>
+        </table>
+    </div>
+    <p id="noComponentsMsg" style="padding: 24px; color: var(--text-muted); text-align: center;">
+        No components added yet.
+    </p>
+</div>
+
+<!-- Add Component Modal -->
+<div class="modal-overlay" x-show="componentOpen" x-cloak @click.self="componentOpen = false">
+    <div class="modal-box">
+        <div class="modal-header">
+            <h3>Add Component</h3>
+            <button type="button" class="modal-close" @click="componentOpen = false" aria-label="Close">&times;</button>
+        </div>
+
+        <div class="form-group">
+            <label for="component-search">Item</label>
+            <select id="component-search" placeholder="Search by code or description..."></select>
+        </div>
+        <div class="form-group">
+            <label for="componentFanLine">For Fan line...</label>
+            <select id="componentFanLine" class="form-input">
+                <option value="">For Fan line...</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="componentQty">Qty</label>
+            <input type="number" id="componentQty" placeholder="Qty" min="0.1" step="0.1" class="form-input">
+        </div>
+        <div id="selected-item-display" style="margin-top: 8px; font-size: 0.85rem; color: var(--text-muted); display: none;">
+            Selected: <span id="selected-item-code" style="color: var(--brand-accent);"></span> — <span id="selected-item-desc"></span>
+            (available: <span id="selected-item-available"></span>)
+        </div>
+
+        <div class="form-actions">
+            <button type="button" class="btn btn-secondary" @click="componentOpen = false">Cancel</button>
+            <button type="button" class="btn btn-primary" @click="if (addComponent()) componentOpen = false">Add Component</button>
+        </div>
+    </div>
+</div>
+
+<!-- Section 4: Actions -->
+<div class="card animate-fade-in">
+    <div style="display: flex; gap: 12px; justify-content: flex-end; padding: 16px;">
+        <a href="{{ url_for('sales_orders.view_order', order_id=so.id) }}" class="btn btn-secondary">Cancel</a>
+        <button type="submit" class="btn btn-primary">Save Works Pack</button>
+    </div>
+</div>
+
+</form>
+
+<script>
+// Catalogue items as JSON
+const catalogueItems = {{ catalogue_json | tojson }};
+let selectedItemId = null;
+
+// Highlight or dim the FM input for a line based on its role selection
+function onFanRoleChange(lineId) {
+    const input = document.querySelector(`input.line-job-input[data-line-id="${lineId}"]`);
+    const fanRadio = document.querySelector(`input[name="line_role_${lineId}"][value="fan"]`);
+    if (input && fanRadio) {
+        if (fanRadio.checked) {
+            input.style.borderColor = 'var(--brand-primary, #4a9eff)';
+            input.style.background = 'rgba(74, 158, 255, 0.05)';
+        } else {
+            input.style.borderColor = '';
+            input.style.background = '';
+        }
+    }
+    refreshFanLineOptions();
+}
+
+// Rebuild the "For Fan line..." dropdown from whichever lines are currently
+// checked as Fan / WO Subject, so components get assigned to the right WO.
+function refreshFanLineOptions() {
+    const select = document.getElementById('componentFanLine');
+    const previousValue = select.value;
+    const checkedFanRadios = document.querySelectorAll('input.fan-role-radio:checked');
+
+    select.innerHTML = '<option value="">For Fan line...</option>';
+    checkedFanRadios.forEach(function(radio) {
+        const opt = document.createElement('option');
+        opt.value = radio.dataset.lineId;
+        opt.textContent = radio.dataset.desc || ('Line ' + radio.dataset.lineId);
+        select.appendChild(opt);
+    });
+
+    if ([...select.options].some(o => o.value === previousValue)) {
+        select.value = previousValue;
+    } else if (checkedFanRadios.length === 1) {
+        select.value = checkedFanRadios[0].dataset.lineId;
+    }
+}
+document.addEventListener('DOMContentLoaded', refreshFanLineOptions);
+
+// Component search — Tom Select bound to catalogueItems, replaces the old
+// hand-rolled filtered-<div> dropdown (source of the Batch 26 transparency bug).
+const selectedDisplay = document.getElementById('selected-item-display');
+const selectedCode = document.getElementById('selected-item-code');
+const selectedDesc = document.getElementById('selected-item-desc');
+const selectedAvailable = document.getElementById('selected-item-available');
+let componentTomSelect = null;
+
+document.addEventListener('DOMContentLoaded', function() {
+    componentTomSelect = new TomSelect('#component-search', {
+        valueField: 'id',
+        labelField: 'label',
+        searchField: ['code', 'description'],
+        maxOptions: 50,
+        options: catalogueItems.map(function(item) {
+            return {
+                id: item.id,
+                code: item.code,
+                description: item.description,
+                label: item.code + ' — ' + item.description,
+                available_qty: item.available_qty,
+                qty_on_order: item.qty_on_order,
+                next_po_due: item.next_po_due
+            };
+        }),
+        render: {
+            option: function(data, escape) {
+                return '<div>' +
+                    '<strong>' + escape(data.code) + '</strong> — ' + escape(data.description) +
+                    ' <span style="color: var(--text-muted); font-size: 0.8rem;"> (available: ' + escape(String(data.available_qty)) + ')</span>' +
+                    (data.qty_on_order > 0 ? ' <span style="color: var(--brand-blue, #2563eb); font-size: 0.75rem;"> (on order' + (data.next_po_due ? ', due ' + escape(data.next_po_due) : '') + ')</span>' : '') +
+                    '</div>';
+            },
+            item: function(data, escape) {
+                return '<div>' + escape(data.code) + ' — ' + escape(data.description) + '</div>';
+            },
+            no_results: function() {
+                return '<div class="no-results">No matches found</div>';
+            }
+        },
+        onChange: function(value) {
+            selectItem(value);
+        }
+    });
+});
+
+function selectItem(id) {
+    if (!id) {
+        selectedItemId = null;
+        selectedDisplay.style.display = 'none';
+        return;
+    }
+    selectedItemId = id;
+
+    // Show selected item display
+    const item = catalogueItems.find(i => i.id == id);
+    selectedCode.textContent = item ? item.code : '?';
+    selectedDesc.textContent = item ? item.description : '';
+    selectedAvailable.textContent = item ? item.available_qty : '?';
+    selectedDisplay.style.display = 'block';
+}
+
+// Add component to table. Returns true on success (so the modal can close),
+// false on validation failure (so the modal stays open for correction).
+function addComponent() {
+    if (!selectedItemId) {
+        alert('Please search and select an item first.');
+        return false;
+    }
+
+    const qtyInput = document.getElementById('componentQty');
+    const qty = parseFloat(qtyInput.value);
+
+    if (!qty || qty <= 0) {
+        alert('Please enter a valid quantity.');
+        return false;
+    }
+
+    const fanLineSelect = document.getElementById('componentFanLine');
+    const fanLineId = fanLineSelect.value;
+    const fanLineDesc = fanLineId
+        ? fanLineSelect.options[fanLineSelect.selectedIndex].textContent
+        : '—';
+
+    if (fanLineSelect.options.length > 2 && !fanLineId) {
+        alert('More than one Fan line is selected above — choose which Fan line this component belongs to.');
+        return false;
+    }
+
+    // Find the selected item details
+    const item = catalogueItems.find(i => i.id == selectedItemId);
+    if (!item) {
+        alert('Selected item not found.');
+        return false;
+    }
+
+    // Hide "no components" message
+    document.getElementById('noComponentsMsg').style.display = 'none';
+
+    // Add row
+    const shortfall = Math.max(0, qty - item.available_qty);
+    const tbody = document.getElementById('componentsBody');
+    const row = document.createElement('tr');
+    row.className = shortfall > 0 ? 'row-amber' : '';
+    row.innerHTML = `
+        <td>${item.code}</td>
+        <td>${item.description}</td>
+        <td>${qty}${shortfall > 0 ? ' <span style="color: var(--brand-danger); font-size: 0.75rem;">(short ' + shortfall + ')</span>' : ''}</td>
+        <td>${fanLineDesc}</td>
+        <td><button type="button" onclick="removeComponent(this)" style="background: none; border: none; color: var(--brand-danger); cursor: pointer;">✕</button></td>
+    `;
+
+    // Add hidden inputs
+    const hiddenItemId = document.createElement('input');
+    hiddenItemId.type = 'hidden';
+    hiddenItemId.name = 'component_item_id[]';
+    hiddenItemId.value = selectedItemId;
+    row.appendChild(hiddenItemId);
+
+    const hiddenQty = document.createElement('input');
+    hiddenQty.type = 'hidden';
+    hiddenQty.name = 'component_qty[]';
+    hiddenQty.value = qty;
+    row.appendChild(hiddenQty);
+
+    const hiddenFanLineId = document.createElement('input');
+    hiddenFanLineId.type = 'hidden';
+    hiddenFanLineId.name = 'component_fan_line_id[]';
+    hiddenFanLineId.value = fanLineId;
+    row.appendChild(hiddenFanLineId);
+
+    tbody.appendChild(row);
+
+    // Reset inputs
+    selectedItemId = null;
+    if (componentTomSelect) {
+        componentTomSelect.clear();
+    }
+    qtyInput.value = '';
+    selectedDisplay.style.display = 'none';
+    return true;
+}
+
+function removeComponent(btn) {
+    const row = btn.closest('tr');
+    row.remove();
+
+    // Show "no components" message if empty
+    const tbody = document.getElementById('componentsBody');
+    if (tbody.children.length === 0) {
+        document.getElementById('noComponentsMsg').style.display = 'block';
+    }
+}
+</script>
+</div>
+{% endblock %}

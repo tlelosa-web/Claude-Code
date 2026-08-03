@@ -1,9 +1,14 @@
 # SOPS
 
 Flask/SQLAlchemy sales-order & works-order system for Fan Movement (Pty)
-Ltd. Local-only git repo (`C:\Dev\Operations\2. SOPS`, no remote configured)
-— currently the most DCOE-mature project (own `CLAUDE.md` v3.2, full
-`docs/` scaffold, TDD test suite).
+Ltd. Live copy at `Desktop/Operations/2. SOPS` (post-consolidation; old path
+was `C:\Dev\Operations\2. SOPS`) — currently the most DCOE-mature project
+(own `CLAUDE.md` v3.2, full `docs/` scaffold, TDD test suite).
+
+**Correction (2026-08-03):** earlier entries below say "no remote
+configured" — that's stale. It has a real remote,
+`github.com/tlelosa-web/sops.git` (`master` branch), confirmed by a
+successful push this session.
 
 ## 2026-07-28 — Stack, workflow, and testing facts
 **Source:** SOPS `CLAUDE.md` / `README.md`

@@ -1,0 +1,3 @@
+[submodule "Pappa-T-tenders-sa"]
+	path = Pappa T/Tenders/4_Scripts/tenders-sa
+	url = https://github.com/alfa-rsa/tenders-sa.git

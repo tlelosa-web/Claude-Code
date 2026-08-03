@@ -1,5 +1,36 @@
 # Session Log
 
+## 2026-08-03
+
+- Tebello reported the Operations vault (Fan Movement work hub, previously
+  its own machine — `C:\Dev\Operations`) had been migrated onto this same
+  physical machine, at `C:\Users\tlelo\Desktop\Operations`, sibling to this
+  vault and `Claude-Code`. Verified from that hub's own session (direct file
+  access, same disk now — not a literal second `claude mcp`/session
+  process): not a reparse point, not a git repo at root, `Desktop` itself
+  not OneDrive-redirected on this machine.
+- Updated this vault's own `CLAUDE.md` (new note under Project Overview) to
+  record the merge and its practical effect: both hubs now share one
+  Windows user profile (`tlelo`), so **user-scoped** `~/.claude` state — the
+  `dcoe-roster`/`shared-skills` plugin installs, the `tlelosa-claude-config`
+  marketplace clone, `~/.claude/settings.json` — is genuinely shared between
+  the two vaults now, not two independent copies. Confirmed concretely:
+  `dcoe-roster` shows `lastUpdated: 2026-08-01` in
+  `installed_plugins.json`, pulled from an Operations-side session, already
+  live here without a separate pull.
+- Flagged (not fixed here — it's Operations' own file) that its
+  `docs/decisions/ADR-008-pappa-t-independent-hub.md` frames this vault as
+  "an independent hub... home PC" versus Operations' "Fan Movement work PC"
+  — that "separate machine" premise is now stale. Added an addendum there
+  from the Operations side noting the shared-core distribution mechanism
+  ADR-008 designed is unaffected; only the machine-identity framing changed.
+- This vault's own `docs/decisions/ADR-001-dcoe-vault-structure.md` needed
+  no change — it's about brain-file canonicity (`AGENTS.md` vs the old
+  Claude-oriented file), unrelated to machine identity.
+- Superseded one claim from the 2026-07-19 "Pappa T vault survey" entry
+  below ("confirmed no other dev-root folders exist on this machine") — that
+  was true at the time, before this migration.
+
 ## 2026-08-01 (cont'd, 2)
 
 - Surveyed `Tenders/` and reported its state: the `find_gauteng_food_tenders.py` automation is

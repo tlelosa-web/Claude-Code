@@ -32,6 +32,27 @@ Inference:   claude-sonnet-5 (default, medium effort) | claude-opus-4-8 (evidenc
 > project's actual name, not just a path. "TebelloReborn" refers only to the
 > `TebelloReborn/` sub-project (CV generation, career automation) below.
 
+> **Shares this machine with the `Operations` hub (2026-08-03).** Tebello's
+> separate Fan Movement work vault, previously on its own machine
+> (`C:\Dev\Operations`, ADR-008's "Fan Movement work PC"), was migrated onto
+> this same physical machine and now lives at a sibling folder,
+> `C:\Users\tlelo\Desktop\Operations`. It is a fully separate hub — its own
+> `CLAUDE.md`, `docs/`, project index, company data — not a Pappa T
+> sub-project, and this file doesn't govern it. The practical consequence:
+> both hubs now share one Windows user profile (`tlelo`), so **user-scoped**
+> `~/.claude` state (the `dcoe-roster`/`shared-skills` plugin installs, the
+> `tlelosa-claude-config` marketplace clone, `~/.claude/settings.json`) is
+> genuinely shared — an update pulled from either hub's session is visible
+> to both, not two independent copies anymore. Session lists
+> (`list_sessions` etc.) also now surface both vaults' sessions together,
+> not just this one's — `/continue`'s Step 0/0.5 should account for this
+> when grouping by `cwd`. See `docs/decisions/ADR-001-dcoe-vault-structure.md`
+> — no update needed there, it's unrelated to machine identity — and
+> Operations' own `docs/decisions/ADR-008-pappa-t-independent-hub.md`, which
+> now carries an addendum noting its "independent hub, separate machine"
+> framing is partially superseded (the shared-core distribution mechanism it
+> designed still holds; only the "separate machine" premise changed).
+
 | Sub-project | Stack |
 |---|---|
 | MIMS App | Next.js, Supabase, Tailwind, TypeScript |
@@ -460,4 +481,8 @@ At the start of every session, Claude must:
 plugin, shared across all projects. Project-level now reserved for
 per-project overrides only. `.Codex/agents/` life-domain layer unchanged.*
 
-*Last review: July 2026 — Tebello Lelosa*
+*2026-08-03 change: noted the Operations hub now shares this machine (see
+Project Overview) — user-scoped `~/.claude` state is genuinely shared
+between the two vaults as of this date.*
+
+*Last review: 2026-08-03 — Tebello Lelosa*

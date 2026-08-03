@@ -59,6 +59,20 @@ _(none active at hub level right now)_
 
 ## Completed
 
+- [x] Noted the Operations hub's 2026-08-03 machine migration in `CLAUDE.md`
+      (new note under Project Overview) — that vault moved onto this same
+      physical machine, at sibling folder `C:\Users\tlelo\Desktop\Operations`.
+      Confirmed the practical effect: both hubs now share one Windows user
+      profile, so user-scoped `~/.claude` state (dcoe-roster/shared-skills
+      plugins, the `tlelosa-claude-config` marketplace clone) is genuinely
+      shared, not two independent copies — and session-listing tools now
+      surface both vaults' sessions together. Also added an addendum to
+      Operations' own `docs/decisions/ADR-008-pappa-t-independent-hub.md`
+      flagging its "separate machine" premise as superseded (mechanism
+      unaffected). Done from an Operations-side session with direct file
+      access to this vault (same disk now) rather than a literal second
+      `claude` process — supersedes the earlier survey note below that
+      said "confirmed no other dev-root folders exist on this machine."
 - [x] `Tenders`: archived the Eskom ITT E2142CXMWPR bid (`Enterprise Historian Licence,
       Maintenance & Support`) — Tebello confirmed 2026-08-01 it was abandoned. Folder renamed
       `110320262657` → `ARCHIVED_110320262657_Eskom_E2142CXMWPR` with an `ARCHIVED_STATUS.md`

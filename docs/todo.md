@@ -49,12 +49,16 @@ flags re-checked 2026-08-03 after the O-P-C consolidation — see note below)
       from, not O-P-C directly). Spec (ready, starter scope — confirm
       before building; now also carries a 2026-08-03 Codex second-opinion
       advisory note): `docs/specs/2026-07-29-nameplatetool-test-suite.md`.
-2. [ ] **TebelloReborn: decide on post-MVP scope** — Playwright auto-submit,
-      recruiter/cold-outreach revival, and a doc-gen volume-cap/scheduler
-      are all undecided backlog items, no urgency behind them yet. 📍
-      Decision brief only, no build — reading either copy is fine, but any
-      resulting code work belongs in the live `Desktop/Pappa T/`. Spec
-      (ready): `docs/specs/2026-07-29-tebelloreborn-scope-decision.md`.
+2. [ ] **TebelloReborn: build Playwright auto-submit** — decided 2026-08-04
+      (cloud session): of the three post-MVP options, Playwright auto-submit
+      is the only one picked; recruiter/cold-outreach revival and doc-gen
+      volume-cap/scheduler are explicitly not committed. Human-approval gate
+      stays as-is — Playwright only automates the job-site form-fill/submit
+      step after a human has approved. 📍 Must be built in the live
+      `Desktop/Pappa T/TebelloReborn/` (only a Pappa T session has the real
+      code/architecture to confirm this spec's guessed file paths against).
+      Spec (ready, scoped to LinkedIn Easy Apply first):
+      `docs/specs/2026-08-04-tebelloreborn-playwright-auto-submit.md`.
       Detail: `knowledge/tebelloreborn.md`.
 3. [ ] **SOPS: give the go-ahead to run the AvgMovement migration against
       `instance/sops.db`** — Supplier/Lead-Time + AMU/Min-Max logic ported

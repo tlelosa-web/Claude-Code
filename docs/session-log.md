@@ -1183,6 +1183,52 @@ items Tebello picks — all now 📍-flagged with the live-copy caveat.
 **Known risks:** None new.
 **Blockers:** None.
 
+## 2026-08-04 — TebelloReborn: post-MVP scope decided (Playwright auto-submit)
+
+Ran from a cloud session via `/continue`. All three queued "Next up" items
+(NamePlateTool test suite, TebelloReborn scope decision, SOPS AvgMovement
+migration) were flagged unreachable from this session — no local Desktop
+filesystem access to Operations/Pappa T, and the TebelloReborn spec itself
+designates a Pappa T session for the decision conversation. Tebello chose
+to have the decision conversation here anyway, since `docs/todo.md`'s own
+note said reading either copy was fine and no build would happen in this
+session.
+
+Presented the three post-MVP options from
+`docs/specs/2026-07-29-tebelloreborn-scope-decision.md` via
+`AskUserQuestion` (multi-select). Tebello picked **Playwright auto-submit
+only** — recruiter/cold-outreach revival and doc-gen volume-cap/scheduler
+both explicitly declined, not committed. Follow-up question confirmed the
+Stage 5 human-approval gate stays in place; Playwright automates only the
+mechanical job-site submission step after a human has already approved
+that application's documents (full unattended auto-submit was considered
+and declined as too risky, given AI-generated documents and untrusted
+scraped vacancy text).
+
+Per the decision spec's own "write a proper spec before building" step,
+wrote `docs/specs/2026-08-04-tebelloreborn-playwright-auto-submit.md` —
+scoped to LinkedIn Easy Apply first (Indeed's flow varies too much per
+employer to generic-form-fill reliably), Playwright `storageState` for
+session/login instead of stored credentials, and the same untrusted-
+scraped-text discipline already used in the doc-gen ADR-003 correction if
+any LLM-driven form interpretation ends up involved. Written without
+direct access to TebelloReborn's real code (Pappa T-only), so its
+file/module names are flagged as guesses pending confirmation in an actual
+Pappa T session. Updated `knowledge/tebelloreborn.md` (new dated entry)
+and `docs/todo.md` (item 2 replaced with the build task + new spec link).
+
+**Last completed:** TebelloReborn post-MVP scope decision (this entry) —
+Playwright auto-submit picked, approval gate kept, spec written.
+**Next task:** Whichever remaining `docs/todo.md` "Next up" item Tebello
+picks next — NamePlateTool test suite and SOPS AvgMovement migration
+remain ⚠️ Desktop/Operations-only; the new TebelloReborn Playwright build
+is ⚠️ Desktop/Pappa T-only. None runnable from a cloud session.
+**Known risks:** None new. `tlelosa-claude-config` marketplace clone still
+doesn't exist on this (cloud) machine — can't check upstream core commits
+from here.
+**Blockers:** None for this decision; the resulting build still needs an
+actual Pappa T session.
+
 2026-08-03 codex-review docs/specs/2026-07-29-nameplatetool-test-suite.md: ran
 
 ## 2026-08-03 — codex-gate: Pappa T install + network-off smoke-test closed out

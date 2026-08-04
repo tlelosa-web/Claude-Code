@@ -1,3 +1,28 @@
+## 2026-08-04 — Post-MVP scope decision: Playwright auto-submit picked
+**Source:** cloud session, via `docs/specs/2026-07-29-tebelloreborn-scope-decision.md`
+**Status:** active
+
+Of the three undecided post-MVP items (Playwright auto-submit,
+recruiter/cold-outreach revival, doc-gen volume-cap/scheduler), Tebello
+picked **Playwright auto-submit only** — the other two are not committed to
+build. Explicit constraint: the Stage 5 human-approval gate stays exactly
+as-is; Playwright only automates the mechanical job-site form-filling/
+submission step **after** a human has already approved that application's
+documents. Full unattended auto-submit (no review step) was considered and
+declined as too risky given AI-generated documents and untrusted scraped
+vacancy text.
+
+Build spec written: `docs/specs/2026-08-04-tebelloreborn-playwright-auto-submit.md`
+— written without direct access to TebelloReborn's actual code (Pappa
+T-only), so its proposed file/module names are informed guesses pending
+confirmation in a real Pappa T session. Key scoping calls already made:
+start with LinkedIn Easy Apply only (bounded, scriptable flow) and
+explicitly fall back to manual for anything else (Indeed's flow varies too
+much per employer to generic-form-fill reliably); reuse the same
+untrusted-scraped-text discipline already applied to the doc-gen ADR-003
+correction if any LLM-driven form interpretation is involved; use
+Playwright `storageState` for session/login, not stored credentials.
+
 ## 2026-07-28 — What it is, stack, pipeline
 **Source:** Pappa T session (cross-project status survey), TebelloReborn's own CLAUDE.md/docs/todo.md/docs/architecture.md
 **Status:** active

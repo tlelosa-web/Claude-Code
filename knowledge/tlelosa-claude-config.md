@@ -42,6 +42,27 @@ Distribution stays manual file-copy: improving one vault's `session-end.md`
 does not propagate: backporting into `hub-template/` and re-copying is a
 deliberate step, the same tradeoff ADR-008 already accepted.
 
+**Two gaps found on the command's first real run, same day:**
+
+1. **Step 3 over-appends.** It says "append a new dated entry"
+   unconditionally. Wrong for a session that already wrote its own log
+   entries, and wrong for a second run used as a mid-session checkpoint —
+   both yield duplicate or near-empty entries. Intended behaviour is
+   reconcile-not-duplicate: extend or verify the existing entry when the
+   work is already logged, append only when it isn't.
+2. **Step 5 is unreachable on this tool surface, not merely flaky.**
+   `set_session_title` rejects the current session *and* `list_sessions`
+   excludes it, so a session cannot even obtain its own ID to attempt the
+   call — the step can't fail gracefully because it can't be attempted at
+   all. The command's "attempt it, then say so plainly if it fails" wording
+   assumes a call that returns an error; here there is none to make. Worth
+   rewording to "report unavailable" for this environment rather than
+   implying an attempt.
+
+Both fixes belong upstream in `hub-template/session-end.md` first, then
+re-copied down — patching only this hub would leave the same defects in
+every other vault that adopts the template later.
+
 ## 2026-08-03 — codex-gate install + network-off smoke-test: both paths confirmed
 **Source:** session (this machine, `TshepangLelosa`, post-Operations/Pappa T
 consolidation — `codex-gate` is installed at the user level

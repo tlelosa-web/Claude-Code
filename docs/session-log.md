@@ -1421,3 +1421,40 @@ the SOPS AvgMovement migration (still gated on explicit go-ahead).
 cross-repo item — noted in `knowledge/tlelosa-claude-config.md`, not fixed
 from here.
 **Blockers:** None.
+
+## 2026-08-06 — Session close-out (`/session-end` first real run)
+
+Ran `/session-end` on the command adopted earlier this same session — its
+first real use. This session's actual work is already logged in the two
+entries above (housekeeping; `/session-end` adoption); this entry records
+only the close-out itself, deliberately not restating them.
+
+Queue reconciled: nothing to move (both tasks already in Done). Two new
+backlog items parked, both found while doing the work and neither agreed to
+by Tebello, so both go to "Backlog / ideas (not committed)" rather than
+"Next up" — `continue.md`'s inert frontmatter, and a wording gap in
+`/session-end` Step 3 itself.
+
+📍 Live-copy check: no work happened in `Desktop/Operations/` or
+`Desktop/Pappa T/` this session — they were read-only verification that the
+three queued items are reachable from this machine. No sub-repo commits, no
+O-P-C re-merge outstanding.
+
+**Finding from dogfooding it:** Step 3 says "append a new dated entry"
+unconditionally, which is wrong for a session that already logged its own
+work, or for a second run used as a mid-session checkpoint — both produce
+duplicate or near-empty entries. Intended behaviour is reconcile-not-
+duplicate. Handled correctly by hand here; the wording fix is queued in the
+backlog, and needs backporting to `hub-template/session-end.md` rather than
+a hub-only patch. Step 5 (self-titling) is confirmed unavailable on this
+tool surface, as the command already anticipates: `set_session_title`
+rejects the current session, and `list_sessions` excludes it, so the call
+can't even be constructed — not an error, just the documented gap.
+
+**Last completed:** Session close-out (this entry). Session work itself:
+hub housekeeping + `/session-end` adoption, both pushed.
+**Next task:** Whichever of the three `docs/todo.md` "Next up" items Tebello
+picks — NamePlateTool test suite, TebelloReborn Playwright auto-submit, or
+the SOPS AvgMovement migration (still gated on explicit go-ahead).
+**Known risks:** None new.
+**Blockers:** None.

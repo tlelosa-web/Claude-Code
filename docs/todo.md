@@ -76,7 +76,24 @@ flags re-checked 2026-08-03 after the O-P-C consolidation — see note below)
 
 ## Backlog / ideas (not committed)
 
-- [ ] None currently.
+- [ ] **Fix `continue.md`'s inert frontmatter** — `.claude/commands/continue.md`
+      opens with a `---`/`# comment`/`---` block rather than real YAML, so it
+      registers no slash-command description (`/continue` itself works fine —
+      it's cosmetic). `.claude/commands/session-end.md` uses the correct
+      `description:` form; `hub-template/continue.md` upstream has the same
+      inert block, so a real fix means backporting there too and re-copying,
+      not just patching this hub. Found 2026-08-06 while adopting
+      `/session-end`; left alone rather than changed as a drive-by. Tebello's
+      call.
+- [ ] **Clarify `/session-end` Step 3 when the session already logged itself**
+      — found on the command's first real run (2026-08-06). Step 3 says
+      "append a new dated entry" unconditionally, but a session that already
+      wrote its own log entries (or runs `/session-end` twice as a mid-session
+      checkpoint) then produces duplicate/near-empty entries. Intended
+      behaviour is reconcile-not-duplicate: extend or verify the existing
+      entry when the work is already logged, and only append when it isn't.
+      Small wording fix; belongs upstream in `hub-template/session-end.md`
+      too, same backport caveat as the item above.
 
 ## Done
 

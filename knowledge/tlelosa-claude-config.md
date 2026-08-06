@@ -1,3 +1,47 @@
+## 2026-08-06 — /session-end promoted to hub-template; hub instance adopted
+**Source:** session (this machine, `TshepangLelosa`) + marketplace commits
+`a56ea84`/`9a18c8f`, spec `docs/specs/2026-08-04-session-end-command.md`
+**Status:** active
+
+The marketplace added a `/session-end` command via the same ADR-008
+file-copy promotion path `/continue` took: a vault-agnostic skeleton in
+`hub-template/session-end.md`, plus per-vault instances copied from it.
+It closes out a session — reconcile `docs/todo.md`, append the
+`docs/session-log.md` entry, update `knowledge/`, set the session title —
+so the next `/continue` run reads deliberate state instead of
+reverse-engineering it from `list_events`.
+
+**Gotcha — the spec says `Status: Implemented` but only 2 of its 3 files
+existed.** Items 1 (`hub-template/session-end.md`) and 2 (the marketplace's
+own `.claude/commands/session-end.md`) shipped in `a56ea84`; item 3,
+`Claude-Code/.claude/commands/session-end.md` (the full hub instance), was
+never created — this hub had only `continue.md` until 2026-08-06. Worth
+remembering when reading that repo's spec statuses: "Implemented" there
+tracks the marketplace side, and cross-repo items in the same spec can
+still be outstanding. Check the target repo directly rather than trusting
+the status line.
+
+**Two frontmatter styles are in play.** `hub-template/continue.md` and this
+hub's `.claude/commands/continue.md` open with a `---`/`# comment`/`---`
+block, which is inert — it registers no slash-command description. The
+marketplace's own newer `session-end.md` uses real YAML
+(`description: …`). The hub's new `session-end.md` follows the YAML form;
+`continue.md` was left as-is (working, just undescribed) rather than
+changed as a drive-by.
+
+**What the hub instance adds** over the shared skeleton, none of which is
+in `hub-template`: a Step 0 Hard Rule 6 pull-first gate (this command
+writes all three contention files, so it is the highest-risk command in the
+hub for stale-base edits); an explicit post-append ordering check on
+`session-log.md`; the `knowledge/` + `INDEX.md` step (Hard Rule 5); and the
+📍 live-Desktop-copy caveat — check the live sub-repo's git state too, since
+work pushed to `Desktop/Operations`/`Desktop/Pappa T` remotes doesn't reach
+O-P-C until it's re-merged.
+
+Distribution stays manual file-copy: improving one vault's `session-end.md`
+does not propagate: backporting into `hub-template/` and re-copying is a
+deliberate step, the same tradeoff ADR-008 already accepted.
+
 ## 2026-08-03 — codex-gate install + network-off smoke-test: both paths confirmed
 **Source:** session (this machine, `TshepangLelosa`, post-Operations/Pappa T
 consolidation — `codex-gate` is installed at the user level

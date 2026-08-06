@@ -1364,3 +1364,60 @@ three are runnable from this machine; all three must be worked in the live
 `Desktop/` copies, not O-P-C's snapshot.
 **Known risks:** None new.
 **Blockers:** None.
+
+## 2026-08-06 — Adopted `/session-end` in this hub
+
+Picked up the backlog item parked earlier the same session. Read the
+upstream spec first
+(`tlelosa-claude-config/docs/specs/2026-08-04-session-end-command.md`) —
+spec gate satisfied, no new spec needed, since that spec already specifies
+this hub's instance as its item 3.
+
+**Found the spec's `Status: Implemented` was only half true.** Items 1
+(`hub-template/session-end.md`) and 2 (the marketplace's own
+`.claude/commands/session-end.md`) shipped in `a56ea84`. Item 3 —
+`Claude-Code/.claude/commands/session-end.md`, the full hub instance — was
+never created; this hub had only `continue.md`. That's precisely why the
+item was still open. Did not amend the upstream spec's status from here:
+different repo, and not this session's call to make. Recorded in
+`knowledge/tlelosa-claude-config.md` as a "check the target repo, don't
+trust a cross-repo spec's status line" gotcha.
+
+**Adapted, not copied.** The hub instance adds what only this vault needs,
+none of it present in the shared skeleton:
+
+- **Step 0 — pull before you write (Hard Rule 6).** `/session-end` writes
+  `docs/todo.md`, `docs/session-log.md`, *and* `knowledge/INDEX.md` — all
+  three contention files, making it the single highest-risk command in this
+  hub for stale-base edits. The template has no pull gate at all, which
+  would have made adopting it verbatim a regression against the rule added
+  specifically to stop those conflicts.
+- **An explicit ordering check after appending the log entry** — `grep -n
+  "^## " | tail -5`. Directly from the defect fixed earlier today: appending
+  isn't sufficient when merges can land entries out of order, and a
+  tail-reading `/continue` then serves stale state silently. Also warns not
+  to reorder across the bare `codex-review …: ran` marker, whose adjacency
+  to its entry is load-bearing.
+- **The `knowledge/` step (Hard Rule 5)** — dated-entry format, one topic
+  one file, `Status: superseded` rather than deletion, INDEX row refresh.
+- **Hub-and-spoke reconciliation** — a project with its own `docs/todo.md`
+  stays authoritative; this hub keeps the one-line pointer.
+- **📍 live-Desktop-copy caveat** — check the live sub-repo's git state too,
+  since work pushed to `Desktop/Operations`/`Desktop/Pappa T` remotes doesn't
+  reach O-P-C until a re-merge.
+
+Used real YAML frontmatter (`description:`) rather than `continue.md`'s
+`---`/`# comment`/`---` block, which registers no slash-command description
+and is effectively inert. Left `continue.md` alone rather than fixing it as
+a drive-by — flagged to Tebello instead.
+
+Command registered immediately on write and is live as `/session-end`.
+
+**Last completed:** `/session-end` hub adoption (this entry).
+**Next task:** Whichever of the three `docs/todo.md` "Next up" items Tebello
+picks — NamePlateTool test suite, TebelloReborn Playwright auto-submit, or
+the SOPS AvgMovement migration (still gated on explicit go-ahead).
+**Known risks:** None new. Upstream spec's status line is inaccurate for its
+cross-repo item — noted in `knowledge/tlelosa-claude-config.md`, not fixed
+from here.
+**Blockers:** None.

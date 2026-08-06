@@ -76,18 +76,24 @@ flags re-checked 2026-08-03 after the O-P-C consolidation — see note below)
 
 ## Backlog / ideas (not committed)
 
-- [ ] **Adopt `/session-end` in this hub** — `tlelosa-claude-config` promoted
-      a `/session-end` command to `hub-template/session-end.md` (upstream
-      commits `a56ea84`/`9a18c8f`, pulled to this machine 2026-08-06), same
-      ADR-008 promotion path `/continue` took. This hub has
-      `.claude/commands/continue.md` but not `session-end.md`. It closes out
-      a session (reconciles the queue, writes the log entry, leaves the
-      session archivable) — i.e. it automates the Hard Rule 5 discipline
-      currently done by hand at the end of every session. Not adopted
-      unilaterally; Tebello's call. Spec upstream:
-      `docs/specs/2026-08-04-session-end-command.md` in the marketplace repo.
+- [ ] None currently.
 
 ## Done
+
+- [x] **2026-08-06** — Adopted `/session-end` in this hub:
+      `.claude/commands/session-end.md` written as the full hub instance the
+      upstream spec (`tlelosa-claude-config/docs/specs/2026-08-04-session-end-command.md`,
+      item 3) already called for. Adapted rather than copied — adds a Step 0
+      Hard Rule 6 pull-first gate (it writes all three contention files, so
+      it's the highest-risk command here for stale-base edits), an explicit
+      post-append ordering check on `session-log.md` (the defect fixed
+      earlier the same day), the `knowledge/` + `INDEX.md` step (Hard Rule
+      5), the hub-and-spoke note for project-scoped work, and the 📍
+      live-Desktop-copy caveat. Found that spec's `Status: Implemented` was
+      only true for its marketplace-side items 1-2 — item 3 was never
+      created, which is why this was still outstanding. Not corrected
+      upstream from here (different repo, not this session's call) — see
+      `knowledge/tlelosa-claude-config.md`.
 
 - [x] **2026-08-06** — Hub housekeeping. Fixed a real `docs/session-log.md`
       ordering defect: PR #14's merge inserted the 2026-08-04 TebelloReborn

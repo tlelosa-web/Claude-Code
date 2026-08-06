@@ -5,7 +5,7 @@ searching further — a matching row means the answer is already captured.
 
 | File | Covers | Last updated |
 |------|--------|---------------|
-| `tlelosa-claude-config.md` | The private Claude Code plugin marketplace repo: structure, machine split (Operations/Pappa T), IT clearance status, CORE.md version, ADR-007/008/009 recorded in this hub's `docs/decisions/`; codex-gate install + network-off smoke-test both confirmed working | 2026-08-03 |
+| `tlelosa-claude-config.md` | The private Claude Code plugin marketplace repo: structure, machine split (Operations/Pappa T), IT clearance status, CORE.md version, ADR-007/008/009 recorded in this hub's `docs/decisions/`; codex-gate install + network-off smoke-test both confirmed working; `/session-end` promotion + hub adoption, and the spec-status/frontmatter gotchas found doing it | 2026-08-06 |
 | `nameplatetool.md` | NamePlateTool (Fan Movement work project): stack, frontend/backend/PDF payload contract, uvicorn-supervisor kill gotcha, open Excel-import bug (still unfixed, top cross-project priority), testing status | 2026-07-28 |
 | `cratetracker.md` | CrateTracker PWA (F1 Clash premium-crate predictor): structure, deploy steps, service-worker cache-busting, crate-cycle model | 2026-07-23 |
 | `pitwall-companion.md` | Pitwall Companion / F1 Clash Resource Sheet PWA: structure, localStorage schema, cache-busting, modeling notes (boost scaling, live loadouts, Series-0 legendaries) | 2026-07-23 |

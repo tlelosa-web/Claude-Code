@@ -17,6 +17,11 @@ from src.doc_gen.db import get_by_vacancy_id as get_generation_log
 from src.doc_gen.db import init_db as init_doc_gen_db
 from src.review.db import get_approval_by_vacancy_id, init_db as init_review_db
 from src.review.schema import Decision
+from src.submission.db import (
+    get_attempts_for_vacancy,
+    init_db as init_submission_db,
+)
+from src.submission.schema import SubmissionMethod, SubmissionOutcome
 from src.vacancy_search.db import get_by_id, get_by_status, init_db as init_vacancy_db
 
 
@@ -176,3 +181,96 @@ class TestOfflineIsolation:
         finally:
             conn.close()
         assert final.status == "approved"
+
+
+class TestSubmissionStage:
+    """Stage 6 end-to-end through the real CLI, fully offline.
+
+    With no adapter registered, every approved application routes to manual —
+    the whole point of this build. These assert the operator actually gets told
+    that, and that the vacancy keeps saying it still needs action.
+    """
+
+    def _approved_vacancy_id(self, tmp_path, monkeypatch, db_path) -> int:
+        monkeypatch.setattr("sys.stdin", io.StringIO("a\n"))
+        vacancy_id = _import_and_fetch(tmp_path, db_path)
+        main(["run", "--vacancy-id", str(vacancy_id)])
+        return vacancy_id
+
+    def test_submit_records_not_supported_and_keeps_vacancy_approved(
+        self, tmp_path, monkeypatch, db_path, capsys
+    ):
+        vacancy_id = self._approved_vacancy_id(tmp_path, monkeypatch, db_path)
+
+        main(["submit", "--vacancy-id", str(vacancy_id)])
+
+        conn = init_vacancy_db(db_path)
+        try:
+            final = get_by_id(conn, vacancy_id)
+        finally:
+            conn.close()
+        assert final.status == "approved"
+
+        submission_conn = init_submission_db(db_path)
+        try:
+            attempts = get_attempts_for_vacancy(submission_conn, vacancy_id)
+        finally:
+            submission_conn.close()
+        assert len(attempts) == 1
+        assert attempts[0].outcome == SubmissionOutcome.NOT_SUPPORTED
+        assert attempts[0].method == SubmissionMethod.AUTO
+
+        out = capsys.readouterr().out
+        assert "submit this one by hand" in out
+        assert final.url in out
+
+    def test_submit_refuses_a_vacancy_that_never_reached_the_gate(
+        self, tmp_path, db_path
+    ):
+        """Hard Rule 1, end to end: a freshly fetched vacancy has no path to a
+        submission, and nothing is recorded for it."""
+        vacancy_id = _import_and_fetch(tmp_path, db_path)
+
+        with pytest.raises(SystemExit):
+            main(["submit", "--vacancy-id", str(vacancy_id)])
+
+        submission_conn = init_submission_db(db_path)
+        try:
+            attempts = get_attempts_for_vacancy(submission_conn, vacancy_id)
+        finally:
+            submission_conn.close()
+        assert attempts == []
+
+    def test_manual_submission_advances_the_vacancy(
+        self, tmp_path, monkeypatch, db_path
+    ):
+        vacancy_id = self._approved_vacancy_id(tmp_path, monkeypatch, db_path)
+
+        main(["submit", "--vacancy-id", str(vacancy_id), "--manual"])
+
+        conn = init_vacancy_db(db_path)
+        try:
+            final = get_by_id(conn, vacancy_id)
+        finally:
+            conn.close()
+        assert final.status == "submitted"
+
+    def test_submit_all_reports_a_summary_without_failing(
+        self, tmp_path, monkeypatch, db_path, capsys
+    ):
+        monkeypatch.setattr("sys.stdin", io.StringIO("a\na\na\n"))
+        main(["import-profile", "--file", _profile_json(tmp_path)])
+        main(["fetch-vacancies", "--limit", "3"])
+        main(["run-all"])
+
+        main(["submit", "--all"])  # must not raise SystemExit
+
+        out = capsys.readouterr().out
+        assert "not supported: 3" in out
+        assert "failed: 0" in out
+
+        conn = init_vacancy_db(db_path)
+        try:
+            assert len(get_by_status(conn, "approved")) == 3
+        finally:
+            conn.close()

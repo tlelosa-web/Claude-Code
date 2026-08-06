@@ -46,11 +46,15 @@ career-engine fetch-vacancies --limit 25                      # Scrape Indeed + 
 career-engine list                                             # List vacancies and current status
 career-engine run --vacancy-id <id>                            # Score + generate assets for one vacancy
 career-engine run-all                                          # Run all eligible vacancies
+career-engine submit --vacancy-id <id>                         # Stage 6: submit an approved application, or record why it wasn't
+career-engine submit --all                                     # Same, for every approved vacancy
+career-engine submit --vacancy-id <id> --manual                # Record that you submitted it by hand
 
 # Tests
 python -m pytest                          # Full suite
 python -m pytest tests/unit               # Unit only
 python -m pytest tests/integration        # Integration only
+python -m pytest --cov=src/<module> --cov-fail-under=80        # Coverage gate for new code (needs the dev extra)
 
 # Format + lint
 black . && ruff check .
@@ -151,10 +155,17 @@ Design modules so offline stages never import or depend on network-requiring cod
 5. Human Review      → approve / reject / edit                     (status: approved | rejected)
 ```
 
-`approved` is the current terminal state. Two phases are explicitly **deferred, not built**:
+```
+6. Submission        → records an outcome per approved application          (status: submitted | submission_failed | unchanged)
+```
+
+Stage 6's **platform-agnostic core is built** (2026-08-06, `docs/specs/submission-core.md`): status vocabulary, the `submissions` attempt log, session-state path handling, capability-based adapter dispatch, and outcome recording. Its **site adapter is not** — the registry ships empty, so every approved application produces a `not_supported` attempt, is reported to the operator with an instruction to submit it by hand, and stays at `approved`. No `playwright` dependency, no browser binary, nothing on the wire.
+
+Building an adapter is gated on the platform question and the ToS/account-risk acknowledgement in that spec's Open Items.
+
+One phase remains explicitly **deferred, not built**:
 
 ```
-6. Auto-Submit    → Playwright form-fill, paused before final submission   (future)
 7. Dashboard      → tracking view: applications, match scores, response rate (future)
 ```
 
@@ -295,19 +306,24 @@ TebelloReborn/
     │                                discovery.py + extraction_prompt.py + extractor.py (PNet/Careers24)
     ├── matching/                 ← prompt_builder.py + scorer.py (ADR-003)
     ├── doc_gen/                  ← runner.py, schema.py, db.py, migrations.py (ADR-003) + cv_generator.py, cover_letter_generator.py, pdf_export.py
-    └── review/                   ← approval gate CLI
+    ├── review/                   ← approval gate CLI
+    └── submission/               ← Stage 6 core: schema.py, db.py, session.py,
+                                     eligibility.py, pipeline.py, cli.py
+                                     (no migrations.py — deliberate, see Hard Rule 6)
 ```
+
+`.session/` (gitignored) holds the Playwright `storageState` file once a login is saved — a live authenticated session, treated as a credential.
 
 ---
 
 ## ⚠️ Hard Rules — Never Violate
 
-1. **No application submitted without the human approval gate.** This build stops at `approved` — no submission code exists yet, and none should be added without this rule in mind.
+1. **No application submitted without the human approval gate.** Stage 6 now exists, and enforces this structurally: `run_submission()` acts only on `approved` or `submission_failed`, and `submission_failed` is reachable only from `approved`. Adapters never write to the database and never transition status, so no adapter can route around the gate.
 2. **No code without a plan** for any task touching > 2 files.
 3. **One task = one commit** — atomic, traceable, revertable.
 4. **Tests must pass** before any commit.
 5. **No secrets in code** — not even in comments, debug prints, or `.env.example`.
-6. **No schema changes without a migration file.**
+6. **No schema changes without a migration file** — and **any new migration, in any module, must take a globally-unique `PRAGMA user_version` ≥ 5.** `profile/`, `vacancy_search/`, `doc_gen/` and `review/` each own a separate `MIGRATIONS` list but read and write the **same** global `user_version` on the same database. `vacancy_search` holds 1–4 and the live `career.db` is at 4, so adding `(1, "ALTER TABLE ...")` to another module — the obvious move — is **silently skipped forever**: `apply_migrations` runs `if version > current`, and `current` is already 4. No error, no warning, no migration. (A net-new *table* needs no migration at all: its `CREATE TABLE IF NOT EXISTS` goes in that module's `init_db()`, per `docs/todo.md`'s Resolved Items. `src/submission/` deliberately has no `migrations.py` for this reason.)
 7. **Offline-first always** — core logic never depends on connectivity.
 8. **Default Sonnet-5-medium; escalate to Opus only on evidence.**
 9. **Orchestrator routes. Executors build.** Never reverse this.

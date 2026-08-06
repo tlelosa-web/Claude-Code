@@ -108,7 +108,9 @@ class TestStatusStateMachine:
             "new": {"scored"},
             "scored": {"asset_ready"},
             "asset_ready": {"approved", "rejected"},
-            "approved": set(),
+            "approved": {"submitted", "submission_failed"},
+            "submission_failed": {"submitted", "submission_failed"},
+            "submitted": set(),
             "rejected": set(),
         }
 
@@ -134,4 +136,94 @@ class TestStatusStateMachine:
 
         with pytest.raises(ValueError, match="not found"):
             update_vacancy_status(conn, 999, "scored")
+        conn.close()
+
+
+class TestSubmissionTransitions:
+    """Stage 6. `submission_failed` is reachable ONLY from `approved`, which is
+    what lets the submit gate admit it for retries without ever letting an
+    unapproved application reach a submission path (CLAUDE.md Hard Rule 1,
+    docs/specs/submission-core.md Amendment A1)."""
+
+    def _advance_to(self, conn, status: str) -> int:
+        vacancy_id = insert_vacancy(conn, _vacancy())
+        for step in ("scored", "asset_ready", "approved"):
+            update_vacancy_status(conn, vacancy_id, step)
+            if step == status:
+                return vacancy_id
+        return vacancy_id
+
+    def test_approved_to_submitted(self, tmp_path):
+        conn = init_db(tmp_path / "career.db")
+        vacancy_id = self._advance_to(conn, "approved")
+
+        update_vacancy_status(conn, vacancy_id, "submitted")
+
+        assert get_by_id(conn, vacancy_id).status == "submitted"
+        conn.close()
+
+    def test_approved_to_submission_failed(self, tmp_path):
+        conn = init_db(tmp_path / "career.db")
+        vacancy_id = self._advance_to(conn, "approved")
+
+        update_vacancy_status(conn, vacancy_id, "submission_failed")
+
+        assert get_by_id(conn, vacancy_id).status == "submission_failed"
+        conn.close()
+
+    def test_submission_failed_retries_to_submitted(self, tmp_path):
+        conn = init_db(tmp_path / "career.db")
+        vacancy_id = self._advance_to(conn, "approved")
+        update_vacancy_status(conn, vacancy_id, "submission_failed")
+
+        update_vacancy_status(conn, vacancy_id, "submitted")
+
+        assert get_by_id(conn, vacancy_id).status == "submitted"
+        conn.close()
+
+    def test_submission_failed_can_fail_again(self, tmp_path):
+        """A retry that fails again must be representable — otherwise the
+        second failure raises instead of being recorded."""
+        conn = init_db(tmp_path / "career.db")
+        vacancy_id = self._advance_to(conn, "approved")
+        update_vacancy_status(conn, vacancy_id, "submission_failed")
+
+        update_vacancy_status(conn, vacancy_id, "submission_failed")
+
+        assert get_by_id(conn, vacancy_id).status == "submission_failed"
+        conn.close()
+
+    def test_submitted_is_terminal(self, tmp_path):
+        conn = init_db(tmp_path / "career.db")
+        vacancy_id = self._advance_to(conn, "approved")
+        update_vacancy_status(conn, vacancy_id, "submitted")
+
+        with pytest.raises(ValueError, match="Invalid transition"):
+            update_vacancy_status(conn, vacancy_id, "submission_failed")
+        conn.close()
+
+    @pytest.mark.parametrize("status", ["new", "scored", "asset_ready"])
+    def test_no_pre_approval_status_reaches_submitted(self, tmp_path, status):
+        """Hard Rule 1 expressed in the state machine: nothing reaches a
+        submitted state without passing through the human approval gate."""
+        conn = init_db(tmp_path / "career.db")
+        vacancy_id = insert_vacancy(conn, _vacancy())
+        for step in ("scored", "asset_ready"):
+            if get_by_id(conn, vacancy_id).status == status:
+                break
+            update_vacancy_status(conn, vacancy_id, step)
+
+        with pytest.raises(ValueError, match="Invalid transition"):
+            update_vacancy_status(conn, vacancy_id, "submitted")
+        conn.close()
+
+    def test_rejected_never_reaches_submitted(self, tmp_path):
+        conn = init_db(tmp_path / "career.db")
+        vacancy_id = insert_vacancy(conn, _vacancy())
+        update_vacancy_status(conn, vacancy_id, "scored")
+        update_vacancy_status(conn, vacancy_id, "asset_ready")
+        update_vacancy_status(conn, vacancy_id, "rejected")
+
+        with pytest.raises(ValueError, match="Invalid transition"):
+            update_vacancy_status(conn, vacancy_id, "submitted")
         conn.close()

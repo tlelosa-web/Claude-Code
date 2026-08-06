@@ -7,6 +7,67 @@
 
 ---
 
+## 2026-08-06 — Stage 6 submission core built (Phase 16, steps 81–102)
+
+Built the platform-agnostic half of Stage 6: status vocabulary, the `submissions`
+attempt log, session-state path handling, capability-based adapter dispatch, and
+outcome recording. **249 → 344 tests, zero regressions, 100% coverage on
+`src/submission/`.** No `playwright` dependency, no browser binary, nothing on
+the wire. Spec: `docs/specs/submission-core.md`.
+
+**The hub spec it came from targeted the wrong platform.** It scoped the build to
+LinkedIn Easy Apply only, with Indeed explicitly out of scope. LinkedIn was
+dropped from this project on 2026-08-01 (actor `403 actor-is-not-rented`, renting
+declined, `_normalize_linkedin()` and the POST block removed) — three days before
+that spec was written — and all 10 rows in `career.db` are Indeed. Built as
+written it would have shipped a feature able to submit nothing. Scope became the
+core; the adapter is a separate task, and it is blocked on Tebello, not on code.
+
+**Codex review found a real contradiction in the spec, pre-build.** Acceptance
+criterion 1 refused anything not `approved`, while the transition table allowed
+`submission_failed → submitted` and called failures retryable — the retry path was
+unreachable from the only CLI that would use it. Resolved by admitting
+`submission_failed` to the gate: it is reachable *only* from `approved`, so the
+invariant enforced is "this vacancy passed the human gate," not "it is currently
+in one exact state." Nine further points folded in as Amendment A1–A9/B1–B6/C1–C3.
+
+**Two corrections to the pre-build verification notes:**
+
+- **No migration was needed after all.** A net-new table's `CREATE TABLE` belongs
+  in `init_db()` per this project's own convention, and `vacancies.status` is
+  unconstrained `TEXT`, so extending `VALID_STATUSES` is Python-level only —
+  exactly the step-59 `VALID_PLATFORMS` precedent. The shared-`user_version` trap
+  is real but this build never steps in it. `src/submission/` deliberately has
+  **no** `migrations.py`, since an empty stub invites a `(1, …)` entry that would
+  be silently skipped forever. The rule is now written into `CLAUDE.md` Hard Rule 6.
+- **`.gitignore` genuinely did not cover the session file** — that one held.
+  `.session/` added, with a test that reads `.gitignore` so the protection cannot
+  regress silently.
+
+**Two deviations from the spec, both recorded in `docs/todo.md`:** steps 90–91
+landed as one commit (the `.gitignore` entry alone leaves the suite failing
+collection, and Hard Rule 4 requires green tests before a commit); and step 97's
+CLI moved from `main.py` to `src/submission/cli.py` after inlining it pushed
+`main.py` to 354 lines, past this project's own 300-line standard — matching how
+`run_review_gate` already lives in `src/review/cli.py`.
+
+**Hard Rule 1 is now structural at two layers**: `run_submission()` gates on
+`vacancy.status` (never on the presence of an `approvals` row, as
+`src/review/cli.py`'s closing comment demands), and adapters never write to the
+database or transition status, so no future adapter can route around the gate.
+
+**Found and left unfixed, deliberately:** `black . && ruff check .` — the gate
+this project's own CLAUDE.md documents — no longer passes on a clean checkout
+under this machine's tooling. It reformats 17 untouched files, 7 of them inside
+the Hard-Rule-12-protected `_archive_qwen_prototype/`, and `ruff` reports 10
+pre-existing errors. Worked around by scoping both tools to the files actually
+changed. A repo-wide reformat is its own decision and its own commit; it should
+not ride along inside a feature build. Logged as a Known Issue.
+
+**Next:** the site adapter, blocked on two answers from Tebello — which platform
+gets the first adapter, and an explicit ToS/account-risk acknowledgement. Neither
+is a coding question.
+
 ## 2026-08-06 — codex-review submission-core.md: ran
 
 ## 2026-08-01 — Review-gate bug fix: skip gate when doc-gen doesn't reach asset_ready

@@ -72,8 +72,9 @@ and keep this hub's entry to a one-line at-a-glance pointer, per `CLAUDE.md`.
 
 ## Step 3 — Write the Session-Log Entry
 
-Append a new dated entry to `docs/session-log.md` in the existing format,
-ending with the exact block `/continue` Step 1 expects to read:
+Make sure `docs/session-log.md` ends with a dated entry covering this
+session, in the existing format, ending with the exact block `/continue`
+Step 1 expects to read:
 
 ```
 **Last completed:** …
@@ -81,6 +82,20 @@ ending with the exact block `/continue` Step 1 expects to read:
 **Known risks:** …
 **Blockers:** …
 ```
+
+**Reconcile — don't blindly append.** Check what's already there first:
+
+- **Work not logged yet** → append a new entry. The common case.
+- **Session already wrote its own entries** → don't restate them. Either add
+  a short entry covering only what's new since (and say so explicitly, so it
+  doesn't read as a duplicate), or verify the existing final entry's
+  `Last completed:` / `Next task:` block is still accurate and leave it.
+- **Second `/session-end` run in the same session** (mid-session checkpoint,
+  then again at the end) → extend or replace the entry the first run wrote,
+  rather than adding a near-empty second one.
+
+An entry should be the session's *output*, not a record that a close-out
+command ran.
 
 **Then verify the entry actually landed last:**
 
@@ -127,15 +142,24 @@ If `set_session_title` is available, set **this** session's title to
 actually did — the same convention `/continue` Step 0 uses when renaming
 other sessions.
 
-Note that `/continue` Step 0 point 5 documents the opposite constraint —
-that a session cannot rename *itself* — because on that tool surface
-`set_session_title` targets only other sessions. Availability differs by
-environment (desktop/CLI vs. cloud). So: attempt it, and if it fails or
-isn't available, say so plainly and move on. Don't treat it as an error to
-work around, and **never** call `archive_session` on this session.
+**On this hub's usual surface (CCD desktop) this step is impossible, not
+merely unreliable — there is nothing to attempt.** Confirmed 2026-08-06 on
+the command's first real run: `set_session_title` rejects the current
+session *and* `list_sessions` excludes it, so a session has no way to obtain
+its own ID. No call can be constructed, so there is no error to report.
 
-Setting a good title *is* the "prep for archiving" — the actual archive
-stays a later `/continue` run's or Tebello's call.
+- **Self-titling reachable** → set the title.
+- **No way to identify this session** (the case here) → report
+  `not available in this environment` in Step 6 and move on. Expected, not a
+  failure. Don't go hunting for the session ID in logs, config, or
+  transcripts.
+
+**Never** call `archive_session` on this session either way.
+
+Setting a good title, *where possible*, is the "prep for archiving" — the
+actual archive stays a later `/continue` run's or Tebello's call. Where it
+isn't possible, Steps 2-4's reconciliation is what makes that later
+judgment easy, which is most of the value regardless.
 
 ## Step 6 — Report Close-Out
 

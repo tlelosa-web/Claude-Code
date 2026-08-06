@@ -85,18 +85,21 @@ flags re-checked 2026-08-03 after the O-P-C consolidation — see note below)
       not just patching this hub. Found 2026-08-06 while adopting
       `/session-end`; left alone rather than changed as a drive-by. Tebello's
       call.
-- [ ] **Clarify `/session-end` Step 3 when the session already logged itself**
-      — found on the command's first real run (2026-08-06). Step 3 says
-      "append a new dated entry" unconditionally, but a session that already
-      wrote its own log entries (or runs `/session-end` twice as a mid-session
-      checkpoint) then produces duplicate/near-empty entries. Intended
-      behaviour is reconcile-not-duplicate: extend or verify the existing
-      entry when the work is already logged, and only append when it isn't.
-      Small wording fix; belongs upstream in `hub-template/session-end.md`
-      too, same backport caveat as the item above.
 
 ## Done
 
+- [x] **2026-08-06** — Fixed the two `/session-end` defects found on its
+      first real run, upstream first then re-copied down. Marketplace PR:
+      https://github.com/tlelosa-web/tlelosa-claude-config/pull/11 (branch
+      `fix/session-end-first-run-defects`, commit `9bd83aa`) — reworded the
+      session-log step to reconcile-not-duplicate, and the title step to
+      report "not available" outright rather than implying an attempt that
+      can't be constructed on this tool surface. Fix 1 touches
+      `hub-template/` only (the marketplace keeps no session log); fix 2
+      touches both it and the marketplace's own instance. Also recorded in
+      that spec that its `Status: Implemented` predated item 3. Hub instance
+      updated to match in the same session — per ADR-008 the file-copy
+      distribution means each vault needs this applied by hand.
 - [x] **2026-08-06** — Adopted `/session-end` in this hub:
       `.claude/commands/session-end.md` written as the full hub instance the
       upstream spec (`tlelosa-claude-config/docs/specs/2026-08-04-session-end-command.md`,

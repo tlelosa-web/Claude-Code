@@ -63,6 +63,21 @@ Both fixes belong upstream in `hub-template/session-end.md` first, then
 re-copied down — patching only this hub would leave the same defects in
 every other vault that adopts the template later.
 
+**Fixed the same day, upstream-first:** marketplace PR
+https://github.com/tlelosa-web/tlelosa-claude-config/pull/11 (branch
+`fix/session-end-first-run-defects`, commit `9bd83aa`) carries both fixes
+plus a "Post-implementation corrections" section added to the spec. Fix 1
+touches `hub-template/session-end.md` only — the marketplace repo keeps no
+session log, so its own instance has no such step. Fix 2 touches both. The
+hub's own instance was updated by hand in the same session, since ADR-008's
+file-copy distribution doesn't propagate.
+
+**Process note worth keeping:** the upstream-first ordering matters here.
+Fixing only the vault that found the defect is the tempting shortcut, and
+it silently leaves the bug in `hub-template/` for every vault that adopts
+the command later — which is exactly how item 3 of the original spec sat
+unimplemented while its status line read `Implemented`.
+
 ## 2026-08-03 — codex-gate install + network-off smoke-test: both paths confirmed
 **Source:** session (this machine, `TshepangLelosa`, post-Operations/Pappa T
 consolidation — `codex-gate` is installed at the user level

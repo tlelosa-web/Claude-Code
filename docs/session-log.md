@@ -1458,3 +1458,49 @@ picks — NamePlateTool test suite, TebelloReborn Playwright auto-submit, or
 the SOPS AvgMovement migration (still gated on explicit go-ahead).
 **Known risks:** None new.
 **Blockers:** None.
+
+## 2026-08-06 — Fixed both `/session-end` first-run defects (upstream first)
+
+Continues the close-out entry above — that entry left both defects merely
+*queued*; this one records fixing them. Recording only what's new since,
+per the reconcile-not-duplicate rule this very change adds to the command.
+
+Fixed upstream first, in `tlelosa-claude-config`, on branch
+`fix/session-end-first-run-defects` (commit `9bd83aa`), opened as PR #11:
+https://github.com/tlelosa-web/tlelosa-claude-config/pull/11
+
+- **Defect 1 — session-log step over-appended.** Reworded to
+  reconcile-not-duplicate, spelling out three cases (not logged yet → append;
+  session already logged itself → short delta entry or verify-and-leave;
+  second run in one session → extend/replace the first run's entry). Touches
+  `hub-template/session-end.md` only: the marketplace repo keeps no session
+  log, so its own instance has no such step.
+- **Defect 2 — title step assumed an attempt that can't be made.** Reworded
+  from attempt-then-handle-failure to report `not available in this
+  environment` outright, plus an explicit "don't go hunting for the session
+  ID elsewhere." Touches both `hub-template/` and the marketplace's own
+  instance.
+- Also added a "Post-implementation corrections" section to
+  `docs/specs/2026-08-04-session-end-command.md` recording that its
+  `Status: Implemented` predated item 3 — a cross-repo spec item can lag a
+  status line set in the repo the spec lives in.
+
+Then re-copied both into this hub's `.claude/commands/session-end.md` by
+hand. ADR-008's file-copy distribution means nothing propagates
+automatically — that's the accepted tradeoff, but it does mean any other
+vault adopting this command later needs the same manual application.
+
+**Why upstream first:** patching only the vault that found the defect is
+the tempting shortcut and leaves the bug in `hub-template/` for every future
+adopter — the same failure mode that let the original spec's item 3 sit
+unimplemented behind an `Implemented` status line.
+
+**Last completed:** Both `/session-end` defects fixed (this entry) — PR #11
+open upstream, hub instance updated to match.
+**Next task:** Whichever of the three `docs/todo.md` "Next up" items Tebello
+picks — NamePlateTool test suite, TebelloReborn Playwright auto-submit, or
+the SOPS AvgMovement migration (still gated on explicit go-ahead).
+**Known risks:** None new. PR #11 is open, not merged — the marketplace's
+`main` still carries both defects until it lands, so any vault adopting
+`/session-end` from `hub-template/` before then gets the unfixed version.
+**Blockers:** None.

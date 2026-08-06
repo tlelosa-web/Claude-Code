@@ -1840,3 +1840,59 @@ go-ahead.
 **Known risks:** Backup failures are still silent — logged and reflected in
 `LastTaskResult`, but not surfaced. Backlog item.
 **Blockers:** None.
+
+## 2026-08-06 — TebelloReborn Playwright: verification done, build not started
+
+Started `docs/todo.md` #1. Stopped before writing code — deliberately, on the
+project's own Hard Rule 10 ("if acceptance criteria are unclear → STOP and
+ask"), after verification turned up a mismatch that changes the shape of the
+work. Full detail in `knowledge/tebelloreborn.md`; the queue item now carries a
+resume-from-here block so none of this needs re-deriving.
+
+Read the project's own `CLAUDE.md` first per hub-and-spoke — it takes precedence
+over this hub inside that folder, and it turned out to impose real process gates
+the hub spec didn't mention.
+
+**The spec targets the wrong platform.** It scopes the build to LinkedIn Easy
+Apply only, with Indeed explicitly out of scope. Every row in `career.db` is
+Indeed — 6 approved, 4 rejected, zero LinkedIn. Building it as written would
+have shipped a feature unable to submit any of the 6 pending applications, which
+are the same ones Tebello was pointed at manually earlier in this session.
+Tebello chose to build the platform-agnostic core first (submission status +
+migration, `storageState` handling, not-auto-submittable detection, outcome
+recording), leaving the site adapter until the platform question is settled.
+
+**Three further gaps, two of them security-relevant:**
+
+- **A migration trap that would fail silently.** All four migration modules
+  (`profile`, `vacancy_search`, `doc_gen`, `review`) own separate `MIGRATIONS`
+  lists but read and write the *same* global `PRAGMA user_version`.
+  `vacancy_search` holds 1–4; the live DB is at 4. Adding `(1, …)` to
+  `review/migrations.py` — the obvious thing to do — would be skipped forever,
+  with no error. Any new migration needs a globally-unique version ≥ 5. Not
+  documented anywhere in the project.
+- **The spec is wrong that `.gitignore` covers the session file.** It covers
+  `.env`, `*.db*`, `exports/` and caches only. A Playwright `storage_state.json`
+  would be committed — and that file is a live authenticated session cookie, i.e.
+  a session-hijack credential in git history.
+- **`playwright` isn't a dependency** (the project has three) and pulls browser
+  binaries — worth a decision in an offline-first project, not a silent install.
+
+Also said once and left there: automating submissions while logged in as Tebello
+is against LinkedIn's User Agreement, and it is his account at risk. Scraping via
+Apify is a different exposure from driving an authenticated session.
+
+**Self-inflicted, noted rather than hidden:** the backup script opens each SQLite
+DB read-only, and opening a WAL-mode database creates its `-shm`/`-wal`
+sidecars — so `ai-outreach-agency/outreach.db-shm`/`-wal` now show as untracked
+in the Pappa T repo. Harmless and regenerable, but they will return after every
+backup run. Backlog item raised to add them to the vault `.gitignore`.
+
+**Last completed:** TebelloReborn Playwright pre-build verification (this entry)
+— no code written, scope decision made.
+**Next task:** Continue `docs/todo.md` #1 from its resume block: port the spec
+into the project's `docs/specs/`, run `/codex-review` per its Hard Rule 13, fold
+the results in as an Amendment, write the plan, then TDD the platform-agnostic
+core.
+**Known risks:** None new. Backup failures remain silent (backlog).
+**Blockers:** None — the scope question that blocked the build is answered.

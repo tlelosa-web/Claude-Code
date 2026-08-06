@@ -1,3 +1,79 @@
+## 2026-08-06 — Playwright auto-submit: pre-build verification (no code written yet)
+**Source:** session (this machine) — first look at the real TebelloReborn code
+**Status:** active
+
+The hub spec `docs/specs/2026-08-04-tebelloreborn-playwright-auto-submit.md` was
+written from a cloud session with no access to this code and flagged its own
+file names as guesses. They were verified against the live
+`Desktop/Pappa T/TebelloReborn/`. Most held; four things did not.
+
+**Confirmed as guessed:** `src/review/` exists with `cli.py` (130 lines),
+`db.py`, `migrations.py`, `schema.py`; `doc_gen/pdf_export.py` exists; the
+`approvals` table carries a `CHECK (decision IN ('approved','rejected','edited'))`;
+the approval gate is structural, enforced by the status state machine.
+
+**1. The spec targets the wrong platform — the blocking finding.** It scopes the
+build to **LinkedIn Easy Apply only** and puts Indeed explicitly out of scope.
+But every row in `career.db` is Indeed:
+
+```
+indeed  approved  6
+indeed  rejected  4
+```
+
+Zero LinkedIn vacancies exist. Building the spec as written would ship a feature
+unable to submit any of the 6 pending approved applications. Tebello chose
+(2026-08-06) to **build the platform-agnostic core first** — submission status +
+migration, session/`storageState` handling, "not auto-submittable → fall back to
+manual" detection, and outcome recording — leaving the site-specific adapter as
+a second task once the platform question is settled. No work is wasted either
+way, and the core is testable offline under the project's TDD rule.
+
+**2. `PRAGMA user_version` is a single global counter shared by four independent
+migration modules.** `profile/`, `vacancy_search/`, `doc_gen/` and `review/`
+each own a `MIGRATIONS: list[tuple[int, str]]` and an `apply_migrations()` that
+reads and writes the *same* `PRAGMA user_version` on the *same* database.
+Currently only `vacancy_search` has entries (1–4) and the live DB sits at
+`user_version = 4`.
+
+**The trap:** adding `(1, "ALTER TABLE ...")` to `review/migrations.py` would be
+**silently skipped forever** — `apply_migrations` runs `if version > current`,
+and `current` is already 4. No error, no warning, no migration. Any new
+migration in *any* module must take a globally-unique version ≥ 5. This is not
+documented in the project's `CLAUDE.md`, whose rule is only "no schema change
+without a migration file."
+
+**3. The spec is wrong about `.gitignore` covering the session file.** It says to
+save Playwright's `storageState` to "a path already covered by the project's
+existing `.gitignore`". That file covers `.env`, `*.db`, `*.db-shm`, `*.db-wal`,
+`exports/` and caches — nothing else. A `storage_state.json` would be
+**committed**. That file is a live authenticated session cookie; in git history
+it is a session-hijack credential. An explicit ignore entry has to be added as
+part of this work, not assumed.
+
+**4. `playwright` is not a dependency.** The project has exactly three
+(`requests`, `python-dotenv`, `fpdf2`). Adding it also pulls browser binaries via
+`playwright install` — a large, non-pip-clean runtime dependency in a project
+whose stated stance is offline-first. Worth a deliberate decision, not a silent
+`pip install`.
+
+**Schema change this needs:** `VALID_STATUSES` is
+`{new, scored, asset_ready, approved, rejected}` with no `submitted` /
+`submission_failed`, and `vacancies` has no column for a submission outcome.
+Both are required, and both need a migration file per the project's hard rule.
+
+**Process required before any code** (project `CLAUDE.md`, which takes precedence
+over the hub under hub-and-spoke): Hard Rule 13 — `/codex-review` must run on the
+spec in the project's own `docs/specs/` and its strongest points folded back as a
+dated Amendment *before* an Executor is dispatched. Hard Rule 2 — a plan is
+required for anything touching more than 2 files, which this does. Plus TDD
+(failing tests first, ≥80% coverage) and `black . && ruff check . && python -m pytest`
+before every commit.
+
+**Also flagged, unrelated to this build:** automating submissions while logged in
+as Tebello is against LinkedIn's User Agreement, and the account at risk is his.
+Scraping via Apify is a different exposure from driving an authenticated session.
+
 ## 2026-08-04 — Post-MVP scope decision: Playwright auto-submit picked
 **Source:** cloud session, via `docs/specs/2026-07-29-tebelloreborn-scope-decision.md`
 **Status:** active

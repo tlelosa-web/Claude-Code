@@ -73,30 +73,53 @@ Responsibilities:
 
 Responsibilities:
 - CLI gate mirroring `ai-outreach-agency/src/approval/cli.py` exactly: show the vacancy, show the generated assets, take a decision, **persist it** (that repo had a real bug where approval decisions were computed but never saved to the DB — this project must not repeat it).
-- `approved` is the current terminal state.
+- `approved` is no longer terminal — Stage 6 continues from there. The gate itself is unchanged: nothing reaches Stage 6 without passing through it.
+
+---
+
+### Stage 6: Submission (core built, no site adapter yet)
+
+**Module:** `src/submission/`
+**Input:** a vacancy at `approved` (or `submission_failed`, for a retry)
+**Output:** a recorded `SubmissionAttempt` → `Vacancy.status: submitted | submission_failed`, or unchanged
+**Network:** None in the current build — no adapter exists, so nothing reaches the wire
+
+Responsibilities:
+- `pipeline.run_submission()` is the single entry point and the only place that writes. It gates on `vacancy.status`, never on the presence of an `approvals` row (see `src/review/cli.py`'s closing comment).
+- `eligibility.py` holds an adapter registry that is **empty in this build, by design**. Dispatch is capability-based: an adapter is found by platform, then asked `can_handle(vacancy)` — so a registered adapter can still decline an individual posting (an external-ATS redirect, say) and have it fall through to manual.
+- With no adapter, every approved application produces a `not_supported` attempt, is reported to the operator with its URL and an explicit instruction to submit it by hand, and **stays at `approved`** — it still needs action, so the status keeps saying so.
+- `session.py` resolves the Playwright `storageState` path (`.session/storage_state.json`, gitignored — it is a live authenticated session, not config). It imports nothing from Playwright, which is what keeps this stage offline-testable with no browser installed.
+- Adapters never touch the database and never transition status. That is what makes it structurally impossible for a future adapter to route around the approval gate.
+
+Not built: the Playwright site adapter itself, the `playwright` dependency, and any real-site smoke test. Those are a separate task, gated on the platform question in `docs/specs/submission-core.md` §Open Items.
 
 ---
 
 ## Deferred Phases (not built in this MVP)
 
 ```
-6. Auto-Submit   → Playwright form-fill on supported job boards, paused before final click
 7. Dashboard     → tracking view: applications over time, match-score distribution,
                      interview/offer/response-rate metrics
 ```
 
-These map to Phase 6–7 of the original Drive-doc plan and will be scoped as separate, later work once the MVP pipeline (Stages 1–5) is proven end-to-end.
+Stage 6's core landed 2026-08-06 (`docs/specs/submission-core.md`); only its site adapter remains. The Dashboard maps to Phase 7 of the original Drive-doc plan and will be scoped as separate, later work.
+
+A dashboard reading submission data must treat **`vacancies.status` as current state and `submissions` as history** — the `submissions` table is an append-only attempt log with several rows per vacancy expected, so an older `not_supported` row is not evidence of the current state.
 
 ---
 
 ## Vacancy Status State Machine
 
 ```
-new → scored → asset_ready → approved
-                            → rejected
+new → scored → asset_ready → approved ──▶ submitted
+                            → rejected            ▲
+                                        └▶ submission_failed ─┘
+                                              ↺ (retry may fail again)
 ```
 
 Enforced the same way as `ai-outreach-agency`'s lead status machine (`VALID_TRANSITIONS` dict) — no stage may skip ahead, transitions checked on every write.
+
+`submitted` is terminal. `submission_failed` is reachable **only** from `approved`, which is precisely what lets the submit gate admit it for retries without ever letting an application that skipped the human gate reach a submission path — Hard Rule 1 expressed in the state machine, and asserted by test.
 
 ---
 

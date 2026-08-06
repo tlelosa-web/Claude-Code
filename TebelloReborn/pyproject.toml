@@ -10,8 +10,12 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+# Dev-only — nothing here ships with the pipeline, and runtime dependencies stay
+# at the three above. pytest-cov exists so CLAUDE.md's ">= 80% coverage on all
+# new code" standard is actually enforceable; plain `pytest` never checked it.
 dev = [
     "pytest>=8.0",
+    "pytest-cov>=5.0",
 ]
 
 [project.scripts]

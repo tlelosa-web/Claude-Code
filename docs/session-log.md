@@ -1896,3 +1896,68 @@ the results in as an Amendment, write the plan, then TDD the platform-agnostic
 core.
 **Known risks:** None new. Backup failures remain silent (backlog).
 **Blockers:** None — the scope question that blocked the build is answered.
+
+## 2026-08-06 — TebelloReborn: Stage 6 submission core built
+
+Completed `docs/todo.md` #1's build half. **249 → 344 tests, zero regressions,
+100% coverage on `src/submission/`**, no new runtime dependency, nothing on the
+wire. 16 commits in the Pappa T vault (`10b9e3f` latest). Project spec:
+`TebelloReborn/docs/specs/submission-core.md`.
+
+Followed that project's own `CLAUDE.md` under hub-and-spoke: ported the hub spec
+into its `docs/specs/`, ran `/codex-review` (Hard Rule 13), folded the results in
+as a dated Amendment *before* any code, then TDD throughout with RED/GREEN commit
+pairs matching the repo's existing history.
+
+**Codex found a real defect in my spec, pre-build.** Acceptance criterion 1
+refused any vacancy not `approved`; the transition table simultaneously allowed
+`submission_failed → submitted` and called failures retryable — so the retry path
+was unreachable from the only CLI that would use it. Resolved by admitting
+`submission_failed` to the gate, which is safe precisely because that status is
+reachable *only* from `approved`: the invariant enforced is "this passed the
+human gate," not "it is currently in one exact state." Nine further points folded
+in; three considered and declined with reasons recorded.
+
+**Two of the pre-build verification findings were corrected during the build:**
+
+- The hub spec didn't merely mismatch the data — it targeted a platform this
+  project **formally dropped on 2026-08-01** (`403 actor-is-not-rented`, renting
+  declined, client code removed), three days before that spec was written. A spec
+  written without repo access can be stale against a decision the repo already
+  recorded, not just imprecise about paths.
+- **No migration was needed after all.** A net-new table's `CREATE TABLE` belongs
+  in `init_db()` per the project's own convention, and `vacancies.status` is
+  unconstrained `TEXT`, so extending the status set is Python-level only. The
+  shared-`PRAGMA user_version` trap is real but never triggered here;
+  `src/submission/` deliberately ships no `migrations.py`, since an empty stub
+  invites the `(1, …)` entry that would be silently skipped. Written into that
+  project's `CLAUDE.md` Hard Rule 6 rather than left in a spec footnote.
+
+The `.gitignore` finding held: `.session/` added, guarded by a test that reads
+`.gitignore` so the protection can't regress silently.
+
+**Two deviations from the spec, both recorded rather than quietly absorbed:**
+steps 90–91 landed as one commit (the ignore entry alone leaves the suite failing
+collection, and Hard Rule 4 wants green tests before a commit), and the submit CLI
+moved from `main.py` to `src/submission/cli.py` after inlining pushed `main.py`
+past that project's own 300-line file standard.
+
+**Found and deliberately not fixed:** `black . && ruff check .` — the pre-commit
+gate that project's `CLAUDE.md` documents — no longer passes on a clean checkout
+under this machine's tooling. It reformats 17 untouched files, 7 inside the
+Hard-Rule-12-protected `_archive_qwen_prototype/`, and ruff reports 10
+pre-existing errors. I ran it repo-wide once early on, caught the collateral in
+`git status`, and reverted it; the rest of the build scoped both tools to the
+files actually changed. Logged as a Known Issue — a repo-wide reformat is its own
+decision and its own commit, not something to smuggle inside a feature build.
+
+**Not pushed.** All 16 commits are local on the Pappa T vault's `main`; pushing
+is Tebello's call.
+
+**Last completed:** TebelloReborn Stage 6 submission core (this entry)
+**Next task:** `docs/todo.md` #1 is now the *site adapter*, blocked on two
+decisions from Tebello — which platform gets the first adapter, and an explicit
+ToS/account-risk acknowledgement. Neither is a coding question. #2 (SOPS
+AvgMovement migration) remains gated on an explicit go-ahead.
+**Known risks:** None new. Backup failures remain silent (backlog).
+**Blockers:** The adapter task cannot start until the two decisions above are made.

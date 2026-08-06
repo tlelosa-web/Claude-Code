@@ -42,42 +42,43 @@ flags re-checked 2026-08-03 after the O-P-C consolidation — see note below)
 > won't reach the actual running project and O-P-C will need re-merging
 > afterward to pick it up.
 
-1. [ ] **TebelloReborn: build Playwright auto-submit** — **started 2026-08-06,
-      verification done, no code written yet.** Decided 2026-08-04 that
-      Playwright auto-submit is the only post-MVP option picked; the
-      human-approval gate stays as-is. 📍 Live `Desktop/Pappa T/TebelloReborn/`.
+1. [ ] **TebelloReborn: Playwright site adapter** — **core built 2026-08-06,
+      adapter blocked on two answers from Tebello, not on code.** 📍 Live
+      `Desktop/Pappa T/TebelloReborn/`.
 
-      **Resume from here — do not re-derive.** The spec's guessed paths were
-      checked against the real code; full findings in
-      `knowledge/tebelloreborn.md` (2026-08-06 entry). Four things the spec got
-      wrong or missed:
+      The platform-agnostic submission core is done and committed (Phase 16,
+      steps 81–102, 16 commits, 249 → 344 tests, 100% coverage on
+      `src/submission/`). Adding an adapter is one
+      `ADAPTERS["<platform>"] = ...` entry against the `SubmitAdapter` Protocol —
+      no change to `pipeline.py`. Project spec:
+      `TebelloReborn/docs/specs/submission-core.md`.
 
-      - **Scope mismatch (blocking, now resolved).** Spec targets LinkedIn Easy
-        Apply only; all 10 vacancies incl. all 6 approved are Indeed, so the
-        spec as written ships something that can submit nothing. **Tebello's
-        decision: build the platform-agnostic core first** — submission status
-        + migration, session/`storageState` handling, "not auto-submittable →
-        manual" detection, outcome recording. Site adapter is a later, smaller
-        task once the platform question is settled.
-      - **Migration trap.** All four migration modules share one global
-        `PRAGMA user_version`; `vacancy_search` holds 1–4 and the live DB is at
-        4. A new `(1, …)` in `review/migrations.py` would be silently skipped
-        forever. Any new migration needs a globally-unique version ≥ 5.
-      - **`.gitignore` does not cover a `storageState` file** despite the spec
-        saying it does — it would be committed, and it is a live session
-        credential. Needs an explicit entry as part of this work.
-      - **`playwright` is not a dependency** (project has 3) and pulls browser
-        binaries — a deliberate decision, not a silent install.
+      **Two decisions must come first — neither is a coding question:**
 
-      **Process gates before any code**, from the project's own `CLAUDE.md`
-      (takes precedence under hub-and-spoke): Hard Rule 13 — port the spec into
-      the project's `docs/specs/`, run `/codex-review` on it, fold the strongest
-      points back as a dated Amendment *first*; Hard Rule 2 — write a plan
-      (touches > 2 files); then TDD, and `black . && ruff check . && python -m pytest`
-      before each commit.
+      1. **Which platform gets the first adapter?** Indeed is the only live
+         source with approved applications (6), but its flow varies per employer
+         and many postings redirect to an external ATS with no fixed shape.
+         Realistically "Indeed's own apply form only, everything else stays
+         `not_supported`".
+      2. **ToS / account risk, explicitly acknowledged.** Driving an
+         authenticated session to submit applications is a different exposure
+         from scraping via Apify — it is Tebello's own account at risk, and it
+         is against LinkedIn's User Agreement and plausibly Indeed's. No agent
+         should start this on an assumption that the risk is accepted.
 
-      Hub spec (now partly superseded — read the knowledge entry alongside it):
-      `docs/specs/2026-08-04-tebelloreborn-playwright-auto-submit.md`.
+      Also needs a deliberate call on the `playwright` dependency + browser
+      binaries in an offline-first project, and a real-site smoke test (mocks
+      verify you called the transport, not that the site accepts what you sent —
+      the Apify payload-shape lesson).
+
+      Until then the core behaves honestly: every approved application produces
+      a recorded `not_supported` attempt, is reported with its URL and an
+      explicit "submit this one by hand", and stays at `approved`.
+
+      Hub spec `docs/specs/2026-08-04-tebelloreborn-playwright-auto-submit.md`
+      is **superseded** by the project-side spec above — it scoped the build to
+      LinkedIn Easy Apply, a platform this project formally dropped on
+      2026-08-01, three days before that spec was written.
 2. [ ] **SOPS: give the go-ahead to run the AvgMovement migration against
       `instance/sops.db`** — Supplier/Lead-Time + AMU/Min-Max logic ported
       and fully tested (Batch 32/33, commits `fe06eaa`/`112e321`), held for
@@ -127,6 +128,33 @@ abandoned either — no work is lost by leaving them here.
 
 ## Done
 
+- [x] **2026-08-06** — TebelloReborn: built the Stage 6 submission core
+      (platform-agnostic, no Playwright). 16 commits in the Pappa T vault,
+      **249 → 344 tests, zero regressions, 100% coverage on `src/submission/`**,
+      and no new runtime dependency. The queue item above is now the *adapter*,
+      which is blocked on Tebello's two decisions rather than on code.
+      Ported the hub spec into the project's own `docs/specs/submission-core.md`
+      with corrections, ran `/codex-review` per that project's Hard Rule 13, and
+      folded the results in as a dated Amendment before writing any code.
+      **Codex earned its keep:** it caught a real contradiction in the spec —
+      the gate refused anything not `approved` while the transition table called
+      failures retryable, making `submission_failed → submitted` unreachable
+      from the only CLI that would use it. Resolved by admitting
+      `submission_failed` to the gate, which is safe precisely because that
+      status is reachable only from `approved`.
+      Two pre-build findings were corrected during the build: the hub spec
+      targeted a platform this project **formally dropped on 2026-08-01** (not
+      merely a data mismatch), and **no migration was needed after all** — a
+      net-new table's `CREATE TABLE` belongs in `init_db()` per the project's
+      own convention, and `vacancies.status` is unconstrained `TEXT`. The
+      shared-`user_version` trap is real but never triggered; the rule is now in
+      that project's `CLAUDE.md` Hard Rule 6 instead of a spec footnote.
+      Found and deliberately **not** fixed: `black . && ruff check .` — the gate
+      that project documents — no longer passes on a clean checkout under
+      current tooling, reformatting 17 untouched files including 7 in the
+      Hard-Rule-12-protected archive. Scoped the formatters to changed files
+      instead and logged it as a Known Issue; a repo-wide reformat is its own
+      decision and its own commit. See `knowledge/tebelloreborn.md`.
 - [x] **2026-08-06** — Scheduled the runtime-data backup daily. Windows task
       `DCOE runtime-data backup`, 12:30, running as the interactive user at
       Limited (unelevated) level, logging to `~/Backups/backup-runtime.log`.

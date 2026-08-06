@@ -1,3 +1,73 @@
+## 2026-08-06 — Stage 6 submission core built (platform-agnostic, no Playwright)
+**Source:** session (this machine) — Phase 16, steps 81–102
+**Status:** active
+
+The platform-agnostic half of Stage 6 is built and committed in the Pappa T vault
+(16 commits, `10b9e3f` latest). **249 → 344 tests, zero regressions, 100%
+coverage on `src/submission/`.** No `playwright` dependency, no browser binary,
+nothing on the wire. Project spec: `TebelloReborn/docs/specs/submission-core.md`.
+
+**A stronger version of the platform finding below.** The hub spec didn't just
+mismatch the data — it targeted a platform the project had *formally dropped*.
+`docs/todo.md`'s Resolved Items records "LinkedIn dropped — decided and actioned
+2026-08-01": the Apify actor returned `403 actor-is-not-rented`, renting was
+declined, and `LINKEDIN_ACTOR_URL` / the POST block / `_normalize_linkedin()`
+were removed from `apify_client.py`. That is three days before the hub spec was
+written. Lesson worth keeping: a spec written without repo access can be stale
+against a decision the repo already recorded, not merely imprecise about paths.
+
+**Correcting entry 2 below: no migration was needed.** A net-new table's
+`CREATE TABLE IF NOT EXISTS` belongs in its module's `init_db()` per this
+project's own convention, and `vacancies.status` is unconstrained `TEXT`, so
+extending `VALID_STATUSES` is Python-level validation only — the same situation
+as step 59's `VALID_PLATFORMS`. The shared-`user_version` trap is real and still
+worth knowing, but this build never steps in it. `src/submission/` deliberately
+ships **no `migrations.py`**: an empty stub is an invitation to add `(1, …)`
+later and hit the silent skip. The rule ("any new migration anywhere needs a
+globally-unique version ≥ 5") is now written into that project's `CLAUDE.md`
+Hard Rule 6 rather than living only in a spec footnote.
+
+**Design worth reusing.** The registry ships empty on purpose, so every approved
+application produces a `not_supported` attempt, is reported with its URL and an
+explicit "submit this one by hand", and **stays at `approved`** — the status has
+to keep saying the application still needs action. Dispatch is capability-based
+(`ADAPTERS[platform]` then `adapter.can_handle(vacancy)`), so a registered
+adapter can decline an individual posting — Indeed's per-employer ATS redirects
+are exactly that case. Adapters never write to the database and never transition
+status; the pipeline owns all persistence, which is what makes it structurally
+impossible for a future adapter to route around the human approval gate.
+
+**Codex second opinion earned its place.** It found a real contradiction *before*
+any code: the gate refused anything not `approved`, while the transition table
+allowed `submission_failed → submitted` and called failures retryable — the retry
+path was unreachable from the only CLI that would use it. Fixed by admitting
+`submission_failed` to the gate, which is safe precisely because that status is
+reachable only from `approved`. General pattern: state-machine specs are worth
+checking for states that are declared reachable but have no caller that can reach
+them.
+
+**Two process findings, both left as recorded issues rather than silently fixed:**
+
+- **`black . && ruff check .` — the gate that project's own `CLAUDE.md`
+  documents — no longer passes on a clean checkout** under current tooling
+  (black 26.5.1, ruff 0.15.22). It reformats 17 untouched files, 7 of them inside
+  the Hard-Rule-12-protected `_archive_qwen_prototype/`, and ruff reports 10
+  pre-existing errors. Worked around by scoping both tools to the files actually
+  changed. A repo-wide reformat is its own decision and its own commit — it
+  should not ride along inside a feature build. General lesson: a documented
+  `black .` gate silently becomes a repo-wide reformat command the moment the
+  formatter version drifts.
+- **Inlining a new CLI into `main.py` pushed it to 354 lines**, past that
+  project's own 300-line file standard. Moved to `src/submission/cli.py`,
+  matching how `run_review_gate` already lives in `src/review/cli.py`.
+
+**Still blocked on Tebello, not on code** — the site adapter needs (1) which
+platform gets the first adapter (Indeed is the only live source, but its flow
+varies per employer), and (2) an explicit ToS/account-risk acknowledgement:
+driving an authenticated session to submit is a different exposure from scraping
+via Apify, it is his own account at risk, and it is against LinkedIn's User
+Agreement and plausibly Indeed's.
+
 ## 2026-08-06 — Playwright auto-submit: pre-build verification (no code written yet)
 **Source:** session (this machine) — first look at the real TebelloReborn code
 **Status:** active

@@ -58,9 +58,7 @@ class TestShippedRegistry:
         without the platform decision in the spec's Open Items being answered."""
         assert ADAPTERS == {}
 
-    @pytest.mark.parametrize(
-        "platform", ["indeed", "linkedin", "pnet", "careers24"]
-    )
+    @pytest.mark.parametrize("platform", ["indeed", "linkedin", "pnet", "careers24"])
     def test_nothing_is_auto_submittable(self, platform):
         assert is_auto_submittable(_vacancy(platform)) is False
 

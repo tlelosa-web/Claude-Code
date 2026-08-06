@@ -1,8 +1,11 @@
 ---
-# /continue — Hub Session Resume
-# Resumes work from where the last root-level session ended.
-# Project-aware: identifies which project folder is in play before acting.
+description: Resume hub work from where the last root-level session ended
 ---
+
+# /continue — Hub Session Resume
+
+Resumes work from where the last root-level session ended. Project-aware:
+identifies which project folder is in play before acting.
 
 ## Step 0 — Rename Stale Sessions
 

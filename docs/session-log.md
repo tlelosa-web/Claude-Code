@@ -1610,3 +1610,45 @@ the SOPS AvgMovement migration (still gated on explicit go-ahead).
 runtime data across both vaults remains unbacked-up by design, not tracked
 as a defect.
 **Blockers:** None.
+
+## 2026-08-06 — Inert command frontmatter fixed (upstream first)
+
+Closes the last backlog item. `hub-template/continue.md` and this hub's
+`.claude/commands/continue.md` opened with a `---` block containing only `#`
+comment lines — valid YAML that parses to nothing, so the command registered
+**no description** and the command list fell back to the file's first
+heading. Cosmetic, but it affected every vault that copied the template.
+
+Fixed upstream first in `tlelosa-claude-config`, branch
+`fix/command-frontmatter` (commit `5ab6b9a`), opened as PR #12:
+https://github.com/tlelosa-web/tlelosa-claude-config/pull/12
+
+**Fixed both template files, not just the reported one.**
+`hub-template/session-end.md` carried the identical inert block. Patching
+only `continue.md` would have left its sibling to be rediscovered later —
+the same pattern that let the original `/session-end` spec's item 3 sit
+unimplemented behind an `Implemented` status line. Converted both to a real
+`description:` key, with the explanatory text moved below the frontmatter as
+prose so nothing was lost.
+
+**Swept both repos rather than trusting the report's scope.** A naive grep
+for `^# /` false-positived on the new markdown H1 headings; the correct test
+is "line 1 is `---` and line 2 starts with `#`". Under that test, no other
+command file in either repo has an inert block —
+`codex-gate/commands/codex-review.md` already used proper YAML, and
+demonstrates `argument-hint` and `allowed-tools` besides.
+
+**Verified live, not just by inspection:** after the hub edit, the available-
+commands listing changed from showing `Step 0 — Rename Stale Sessions` (the
+first-heading fallback) to the real description. That's the defect and its
+fix observed end to end.
+
+**Last completed:** Command frontmatter fix (this entry) — PR #12 open
+upstream, hub instance updated to match.
+**Next task:** Backlog is now empty. Next is whichever of the three
+`docs/todo.md` "Next up" items Tebello picks — NamePlateTool test suite,
+TebelloReborn Playwright auto-submit, or the SOPS AvgMovement migration
+(still gated on explicit go-ahead).
+**Known risks:** PR #12 is open, not merged — `hub-template/` on the
+marketplace's `main` still carries the inert blocks until it lands.
+**Blockers:** None.

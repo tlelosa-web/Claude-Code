@@ -21,13 +21,22 @@ tracks the marketplace side, and cross-repo items in the same spec can
 still be outstanding. Check the target repo directly rather than trusting
 the status line.
 
-**Two frontmatter styles are in play.** `hub-template/continue.md` and this
-hub's `.claude/commands/continue.md` open with a `---`/`# comment`/`---`
-block, which is inert — it registers no slash-command description. The
-marketplace's own newer `session-end.md` uses real YAML
-(`description: …`). The hub's new `session-end.md` follows the YAML form;
-`continue.md` was left as-is (working, just undescribed) rather than
-changed as a drive-by.
+**Two frontmatter styles were in play — now resolved.** `hub-template/continue.md`
+and this hub's `.claude/commands/continue.md` opened with a
+`---`/`# comment`/`---` block. That is valid YAML but parses to nothing, so it
+registers **no slash-command description** — the command still runs, it just
+shows up undescribed, with the command list falling back to the file's first
+heading. Real YAML (`description: …`) is the working form, as used by the
+marketplace's own instances and `codex-gate/commands/codex-review.md` (which
+also demonstrates `argument-hint` and `allowed-tools`).
+
+Fixed 2026-08-06 in marketplace PR #12 (`fix/command-frontmatter`, commit
+`5ab6b9a`): **both** `hub-template/continue.md` and
+`hub-template/session-end.md` converted, since both carried the defect — not
+just the one that was reported. Hub's `continue.md` re-copied to match.
+Confirmed live: the command listing went from showing the file's first heading
+to showing the real description. No other command file in either repo has an
+inert block.
 
 **What the hub instance adds** over the shared skeleton, none of which is
 in `hub-template`: a Step 0 Hard Rule 6 pull-first gate (this command

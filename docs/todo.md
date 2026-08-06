@@ -76,18 +76,23 @@ flags re-checked 2026-08-03 after the O-P-C consolidation — see note below)
 
 ## Backlog / ideas (not committed)
 
-- [ ] **Fix `continue.md`'s inert frontmatter** — `.claude/commands/continue.md`
-      opens with a `---`/`# comment`/`---` block rather than real YAML, so it
-      registers no slash-command description (`/continue` itself works fine —
-      it's cosmetic). `.claude/commands/session-end.md` uses the correct
-      `description:` form; `hub-template/continue.md` upstream has the same
-      inert block, so a real fix means backporting there too and re-copying,
-      not just patching this hub. Found 2026-08-06 while adopting
-      `/session-end`; left alone rather than changed as a drive-by. Tebello's
-      call.
+- [ ] None currently.
 
 ## Done
 
+- [x] **2026-08-06** — Fixed the inert command frontmatter, upstream first.
+      Marketplace PR (open):
+      https://github.com/tlelosa-web/tlelosa-claude-config/pull/12 (branch
+      `fix/command-frontmatter`, commit `5ab6b9a`) — `hub-template/continue.md`
+      and `hub-template/session-end.md` both opened with a `---`/`# comment`
+      block, valid YAML that parses to nothing, so every vault copying them
+      got a command with no registered description. Converted both to a real
+      `description:` key with the prose moved below the frontmatter. Fixed
+      **both** rather than only the reported `continue.md` — identical defect,
+      and patching one would leave the other to be rediscovered. Swept the
+      rest of both repos: no other inert blocks (`codex-review.md` already had
+      proper YAML with `argument-hint`/`allowed-tools`). Hub's own
+      `continue.md` updated to match; its `session-end.md` was already correct.
 - [x] **2026-08-06** — Gave the Pappa T vault a remote: private
       `tlelosa-web/pappa-t`, branch renamed `master` → `main` to match every
       other repo, all 215 commits pushed (including `897610e` from the clone

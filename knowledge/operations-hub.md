@@ -1,3 +1,63 @@
+## 2026-08-06 — Live runtime data: what it is, and how it gets backed up
+**Source:** session (this machine, `TshepangLelosa`) — first real backup run
+**Status:** active
+
+The gitignored runtime state across both vaults is the only data in this
+system with no second copy — git never captured it by design, which is
+precisely why the O-P-C consolidation kept the Desktop folders rather than
+superseding them. First backup taken 2026-08-06.
+
+**Inventory (it is small — ~1.3 MB live, ~6.9 MB with history):**
+
+| What | Where | Notes |
+|---|---|---|
+| `sops.db` | `Operations/2. SOPS/instance/` | production, 13 tables, 6,501 rows |
+| `dev.db` | `Operations/7. DELIVERY NOTE/delivery-note-system/` | 2 tables |
+| `career.db` | `Pappa T/TebelloReborn/` | 5 tables |
+| `outreach.db` | `Pappa T/ai-outreach-agency/` | 3 tables |
+| `cache.db` ×2 | `Pappa T/Tenders/`, `Tenders/4_Scripts/` | 6 tables each |
+| 7 `sops.db.pre-*` snapshots | `Operations/2. SOPS/instance/` | pre-migration safety copies |
+| agent memory | `Pappa T/.claude/`, `TebelloReborn/.claude/` | 8 files, accumulated |
+| 6 secret files | see below | live OAuth + API keys, ~2.4 KB |
+
+`Pappa T/TebelloReborn/data/career.db` is 0 bytes — an empty stub, skipped.
+
+**Two destinations, split by sensitivity — this split is the point:**
+
+- **Databases + agent memory** → `~/Backups/dcoe-runtime/<stamp>/` **and**
+  `~/OneDrive/DCOE-Backups/<stamp>/`. Safe to sync: no credentials in it.
+- **Secrets** (`.env` ×4, `credentials.json`, `token.json`) →
+  `~/Backups/dcoe-secrets/<stamp>/` **local-only, never synced.** Keeping
+  live OAuth tokens out of a cloud-synced folder is deliberate, not fussiness.
+  Verified after the run that the OneDrive copy contains zero secret files.
+
+**Use the sqlite3 backup API, not `copy`.** `sqlite3` CLI is not installed on
+this machine, but Python's built-in `sqlite3` has it:
+
+```python
+s = sqlite3.connect(f"file:{src}?mode=ro", uri=True)
+d = sqlite3.connect(dst)
+with d:
+    s.backup(d)
+```
+
+This yields a consistent snapshot even if something is mid-write. A raw file
+copy of a live SQLite database can capture a torn state — a real risk for
+`sops.db`, which a running SOPS dev server holds open.
+
+**Verify by row count, not by file size.** Each backup was checked with
+`PRAGMA integrity_check` (all `ok`) and then re-opened to compare per-table
+row counts against the source. Sizes can match while contents differ; row
+counts caught nothing this run but are the check that would.
+
+**Reusable script:** the run used a one-off script rather than anything
+committed. Re-deriving it is ~15 minutes; if this becomes routine, promote it
+to `Operations/` or a hub `scripts/` folder rather than rewriting it.
+
+**What this does not cover:** it is a point-in-time snapshot, not continuous.
+Nothing schedules it. `sops.db` changes daily in normal use, so the backup is
+stale the moment SOPS is used again.
+
 ## 2026-07-28 — Operations ↔ cloud-environment git-sync bridge confirmed
 **Source:** Operations hub session (work PC)
 **Status:** active

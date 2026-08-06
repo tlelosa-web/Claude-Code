@@ -76,10 +76,31 @@ flags re-checked 2026-08-03 after the O-P-C consolidation — see note below)
 
 ## Backlog / ideas (not committed)
 
-- [ ] None currently.
+- [ ] **Make the runtime-data backup repeatable** — the 2026-08-06 backup
+      (below) was a one-off script run by hand, and nothing schedules it.
+      `sops.db` changes daily in normal use, so the snapshot goes stale as
+      soon as SOPS is used again. Options, in rough order of effort: commit
+      the script somewhere (`Operations/` or a hub `scripts/` folder) so it
+      isn't re-derived each time; then optionally schedule it. Procedure and
+      the exact file list are already recorded in
+      `knowledge/operations-hub.md` — no research needed, just a decision on
+      where the script should live and whether it runs on a schedule.
 
 ## Done
 
+- [x] **2026-08-06** — Backed up the live gitignored runtime data — the last
+      thing in this system with no second copy anywhere. 6 live databases
+      (incl. production `sops.db`, 13 tables / 6,501 rows), 7 SOPS
+      pre-migration snapshots, and 8 agent-memory files → `~/Backups/
+      dcoe-runtime/<stamp>/` **and** `~/OneDrive/DCOE-Backups/<stamp>/`.
+      The 6 secret files (4× `.env`, `credentials.json`, `token.json`) went
+      to `~/Backups/dcoe-secrets/<stamp>/` **local-only, never synced** —
+      verified afterwards that zero secret files reached OneDrive. Databases
+      copied via Python's sqlite3 backup API rather than file copy (a raw
+      copy of a live DB can capture a torn state), then verified by
+      `PRAGMA integrity_check` plus per-table row-count comparison against
+      source. See `knowledge/operations-hub.md` for the full procedure;
+      making it repeatable is now a backlog item.
 - [x] **2026-08-06** — Fixed the inert command frontmatter, upstream first.
       Marketplace PR (merged, `3ceb2f3`):
       https://github.com/tlelosa-web/tlelosa-claude-config/pull/12 (commit

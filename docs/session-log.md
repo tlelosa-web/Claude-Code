@@ -1653,3 +1653,54 @@ TebelloReborn Playwright auto-submit, or the SOPS AvgMovement migration
 the same session as `3ceb2f3`, so both `hub-template/` commands on the
 marketplace's `main` now carry real YAML frontmatter.)
 **Blockers:** None.
+
+## 2026-08-06 — Live runtime data backed up (the last no-second-copy gap)
+
+Closes the loose end flagged at the end of the previous entry: the gitignored
+runtime state was the only data in this system with no copy anywhere. It is
+now backed up, and the procedure is recorded so it doesn't have to be
+re-derived.
+
+**Inventoried first — it turned out small.** ~1.3 MB live (~6.9 MB including
+SOPS's historical snapshots): 6 live databases, 7 `sops.db.pre-*` snapshots,
+8 agent-memory files, and 6 secret files totalling ~2.4 KB. Most of what
+`git status --ignored` returns is regenerable cache noise (`.ruff_cache`,
+`.pytest_cache`, `egg-info`, `node_modules`) and was excluded deliberately.
+`TebelloReborn/data/career.db` is a 0-byte stub and was skipped.
+
+**Split by sensitivity, which was the substantive decision.** Databases and
+agent memory went to both `~/Backups/dcoe-runtime/<stamp>/` and
+`~/OneDrive/DCOE-Backups/<stamp>/` — off-machine at last. The 6 secret files
+went to `~/Backups/dcoe-secrets/<stamp>/`, local-only, deliberately never
+synced: putting live OAuth tokens and API keys into a cloud-synced folder in
+plaintext is a real exposure, not a theoretical one. Confirmed after the run
+that the OneDrive tree contains zero `.env`/`credentials`/`token` files, and
+that the secrets path is a real directory outside OneDrive, not a link into it.
+
+Tebello chose both of these (destination and secrets handling) — they were put
+as explicit questions rather than assumed, since they carry different risk.
+
+**Two technical points worth keeping:**
+
+- **`sqlite3` CLI is not installed on this machine**, but Python's built-in
+  `sqlite3` exposes the same backup API (`src.backup(dst)`). Used that rather
+  than a file copy — a raw copy of a live SQLite database can capture a torn
+  state, a genuine risk for `sops.db` if a SOPS dev server holds it open.
+- **Verified by row count, not file size.** Every backup passed
+  `PRAGMA integrity_check`, then was re-opened to compare per-table row counts
+  against its source (SOPS: 6,501 rows across 13 tables, matched). Sizes can
+  agree while contents differ.
+
+**Deliberately not done:** nothing schedules this. It is a point-in-time
+snapshot, and `sops.db` changes daily in normal use, so it is stale as soon as
+SOPS is used again. The script was a one-off rather than committed. Raised as
+a backlog item rather than silently expanding scope — where the script should
+live, and whether it runs on a schedule, are Tebello's calls.
+
+**Last completed:** Runtime-data backup (this entry).
+**Next task:** Whichever of the three `docs/todo.md` "Next up" items Tebello
+picks — NamePlateTool test suite, TebelloReborn Playwright auto-submit, or
+the SOPS AvgMovement migration (still gated on explicit go-ahead).
+**Known risks:** The backup is a snapshot, not a schedule — it ages from the
+moment it was taken. Backlog item raised.
+**Blockers:** None.

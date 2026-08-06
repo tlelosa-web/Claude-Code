@@ -88,6 +88,19 @@ flags re-checked 2026-08-03 after the O-P-C consolidation — see note below)
 
 ## Done
 
+- [x] **2026-08-06** — Full-system cleanliness audit, then removed the stale
+      duplicate hub clone. Verified every repo clean and synced (hub,
+      marketplace, `2. SOPS`, `3. Nameplate`, Pappa T vault). Audit found
+      `Desktop/Pappa T/Claude-Code/` was a second clone of this hub repo on
+      the same remote, frozen at `afa0e20` (2026-08-01) — a duplicate hub
+      root a session could silently do work in. Removed along with the
+      dangling gitlink pointing at it (Pappa T repo commit `897610e`; it was
+      mode `160000` with no `.gitmodules` entry, same defect class as
+      `b76e942`). Also removed the empty `O-P-C/Pappa T/Claude-Code/`
+      leftover. Corrected the 2026-07-28 `knowledge/pappa-t.md` survey bullet
+      that had cleared this folder as "not a submodule, not a violation to
+      clean up" — true when written, invalidated by the 2026-08-03
+      consolidation. See `knowledge/pappa-t.md`.
 - [x] **2026-08-06** — Fixed the two `/session-end` defects found on its
       first real run, upstream first then re-copied down. Marketplace PR
       (merged, `e6d381a`):

@@ -1505,3 +1505,61 @@ merged the same session as `e6d381a`, so `hub-template/session-end.md` on
 the marketplace's `main` now carries both fixes and any vault adopting the
 command from here on gets the corrected version.)
 **Blockers:** None.
+
+## 2026-08-06 — Cleanliness audit; stale duplicate hub clone removed
+
+Tebello asked for a full report on what still needed fixing, plus a diagram
+of the system layout. Audited live state rather than reciting the notes —
+which is what turned up the finding below.
+
+**Everything already clean:** hub `main` (0 ahead/0 behind), marketplace
+`main` (0/0, PR #11 merged), `Operations/2. SOPS`, `Operations/3. Nameplate
+& Test Sheet`, and the `Desktop/Pappa T` vault repo — all clean working
+trees, nothing unpushed.
+
+**Found: a duplicate hub root.** `Desktop/Pappa T/Claude-Code/` was a second
+clone of *this* repo on the same `tlelosa-web/Claude-Code` remote, frozen at
+`afa0e20` (2026-08-01, 42 commits) while `main` had moved to `c0fdb67`. Same
+category as the `Desktop/Claude-Code` folder deleted 2026-08-03; missed then
+because it sits one level down inside the Pappa T vault.
+
+The risk isn't tidiness. A session opened in a duplicate hub root does
+hub-level work against a stale base with no signal it isn't the real working
+copy — and Hard Rule 6's pull-first gate cannot catch it, because that
+guards against a stale *base*, not against being in the *wrong repo*.
+
+It was also tracked in the Pappa T repo as a **dangling gitlink** — mode
+`160000` with no `.gitmodules` entry — the same defect class as this hub's
+own `b76e942`. `.gitmodules` lists only `Tenders/4_Scripts/tenders-sa`, the
+vault's one real submodule.
+
+**Verified before deleting:** no stashes, no untracked files, no ignored
+files, and both local refs (`main` `afa0e20`,
+`claude/cloud-env-overview-setup-ymv1vd` `87f9506`) present on `origin`.
+`afa0e20` also confirmed an ancestor of hub `main`. Nothing was disk-only.
+Removed via `git rm --cached` + directory delete, committed in the Pappa T
+repo as `897610e`. Also removed the empty `O-P-C/Pappa T/Claude-Code/`
+leftover directory (untracked, git doesn't track empty dirs).
+
+**Corrected a stale knowledge entry that caused the miss.** The 2026-07-28
+`knowledge/pappa-t.md` vault survey had explicitly cleared this folder —
+"not a submodule, just a sibling folder... not a violation to clean up."
+Both halves were wrong, though the second was *correct when written*: the
+hub genuinely did live inside Pappa T then, and the 2026-08-03 consolidation
+retroactively turned the clone into a duplicate. Marked superseded in place
+per Hard Rule 2, with a new dated entry carrying the correction and the
+pre-delete checklist.
+
+**Still open, not fixed:** `Desktop/Pappa T` has no git remote at all (214
+commits, on `master`). Its history is safe — HEAD `f6f0a73` is an ancestor
+of hub `main` and pushed — but new commits there, including `897610e`, are
+single-disk-only until re-merged into O-P-C. Flagged to Tebello; not acted
+on.
+
+**Last completed:** Cleanliness audit + stale clone removal (this entry).
+**Next task:** Whichever of the three `docs/todo.md` "Next up" items Tebello
+picks — NamePlateTool test suite, TebelloReborn Playwright auto-submit, or
+the SOPS AvgMovement migration (still gated on explicit go-ahead).
+**Known risks:** `Desktop/Pappa T` has no remote; commit `897610e` exists
+only on this disk until an O-P-C re-merge picks it up.
+**Blockers:** None.

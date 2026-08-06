@@ -1,3 +1,45 @@
+## 2026-08-06 — Stale duplicate hub clone removed from the Pappa T vault
+**Source:** session (this machine, `TshepangLelosa`) — full-system cleanliness audit
+**Status:** active
+
+`Desktop/Pappa T/Claude-Code/` was a **second clone of the hub repo**, pointing
+at the same `tlelosa-web/Claude-Code` remote as `Desktop/O-P-C`, frozen at
+`afa0e20` (2026-08-01, 42 commits) while the real hub had moved on. Removed
+2026-08-06, along with the dangling gitlink that pointed at it (Pappa T repo
+commit `897610e`).
+
+**Two things the 2026-07-28 entry below got wrong**, both now corrected there:
+
+1. **It was not "just a sibling folder, not a submodule."** It was tracked in
+   the Pappa T repo as a gitlink (mode `160000`) with **no matching
+   `.gitmodules` entry** — a dangling submodule reference, the same defect
+   class as O-P-C commit `b76e942`. That is why an earlier `/continue` run read
+   it as "untracked nested repo, unclear origin": it is neither a normal folder
+   nor a working submodule. `.gitmodules` lists only
+   `Tenders/4_Scripts/tenders-sa`, which remains the vault's one real submodule.
+2. **"Not a violation to clean up" stopped being true on 2026-08-03.** That
+   judgment was correct when written — the hub genuinely did live inside the
+   Pappa T vault then. The O-P-C consolidation moved the hub root to
+   `Desktop/O-P-C`, which retroactively turned this clone into a *duplicate*
+   hub root. The `Desktop/Claude-Code` folder was deleted that day for exactly
+   this reason; this one was missed because it sits one level down.
+
+**Why it mattered, not just tidiness:** a session opened in a duplicate hub root
+does hub-level work against a stale base with no signal that it isn't the real
+working copy. Hard Rule 6's pull-first gate cannot help — that catches a stale
+*base*, not a *wrong repo*.
+
+**Pre-delete checks worth repeating before removing any clone:** no stashes, no
+untracked files, no ignored files, and every local ref present on `origin` (here
+`main` `afa0e20` and `claude/cloud-env-overview-setup-ymv1vd` `87f9506`, both on
+GitHub). `afa0e20` was also confirmed an ancestor of the hub's current `main`,
+so nothing was disk-only.
+
+**Related, still open:** `Desktop/Pappa T` itself is a git repo on `master` with
+**no remote at all** (214 commits). Its history is safe — HEAD `f6f0a73` is an
+ancestor of hub `main` and pushed — but any *new* commit there (including
+`897610e` above) is single-disk-only until re-merged into O-P-C.
+
 ## 2026-07-28 — Vault survey: sub-projects catalogued, Claude-Code hub resolved, data-only folders noted
 **Source:** Pappa T session (cross-project status survey)
 **Status:** active
@@ -14,6 +56,9 @@ the Operations vault survey pattern. Findings:
   cover it and it isn't a submodule either). Resolved: this is expected and fine —
   it's a deliberate, already-committed, already-pushed repo, not stray in-progress
   work. Not a violation to "clean up."
+  **[Superseded 2026-08-06 — see the top entry. Both halves of this bullet were
+  wrong: it was a dangling gitlink, not "not a submodule", and it did need
+  cleaning up once O-P-C became the hub root. Removed.]**
 - **TebelloReborn's "known gap" is now filled** — see `tebelloreborn.md` (new file).
 - Four more Pappa T sub-projects had no dedicated knowledge file yet and got one:
   `ai-outreach-agency.md`, `mims-app.md`, `iq-signal-generator.md`, `tenders-sa.md`.

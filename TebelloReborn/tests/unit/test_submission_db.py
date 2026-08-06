@@ -126,7 +126,13 @@ class TestSaveAttempt:
                 "INSERT INTO submissions "
                 "(vacancy_id, method, outcome, detail, attempted_at) "
                 "VALUES (?, ?, ?, ?, ?)",
-                (vacancy_id, "auto", "definitely_submitted", None, "2026-08-06T00:00:00+00:00"),
+                (
+                    vacancy_id,
+                    "auto",
+                    "definitely_submitted",
+                    None,
+                    "2026-08-06T00:00:00+00:00",
+                ),
             )
         conn.close()
 
@@ -140,7 +146,13 @@ class TestSaveAttempt:
                 "INSERT INTO submissions "
                 "(vacancy_id, method, outcome, detail, attempted_at) "
                 "VALUES (?, ?, ?, ?, ?)",
-                (vacancy_id, "telepathy", "submitted", None, "2026-08-06T00:00:00+00:00"),
+                (
+                    vacancy_id,
+                    "telepathy",
+                    "submitted",
+                    None,
+                    "2026-08-06T00:00:00+00:00",
+                ),
             )
         conn.close()
 

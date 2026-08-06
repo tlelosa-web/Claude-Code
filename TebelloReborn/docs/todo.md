@@ -1,10 +1,22 @@
 # Task Queue — TebelloReborn (Career Engine)
 
-> Updated: 2026-08-01 (added tools/dashboard — live vacancy pipeline dashboard, dev tool; see Completed and session-log.md)
+> Updated: 2026-08-06 (Stage 6 submission core built — Phase 16, steps 81–102; see `docs/specs/submission-core.md` and session-log.md)
 
 ---
 
 ## Known Issues (machine-specific, not architecture)
+
+- **`black .` as documented in CLAUDE.md now reformats 17 unrelated files — 2026-08-06.** Running the
+  documented pre-commit gate (`black . && ruff check .`) under this machine's current tooling
+  (black 26.5.1, ruff 0.15.22) rewrites 7 files in `_archive_qwen_prototype/` (protected by Hard Rule
+  12) plus 10 in `src/`/`tests/`/`tools/` that no one touched — formatter-version drift, since the
+  committed code was formatted by an older black. `ruff check .` separately reports 10 pre-existing
+  errors, 9 of them in the archive and 1 (`F401 json`) in `tests/unit/test_vacancy_match_result.py`.
+  So the gate as literally written does not pass on a clean checkout. Worked around during the Phase
+  16 build by scoping both tools to the files actually being changed. **Not fixed here** — a
+  repo-wide reformat is its own decision and its own commit, and it should not ride along inside a
+  feature build. Options: bump and reformat everything once, pin black in the dev extra, or add a
+  `[tool.black]`/`[tool.ruff]` `exclude` for `_archive_qwen_prototype/`.
 
 - **This machine's `.env` runs `OLLAMA_MODEL=qwen3:1.7b`, not the documented `qwen3:8b` default
   (CLAUDE.md/.env.example unchanged) — 2026-08-01.** Real go-live `run-all` hit severe RAM pressure
@@ -201,7 +213,39 @@
 - [x] 77. `docs/decisions/ADR-002-apify-job-scraping.md` — second dated amendment (`## Amendment — 2026-07-29 (Automated Discovery)`), additive
 - [x] 78. `docs/api-patterns.md` — PNet/Careers24 section (crawler_client.py + extractor.py + discovery.py subsections), Ollama section path fix
 - [x] 79. `CLAUDE.md` — External Client Patterns table + Directory Structure update for `crawler_client.py`/`discovery.py`/`discovery_config.json`
-- [x] 80. `docs/todo.md` — this section (you are here)
+- [x] 80. `docs/todo.md` — this section
+
+### Phase 16 — Stage 6: Submission core, platform-agnostic (see `docs/specs/submission-core.md` for full detail; Codex-reviewed and amended 2026-08-06 — **built 2026-08-06**)
+
+Ports and corrects the hub's `2026-08-04-tebelloreborn-playwright-auto-submit.md`, which scoped the
+build to **LinkedIn Easy Apply only** — a platform this project dropped on 2026-08-01, with zero rows
+in `career.db`. Built as written it could have submitted nothing. Scope became the platform-agnostic
+core; the site adapter is a separate, later task (see Open Items).
+
+- [x] 81. [RED] `tests/unit/test_submission_schema.py` — enums, `SubmissionAttempt`, tz-aware `attempted_at`
+- [x] 82. [GREEN] `src/submission/schema.py` + `__init__.py`
+- [x] 83. [RED] `tests/unit/test_vacancy_schema.py` — `submitted`/`submission_failed` statuses
+- [x] 84. [GREEN] `src/vacancy_search/schema.py` — `VALID_STATUSES` (no migration — Python-validation only, step-59 precedent)
+- [x] 85. [RED] `tests/unit/test_vacancy_db.py` — submission transitions, retry-that-fails-again, `submitted` terminal, Hard Rule 1 guards
+- [x] 86. [GREEN] `src/vacancy_search/db.py` — `VALID_TRANSITIONS` extension
+- [x] 87. [RED] `tests/unit/test_submission_db.py` — table, per-connection FK, CHECK constraints, `user_version` untouched
+- [x] 88. [GREEN] `src/submission/db.py` — `init_db`/`save_attempt`/`get_attempts_for_vacancy`; **no `migrations.py`** (Hard Rule 6)
+- [x] 89. [RED] `tests/unit/test_submission_session.py` — path resolution + `.gitignore` credential guard
+- [x] 90–91. [GREEN] `src/config.py` + `.gitignore` (`SESSION_STATE_PATH`, `.session/`) and `src/submission/session.py`. **Landed as one commit**: the `.gitignore` entry alone leaves the suite failing collection, and Hard Rule 4 requires tests passing before a commit
+- [x] 92. [RED] `tests/unit/test_submission_eligibility.py` — empty registry, capability dispatch, declining adapter
+- [x] 93. [GREEN] `src/submission/eligibility.py` — `SubmitAdapter` Protocol + `ADAPTERS` (empty by design) + `get_adapter`/`is_auto_submittable`
+- [x] 94. [RED] `tests/unit/test_submission_pipeline.py` — approval gate, all outcome paths, persistence-before-transition
+- [x] 95. [GREEN] `src/submission/pipeline.py` — `run_submission()`, `SubmissionNotAllowedError`, `SubmissionStatusError`
+- [x] 96. [RED] `tests/unit/test_main.py` + `tests/unit/test_submission_cli.py` — `submit` parsing and dispatch
+- [x] 97. [GREEN] `src/submission/cli.py` + `src/main.py` wiring. **Deviation from the spec:** the spec put the CLI in `main.py`; inlining it pushed `main.py` to 354 lines, past this project's own 300-line standard, so it moved to `src/submission/cli.py` — matching how `run_review_gate` already lives in `src/review/cli.py`. Dispatch tests moved with it
+- [x] 98. `tests/integration/test_full_pipeline.py` — offline end-to-end: approved → submit → `not_supported` recorded, status unchanged, operator told to submit by hand; plus Hard Rule 1 end-to-end and a `--all` summary run
+- [x] 99. `docs/architecture.md` — Stage 6 section + extended state machine
+- [x] 100. `CLAUDE.md` — Stage 6, submit commands, `src/submission/`, and the global-`user_version` rule in Hard Rule 6
+- [x] 101. `docs/todo.md` — this section
+- [x] 102. `pyproject.toml` — `pytest-cov` in dev extras so CLAUDE.md's ≥80% standard is enforceable (dev-only; runtime deps stay at three). Verified: **100%** across all seven `src/submission/` modules
+
+**Result:** 344 tests passing (was 249), zero regressions. No `playwright` dependency, no browser
+binary, nothing on the wire.
 
 ---
 
@@ -350,7 +394,21 @@
 
 ## Future (not yet scheduled)
 
-- [ ] Phase 6 (post-MVP numbering — original 7-phase plan): Playwright-based auto-fill/submit, paused before final submission.
+- [ ] **Playwright site adapter for Stage 6** (was "Phase 6, post-MVP numbering"). The core is built
+      (Phase 16 above) and the registry is empty, so every approved application currently routes to
+      manual. Adding an adapter is one `ADAPTERS["<platform>"] = ...` entry against the
+      `SubmitAdapter` Protocol — no change to `pipeline.py`. **Blocked on two answers from Tebello,
+      not on code** (see `docs/specs/submission-core.md` §Open Items):
+      1. **Which platform?** Indeed is the only live source with approved applications (6), but its
+         flow varies per employer and many postings redirect to an external ATS with no fixed shape.
+         Realistically "Indeed's own apply form only, everything else `not_supported`".
+      2. **ToS / account risk, explicitly acknowledged.** Driving an authenticated session to submit
+         applications is a different exposure from scraping via Apify — it is Tebello's own account
+         at risk, and it is against LinkedIn's User Agreement (plausibly Indeed's too). No agent
+         should start this on an assumption that the risk is accepted.
+      Also needs: the `playwright` dependency + browser binaries (a deliberate decision in an
+      offline-first project), and a real-site smoke test, since mocks verify you called the transport,
+      not that the site accepts what you sent (the Apify payload-shape lesson).
 - [ ] Phase 7 (post-MVP numbering): tracking dashboard (applications, match-score distribution, response rate).
 - [ ] Decide whether recruiter cold-outreach (in `data/legacy_reference/`, not part of the original 7-phase plan) gets revived as a later phase.
 - [ ] Volume-cap / scheduler layer for document generation (ADR-003 §6, open judgment call #1) — only if Tebello confirms a controlled-batch need; would need its own spec + ADR, and likely a `PRAGMA user_version` migration via the `src/doc_gen/migrations.py` stub (step 34).

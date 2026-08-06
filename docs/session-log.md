@@ -1704,3 +1704,62 @@ the SOPS AvgMovement migration (still gated on explicit go-ahead).
 **Known risks:** The backup is a snapshot, not a schedule — it ages from the
 moment it was taken. Backlog item raised.
 **Blockers:** None.
+
+## 2026-08-06 — Runtime-data backup made repeatable
+
+Picked up the backlog item raised in the previous entry. Wrote the spec first
+per the hub's own gate (`docs/specs/2026-08-06-runtime-data-backup-script.md`)
+and implemented in the same pass rather than blocking on approval, since the
+procedure was already fully recorded in `knowledge/operations-hub.md`.
+
+**Two decisions, both stated rather than asked**, since each follows from an
+existing rule: the script lives at `scripts/backup-runtime-data.py` **in this
+hub** (it backs up both vaults, so it is cross-project work, which hub-and-spoke
+assigns here — and it means the script is version-controlled, unlike the
+one-off); and it supports unattended use but does **not** register itself,
+because changing system scheduler config shouldn't be a side effect of
+committing a script.
+
+**Discovery instead of a hardcoded list — and it paid immediately.** The first
+dry run found three things the manual list had missed: a `TebelloLelosa.pfx`
+certificate buried in TebelloReborn's archived prototype, and agent-memory
+trees under `Operations/.claude/` and `Operations/2. SOPS/.claude/`. Nothing
+would ever have flagged those as absent.
+
+**Two real bugs found while building it, both worth recording:**
+
+1. **`*.db` does not match `sops.db.pre-batch34-backup-...`** — the first draft
+   silently dropped all seven of SOPS's dated rollback snapshots, which the
+   hand-run version *had* captured. This is a regression I introduced and would
+   not have noticed from the code; it surfaced only from comparing the run's
+   output against the earlier manual run. Fixed with a separate `SNAPSHOT`
+   class copied as plain files (they're static — no torn-read risk to guard
+   against). The lesson generalises: when automating a manual process, diff the
+   outputs before trusting the automation.
+2. **`.claude/worktrees/` are live git worktrees**, confirmed with
+   `git worktree list` — not scratch directories. Walking into them backed up
+   every match two and three times; the `.pfx` appeared three times. Now pruned.
+
+**One invariant is asserted, not assumed:** no secret-classified file may reach
+the OneDrive-synced tree. The script re-scans its own synced output afterwards
+and exits `2` if any appear. That failure would be both silent and serious —
+plaintext OAuth tokens and a certificate reaching cloud sync — which is exactly
+the class of thing that deserves a check rather than careful coding.
+
+Also verified: `--dry-run` writes nothing, `--quiet` is silent with a correct
+exit code, drift reporting is clean on a second run, and retention keeps the
+last 7 runs. Final run backed up 7 databases, 7 snapshots, 4 agent-memory trees
+and 7 secrets, all verified, exit 0. Independently confirmed 33 files in the
+synced tree and 0 secrets among them.
+
+Updated the spec to match what was actually built rather than leaving it
+describing the first design — the same spec-vs-reality drift caught earlier
+this session with `/session-end`'s "Implemented" status.
+
+**Last completed:** Repeatable backup script (this entry).
+**Next task:** Whichever of the three `docs/todo.md` "Next up" items Tebello
+picks — NamePlateTool test suite, TebelloReborn Playwright auto-submit, or
+the SOPS AvgMovement migration (still gated on explicit go-ahead).
+**Known risks:** Backups still run only when invoked. Scheduling is the one
+remaining backlog item.
+**Blockers:** None.

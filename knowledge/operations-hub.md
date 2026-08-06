@@ -1,3 +1,53 @@
+## 2026-08-06 — Runtime-data backup is now a committed script
+**Source:** session (this machine, `TshepangLelosa`)
+**Status:** active
+
+Supersedes the hand-run procedure in the entry below — that entry's *reasoning*
+still stands, but the file list in it is no longer authoritative. The script
+discovers files rather than reading a list.
+
+**Run it:**
+
+```bash
+python scripts/backup-runtime-data.py            # back up + verify
+python scripts/backup-runtime-data.py --dry-run  # show what would happen
+python scripts/backup-runtime-data.py --quiet --keep 14
+```
+
+Exit codes: `0` verified, `1` some file failed, `2` the data/secret separation
+invariant broke. Retention defaults to the last 7 runs per destination.
+
+**Discovery beats a hardcoded list, demonstrated.** On its first dry run the
+script found three things the hand-written list had missed entirely: a
+`TebelloLelosa.pfx` certificate under
+`TebelloReborn/_archive_qwen_prototype/2_Source_Data/Legacy_CV_Archive/`, and
+agent-memory trees under `Operations/.claude/` and
+`Operations/2. SOPS/.claude/`. Nothing would ever have reported those as
+missing.
+
+**Two gotchas found building it, both worth remembering:**
+
+1. **`*.db` does not match `sops.db.pre-batch34-backup-...`.** SOPS's seven
+   dated rollback snapshots were silently dropped by the first draft. Fixed
+   with a separate `SNAPSHOT` class (`*.db.*`), copied as plain files since
+   they are static. Caught only by diffing the run against the earlier
+   hand-run output — *not* by reading the code. When replacing a manual
+   process with an automated one, compare outputs before trusting it.
+2. **`.claude/worktrees/` are live git worktrees**, not scratch folders.
+   Walking into them backed up every match two and three times (the `.pfx`
+   appeared three times). Now pruned. `git worktree list` confirms what they
+   are.
+
+**The invariant that gets a hard check:** no `SECRET`-classified file may land
+in the OneDrive-synced tree. The script re-scans the synced output after
+writing it and exits `2` if any appear. This is the one failure that would be
+both silent and serious — plaintext OAuth tokens and a `.pfx` reaching cloud
+sync — so it is asserted rather than assumed.
+
+**Still not scheduled.** The script supports unattended use; nothing runs it
+automatically. Registering a Windows scheduled task changes system config and
+stays a deliberate decision.
+
 ## 2026-08-06 — Live runtime data: what it is, and how it gets backed up
 **Source:** session (this machine, `TshepangLelosa`) — first real backup run
 **Status:** active

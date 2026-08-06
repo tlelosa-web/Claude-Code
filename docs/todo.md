@@ -76,18 +76,33 @@ flags re-checked 2026-08-03 after the O-P-C consolidation — see note below)
 
 ## Backlog / ideas (not committed)
 
-- [ ] **Make the runtime-data backup repeatable** — the 2026-08-06 backup
-      (below) was a one-off script run by hand, and nothing schedules it.
-      `sops.db` changes daily in normal use, so the snapshot goes stale as
-      soon as SOPS is used again. Options, in rough order of effort: commit
-      the script somewhere (`Operations/` or a hub `scripts/` folder) so it
-      isn't re-derived each time; then optionally schedule it. Procedure and
-      the exact file list are already recorded in
-      `knowledge/operations-hub.md` — no research needed, just a decision on
-      where the script should live and whether it runs on a schedule.
+- [ ] **Schedule the runtime-data backup** — `scripts/backup-runtime-data.py`
+      now exists and supports unattended use (`--quiet`, meaningful exit
+      codes), but nothing runs it automatically, so backups are still only as
+      current as the last manual run. Registering a Windows scheduled task
+      changes system config, so it was deliberately left as a decision rather
+      than done as a side effect of committing the script. Low effort once
+      decided: pick a cadence and whether failures should surface anywhere.
 
 ## Done
 
+- [x] **2026-08-06** — Made the runtime-data backup repeatable:
+      `scripts/backup-runtime-data.py`, committed in this hub (cross-vault
+      work, so hub territory per hub-and-spoke — and it means the script is
+      itself version-controlled, unlike the one-off). Spec:
+      `docs/specs/2026-08-06-runtime-data-backup-script.md`. Discovers files
+      by pattern instead of a hardcoded list, and immediately found three
+      things the manual list had missed (a `.pfx` certificate, two
+      `Operations/` agent-memory trees). Verifies every DB by
+      `integrity_check` + row-count against source, hard-asserts that no
+      secret reaches the synced tree (exit 2 if violated), reports drift
+      against the previous run, and prunes to the last N runs. Two bugs
+      caught during the build: `*.db` doesn't match SOPS's
+      `sops.db.pre-*` rollback snapshots (silently dropped all 7 — found by
+      diffing against the hand-run output, not by reading code), and
+      `.claude/worktrees/` are live git worktrees that duplicated every match
+      three times. Scheduling deliberately left as a separate decision, now
+      the one backlog item.
 - [x] **2026-08-06** — Backed up the live gitignored runtime data — the last
       thing in this system with no second copy anywhere. 6 live databases
       (incl. production `sops.db`, 13 tables / 6,501 rows), 7 SOPS

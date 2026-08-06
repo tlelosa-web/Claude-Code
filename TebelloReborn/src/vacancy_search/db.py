@@ -95,11 +95,20 @@ def get_by_id(conn: sqlite3.Connection, vacancy_id: int) -> Optional[Vacancy]:
     return _vacancy_from_row(row)
 
 
+# Stage 6 (submission) extends this past 'approved'. The load-bearing property
+# is that 'submission_failed' is reachable ONLY from 'approved' — that is what
+# lets the submit gate admit it for retries without ever letting an unapproved
+# application reach a submission path (CLAUDE.md Hard Rule 1). No status before
+# the human approval gate has a path to 'submitted'.
 VALID_TRANSITIONS = {
     "new": {"scored"},
     "scored": {"asset_ready"},
     "asset_ready": {"approved", "rejected"},
-    "approved": set(),
+    "approved": {"submitted", "submission_failed"},
+    # Retryable, including a retry that fails again — a second failure has to
+    # be representable, not raise.
+    "submission_failed": {"submitted", "submission_failed"},
+    "submitted": set(),
     "rejected": set(),
 }
 

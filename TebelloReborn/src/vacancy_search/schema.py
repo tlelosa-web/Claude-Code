@@ -9,7 +9,19 @@ from typing import Optional
 # migrations.py entry (see docs/specs/pnet-careers24-coverage.md's Migration
 # Note, step 59).
 VALID_PLATFORMS = {"indeed", "linkedin", "pnet", "careers24"}
-VALID_STATUSES = {"new", "scored", "asset_ready", "approved", "rejected"}
+# `submitted`/`submission_failed` are Stage 6. Like VALID_PLATFORMS above, this
+# is a Python-level validation set only — `vacancies.status` is plain TEXT with
+# no CHECK constraint, so extending it needs no migrations.py entry (same
+# reasoning as step 59; see docs/specs/submission-core.md §Migration Note).
+VALID_STATUSES = {
+    "new",
+    "scored",
+    "asset_ready",
+    "approved",
+    "rejected",
+    "submitted",
+    "submission_failed",
+}
 REQUIRED_FIELDS = ("company", "title", "url")
 
 

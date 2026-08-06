@@ -89,9 +89,10 @@ flags re-checked 2026-08-03 after the O-P-C consolidation — see note below)
 ## Done
 
 - [x] **2026-08-06** — Fixed the two `/session-end` defects found on its
-      first real run, upstream first then re-copied down. Marketplace PR:
-      https://github.com/tlelosa-web/tlelosa-claude-config/pull/11 (branch
-      `fix/session-end-first-run-defects`, commit `9bd83aa`) — reworded the
+      first real run, upstream first then re-copied down. Marketplace PR
+      (merged, `e6d381a`):
+      https://github.com/tlelosa-web/tlelosa-claude-config/pull/11 (commit
+      `9bd83aa`, branch deleted) — reworded the
       session-log step to reconcile-not-duplicate, and the title step to
       report "not available" outright rather than implying an attempt that
       can't be constructed on this tool surface. Fix 1 touches

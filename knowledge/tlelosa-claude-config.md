@@ -63,10 +63,13 @@ Both fixes belong upstream in `hub-template/session-end.md` first, then
 re-copied down — patching only this hub would leave the same defects in
 every other vault that adopts the template later.
 
-**Fixed the same day, upstream-first:** marketplace PR
-https://github.com/tlelosa-web/tlelosa-claude-config/pull/11 (branch
-`fix/session-end-first-run-defects`, commit `9bd83aa`) carries both fixes
-plus a "Post-implementation corrections" section added to the spec. Fix 1
+**Fixed and merged the same day, upstream-first:** marketplace PR #11
+(https://github.com/tlelosa-web/tlelosa-claude-config/pull/11, commit
+`9bd83aa`, merged as `e6d381a`, branch deleted) carries both fixes plus a
+"Post-implementation corrections" section added to the spec. So
+`hub-template/session-end.md` on `main` is correct as of 2026-08-06 — a
+vault adopting `/session-end` from here on gets the fixed version and needs
+no further patching. Fix 1
 touches `hub-template/session-end.md` only — the marketplace repo keeps no
 session log, so its own instance has no such step. Fix 2 touches both. The
 hub's own instance was updated by hand in the same session, since ADR-008's

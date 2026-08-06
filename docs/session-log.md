@@ -1496,11 +1496,12 @@ adopter — the same failure mode that let the original spec's item 3 sit
 unimplemented behind an `Implemented` status line.
 
 **Last completed:** Both `/session-end` defects fixed (this entry) — PR #11
-open upstream, hub instance updated to match.
+merged upstream (`e6d381a`), hub instance updated to match.
 **Next task:** Whichever of the three `docs/todo.md` "Next up" items Tebello
 picks — NamePlateTool test suite, TebelloReborn Playwright auto-submit, or
 the SOPS AvgMovement migration (still gated on explicit go-ahead).
-**Known risks:** None new. PR #11 is open, not merged — the marketplace's
-`main` still carries both defects until it lands, so any vault adopting
-`/session-end` from `hub-template/` before then gets the unfixed version.
+**Known risks:** None. (The earlier "PR #11 not merged" risk is closed — it
+merged the same session as `e6d381a`, so `hub-template/session-end.md` on
+the marketplace's `main` now carries both fixes and any vault adopting the
+command from here on gets the corrected version.)
 **Blockers:** None.

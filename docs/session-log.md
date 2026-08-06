@@ -1183,52 +1183,6 @@ items Tebello picks — all now 📍-flagged with the live-copy caveat.
 **Known risks:** None new.
 **Blockers:** None.
 
-## 2026-08-04 — TebelloReborn: post-MVP scope decided (Playwright auto-submit)
-
-Ran from a cloud session via `/continue`. All three queued "Next up" items
-(NamePlateTool test suite, TebelloReborn scope decision, SOPS AvgMovement
-migration) were flagged unreachable from this session — no local Desktop
-filesystem access to Operations/Pappa T, and the TebelloReborn spec itself
-designates a Pappa T session for the decision conversation. Tebello chose
-to have the decision conversation here anyway, since `docs/todo.md`'s own
-note said reading either copy was fine and no build would happen in this
-session.
-
-Presented the three post-MVP options from
-`docs/specs/2026-07-29-tebelloreborn-scope-decision.md` via
-`AskUserQuestion` (multi-select). Tebello picked **Playwright auto-submit
-only** — recruiter/cold-outreach revival and doc-gen volume-cap/scheduler
-both explicitly declined, not committed. Follow-up question confirmed the
-Stage 5 human-approval gate stays in place; Playwright automates only the
-mechanical job-site submission step after a human has already approved
-that application's documents (full unattended auto-submit was considered
-and declined as too risky, given AI-generated documents and untrusted
-scraped vacancy text).
-
-Per the decision spec's own "write a proper spec before building" step,
-wrote `docs/specs/2026-08-04-tebelloreborn-playwright-auto-submit.md` —
-scoped to LinkedIn Easy Apply first (Indeed's flow varies too much per
-employer to generic-form-fill reliably), Playwright `storageState` for
-session/login instead of stored credentials, and the same untrusted-
-scraped-text discipline already used in the doc-gen ADR-003 correction if
-any LLM-driven form interpretation ends up involved. Written without
-direct access to TebelloReborn's real code (Pappa T-only), so its
-file/module names are flagged as guesses pending confirmation in an actual
-Pappa T session. Updated `knowledge/tebelloreborn.md` (new dated entry)
-and `docs/todo.md` (item 2 replaced with the build task + new spec link).
-
-**Last completed:** TebelloReborn post-MVP scope decision (this entry) —
-Playwright auto-submit picked, approval gate kept, spec written.
-**Next task:** Whichever remaining `docs/todo.md` "Next up" item Tebello
-picks next — NamePlateTool test suite and SOPS AvgMovement migration
-remain ⚠️ Desktop/Operations-only; the new TebelloReborn Playwright build
-is ⚠️ Desktop/Pappa T-only. None runnable from a cloud session.
-**Known risks:** None new. `tlelosa-claude-config` marketplace clone still
-doesn't exist on this (cloud) machine — can't check upstream core commits
-from here.
-**Blockers:** None for this decision; the resulting build still needs an
-actual Pappa T session.
-
 2026-08-03 codex-review docs/specs/2026-07-29-nameplatetool-test-suite.md: ran
 
 ## 2026-08-03 — codex-gate: Pappa T install + network-off smoke-test closed out
@@ -1307,4 +1261,106 @@ decision, or the SOPS AvgMovement migration go-ahead — still gated on
 explicit go-ahead).
 **Known risks:** None new. Marketplace `tlelosa-claude-config` has 3 new
 commits upstream — not yet pulled on this machine, not blocking.
+**Blockers:** None.
+
+## 2026-08-04 — TebelloReborn: post-MVP scope decided (Playwright auto-submit)
+
+Ran from a cloud session via `/continue`. All three queued "Next up" items
+(NamePlateTool test suite, TebelloReborn scope decision, SOPS AvgMovement
+migration) were flagged unreachable from this session — no local Desktop
+filesystem access to Operations/Pappa T, and the TebelloReborn spec itself
+designates a Pappa T session for the decision conversation. Tebello chose
+to have the decision conversation here anyway, since `docs/todo.md`'s own
+note said reading either copy was fine and no build would happen in this
+session.
+
+Presented the three post-MVP options from
+`docs/specs/2026-07-29-tebelloreborn-scope-decision.md` via
+`AskUserQuestion` (multi-select). Tebello picked **Playwright auto-submit
+only** — recruiter/cold-outreach revival and doc-gen volume-cap/scheduler
+both explicitly declined, not committed. Follow-up question confirmed the
+Stage 5 human-approval gate stays in place; Playwright automates only the
+mechanical job-site submission step after a human has already approved
+that application's documents (full unattended auto-submit was considered
+and declined as too risky, given AI-generated documents and untrusted
+scraped vacancy text).
+
+Per the decision spec's own "write a proper spec before building" step,
+wrote `docs/specs/2026-08-04-tebelloreborn-playwright-auto-submit.md` —
+scoped to LinkedIn Easy Apply first (Indeed's flow varies too much per
+employer to generic-form-fill reliably), Playwright `storageState` for
+session/login instead of stored credentials, and the same untrusted-
+scraped-text discipline already used in the doc-gen ADR-003 correction if
+any LLM-driven form interpretation ends up involved. Written without
+direct access to TebelloReborn's real code (Pappa T-only), so its
+file/module names are flagged as guesses pending confirmation in an actual
+Pappa T session. Updated `knowledge/tebelloreborn.md` (new dated entry)
+and `docs/todo.md` (item 2 replaced with the build task + new spec link).
+
+**Last completed:** TebelloReborn post-MVP scope decision (this entry) —
+Playwright auto-submit picked, approval gate kept, spec written.
+**Next task:** Whichever remaining `docs/todo.md` "Next up" item Tebello
+picks next — NamePlateTool test suite and SOPS AvgMovement migration
+remain ⚠️ Desktop/Operations-only; the new TebelloReborn Playwright build
+is ⚠️ Desktop/Pappa T-only. None runnable from a cloud session.
+**Known risks:** None new. `tlelosa-claude-config` marketplace clone still
+doesn't exist on this (cloud) machine — can't check upstream core commits
+from here.
+**Blockers:** None for this decision; the resulting build still needs an
+actual Pappa T session.
+
+## 2026-08-06 — Housekeeping: session-log ordering, core pull, superseded session archived
+
+Ran from `/continue` on `TshepangLelosa`. Step 1.75's sync check found this
+hub 2 commits behind `origin/main`; pulled (fast-forward, brought in the
+2026-08-04 TebelloReborn scope decision + its Playwright auto-submit spec).
+Tebello picked housekeeping over the three queued "Next up" items.
+
+**1. Fixed a real `docs/session-log.md` ordering defect.** PR #14's merge
+inserted the 2026-08-04 TebelloReborn entry at line 1186 — *above* two
+existing 2026-08-03 entries — instead of appending it. This file's stated
+convention is "most recent last," and `/continue` Step 1 reads **only the
+final entry**, so every future `/continue` run would have reported the
+2026-08-03 SOPS Payment Status review as "last completed" and never seen
+the 2026-08-04 decision at all. Caught only because the pull's commit diff
+didn't match what `tail` showed. Moved the 46-line entry to the end of the
+file. Deliberately left the bare `2026-08-03 codex-review ...: ran` marker
+line where it was — the codex-gate entry below it says "logged per the
+skill's own step 6: one line above this entry," so that adjacency is
+load-bearing, not stray.
+
+*Root cause worth remembering:* an append-only log edited concurrently by
+cloud and local sessions will get out-of-order entries from merges, and a
+reader that only looks at the tail silently reads stale state. The Hard
+Rule 6 pull-before-edit discipline prevents *conflicts*, not *misordering*
+— a clean auto-merge is exactly how this one got through.
+
+**2. Pulled the shared core** (ADR-007 check, Step 1.5): marketplace clone
+`~/.claude/plugins/marketplaces/tlelosa-claude-config` was 2 commits behind
+(`dac2258` → `9a18c8f`). Clean tree, fast-forwarded. New upstream content
+is a `/session-end` command, promoted to `hub-template/session-end.md` the
+same way `/continue` was per ADR-008. Done via `git pull` in the clone
+rather than `/plugin marketplace update` (that's an interactive terminal
+command, unavailable in this session) — same content result.
+
+**3. Archived one superseded session:** `Cont-"TebelloReborn scope decision
+& exports"` (`local_95374d79`). Its scope-decision task was resolved and
+committed by the 2026-08-04 cloud session; last exchange was just pointing
+Tebello at the `exports/` folder, no open thread. Also renamed it from the
+generic `Continuation` first, per Step 0, so the archive carries a
+meaningful title. No sessions were stale by the 7-day rule (oldest open one
+is 2026-08-01).
+
+**Also noted, not acted on:** this hub has `.claude/commands/continue.md`
+but not `session-end.md` — adopting the newly-promoted `/session-end`
+command is a live option, parked in `docs/todo.md`'s backlog for Tebello to
+decide rather than added unilaterally.
+
+**Last completed:** Hub housekeeping (this entry).
+**Next task:** Whichever of the three `docs/todo.md` "Next up" items Tebello
+picks — NamePlateTool test suite, TebelloReborn Playwright auto-submit, or
+the SOPS AvgMovement migration (still gated on explicit go-ahead). All
+three are runnable from this machine; all three must be worked in the live
+`Desktop/` copies, not O-P-C's snapshot.
+**Known risks:** None new.
 **Blockers:** None.

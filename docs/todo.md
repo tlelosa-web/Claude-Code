@@ -76,9 +76,32 @@ flags re-checked 2026-08-03 after the O-P-C consolidation — see note below)
 
 ## Backlog / ideas (not committed)
 
-- [ ] None currently.
+- [ ] **Adopt `/session-end` in this hub** — `tlelosa-claude-config` promoted
+      a `/session-end` command to `hub-template/session-end.md` (upstream
+      commits `a56ea84`/`9a18c8f`, pulled to this machine 2026-08-06), same
+      ADR-008 promotion path `/continue` took. This hub has
+      `.claude/commands/continue.md` but not `session-end.md`. It closes out
+      a session (reconciles the queue, writes the log entry, leaves the
+      session archivable) — i.e. it automates the Hard Rule 5 discipline
+      currently done by hand at the end of every session. Not adopted
+      unilaterally; Tebello's call. Spec upstream:
+      `docs/specs/2026-08-04-session-end-command.md` in the marketplace repo.
 
 ## Done
+
+- [x] **2026-08-06** — Hub housekeeping. Fixed a real `docs/session-log.md`
+      ordering defect: PR #14's merge inserted the 2026-08-04 TebelloReborn
+      entry *above* two 2026-08-03 entries instead of appending it, and since
+      `/continue` Step 1 reads only the final entry, every future run would
+      have reported stale state and never seen the 2026-08-04 decision.
+      Moved it to the end (left the `codex-review ... : ran` marker in place
+      — its adjacency to the codex-gate entry is load-bearing). Pulled the
+      shared core (`dac2258` → `9a18c8f`, adds `/session-end`; backlog item
+      above). Archived the superseded `Cont-"TebelloReborn scope decision &
+      exports"` session after renaming it from generic `Continuation`.
+      Note: Hard Rule 6's pull-before-edit prevents *conflicts*, not
+      *misordering* — a clean auto-merge is how this defect got through.
+      See `docs/session-log.md`, 2026-08-06 entry.
 
 - [x] **2026-08-03** — SOPS: Payment Status data-migration review completed.
       Reviewed all 19 flagged SOs directly against the live

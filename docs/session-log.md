@@ -1643,12 +1643,13 @@ commands listing changed from showing `Step 0 — Rename Stale Sessions` (the
 first-heading fallback) to the real description. That's the defect and its
 fix observed end to end.
 
-**Last completed:** Command frontmatter fix (this entry) — PR #12 open
-upstream, hub instance updated to match.
+**Last completed:** Command frontmatter fix (this entry) — PR #12 merged
+upstream (`3ceb2f3`), hub instance updated to match.
 **Next task:** Backlog is now empty. Next is whichever of the three
 `docs/todo.md` "Next up" items Tebello picks — NamePlateTool test suite,
 TebelloReborn Playwright auto-submit, or the SOPS AvgMovement migration
 (still gated on explicit go-ahead).
-**Known risks:** PR #12 is open, not merged — `hub-template/` on the
-marketplace's `main` still carries the inert blocks until it lands.
+**Known risks:** None. (The "PR #12 not merged" risk is closed — it merged
+the same session as `3ceb2f3`, so both `hub-template/` commands on the
+marketplace's `main` now carry real YAML frontmatter.)
 **Blockers:** None.

@@ -81,9 +81,9 @@ flags re-checked 2026-08-03 after the O-P-C consolidation — see note below)
 ## Done
 
 - [x] **2026-08-06** — Fixed the inert command frontmatter, upstream first.
-      Marketplace PR (open):
-      https://github.com/tlelosa-web/tlelosa-claude-config/pull/12 (branch
-      `fix/command-frontmatter`, commit `5ab6b9a`) — `hub-template/continue.md`
+      Marketplace PR (merged, `3ceb2f3`):
+      https://github.com/tlelosa-web/tlelosa-claude-config/pull/12 (commit
+      `5ab6b9a`, branch deleted) — `hub-template/continue.md`
       and `hub-template/session-end.md` both opened with a `---`/`# comment`
       block, valid YAML that parses to nothing, so every vault copying them
       got a command with no registered description. Converted both to a real

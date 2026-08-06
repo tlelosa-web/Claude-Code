@@ -30,8 +30,9 @@ heading. Real YAML (`description: …`) is the working form, as used by the
 marketplace's own instances and `codex-gate/commands/codex-review.md` (which
 also demonstrates `argument-hint` and `allowed-tools`).
 
-Fixed 2026-08-06 in marketplace PR #12 (`fix/command-frontmatter`, commit
-`5ab6b9a`): **both** `hub-template/continue.md` and
+Fixed and merged 2026-08-06 in marketplace PR #12 (`fix/command-frontmatter`,
+commit `5ab6b9a`, merged as `3ceb2f3`, branch deleted): **both**
+`hub-template/continue.md` and
 `hub-template/session-end.md` converted, since both carried the defect — not
 just the one that was reported. Hub's `continue.md` re-copied to match.
 Confirmed live: the command listing went from showing the file's first heading

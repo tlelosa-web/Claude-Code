@@ -7,6 +7,8 @@
 
 ---
 
+## 2026-08-06 — codex-review submission-core.md: ran
+
 ## 2026-08-01 — Review-gate bug fix: skip gate when doc-gen doesn't reach asset_ready
 
 Real bug found 2026-08-01: a CV generation timeout (headless `claude -p`) left a vacancy at

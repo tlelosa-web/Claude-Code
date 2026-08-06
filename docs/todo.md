@@ -76,16 +76,29 @@ flags re-checked 2026-08-03 after the O-P-C consolidation — see note below)
 
 ## Backlog / ideas (not committed)
 
-- [ ] **Schedule the runtime-data backup** — `scripts/backup-runtime-data.py`
-      now exists and supports unattended use (`--quiet`, meaningful exit
-      codes), but nothing runs it automatically, so backups are still only as
-      current as the last manual run. Registering a Windows scheduled task
-      changes system config, so it was deliberately left as a decision rather
-      than done as a side effect of committing the script. Low effort once
-      decided: pick a cadence and whether failures should surface anywhere.
+- [ ] **Decide whether backup failures should alert** — the daily task (below)
+      writes failures to `~/Backups/backup-runtime.log` and sets a non-zero
+      `LastTaskResult`, but nothing tells anyone. A silent failure would look
+      identical to success until someone checks. Options range from doing
+      nothing (check `Get-ScheduledTaskInfo` occasionally) to a Task Scheduler
+      on-failure action or a notification. Not urgent — the backup itself is
+      running and verified — but worth a deliberate answer rather than drift.
 
 ## Done
 
+- [x] **2026-08-06** — Scheduled the runtime-data backup daily. Windows task
+      `DCOE runtime-data backup`, 12:30, running as the interactive user at
+      Limited (unelevated) level, logging to `~/Backups/backup-runtime.log`.
+      Runs only while logged on **by design** — the alternative requires
+      storing the account password with the task; `-StartWhenAvailable`
+      covers missed runs instead. Added a `--log-file` option to the script
+      for this (a scheduled task has no console, so `--quiet` would discard
+      the detail and leave nothing to diagnose). Verified by triggering it:
+      `LastTaskResult = 0` **and** the resulting manifest checked — 7
+      databases, all integrity + row-count verified, no failures. Exit code
+      alone wouldn't have proved a real backup happened. See
+      `knowledge/operations-hub.md` for settings rationale and management
+      commands.
 - [x] **2026-08-06** — Made the runtime-data backup repeatable:
       `scripts/backup-runtime-data.py`, committed in this hub (cross-vault
       work, so hub territory per hub-and-spoke — and it means the script is

@@ -1,3 +1,59 @@
+## 2026-08-06 — Backup scheduled daily (Windows Task Scheduler)
+**Source:** session (this machine, `TshepangLelosa`)
+**Status:** active
+
+`scripts/backup-runtime-data.py` now runs automatically.
+
+| | |
+|---|---|
+| Task name | `DCOE runtime-data backup` |
+| Schedule | daily, 12:30 |
+| Runs as | `TshepangLelosa\tlelo`, interactive, **Limited** (no elevation) |
+| Log | `~/Backups/backup-runtime.log` (appended, one header block per run) |
+
+Verified by triggering it manually: `LastTaskResult = 0`, and the run produced
+a real backup — 7 databases, all `integrity_check` + row-count verified, no
+failures. A clean exit code alone would not have proved that; the manifest was
+checked too.
+
+**Why it runs only while logged on.** A task that runs whether or not the user
+is logged on requires storing the account password with the task. That is not
+something to hand over, so the task is registered `LogonType Interactive`
+instead. The practical cost: if the machine is off or the user is signed out at
+12:30, that day's run is missed — mitigated by `-StartWhenAvailable`, which
+makes Task Scheduler catch up on the next opportunity rather than skipping the
+day entirely.
+
+**Settings that matter and why:**
+
+- `-StartWhenAvailable` — catch up a missed run (the machine will not always be
+  on at 12:30).
+- `-MultipleInstances IgnoreNew` — a catch-up run must not overlap a manual one.
+- `-ExecutionTimeLimit 30m` — the real run takes seconds; anything near the cap
+  means something is wrong, so it fails rather than hanging indefinitely.
+- `-AllowStartIfOnBatteries` / `-DontStopIfGoingOnBatteries` — a ~7 MB copy is
+  not worth skipping on battery.
+
+**Scheduled runs use `--log-file`, not `--quiet`.** A scheduled task has no
+console, so quiet mode would discard the detail entirely and leave nothing to
+diagnose. Full output goes to the log; `--quiet` remains for interactive use.
+
+**Managing it:**
+
+```powershell
+Get-ScheduledTaskInfo -TaskName "DCOE runtime-data backup"   # last result, next run
+Start-ScheduledTask   -TaskName "DCOE runtime-data backup"   # run now
+Disable-ScheduledTask -TaskName "DCOE runtime-data backup"   # pause
+Unregister-ScheduledTask -TaskName "DCOE runtime-data backup" -Confirm:$false
+```
+
+To change the time, re-register with a new `-Daily -At` trigger — the whole
+registration is in `docs/session-log.md`'s 2026-08-06 scheduling entry.
+
+**Not covered:** nothing alerts on failure. A failed run sets a non-zero
+`LastTaskResult` and writes the reason to the log, but nobody is told. Checking
+`Get-ScheduledTaskInfo` occasionally is the current answer.
+
 ## 2026-08-06 — Runtime-data backup is now a committed script
 **Source:** session (this machine, `TshepangLelosa`)
 **Status:** active

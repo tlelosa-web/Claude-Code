@@ -49,6 +49,24 @@ SECRET_EXCLUDE = ("*.example", "*.example.*", "*.sample")
 AGENT_MEMORY_DIRNAME = "agent-memory"
 
 
+class _Tee:
+    """Write to the console and a log file at once, so a scheduled run leaves a trail."""
+
+    def __init__(self, stream, path: Path):
+        self._stream = stream
+        self._fh = open(path, "a", encoding="utf-8")
+
+    def write(self, text: str) -> int:
+        self._stream.write(text)
+        self._fh.write(text)
+        self._fh.flush()
+        return len(text)
+
+    def flush(self) -> None:
+        self._stream.flush()
+        self._fh.flush()
+
+
 def log(msg: str, quiet: bool = False) -> None:
     if not quiet:
         print(msg)
@@ -200,9 +218,15 @@ def main() -> int:
     ap.add_argument("--dry-run", action="store_true", help="report what would be backed up, write nothing")
     ap.add_argument("--quiet", action="store_true", help="suppress per-file output (for scheduled runs)")
     ap.add_argument("--keep", type=int, default=7, help="how many runs to retain per destination (default 7)")
+    ap.add_argument("--log-file", type=Path, help="append this run's output to a file (for scheduled runs)")
     args = ap.parse_args()
 
     sys.stdout.reconfigure(encoding="utf-8")
+
+    if args.log_file:
+        args.log_file.parent.mkdir(parents=True, exist_ok=True)
+        sys.stdout = sys.stderr = _Tee(sys.stdout, args.log_file)
+        print(f"\n{'=' * 72}\nrun started {datetime.now():%Y-%m-%d %H:%M:%S}\n{'=' * 72}")
     stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
     failures: list[str] = []
 

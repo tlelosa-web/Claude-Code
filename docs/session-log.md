@@ -1763,3 +1763,53 @@ the SOPS AvgMovement migration (still gated on explicit go-ahead).
 **Known risks:** Backups still run only when invoked. Scheduling is the one
 remaining backlog item.
 **Blockers:** None.
+
+## 2026-08-06 — Daily backup scheduled
+
+Closes the backlog item from the previous entry. `scripts/backup-runtime-data.py`
+now runs automatically via Windows Task Scheduler: task `DCOE runtime-data
+backup`, daily at 12:30, as the interactive user at Limited (unelevated) level,
+logging to `~/Backups/backup-runtime.log`.
+
+Registered with PowerShell's `ScheduledTasks` module rather than `schtasks`,
+because the settings that make it reliable aren't reachable from the latter.
+
+**One design constraint drove the rest: it runs only while logged on.** A task
+that runs whether or not the user is signed in requires storing the account
+password alongside it. That is not something to take, so the task is registered
+`LogonType Interactive`. The cost is that a run is missed if the machine is off
+or signed out at 12:30 — mitigated with `-StartWhenAvailable`, so Task Scheduler
+catches up at the next opportunity instead of skipping the day.
+
+Other settings, each for a reason rather than by default:
+`-MultipleInstances IgnoreNew` (a catch-up run must not overlap a manual one),
+`-ExecutionTimeLimit 30m` (the real run takes seconds — anything near the cap
+means something is wrong, and it should fail rather than hang),
+`-AllowStartIfOnBatteries` (a ~7 MB copy isn't worth skipping on battery).
+
+**Added `--log-file` to the script for this.** A scheduled task has no console,
+so running it with `--quiet` would have discarded all detail and left nothing to
+diagnose after a failure. Scheduled runs therefore use `--log-file` and *not*
+`--quiet`: full output to the log, nothing to a console that doesn't exist.
+`--quiet` remains for interactive use.
+
+**Verified properly, not just by exit code.** Triggered the task manually:
+`LastTaskResult = 0`, next run 2026-08-07 12:30. Then checked the resulting
+manifest rather than stopping there — 7 databases, every one integrity- and
+row-count-verified, no failures, and the synced tree free of secrets. A zero
+exit code proves the script ran, not that a usable backup exists; those are
+different claims.
+
+**Raised rather than assumed:** nothing alerts on failure. A failed run sets a
+non-zero `LastTaskResult` and writes the reason to the log, but nobody is told,
+so a silent failure looks exactly like success until someone checks. Left as a
+backlog item for a deliberate decision instead of picking a notification
+mechanism unasked.
+
+**Last completed:** Daily backup scheduling (this entry).
+**Next task:** Whichever of the three `docs/todo.md` "Next up" items Tebello
+picks — NamePlateTool test suite, TebelloReborn Playwright auto-submit, or
+the SOPS AvgMovement migration (still gated on explicit go-ahead).
+**Known risks:** Backup failures are silent — logged and reflected in
+`LastTaskResult`, but not surfaced. Backlog item raised.
+**Blockers:** None.

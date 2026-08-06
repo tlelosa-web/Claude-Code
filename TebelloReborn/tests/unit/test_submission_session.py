@@ -71,7 +71,9 @@ class TestGitignoreCoversSessionState:
         git history."""
         entries = {
             line.strip()
-            for line in (PROJECT_ROOT / ".gitignore").read_text(encoding="utf-8").splitlines()
+            for line in (PROJECT_ROOT / ".gitignore")
+            .read_text(encoding="utf-8")
+            .splitlines()
             if line.strip() and not line.strip().startswith("#")
         }
 

@@ -21,6 +21,9 @@ class Settings:
     DB_PATH: str = "career.db"
     OFFLINE_MODE: bool = False
     EXPORTS_DIR: str = "exports"
+    # Playwright storageState for the submission adapter. Gitignored (.session/)
+    # — it holds a live authenticated session, not configuration.
+    SESSION_STATE_PATH: str = ".session/storage_state.json"
     OLLAMA_RATE_LIMIT_PER_MIN: int = 120
     APIFY_RATE_LIMIT_PER_MIN: int = 30
 

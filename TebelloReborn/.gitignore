@@ -15,6 +15,12 @@ __pycache__/
 # Generated PDF exports — data/ itself stays tracked, this is output only
 exports/
 
+# Playwright storageState for the future submission adapter. This is a live
+# authenticated session cookie, not config — committed, it would be a
+# session-hijack credential sitting in git history forever. Guarded by a test
+# (tests/unit/test_submission_session.py) so it can't be trimmed by accident.
+.session/
+
 # NOTE: do NOT add `data/` here. Unlike ai-outreach-agency, this project's
 # data/ directory holds tracked source content (Master CV, profile_seed.json,
 # legacy_reference/) that must stay committed.

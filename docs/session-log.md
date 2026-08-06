@@ -1813,3 +1813,30 @@ the SOPS AvgMovement migration (still gated on explicit go-ahead).
 **Known risks:** Backup failures are silent — logged and reflected in
 `LastTaskResult`, but not surfaced. Backlog item raised.
 **Blockers:** None.
+
+## 2026-08-06 — NamePlateTool test suite parked
+
+Tebello parked the NamePlateTool test-suite item. Removed from "Next up" and
+renumbered the remaining two (TebelloReborn Playwright auto-submit → 1, SOPS
+AvgMovement migration → 2).
+
+**Added a new "Parked" section rather than moving it to "Backlog / ideas".**
+The backlog is explicitly for things Tebello has *not* committed to. This item
+is the opposite: agreed work with a ready spec that already carries a Codex
+second-opinion advisory note. Filing it under backlog would have quietly
+downgraded it to an idea and lost that distinction — and the next `/continue`
+run would have read it that way. The new section states the difference in one
+line so it stays legible later.
+
+Nothing about the item was edited apart from the parked note: the 📍 live-copy
+caveat, the "push to its own GitHub remote, not O-P-C" instruction, and the
+spec link are all preserved so restarting it needs no re-derivation.
+
+**Last completed:** Parking the NamePlateTool item (this entry).
+**Next task:** `docs/todo.md` #1 — TebelloReborn Playwright auto-submit (spec
+ready, but its file paths are guesses needing confirmation against the real
+code first). #2 is the SOPS AvgMovement migration, still gated on explicit
+go-ahead.
+**Known risks:** Backup failures are still silent — logged and reflected in
+`LastTaskResult`, but not surfaced. Backlog item.
+**Blockers:** None.

@@ -42,14 +42,7 @@ flags re-checked 2026-08-03 after the O-P-C consolidation — see note below)
 > won't reach the actual running project and O-P-C will need re-merging
 > afterward to pick it up.
 
-1. [ ] **NamePlateTool: add a real automated test suite** — not urgent;
-      `tests/` is ad-hoc manual-check scripts only. 📍 Build in the live
-      `Desktop/Operations/3. Nameplate & Test Sheet/`, then push (its
-      GitHub remote is the source of truth O-P-C's copy gets re-merged
-      from, not O-P-C directly). Spec (ready, starter scope — confirm
-      before building; now also carries a 2026-08-03 Codex second-opinion
-      advisory note): `docs/specs/2026-07-29-nameplatetool-test-suite.md`.
-2. [ ] **TebelloReborn: build Playwright auto-submit** — decided 2026-08-04
+1. [ ] **TebelloReborn: build Playwright auto-submit** — decided 2026-08-04
       (cloud session): of the three post-MVP options, Playwright auto-submit
       is the only one picked; recruiter/cold-outreach revival and doc-gen
       volume-cap/scheduler are explicitly not committed. Human-approval gate
@@ -60,7 +53,7 @@ flags re-checked 2026-08-03 after the O-P-C consolidation — see note below)
       Spec (ready, scoped to LinkedIn Easy Apply first):
       `docs/specs/2026-08-04-tebelloreborn-playwright-auto-submit.md`.
       Detail: `knowledge/tebelloreborn.md`.
-3. [ ] **SOPS: give the go-ahead to run the AvgMovement migration against
+2. [ ] **SOPS: give the go-ahead to run the AvgMovement migration against
       `instance/sops.db`** — Supplier/Lead-Time + AMU/Min-Max logic ported
       and fully tested (Batch 32/33, commits `fe06eaa`/`112e321`), held for
       Tebello per SOPS's standing schema-change convention. This is the
@@ -73,6 +66,22 @@ flags re-checked 2026-08-03 after the O-P-C consolidation — see note below)
       one. Spec (ready, but gated — do not run without explicit
       in-session go-ahead): `docs/specs/2026-07-29-sops-avgmovement-migration.md`.
       Detail: `2. SOPS/docs/todo.md`, `knowledge/sops.md`.
+
+## Parked (committed work, deliberately deferred)
+
+Distinct from "Backlog / ideas" below: these are real, agreed items with
+research or specs already done. They are not queued for now, and they are not
+abandoned either — no work is lost by leaving them here.
+
+- [ ] **NamePlateTool: add a real automated test suite** — parked 2026-08-06 at
+      Tebello's direction, no reason given and none needed; it was never urgent
+      (`tests/` is ad-hoc manual-check scripts only, and the tool works).
+      Everything needed to restart is already in place: 📍 build in the live
+      `Desktop/Operations/3. Nameplate & Test Sheet/`, then push to its own
+      GitHub remote — that remote, not O-P-C, is the source of truth O-P-C's
+      copy gets re-merged from. Spec (ready, starter scope — confirm before
+      building; also carries a 2026-08-03 Codex second-opinion advisory note):
+      `docs/specs/2026-07-29-nameplatetool-test-suite.md`.
 
 ## Backlog / ideas (not committed)
 

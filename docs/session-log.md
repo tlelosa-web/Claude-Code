@@ -1563,3 +1563,50 @@ the SOPS AvgMovement migration (still gated on explicit go-ahead).
 **Known risks:** `Desktop/Pappa T` has no remote; commit `897610e` exists
 only on this disk until an O-P-C re-merge picks it up.
 **Blockers:** None.
+
+## 2026-08-06 — Pappa T vault given a private remote
+
+Closes the last open risk from the audit entry above. `Desktop/Pappa T` now
+pushes to **`tlelosa-web/pappa-t`** — private, default branch `main`, 215
+commits (~21 MB), including `897610e` from the stale-clone removal, which
+until now existed only on this disk. Branch renamed `master` → `main` so it
+matches every other repo; nothing else referenced this repo, so the rename
+broke nothing.
+
+**Audited before creating anything, because pushing 214 commits publishes
+whatever the history holds — not just the current tree.** Two separate
+concerns, deliberately kept apart:
+
+- **Secrets — clean, and checked properly.** Only `.env.example` templates
+  are tracked; no real `.env`, `credentials.json`, or `.db` files. Verified
+  against the *full history* rather than the working tree, since a file
+  deleted today still ships in the pack. A content-level grep for key shapes
+  (`sk-`, `ghp_`, `AKIA`, `AIza`, PEM headers) found nothing. `.gitignore`
+  had covered `.env`/`*.env` from the start, which is why the live secrets
+  the vault genuinely holds never entered history at all.
+- **Personal data — present, and the reason visibility wasn't a judgment
+  call.** The repo tracks Tebello's CVs (`.pdf`/`.docx`/`.md`), a
+  job-applications-and-cold-emails file, a job action tracker, and the
+  `01_Strategic_Architecture` / `02_Financial_Strategy` /
+  `04_Professional_Brand` folders. Private is the only defensible setting
+  here, so it wasn't offered as a choice — only the repo name and the branch
+  rename were put to Tebello.
+
+Verified after pushing: `visibility: PRIVATE`, `defaultBranchRef: main`,
+`897610e` present on `origin/main`.
+
+**Worth being explicit about what this does not do:** it backs up the *repo*,
+not the gitignored live runtime state (`career.db`, `outreach.db`,
+`credentials.json`, real `.env` files). Those are exactly the files that made
+the O-P-C consolidation keep the Desktop folders in the first place, and they
+remain single-disk by design. A remote is not a backup for them.
+
+**Last completed:** Pappa T vault remote (this entry).
+**Next task:** Whichever of the three `docs/todo.md` "Next up" items Tebello
+picks — NamePlateTool test suite, TebelloReborn Playwright auto-submit, or
+the SOPS AvgMovement migration (still gated on explicit go-ahead).
+**Known risks:** None outstanding. The earlier "Pappa T has no remote /
+`897610e` is disk-only" risk is closed by this entry. Gitignored live
+runtime data across both vaults remains unbacked-up by design, not tracked
+as a defect.
+**Blockers:** None.

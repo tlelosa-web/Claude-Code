@@ -88,6 +88,18 @@ flags re-checked 2026-08-03 after the O-P-C consolidation — see note below)
 
 ## Done
 
+- [x] **2026-08-06** — Gave the Pappa T vault a remote: private
+      `tlelosa-web/pappa-t`, branch renamed `master` → `main` to match every
+      other repo, all 215 commits pushed (including `897610e` from the clone
+      removal below). Closes the "no remote at all" risk. Audited before
+      pushing — the vault tracks real personal material (CVs, cold-email and
+      job-tracker files, strategy/financial folders), so private is the only
+      correct visibility, not a preference; secrets check was clean across
+      the **full history**, not just the current tree, with only `.env.example`
+      templates tracked. Note this backs up the *repo*, not the gitignored
+      live runtime data (`career.db`, `outreach.db`, `credentials.json`, real
+      `.env` files), which stays single-disk by design. See
+      `knowledge/pappa-t.md`.
 - [x] **2026-08-06** — Full-system cleanliness audit, then removed the stale
       duplicate hub clone. Verified every repo clean and synced (hub,
       marketplace, `2. SOPS`, `3. Nameplate`, Pappa T vault). Audit found

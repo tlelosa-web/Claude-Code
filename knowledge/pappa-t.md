@@ -1,3 +1,39 @@
+## 2026-08-06 — Pappa T vault given a private remote
+**Source:** session (this machine, `TshepangLelosa`)
+**Status:** active
+
+`Desktop/Pappa T` now pushes to **`tlelosa-web/pappa-t`** (private, default
+branch `main`, 215 commits, ~21 MB). Branch renamed `master` → `main` to match
+every other repo. This closes the "no remote at all" gap noted in the entry
+below — new commits there are no longer single-disk-only.
+
+**Pre-push audit, worth repeating before publishing any vault:** the repo
+tracks 500 files including genuinely personal material — CVs (`.pdf`/`.docx`/
+`.md`), a job-applications-and-cold-emails file, a job action tracker, and the
+`01_Strategic_Architecture` / `02_Financial_Strategy` / `04_Professional_Brand`
+folders. **Private is the only correct visibility here**, not a preference.
+
+Secrets check came back clean, and it's worth recording *why* rather than just
+that it passed:
+
+- Only `.env.example` templates are tracked (`MIMS App/.env.local.example`,
+  `TebelloReborn/.env.example`, `ai-outreach-agency/.env.example`) — no real
+  `.env`, no `credentials.json`, no `.db` files.
+- Checked the **full history**, not just the current tree — a file deleted from
+  the working copy still ships in the pack. Nothing sensitive was ever added.
+- Content-level grep for key shapes (`sk-`, `ghp_`, `AKIA`, `AIza`, PEM private
+  key headers) found nothing.
+- `.gitignore` already covered `.env`, `.env.local`, `.env.*.local`, `*.env`,
+  which is why the live secrets the vault does hold never entered history.
+
+**Live runtime data still isn't backed up by this.** The gitignored files that
+made the O-P-C consolidation keep these Desktop folders in the first place —
+`career.db`, `outreach.db`, `credentials.json`, real `.env` files — remain
+single-disk by design. A remote for the repo is not a backup for those.
+
+`Tenders/4_Scripts/tenders-sa` stays a gitlink to the external
+`alfa-rsa/tenders-sa` repo; unaffected.
+
 ## 2026-08-06 — Stale duplicate hub clone removed from the Pappa T vault
 **Source:** session (this machine, `TshepangLelosa`) — full-system cleanliness audit
 **Status:** active

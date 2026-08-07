@@ -32,13 +32,17 @@ SUBMIT_NOT_BUILT_DETAIL = (
 )
 
 
-def _is_indeed_host(host: str) -> bool:
+def is_indeed_host(host: str) -> bool:
     """Exact apex or a real subdomain of it — never a suffix match.
 
     `"notindeed.com".endswith("indeed.com")` is `True`, and so is
     `"indeed.com.evil.example".startswith("indeed.com")`. A1's sketch uses the
     bare `endswith`; `browser.py._is_google_block_page` already refuses that
     shortcut for the same reason, and this follows it.
+
+    Public because `tools/indeed_login_setup.py` needs the same judgment about a
+    cookie's domain, and writing it twice is how one copy keeps the bug — which
+    is exactly what happened on the first attempt.
     """
     return host == _INDEED_APEX or host.endswith("." + _INDEED_APEX)
 
@@ -69,7 +73,7 @@ class IndeedAdapter:
             return False
 
         host = (parts.hostname or "").lower()
-        return _is_indeed_host(host) and parts.path.startswith(_JOB_PATH_PREFIX)
+        return is_indeed_host(host) and parts.path.startswith(_JOB_PATH_PREFIX)
 
     def inspect_apply_flow(
         self, vacancy: Vacancy, session_state_path: Path

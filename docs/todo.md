@@ -9,23 +9,6 @@ Per DCOE: update after every completed task; one task = one commit.
 
 ## In progress
 
-- [ ] ⚠️ **Marketplace clone is on a feature branch, not `main`** — leftover from
-      the PR #14 work below. The clone `/continue` Step 1.5 actually reads,
-      `~/.claude/plugins/marketplaces/tlelosa-claude-config`, is still on
-      `hub-template-continue-reconcile` and is now 1 behind `origin/main`:
-
-      ```
-      git -C ~/.claude/plugins/marketplaces/tlelosa-claude-config checkout main
-      git -C ~/.claude/plugins/marketplaces/tlelosa-claude-config pull origin main
-      ```
-
-      **Why this stayed open after being reported fixed:** there are *two* clones
-      of this repo on this machine, and the fix was applied to the wrong one.
-      `~/Downloads/tlelosa-claude-config` (a stray clone, already noted in
-      `knowledge/pappa-t.md`) is on `main` and always was; the marketplace clone
-      under `~/.claude/plugins/` is the one that governs. Always path-qualify with
-      `git -C` when touching this repo.
-
 - [ ] **O-P-C machine consolidation** — Operations and Pappa T subtree-
       merged into this repo (`Pappa T/`, `Operations/`, both with full
       history preserved for their git sub-repos). Old `Claude-Code` Desktop
@@ -203,6 +186,20 @@ abandoned either — no work is lost by leaving them here.
       running and verified — but worth a deliberate answer rather than drift.
 
 ## Done
+
+- [x] **2026-08-08** — Marketplace clone moved back onto `main`. The clone
+      `/continue` Step 1.5 actually reads,
+      `~/.claude/plugins/marketplaces/tlelosa-claude-config`, was left on
+      `hub-template-continue-reconcile` after the PR #14 work; checked out `main`
+      and fast-forwarded `9f85d40..5660e1d` (2 commits), which is PR #14's own
+      merge landing in the clone — `hub-template/continue.md` and
+      `hub-template/HUB-CHECKLIST.md`.
+      **Why this stayed open after being reported fixed once:** there are *two*
+      clones of this repo on this machine, and that fix was applied to the wrong
+      one. `~/Downloads/tlelosa-claude-config` (a stray clone, already noted in
+      `knowledge/pappa-t.md`) is on `main` and always was; the marketplace clone
+      under `~/.claude/plugins/` is the one that governs. Always path-qualify with
+      `git -C` when touching this repo.
 
 - [x] **2026-08-08** — Folded this hub's `/continue` improvements up into
       `hub-template/` per ADR-008 — **merged** as PR #14

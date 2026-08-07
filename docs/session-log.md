@@ -2564,3 +2564,31 @@ Step 1.5 will report a stale/incorrect shared-core status until it's checked out
 failures remain silent (backlog).
 **Blockers:** None. PR #14 is merged; the only outstanding action is the clone checkout,
 which was denied to this session by the permission classifier.
+
+## 2026-08-08 — Marketplace clone restored to `main`
+
+Ran the one command the previous session was blocked on, path-qualified with `git -C` per the
+rule that session derived:
+
+```
+git -C ~/.claude/plugins/marketplaces/tlelosa-claude-config checkout main
+git -C ~/.claude/plugins/marketplaces/tlelosa-claude-config pull origin main
+```
+
+The clone was on `hub-template-continue-reconcile`; checked out `main` and fast-forwarded
+`9f85d40..5660e1d` (2 commits) — PR #14's own merge landing in the clone, touching
+`hub-template/continue.md` and `hub-template/HUB-CHECKLIST.md`. `/continue` Step 1.5 now reads
+the correct shared-core state.
+
+Moved the ⚠️ item from the top of `docs/todo.md` to Done, keeping the two-clones explanation
+with it — the useful part of that item is not the command but *why* it was reported fixed
+once while still broken.
+
+**Last completed:** Marketplace clone checked out to `main` and fast-forwarded to `5660e1d`
+(this entry)
+**Next task:** Queue is unchanged and unblocked: Indeed adapter **Phase E**, 📍 live
+`Desktop/Pappa T/TebelloReborn/`, gated on Tebello being present to sign in; and
+`docs/todo.md` #2, the SOPS AvgMovement migration, gated on an explicit in-session go-ahead.
+**Known risks:** The Step 1.5 staleness risk from the last entry is cleared. Backup failures
+remain silent (backlog).
+**Blockers:** None.

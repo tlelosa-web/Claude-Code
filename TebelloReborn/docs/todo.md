@@ -1,10 +1,11 @@
 # Task Queue — TebelloReborn (Career Engine)
 
-> Updated: 2026-08-07 (**ADR-004 built** — the schema migration ledger, Phase 18 steps 107–117.
-> All five modules now share one migration runner; `PRAGMA user_version` is retired as a gate and
-> CLAUDE.md Hard Rule 6 is rewritten. **Phase B of the Indeed adapter is unblocked.** Earlier the
-> same day: Indeed site adapter Phase A built, steps 103–104, see Phase 17; Phases B–H remain.
-> Stage 6 submission core built 2026-08-06, Phase 16 steps 81–102.)
+> Updated: 2026-08-07 (**Indeed adapter Phase B built** — Phase 19, steps 118–122: the
+> `submission_preps`/`screening_questions` tables, the `pending_review` outcome, the widened
+> `submissions.outcome` CHECK with its migration and drift guard, and `submission_prep_ready()`.
+> Offline throughout; **Phase C is next**. Earlier the same day: ADR-004's schema migration ledger,
+> Phase 18 steps 107–117; Indeed adapter Phase A, steps 103–104, see Phase 17. Stage 6 submission
+> core built 2026-08-06, Phase 16 steps 81–102.)
 
 ---
 
@@ -334,6 +335,54 @@ fold-in)`.
 > wrapped. `PRAGMA defer_foreign_keys` is settable mid-transaction and is what a rebuild must use.
 > Phase B should follow `TestPhaseBShapedRebuild`'s shape rather than the SQLite docs verbatim.
 
+### Phase 19 — Indeed submit adapter, **Phase B** (see `docs/specs/indeed-submit-adapter.md`
+§Amendment A2/A3/A4/A12 — built 2026-08-07)
+
+Screening-question state, offline throughout. Nothing on the wire, no `playwright` dependency, the
+adapter registry still empty.
+
+- [x] 118. [RED] `tests/unit/test_submission_schema.py` (`6e457a6`) — `PrepStatus` (7 states),
+      `FieldType` (with `radio`), `QuestionDecision`, `Sensitivity`, `SubmissionPrep`,
+      `ScreeningQuestion`, `PrepReadiness`, `SubmissionOutcome.PENDING_REVIEW`, plus a test pinning
+      `prep_failed` as never-added (A3 resolved it by deletion, not definition)
+- [x] 119. [GREEN] `src/submission/schema.py` (`adc3429`)
+- [x] 120. [RED] `tests/unit/test_submission_db.py` (`f80637c`) — both tables, CHECK constraints,
+      per-connection FK enforcement, `prep_id` scoping, one test per row of A2's gate table, and
+      three tests carrying the A4 trap. `test_records_nothing_in_the_migration_ledger` converted to
+      `test_records_its_own_version_1_and_disturbs_no_other_module` — Phase B ends its premise
+- [x] 121. [GREEN] `src/submission/db.py` + `src/submission/migrations.py` (`ad04b4a`)
+- [x] 122. Docs closeout — `docs/architecture.md` (Stage 6 screening-question state + two new
+      Schema Migrations bullets), `CLAUDE.md` (Hard Rule 1, Stage 6, directory structure), this
+      file, `docs/session-log.md`
+
+**Result:** 456 tests passing (was 399), zero regressions. Coverage on the new code: `schema.py`
+100%, `db.py` 99%, `migrations.py` 95%.
+
+> **Deviation from the spec, deliberate: Phase B ships a real migration, not only the DDL edit and
+> the drift guard.** A4's resolution was two-part — edit the inlined `CREATE TABLE` string (valid
+> only while `submissions` doesn't exist, which it verified is still true of the live database) and
+> add a guard that refuses loudly otherwise. Written that way, a database where `submit` had already
+> run once would fail at `init_db()` with no automated remedy. ADR-004 landed between the spec and
+> this build and makes the remedy cheap: `src/submission/migrations.py` version 1 rebuilds the table,
+> following `TestPhaseBShapedRebuild` rather than SQLite's documented procedure, since
+> `PRAGMA foreign_keys` is a no-op inside the runner's transaction and `defer_foreign_keys` is the
+> one settable mid-transaction. The guard stays, now as a genuine last-resort invariant for the cases
+> a migration cannot reach — a restored backup, a hand-edited schema, a ledger row without the DDL
+> change it claims. A4's own closing note ("the fix is SQLite's standard table rebuild … inside a
+> migration") is exactly this, brought forward from *if the guard fires* to *before it can*. Its
+> "globally-unique `user_version ≥ 5`" wording is superseded by ADR-004 — version 1, per-module.
+>
+> **The migration self-guards, which a callable has to do for itself.** The runner's
+> `_already_satisfied` shortcut is scoped to `ADD COLUMN` strings and never to a callable, so
+> `_widen_outcome_check()` reads `sqlite_master` and returns early when the baseline already produced
+> the widened shape. Without that, every fresh database would rebuild a table it had just correctly
+> created.
+>
+> **Verified against a copy of the live `career.db`, never the real file** (sqlite3 backup API, not a
+> file copy): 10 vacancies, 10 approvals, 43 `generation_log` rows and the profile all intact,
+> `integrity_check = ok`, `user_version` still frozen at 4, the three tables present with the widened
+> CHECK, and all 6 approved vacancies correctly gating to `pending_review` with "never prepped".
+
 ---
 
 ---
@@ -580,8 +629,15 @@ fold-in)`.
       2. **The shared-`user_version` fix covers `src/profile/` only** — see the new Open Item
          above. Worth settling before Phase B, which is the next thing that adds a migration.
 
-      Next: **Phase B** (`submission_preps` + `screening_questions` tables, the
-      `submissions.outcome` CHECK change, and the DDL-drift guard — A2/A3/A4/A12). Offline.
+      **Phase B is built — 2026-08-07, see Phase 19 in the Build Queue above** (`6e457a6`,
+      `adc3429`, `f80637c`, `ad04b4a`). Both tables exist, `pending_review` is a real outcome, and
+      `submission_prep_ready()` implements A2's gate table in full. The A4 trap is closed by a real
+      migration rather than only a guard — see the deviation note in Phase 19.
+
+      Next: **Phase C** (`pending_review` wired into `pipeline.py`'s pre-check, `eligibility.py`
+      extension, and the `--all` auto-submit refusal — A2/A3/A15). Offline. Everything it needs
+      from the database layer now exists; it consumes `submission_prep_ready()` rather than adding
+      any new state.
 - [ ] Phase 7 (post-MVP numbering): tracking dashboard (applications, match-score distribution, response rate).
 - [ ] Decide whether recruiter cold-outreach (in `data/legacy_reference/`, not part of the original 7-phase plan) gets revived as a later phase.
 - [ ] Volume-cap / scheduler layer for document generation (ADR-003 §6, open judgment call #1) — only if Tebello confirms a controlled-batch need; would need its own spec + ADR, and likely a `PRAGMA user_version` migration via the `src/doc_gen/migrations.py` stub (step 34).

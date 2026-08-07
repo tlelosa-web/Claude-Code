@@ -91,7 +91,14 @@ Responsibilities:
 - `session.py` resolves the Playwright `storageState` path (`.session/storage_state.json`, gitignored — it is a live authenticated session, not config). It imports nothing from Playwright, which is what keeps this stage offline-testable with no browser installed.
 - Adapters never touch the database and never transition status. That is what makes it structurally impossible for a future adapter to route around the approval gate.
 
-Not built: the Playwright site adapter itself, the `playwright` dependency, and any real-site smoke test. Those are a separate task, gated on the platform question in `docs/specs/submission-core.md` §Open Items.
+**Screening-question state (Phase B, 2026-08-07 — `docs/specs/indeed-submit-adapter.md` §Amendment A2/A3/A12).** Indeed's apply flow asks per-posting screening questions that are not knowable until a browser has loaded that specific posting, so filling them cannot happen inside one synchronous `submit()` call without either skipping human review or making `submit()` block on a prompt. Two tables carry the state between the three commands that will handle it (`prep-submission` → `review-questions` → `submit`):
+
+- `submission_preps` — append-only, one row per `prep-submission` run, with a seven-value `status`. Prep state is *recorded*, never inferred: counting `screening_questions` rows alone cannot tell "prep never ran" from "prepped, and this posting genuinely has no questions", and only one of those may proceed. The absence of any prep row is the one state that genuinely is an absence.
+- `screening_questions` — one row per extracted question, scoped by `prep_id` so a re-prep's set never inherits a stale set's decisions. `decision` starts `pending` and only a human moves it. `sensitivity` marks the classes that are never LLM-drafted at all (compensation, work authorization, demographic) — a draft anchors the answer.
+- `db.submission_prep_ready()` returns the whole gate decision (prep state *and* question decisions), not just a question tally, as a `PrepReadiness`. `pipeline.py` consumes it in Phase C.
+- `submissions.outcome` gained `pending_review`: an adapter exists and the posting is native, but prep hasn't run or its questions aren't reviewed. Deliberately distinct from `not_supported` — "one command away" is not "no automated path exists", and conflating them would hide real progress from the operator and from any Stage 7 reader counting rows.
+
+Not built: the Playwright site adapter itself, the `playwright` dependency, and any real-site smoke test. Those are Phases D–H of `docs/specs/indeed-submit-adapter.md`.
 
 ---
 
@@ -216,6 +223,19 @@ src/<module>/migrations.py     MIGRATIONS = [(version, sql | callable), ...]
   recorded.** This is what lets a pre-ledger database be adopted with no
   special code path: on the live `career.db`, `vacancy_search` 1–4
   skip-and-record while `profile` 5–6 genuinely apply.
+- **A rebuild migration self-guards.** `(submission, 1)` — the first table
+  rebuild this project has written — checks the stored DDL and returns early
+  when the baseline `CREATE TABLE` already produced the widened shape. A
+  callable gets no `_already_satisfied` shortcut from the runner, so a rebuild
+  that would run against a fresh database has to decline on its own.
+- **A module whose baseline and migrations can diverge should assert it.**
+  `submission/db.py` reads `sqlite_master` after the migration and raises
+  `SubmissionSchemaDriftError` if the stored `submissions.outcome` CHECK
+  doesn't accept every `SubmissionOutcome`. `CREATE TABLE IF NOT EXISTS` is a
+  no-op against an existing table, so a DDL edit alone silently changes nothing
+  on a database that already has the table — the same class of trap the shared
+  counter was, in a different disguise. Failing at init with a named error
+  beats failing at insert with a CHECK violation.
 
 ## Relationship to `ai-outreach-agency`
 

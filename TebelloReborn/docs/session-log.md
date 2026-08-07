@@ -7,6 +7,50 @@
 
 ---
 
+## 2026-08-07 (later) — Indeed adapter Phase B: screening-question state
+
+Picked up the first thing ADR-004 unblocked, the same day it landed. Phase B of
+`docs/specs/indeed-submit-adapter.md`: `submission_preps` and `screening_questions`, the
+`pending_review` outcome, the widened `submissions.outcome` CHECK, and `submission_prep_ready()`.
+Five steps, four commits, offline throughout — nothing on the wire, no `playwright` dependency, the
+adapter registry still empty. **456 tests passing, was 399, zero regressions.**
+
+**The design point worth keeping.** `all_questions_reviewed()` — the name the spec started with —
+could not have worked, and the amendment's A2 is why: counting `screening_questions` rows cannot
+distinguish "prep never ran" from "prepped, and this posting genuinely has no questions". Both are
+zero rows and exactly one of them is submittable. Prep state is now *recorded* in its own
+append-only table, and the absence of a prep row is the one state that genuinely is an absence.
+`submission_prep_ready()` returns the whole gate decision as a `PrepReadiness`, including which
+outcome `pipeline.py` should record and which command to tell the operator to run.
+
+**Deviated from the spec on one point, deliberately.** A4 resolved the `submissions.outcome` CHECK
+as a DDL edit plus a guard that refuses loudly — correct when it was written, because the live
+database has no `submissions` table yet and `CREATE TABLE IF NOT EXISTS` would therefore produce the
+right shape. But on a database where `submit` had run once, that combination fails at `init_db()`
+with no automated remedy. ADR-004 landed in between and makes the remedy cheap, so Phase B ships
+`src/submission/migrations.py` version 1 — the first table rebuild this project has written, and the
+first consumer of the callable payload the ADR's amendment added for exactly this case. A4's own
+closing note already prescribed this rebuild *if the guard fires*; the only change is doing it before
+it can. Its "globally-unique `user_version ≥ 5`" wording is superseded — version 1, per-module.
+
+**One thing the rebuild had to learn on its own.** The runner's `_already_satisfied` shortcut is
+scoped to `ADD COLUMN` strings and never to a callable, which is right — no other migration form has
+a general "already done?" predicate. The consequence is that a rebuild running against a fresh
+database, where the baseline `CREATE TABLE` has already produced the widened shape, has to read
+`sqlite_master` and decline for itself. Without that early return every new install would rebuild a
+table it had just correctly created.
+
+**Verified against a copy of the live `career.db`, never the real file** (sqlite3 backup API, not a
+file copy — a raw copy of a live WAL-mode database can capture a torn state): 10 vacancies, 10
+approvals, 43 `generation_log` rows and the profile intact, `integrity_check = ok`, `user_version`
+still frozen at 4, three tables created with the widened CHECK, and all 6 approved vacancies gating
+to `pending_review` with "never prepped" — which is the correct answer, since none has been prepped.
+
+Next is **Phase C**: wiring `pending_review` and the prep-state gate into `pipeline.py`, plus the
+`--all` auto-submit refusal. Offline, and it adds no new state — it consumes what Phase B built.
+
+---
+
 2026-08-07 codex-review docs/decisions/ADR-004-schema-migration-ledger.md: ran
 
 ## 2026-08-07 — ADR-004 accepted, Codex-reviewed, and built: the schema migration ledger

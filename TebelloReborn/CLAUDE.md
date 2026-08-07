@@ -161,6 +161,14 @@ Design modules so offline stages never import or depend on network-requiring cod
 
 Stage 6's **platform-agnostic core is built** (2026-08-06, `docs/specs/submission-core.md`): status vocabulary, the `submissions` attempt log, session-state path handling, capability-based adapter dispatch, and outcome recording. Its **site adapter is not** — the registry ships empty, so every approved application produces a `not_supported` attempt, is reported to the operator with an instruction to submit it by hand, and stays at `approved`. No `playwright` dependency, no browser binary, nothing on the wire.
 
+The Indeed adapter's **Phases A and B are built** (2026-08-07, `docs/specs/indeed-submit-adapter.md`): profile contact details, then the `submission_preps`/`screening_questions` tables, the `pending_review` outcome, and the `submission_prep_ready()` gate. Still offline, still no adapter registered. Phases C–H remain — Indeed's apply flow will add three commands run in sequence:
+
+```
+career-engine prep-submission --vacancy-id <id>   (network, read-only recon — extracts screening questions)
+career-engine review-questions --vacancy-id <id>  (offline — approve/edit each drafted answer)
+career-engine submit --vacancy-id <id>            (network — unchanged command, now question-aware)
+```
+
 Building an adapter is gated on the platform question and the ToS/account-risk acknowledgement in that spec's Open Items.
 
 One phase remains explicitly **deferred, not built**:
@@ -310,8 +318,9 @@ TebelloReborn/
     ├── doc_gen/                  ← runner.py, schema.py, db.py, migrations.py (ADR-003) + cv_generator.py, cover_letter_generator.py, pdf_export.py
     ├── review/                   ← approval gate CLI
     └── submission/               ← Stage 6 core: schema.py, db.py, session.py,
-                                     eligibility.py, pipeline.py, cli.py
-                                     (no migrations.py yet — Phase B adds one at version 1)
+                                     eligibility.py, pipeline.py, cli.py +
+                                     migrations.py (ADR-004, version 1 — the
+                                     submissions.outcome CHECK rebuild, Phase B)
 ```
 
 `.session/` (gitignored) holds the Playwright `storageState` file once a login is saved — a live authenticated session, treated as a credential.
@@ -320,7 +329,7 @@ TebelloReborn/
 
 ## ⚠️ Hard Rules — Never Violate
 
-1. **No application submitted without the human approval gate.** Stage 6 now exists, and enforces this structurally: `run_submission()` acts only on `approved` or `submission_failed`, and `submission_failed` is reachable only from `approved`. Adapters never write to the database and never transition status, so no adapter can route around the gate.
+1. **No application submitted without the human approval gate.** Stage 6 now exists, and enforces this structurally: `run_submission()` acts only on `approved` or `submission_failed`, and `submission_failed` is reachable only from `approved`. Adapters never write to the database and never transition status, so no adapter can route around the gate. **This extends to every piece of generated text, not just the CV and cover letter** — a screening question's answer is content an employer reads, so `screening_questions.decision` starts `pending`, only `review-questions` moves it, and `submission_prep_ready()` refuses to let a vacancy through while any answer is `pending` or `rejected`.
 2. **No code without a plan** for any task touching > 2 files.
 3. **One task = one commit** — atomic, traceable, revertable.
 4. **Tests must pass** before any commit.

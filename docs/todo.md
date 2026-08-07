@@ -47,7 +47,7 @@ flags re-checked 2026-08-03 after the O-P-C consolidation — see note below)
       `Desktop/Pappa T/TebelloReborn/`.
 
       The platform-agnostic submission core is done and committed (Phase 16,
-      steps 81–102, 16 commits, 249 → 344 tests, 100% coverage on
+      steps 81–102, 23 commits, 249 → 344 tests, 100% coverage on
       `src/submission/`). Adding an adapter is one
       `ADAPTERS["<platform>"] = ...` entry against the `SubmitAdapter` Protocol —
       no change to `pipeline.py`. Project spec:
@@ -129,7 +129,7 @@ abandoned either — no work is lost by leaving them here.
 ## Done
 
 - [x] **2026-08-06** — TebelloReborn: built the Stage 6 submission core
-      (platform-agnostic, no Playwright). 16 commits in the Pappa T vault,
+      (platform-agnostic, no Playwright). 23 commits in the Pappa T vault,
       **249 → 344 tests, zero regressions, 100% coverage on `src/submission/`**,
       and no new runtime dependency. The queue item above is now the *adapter*,
       which is blocked on Tebello's two decisions rather than on code.

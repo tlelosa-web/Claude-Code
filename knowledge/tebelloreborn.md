@@ -3,7 +3,7 @@
 **Status:** active
 
 The platform-agnostic half of Stage 6 is built and committed in the Pappa T vault
-(16 commits, `10b9e3f` latest). **249 → 344 tests, zero regressions, 100%
+(23 commits, pushed, `10b9e3f` latest). **249 → 344 tests, zero regressions, 100%
 coverage on `src/submission/`.** No `playwright` dependency, no browser binary,
 nothing on the wire. Project spec: `TebelloReborn/docs/specs/submission-core.md`.
 

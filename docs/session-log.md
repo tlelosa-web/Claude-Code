@@ -1901,7 +1901,7 @@ core.
 
 Completed `docs/todo.md` #1's build half. **249 → 344 tests, zero regressions,
 100% coverage on `src/submission/`**, no new runtime dependency, nothing on the
-wire. 16 commits in the Pappa T vault (`10b9e3f` latest). Project spec:
+wire. 23 commits in the Pappa T vault (`10b9e3f` latest). Project spec:
 `TebelloReborn/docs/specs/submission-core.md`.
 
 Followed that project's own `CLAUDE.md` under hub-and-spoke: ported the hub spec
@@ -1951,8 +1951,12 @@ pre-existing errors. I ran it repo-wide once early on, caught the collateral in
 files actually changed. Logged as a Known Issue — a repo-wide reformat is its own
 decision and its own commit, not something to smuggle inside a feature build.
 
-**Not pushed.** All 16 commits are local on the Pappa T vault's `main`; pushing
-is Tebello's call.
+**Pushed** on Tebello's go-ahead at the end of the session: Pappa T vault
+`897610e..10b9e3f` (23 commits) to `tlelosa-web/pappa-t` `main`, and this hub
+`95e02f5..562b884` to `tlelosa-web/Claude-Code` `main`. Both repos 0 ahead /
+0 behind. Scanned the outgoing vault diff for secret-shaped assignments first —
+clean; no `storageState` file exists yet, and `.session/` was ignored before any
+code could write one.
 
 **Last completed:** TebelloReborn Stage 6 submission core (this entry)
 **Next task:** `docs/todo.md` #1 is now the *site adapter*, blocked on two

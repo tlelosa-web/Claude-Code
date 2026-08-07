@@ -62,7 +62,9 @@ class TestNorm:
         # "question " for a form that renders "Question *" and "question" for one
         # that renders "Question" — two fingerprints for one question, and the
         # required-marker is exactly the styling A6 set out to ignore.
-        assert norm("Are you proficient in AutoCAD? *") == "are you proficient in autocad?"
+        assert (
+            norm("Are you proficient in AutoCAD? *") == "are you proficient in autocad?"
+        )
 
     def test_internal_punctuation_is_preserved(self):
         # Only *trailing* markers are styling. A question mark mid-text, or a
@@ -93,23 +95,33 @@ class TestFingerprintIdentity:
 
     def test_restyled_label_is_the_same_question(self):
         plain = compute_fingerprint("Expected salary", FieldType.TEXT, True, None)
-        styled = compute_fingerprint("  Expected   Salary *  ", FieldType.TEXT, True, None)
+        styled = compute_fingerprint(
+            "  Expected   Salary *  ", FieldType.TEXT, True, None
+        )
         assert plain == styled
 
     def test_reordered_options_are_the_same_question(self):
         # A6 sorts option labels deliberately: a reordered <select> is the same
         # question, and aborting on it would make every A/B-tested form unusable.
         a = compute_fingerprint(
-            "Notice period", FieldType.SELECT, True, ["Immediate", "1 month", "2 months"]
+            "Notice period",
+            FieldType.SELECT,
+            True,
+            ["Immediate", "1 month", "2 months"],
         )
         b = compute_fingerprint(
-            "Notice period", FieldType.SELECT, True, ["2 months", "1 month", "Immediate"]
+            "Notice period",
+            FieldType.SELECT,
+            True,
+            ["2 months", "1 month", "Immediate"],
         )
         assert a == b
 
     def test_option_labels_are_normalized_too(self):
         a = compute_fingerprint("Notice period", FieldType.SELECT, True, ["1 Month"])
-        b = compute_fingerprint("Notice period", FieldType.SELECT, True, ["  1   month "])
+        b = compute_fingerprint(
+            "Notice period", FieldType.SELECT, True, ["  1   month "]
+        )
         assert a == b
 
 
@@ -126,7 +138,9 @@ class TestFingerprintDrift:
         # text. If the employer swaps it to a radio, the answer Tebello approved
         # may no longer be fillable at all.
         a = compute_fingerprint("Proficient in AutoCAD?", FieldType.TEXT, True, None)
-        b = compute_fingerprint("Proficient in AutoCAD?", FieldType.TEXTAREA, True, None)
+        b = compute_fingerprint(
+            "Proficient in AutoCAD?", FieldType.TEXTAREA, True, None
+        )
         assert a != b
 
     def test_changed_required_flag_changes_it(self):
@@ -241,9 +255,7 @@ class TestSensitivityClassification:
         assert classify_sensitivity(text) == Sensitivity.ORDINARY
 
     def test_classification_is_case_and_spacing_insensitive(self):
-        assert (
-            classify_sensitivity("EXPECTED    SALARY *") == Sensitivity.COMPENSATION
-        )
+        assert classify_sensitivity("EXPECTED    SALARY *") == Sensitivity.COMPENSATION
 
 
 class TestSensitivityFalsePositives:
@@ -264,7 +276,7 @@ class TestSensitivityFalsePositives:
             "How do you package a proposal for a client?",
         ],
     )
-    def test_age_does_not_match_inside_longer_words(self, text):
+    def test_ordinary_operations_vocabulary_is_not_sensitive(self, text):
         assert classify_sensitivity(text) == Sensitivity.ORDINARY
 
     def test_race_does_not_match_traceability(self):

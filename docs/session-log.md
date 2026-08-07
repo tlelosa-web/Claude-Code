@@ -2208,3 +2208,56 @@ explicit in-session go-ahead.
 **Known risks:** None new. Backup failures remain silent (backlog).
 **Blockers:** None on the design — every gate this spec had is now closed. The build is
 gated on Tebello's contact details and the `career.db` backup, both cheap.
+
+## 2026-08-07 — Phase A landed after the hub's last write; queue caught up
+
+**Short entry, covering only what changed after the two entries above** — those
+were written by the concurrent session that did the spec and Codex fold-in work,
+and they are not restated here. This is a second `/session-end` run in the
+session that wrote the "Queue accuracy" entry further up.
+
+**A real staleness gap, found by comparing commit clocks rather than reading
+either file.** The hub's last write (`bb882ec`, 09:00:55) said item #1 "now waits
+only on `email`/`phone`." The vault implemented exactly that at 09:10:28
+(`379a4b2`) and closed out Phase A at 11:00:27 (`b4dd652`). So for two hours the
+hub — and the final session-log entry `/continue` Step 1 reads — described work
+as blocked that was already done. Neither file was wrong when written; both went
+stale because the work continued in a repo that pushes on its own schedule.
+Worth generalising: with a hub and a live sub-project moving at once, "is the
+final entry accurate?" cannot be answered from the entry itself. Compare
+timestamps across both repos.
+
+**State now:** Phase A built (Phase 17, steps 103–104) — `email`/`phone` on
+`CandidateProfile`, migrations 5 and 6 (this project's first ever), real values
+from the Master CV with a drift-guard test, `career.db` backed up beforehand via
+the sqlite3 backup API and verified. Phases B–H not started.
+
+**Phase B is blocked, and on something bigger than it looks.** The shared
+`PRAGMA user_version` fix landed in `src/profile/` only. `vacancy_search/`,
+`doc_gen/` and `review/` still have the counter-only `apply_migrations`, and
+`vacancy_search`'s baseline `CREATE TABLE vacancies` still omits
+`score`/`strengths`/`weaknesses`/`recommendation` — they exist only in migrations
+1–4. That is what made the Phase 17 regression fatal rather than cosmetic, and it
+is unchanged; nothing hits it today only because `profile` no longer advances the
+counter on a fresh database. Phase B adds migrations, so it re-arms the trap.
+That project wants an ADR making schema state the source of truth across all four
+modules first.
+
+**Left deliberately undone:** the 3 vault commits are unpushed and were not pushed
+from here — `/session-end` does not authorise that, and they are another
+session's work. The knowledge entry marked `Status: superseded` by that session
+was left as it stands rather than re-edited; its heading still reads "ToS gate
+still open" but the status line directly beneath corrects it, and churning
+another session's reconciliation adds noise without adding truth.
+
+**Last completed:** Hub queue and session log caught up to Phase A, which landed
+after the hub's last write (this entry)
+**Next task:** Phase B of the Indeed adapter — but it should not start until the
+`user_version` ADR is settled. This hub's own remaining item is unchanged:
+`docs/todo.md` #2, the SOPS AvgMovement migration, still gated on an explicit
+in-session go-ahead.
+**Known risks:** None new. Backup failures remain silent (backlog). The hub and
+the Pappa T vault can drift for hours when both are being written — check commit
+times across repos, not just the final log entry.
+**Blockers:** Phase B is blocked on the shared-`user_version` ADR. 3 unpushed
+commits sit in the Pappa T vault, awaiting Tebello's call.

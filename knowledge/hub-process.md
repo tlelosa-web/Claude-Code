@@ -29,6 +29,36 @@ unacknowledged risk, a required sign-off), state that gate in full in **both**
 files rather than delegating it to the pointer. Everything else compresses to a
 link; a gate should not, because a pointer is easy not to follow.
 
+## 2026-08-07 — "Is the final log entry accurate?" cannot be answered from the entry
+**Source:** session (this machine), second `/session-end` run — hub `bb882ec` vs
+Pappa T vault `379a4b2`/`b4dd652`
+**Status:** active
+
+`/continue` Step 1 reads only the final `docs/session-log.md` entry, and
+`/session-end` Step 3 says to verify that entry's `Last completed:` / `Next task:`
+block is still accurate before leaving it alone. Both steps quietly assume the
+staleness you're checking for is *inside this repo*. It usually isn't.
+
+Real case: the hub's last write at 09:00:55 recorded item #1 as "waits only on
+`email`/`phone`." The Pappa T vault implemented exactly that at 09:10:28 and
+closed out the whole phase at 11:00:27. Nothing in the hub was wrong when written
+and nothing in it looked stale — `git status` was clean, `rev-list
+HEAD..origin/main` was 0, and the entry read as a confident, complete close-out.
+The work had simply continued in a different repo that pushes on its own schedule.
+
+**Check that actually catches it** — compare commit clocks across both repos
+rather than reading either file:
+
+```
+git -C <hub> log -4 --format="%h %ad %s" --date=format:"%H:%M:%S"
+git -C <live-project> log -6 --format="%h %ad %s" --date=format:"%H:%M:%S"
+```
+
+If the project's newest commit is later than the hub's newest commit touching
+that item, the hub entry is stale regardless of how complete it reads. Under the
+O-P-C consolidation this is the normal condition, not an edge case: hub-level docs
+and the live sub-project are separate repos by design.
+
 ## 2026-08-07 — Contention-file discipline needs a re-check immediately before writing
 **Source:** session (this machine)
 **Status:** active

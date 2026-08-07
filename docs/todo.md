@@ -42,21 +42,35 @@ flags re-checked 2026-08-03 after the O-P-C consolidation — see note below)
 > won't reach the actual running project and O-P-C will need re-merging
 > afterward to pick it up.
 
-1. [ ] **TebelloReborn: Indeed site adapter** — **core built 2026-08-06; full spec
-      written, Codex-reviewed, and folded in 2026-08-07. Every design gate is now
-      closed; build not started.** 📍 Live `Desktop/Pappa T/TebelloReborn/`.
+1. [ ] **TebelloReborn: Indeed site adapter** — **core built 2026-08-06; spec
+      written, Codex-reviewed and folded in 2026-08-07; Phase A built the same
+      day. Phases B–H not started.** 📍 Live `Desktop/Pappa T/TebelloReborn/`.
 
-      **Ready to build, starting at the spec's Phase A** —
-      `TebelloReborn/docs/specs/indeed-submit-adapter.md` §Amendment is authoritative
-      (Pappa T vault `3267cb5`). Two things are needed from Tebello first, both in that
-      spec's Open Items — one of which is now done. **`career.db` is backed up**
-      (2026-08-07, `career.pre-migration-5-6-20260807.db`, sqlite3 backup API,
+      **Phase A is done** (Phase 17, steps 103–104 — vault `9d4ee17` RED,
+      `379a4b2` GREEN, closed out in `b4dd652`). `email`/`phone` are on
+      `CandidateProfile` with migrations 5 and 6, real values sourced from
+      `data/Tebello_Lelosa_Master_CV_2026.md` and guarded by a test asserting the
+      seed and the CV never drift. `career.db` was backed up first
+      (`career.pre-migration-5-6-20260807.db`, sqlite3 backup API,
       integrity-checked and row-count-verified) ahead of the project's first-ever
-      migrations (`user_version` 5 and 6), which auto-apply on the next `init_db()`
-      from any command. Still outstanding: **real `email`/`phone` values** for
-      `profile_seed.json`. Worth his confirmation too: the amendment makes
-      `submit --all` refuse auto-submit entirely, so the 6 approved vacancies go out as
-      six deliberate single commands.
+      migrations, which auto-apply on the next `init_db()` from any command.
+      `TebelloReborn/docs/specs/indeed-submit-adapter.md` §Amendment is
+      authoritative for the rest.
+
+      ⚠️ **Phase B is blocked on an architecture decision, per that project's own
+      Open Items:** the shared `PRAGMA user_version` bug was fixed in
+      `src/profile/` **only** and is still armed in `vacancy_search/`, `doc_gen/`
+      and `review/`. `vacancy_search`'s baseline `CREATE TABLE vacancies` still
+      omits `score`/`strengths`/`weaknesses`/`recommendation` — those exist only
+      in migrations 1–4, which is what made the Phase 17 regression fatal rather
+      than cosmetic. Phase B adds migrations, so it re-introduces the bug. That
+      project wants an ADR making schema state the source of truth across all
+      four modules before Phase B starts — not something to settle inline inside
+      a feature build.
+
+      Worth Tebello's confirmation when Phase B lands: the amendment makes
+      `submit --all` refuse auto-submit entirely, so the 6 approved vacancies go
+      out as six deliberate single commands.
 
       **The ToS/account-risk gate flagged above (and by the concurrent session
       that first hit it) is now closed** — Tebello gave an explicit, separate
@@ -93,8 +107,13 @@ flags re-checked 2026-08-03 after the O-P-C consolidation — see note below)
       as a real instance of the risk hub Hard Rule 6 exists for, now observed
       at project level too.
 
-      No code written yet. `career.db`: 6 `approved` Indeed vacancies, all
-      still routing to `not_supported` until an adapter registers.
+      Phase A is profile-schema work only — no adapter exists yet, so `career.db`'s
+      6 `approved` Indeed vacancies all still route to `not_supported` until one
+      registers.
+
+      📍 **3 unpushed commits in the Pappa T vault** as of this writing
+      (`9d4ee17`, `379a4b2`, `b4dd652` — the whole of Phase A, including the two
+      migrations). Not pushed on Tebello's behalf; surfacing only.
 
       Hub spec `docs/specs/2026-08-04-tebelloreborn-playwright-auto-submit.md`
       stays superseded by the project-side specs above — it scoped the build to

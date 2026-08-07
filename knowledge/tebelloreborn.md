@@ -1,3 +1,44 @@
+## 2026-08-07 — Phase A built; the `user_version` fix is scoped to one module and Phase B re-arms it
+**Source:** session (this machine, hub `/session-end`) — read from the Pappa T
+vault's commits and `TebelloReborn/docs/todo.md` Open Items
+**Status:** active
+
+Closes the "Next: Phase A, blocked on…" line in the entry below — both of its
+blockers were cleared and Phase A shipped (Phase 17, steps 103–104; vault
+`9d4ee17` RED, `379a4b2` GREEN, `b4dd652` close-out). `email`/`phone` are on
+`CandidateProfile` behind **migrations 5 and 6**, this project's first ever, with
+real values from `data/Tebello_Lelosa_Master_CV_2026.md` and a test asserting the
+seed and the CV never drift. `career.db` was backed up beforehand
+(`career.pre-migration-5-6-20260807.db`) via the sqlite3 backup API, integrity-
+checked and row-count-verified. Phases B–H are not started.
+
+**The finding worth carrying: fixing the shared-`user_version` trap in one module
+does not disarm it, and the next migration re-arms it.** The fix was deliberately
+scoped to `src/profile/`. `vacancy_search/`, `doc_gen/` and `review/` still carry
+the counter-only `apply_migrations` (`if version > current`, no schema check), so
+any of them can still be skipped by whichever module advanced the counter first.
+
+What makes it fatal rather than cosmetic is a detail that only shows up in the
+baseline: **`vacancy_search`'s `CREATE TABLE vacancies` omits
+`score`/`strengths`/`weaknesses`/`recommendation`** — those columns exist *only*
+in migrations 1–4. So a fresh database whose counter was advanced past them by
+another module gets a `vacancies` table permanently missing four columns the code
+expects. That is the shape of the Phase 17 regression, and it is unchanged.
+Nothing hits it today only because `profile` no longer advances the counter on a
+fresh DB — a coincidence of ordering, not a fix.
+
+**Consequence:** Phase B adds `submission_preps`/`screening_questions` and may
+need a `user_version ≥ 5` migration for the `submissions.outcome` CHECK rebuild,
+so it is exactly the thing that re-introduces the bug. That project wants an ADR
+making schema state the source of truth across all four modules — either a shared
+runner in `src/shared/`, or folding each module's migrations into its own baseline
+and applying the `profile` guard everywhere — before Phase B starts.
+
+**General pattern:** a migration runner keyed on a counter rather than on observed
+schema state is safe only while exactly one module uses it. The bug is latent from
+the moment a second module exists, and the "it works today" reassurance comes from
+call ordering, which is not a property anyone is maintaining on purpose.
+
 ## 2026-08-07 — Indeed adapter: Codex fold-in complete, spec build-ready
 **Source:** session (this machine, hub `/continue`) — read the code and the live
 `career.db` directly; four of the findings below are not in Codex's review at all.

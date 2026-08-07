@@ -61,7 +61,8 @@ flags re-checked 2026-08-03 after the O-P-C consolidation — see note below)
       to Indeed by hand in a visible browser window — that is the one part no
       session can do unattended.
 
-      **State as of vault `ed359f8` (committed, 3 commits NOT yet pushed):** 538
+      **State as of vault `ed359f8` (committed and pushed, verified 2026-08-08
+      `0 ahead / 0 behind`):** 538
       tests passing, zero regressions across every phase (344 → 399 → 456 → 485 →
       538). The adapter registry is still empty, so `career.db`'s 6 `approved`
       Indeed vacancies all route to manual today — verified by running the real

@@ -2562,8 +2562,23 @@ migration, gated on an explicit in-session go-ahead.
 **Known risks:** The marketplace clone is on a feature branch and 1 behind `origin/main`, so
 Step 1.5 will report a stale/incorrect shared-core status until it's checked out. Backup
 failures remain silent (backlog).
-**Blockers:** None. PR #14 is merged; the only outstanding action is the clone checkout,
-which was denied to this session by the permission classifier.
+**Resolved before session close:** Tebello restored the correct clone —
+`~/.claude/plugins/marketplaces/tlelosa-claude-config` is on `main`, `0 ahead / 0 behind`, at
+`5660e1d`, with Step 1.9 present in the installed template. Verified by branch name at the
+path, per the rule the miss produced. The ⚠️ queue item was removed.
+
+**That verification then caught a fourth stale claim, in `docs/todo.md` #1 itself:** "3
+commits NOT yet pushed" in the Pappa T vault. They were pushed at the end of the Phase D
+session — `main...origin/main`, nothing ahead or behind. The claim was true when written and
+went stale minutes later, inside the same file that carries the 📍 flags warning about
+exactly this. Corrected to "committed and pushed, verified 2026-08-08". Worth noting where it
+was found: not by reading the queue, but by running a `status` on the vault for an unrelated
+reason. **Step 1.9's step 4 — "the `status` line is part of the answer" — earned itself on
+the day it was written.**
+
+**Last completed (revised):** `hub-template` fold-up merged (`5660e1d`), the correct
+marketplace clone restored and verified, and `todo.md` #1's unpushed-commits claim corrected
+**Blockers:** None.
 
 ## 2026-08-08 — Marketplace clone restored to `main`
 

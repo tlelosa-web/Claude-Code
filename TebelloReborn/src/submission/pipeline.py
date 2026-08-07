@@ -27,7 +27,7 @@ from src.vacancy_search.schema import Vacancy
 from .db import init_db as init_submission_db, save_attempt, submission_prep_ready
 from .eligibility import get_adapter
 from .schema import SubmissionAttempt, SubmissionMethod, SubmissionOutcome
-from .session import resolve_session_state_path, session_state_available
+from .session import resolve_session_profile_dir, session_state_available
 
 logger = logging.getLogger(__name__)
 
@@ -115,12 +115,12 @@ def _decide(
         return (
             SubmissionMethod.AUTO,
             SubmissionOutcome.FAILED,
-            f"no saved browser session at {resolve_session_state_path()} — "
+            f"no saved browser session at {resolve_session_profile_dir()} — "
             "run the one-time login setup first",
         )
 
     try:
-        succeeded, detail = adapter.submit(vacancy, resolve_session_state_path())
+        succeeded, detail = adapter.submit(vacancy, resolve_session_profile_dir())
     except Exception as exc:  # adapter bugs are data, not a reason to kill a batch
         logger.warning("Submission adapter raised for vacancy %s: %s", vacancy.id, exc)
         return SubmissionMethod.AUTO, SubmissionOutcome.FAILED, f"adapter raised: {exc}"

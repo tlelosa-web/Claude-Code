@@ -30,7 +30,7 @@ from typing import Iterator, Optional, Sequence
 from urllib.parse import urlparse
 
 from src.submission.schema import PrepStatus
-from src.submission.session import resolve_session_state_path
+from src.submission.session import resolve_session_profile_dir
 
 
 class BrowserError(Exception):
@@ -293,7 +293,7 @@ def resolve_log_dir() -> Path:
     Derived rather than given its own env var: two independently-settable paths
     is how one of them ends up outside `.gitignore`'s coverage.
     """
-    return resolve_session_state_path().parent / "logs"
+    return resolve_session_profile_dir().parent / "logs"
 
 
 class StepLog:
@@ -333,19 +333,22 @@ class StepLog:
 # --------------------------------------------------------------------------
 
 
-def require_session_state(session_state_path: Optional[Path] = None) -> Path:
-    """The saved session file, or a `SessionStateMissing` naming the fix.
+def require_session_state(session_profile_dir: Optional[Path] = None) -> Path:
+    """The saved session profile, or a `SessionStateMissing` naming the fix.
 
-    `is_file()` via `session.py`'s own reasoning: a directory at that path is
-    not a session, and letting it through fails later and more confusingly.
+    A profile Chrome has never opened has no `Default/` subdirectory, and is not
+    a session however much it looks like one — same reasoning as `session.py`'s
+    own check, and the same failure it avoids: letting it through fails later,
+    further from the cause, and reads as "your session expired" rather than "you
+    never signed in".
     """
     path = (
-        Path(session_state_path)
-        if session_state_path is not None
-        else resolve_session_state_path()
+        Path(session_profile_dir)
+        if session_profile_dir is not None
+        else resolve_session_profile_dir()
     )
 
-    if not path.is_file():
+    if not (path.is_dir() and (path / "Default").is_dir()):
         raise SessionStateMissing(
             f"no saved Indeed session at {path} — run the one-time login setup "
             f"first (python tools/indeed_login_setup.py)"
@@ -374,7 +377,7 @@ def _load_playwright():
 
 @contextmanager
 def authenticated_page(
-    session_state_path: Optional[Path] = None, headless: bool = True
+    session_profile_dir: Optional[Path] = None, headless: bool = True
 ) -> Iterator[object]:
     """A Playwright page carrying the saved Indeed session.
 
@@ -384,14 +387,28 @@ def authenticated_page(
     and a missing dependency are true on a fresh machine, and "install
     playwright" is the wrong first instruction for someone who has simply never
     run the login setup.
+
+    **`launch_persistent_context`, not `new_context(storage_state=...)`**
+    (2026-08-08). Indeed refuses an automated sign-in, so there is no
+    `storageState` to export — the session is a Chrome profile Tebello signed
+    into with ordinary Chrome, and this reuses it in place. `channel="chrome"`
+    uses his installed Chrome rather than the bundled Chrome for Testing, so the
+    profile is read by the build that wrote it.
+
+    Chrome must not already be running against this profile: it takes an
+    exclusive lock, and a second launch fails rather than sharing it.
     """
-    state_path = require_session_state(session_state_path)
+    profile_dir = require_session_state(session_profile_dir)
     sync_api = _load_playwright()
 
     with sync_api.sync_playwright() as driver:
-        browser = driver.chromium.launch(headless=headless)
+        context = driver.chromium.launch_persistent_context(
+            str(profile_dir), headless=headless, channel="chrome"
+        )
         try:
-            context = browser.new_context(storage_state=str(state_path))
-            yield context.new_page()
+            # A persistent context opens with one page already; reusing it
+            # avoids leaving a blank tab behind in a profile that survives the
+            # run.
+            yield context.pages[0] if context.pages else context.new_page()
         finally:
-            browser.close()
+            context.close()

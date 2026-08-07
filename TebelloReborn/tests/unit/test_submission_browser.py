@@ -331,7 +331,7 @@ class TestStepLog:
 
     def test_logs_live_beside_the_session_credential(self, monkeypatch, tmp_path):
         monkeypatch.setenv(
-            "SESSION_STATE_PATH", str(tmp_path / ".session" / "state.json")
+            "SESSION_STATE_PATH", str(tmp_path / ".session" / "chrome-profile")
         )
 
         assert resolve_log_dir() == tmp_path / ".session" / "logs"
@@ -391,32 +391,54 @@ class TestStepLog:
         assert "vacancy-7" in log.path.name
 
 
+def make_profile(root: Path) -> Path:
+    """A directory shaped like one Chrome has actually opened.
+
+    Chrome writes `Default/` on first run against a user-data-dir, which is the
+    only cheap signal distinguishing a real profile from a directory something
+    created and never used.
+    """
+    (root / "Default").mkdir(parents=True, exist_ok=True)
+    return root
+
+
 class TestSessionStateGuard:
     def test_missing_session_raises_with_the_setup_script_named(self, tmp_path):
-        missing = tmp_path / ".session" / "storage_state.json"
+        missing = tmp_path / ".session" / "chrome-profile"
 
         with pytest.raises(SessionStateMissing, match="indeed_login_setup"):
             require_session_state(missing)
 
-    def test_a_directory_is_not_a_session(self, tmp_path):
+    def test_an_empty_directory_is_not_a_session(self, tmp_path):
+        # The failure this prevents: the login script creates the profile
+        # directory, Chrome never actually runs against it, and every later
+        # command reports "session expired" for something that was never a
+        # session at all.
         directory = tmp_path / ".session"
         directory.mkdir()
 
         with pytest.raises(SessionStateMissing):
             require_session_state(directory)
 
-    def test_an_existing_file_is_returned_unchanged(self, tmp_path):
-        state = tmp_path / "storage_state.json"
-        state.write_text("{}", encoding="utf-8")
+    def test_a_file_is_not_a_session(self, tmp_path):
+        # Catches a stale storage_state.json left over from the pre-2026-08-08
+        # design, which was a file at exactly this kind of path.
+        stale = tmp_path / "storage_state.json"
+        stale.write_text("{}", encoding="utf-8")
 
-        assert require_session_state(state) == state
+        with pytest.raises(SessionStateMissing):
+            require_session_state(stale)
+
+    def test_an_existing_profile_is_returned_unchanged(self, tmp_path):
+        profile = make_profile(tmp_path / "chrome-profile")
+
+        assert require_session_state(profile) == profile
 
     def test_defaults_to_the_resolved_session_path(self, monkeypatch, tmp_path):
-        state = tmp_path / "state.json"
-        state.write_text("{}", encoding="utf-8")
-        monkeypatch.setenv("SESSION_STATE_PATH", str(state))
+        profile = make_profile(tmp_path / "chrome-profile")
+        monkeypatch.setenv("SESSION_STATE_PATH", str(profile))
 
-        assert require_session_state() == state
+        assert require_session_state() == profile
 
     def test_session_errors_are_browser_errors(self):
         assert issubclass(SessionStateMissing, BrowserError)
@@ -437,7 +459,7 @@ class TestPlaywrightIsOptionalUntilPhaseH:
         # ORDERING TEST. Both are true on a fresh machine. "install playwright"
         # is the wrong first instruction for someone who has simply never run
         # the login setup — and it is the harder of the two to act on.
-        monkeypatch.setenv("SESSION_STATE_PATH", str(tmp_path / "absent.json"))
+        monkeypatch.setenv("SESSION_STATE_PATH", str(tmp_path / "absent"))
 
         with pytest.raises(SessionStateMissing):
             with authenticated_page():
@@ -445,10 +467,10 @@ class TestPlaywrightIsOptionalUntilPhaseH:
 
     def test_missing_playwright_names_both_install_steps(self, monkeypatch, tmp_path):
         # Monkeypatched rather than relying on playwright being absent, so this
-        # test still asserts the message once Phase H installs it.
-        state = tmp_path / "state.json"
-        state.write_text("{}", encoding="utf-8")
-        monkeypatch.setenv("SESSION_STATE_PATH", str(state))
+        # test still asserts the message now that Phase E has installed it.
+        monkeypatch.setenv(
+            "SESSION_STATE_PATH", str(make_profile(tmp_path / "chrome-profile"))
+        )
 
         def _refuse(name, *args, **kwargs):
             raise ImportError(f"No module named {name!r}")

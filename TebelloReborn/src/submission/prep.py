@@ -32,7 +32,7 @@ from .eligibility import get_adapter
 from .pipeline import ELIGIBLE_STATUSES, SubmissionNotAllowedError
 from .questions import classify_sensitivity, compute_fingerprint
 from .schema import PrepResult, PrepStatus, ScreeningQuestion, SubmissionPrep
-from .session import resolve_session_state_path, session_state_available
+from .session import resolve_session_profile_dir, session_state_available
 
 logger = logging.getLogger(__name__)
 
@@ -163,11 +163,11 @@ def run_prep(vacancy: Vacancy, *, db_path: Optional[Path] = None) -> SubmissionP
 
     if not session_state_available():
         raise SessionSetupRequiredError(
-            f"no saved browser session at {resolve_session_state_path()} — run "
+            f"no saved browser session at {resolve_session_profile_dir()} — run "
             f"the one-time login setup first (python tools/indeed_login_setup.py)"
         )
 
-    result = _inspect(adapter, current, resolve_session_state_path())
+    result = _inspect(adapter, current, resolve_session_profile_dir())
 
     conn = init_submission_db(db_path)
     try:

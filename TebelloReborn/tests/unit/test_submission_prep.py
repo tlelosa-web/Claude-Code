@@ -12,6 +12,7 @@ to return a `PrepResult`, so every decision made *about* one is testable now,
 and the live half is reduced to producing the object these tests already pin.
 """
 
+import shutil
 import sqlite3
 
 import pytest
@@ -134,12 +135,16 @@ def vacancy(db_path):
 
 @pytest.fixture(autouse=True)
 def saved_session(tmp_path, monkeypatch):
-    """Every test gets a session file unless it explicitly removes it."""
-    state = tmp_path / ".session" / "storage_state.json"
-    state.parent.mkdir(parents=True, exist_ok=True)
-    state.write_text("{}", encoding="utf-8")
-    monkeypatch.setenv("SESSION_STATE_PATH", str(state))
-    return state
+    """Every test gets a saved session unless it explicitly removes it.
+
+    A Chrome profile directory since 2026-08-08, not a storageState file —
+    `Default/` is what Chrome writes on first run, and what distinguishes a real
+    profile from a directory nobody has signed into.
+    """
+    profile = tmp_path / ".session" / "chrome-profile"
+    (profile / "Default").mkdir(parents=True, exist_ok=True)
+    monkeypatch.setenv("SESSION_STATE_PATH", str(profile))
+    return profile
 
 
 @pytest.fixture(autouse=True)
@@ -211,7 +216,7 @@ class TestPreconditions:
         # A prep row describes the posting. "Never logged in" describes this
         # machine, and recording it as session_expired would make the gate tell
         # Tebello to re-run prep-submission when the fix is the login setup.
-        saved_session.unlink()
+        shutil.rmtree(saved_session)
         adapter = FakeAdapter(result=None)
         monkeypatch.setattr("src.submission.prep.get_adapter", lambda v: adapter)
 
@@ -568,4 +573,4 @@ class TestAdaptersNeverTouchTheDatabase:
         run_prep(vacancy, db_path=db_path)
 
         ((_, session_path),) = adapter.calls
-        assert session_path.name == "storage_state.json"
+        assert session_path.name == "chrome-profile"

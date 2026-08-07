@@ -408,9 +408,34 @@ went first; **B–H are not started.**
 ## Open Items (require Tebello — not something an agent should attempt)
 
 - [ ] **The shared-`user_version` bug is fixed in `src/profile/` only — the same trap is still armed
-      in the other three modules (2026-08-07, needs an ADR before the next migration).** Phase 17's
-      fix above was deliberately scoped to one module rather than expanded mid-build. Still true
-      everywhere else:
+      in the other three modules. ADR-004 is now WRITTEN and PROPOSED (2026-08-07); it awaits
+      Tebello's decision, and no code has changed.** See
+      `docs/decisions/ADR-004-schema-migration-ledger.md` — it carries the full decision, the
+      alternatives, and an 11-step atomic Build Queue. Two open questions in that ADR need Tebello's
+      answer before an Executor is dispatched (fix `vacancy_search`'s baseline in the same change?
+      run `/codex-review` on an ADR, given Hard Rule 13 names `docs/specs/` only?).
+
+      **The ADR's decisive finding — it changes which option is viable.** `docs/todo.md`'s original
+      recommendation below offered "a shared runner, or fold each module's migrations into its
+      baseline and apply the `profile` guard everywhere." Reading the code showed the second half
+      of that cannot work for what comes next: the `profile` guard gates on `PRAGMA table_info`, so
+      it only understands `ADD COLUMN`. **Phase B's central migration is a table rebuild** — spec
+      §Amendment A4 adds `pending_review` to the `submissions.outcome` CHECK, and SQLite cannot
+      alter a CHECK in place. No column-existence check can gate that. Extending the `profile`
+      pattern verbatim would force Phase B to invent a third mechanism inline, inside a feature
+      build. ADR-004 therefore proposes a `schema_migrations(module, version, applied_at)` ledger
+      plus one shared runner in `src/shared/migrations.py`, which makes version numbers per-module
+      and retires Hard Rule 6's globally-unique-≥5 decree.
+
+      **Adoption of the live `career.db` needs no special code path** under that proposal — keep the
+      `ADD COLUMN` skip but *record* it as applied, and the ordinary loop is already correct on a
+      legacy database: `vacancy_search` 1–4 skip-and-record (columns present), `profile` 5–6 apply
+      (they are not). Verified against the real file: `user_version = 4`, `vacancies` has all four
+      match columns + 10 rows, `candidate_profile` has no `email`/`phone`, `generation_log` 43 rows,
+      `approvals` 10 rows, no `submissions` table. All six migrations in project history are
+      `ADD COLUMN`, which is what makes that rule provably safe for pre-ledger databases.
+
+      Everything below remains factually true of the code as it stands today:
       - `vacancy_search/`, `doc_gen/` and `review/` each still have the counter-only
         `apply_migrations` (`if version > current`, no schema check), so any of them can be skipped
         by a module that advanced the counter first.

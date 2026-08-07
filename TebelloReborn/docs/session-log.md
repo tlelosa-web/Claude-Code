@@ -7,6 +7,55 @@
 
 ---
 
+## 2026-08-07 — ADR-004 written: schema migration ledger (PROPOSED, not decided, no code changed)
+
+`docs/decisions/ADR-004-schema-migration-ledger.md` — the ADR the previous session's Open Item
+asked for, written before Phase B rather than inside it. **Status is Proposed and two questions in
+it are unanswered**, so no Executor was dispatched and nothing under `src/` moved. 362 tests still
+passing, unchanged.
+
+**The finding that changed the answer.** The Open Item offered two routes: a shared runner, or fold
+migrations into each baseline and install `profile`'s guard everywhere. Reading the code ruled the
+second one out for what comes next. The `profile` guard gates on `PRAGMA table_info` — it only
+understands `ADD COLUMN`. **Phase B's central migration is a table rebuild**: spec §Amendment A4
+adds `pending_review` to the `submissions.outcome` CHECK, and SQLite cannot alter a CHECK in place,
+so it is the 12-step create/copy/drop/rename. No column-existence predicate can gate that. Rolling
+the guard out verbatim would leave Phase B inventing a third migration mechanism inline, inside a
+feature build, for a rule Hard Rule 6 names explicitly.
+
+**Proposed instead:** a `schema_migrations(module, version, applied_at)` ledger and one shared
+runner in `src/shared/migrations.py`. `user_version` is a single-writer counter being used as a
+multi-writer applied-migrations record — it cannot answer *"has this migration, from this module,
+already run on this database?"*, because it stores one number and not a set. Every symptom traces
+back to that. With a ledger keyed by `(module, version)` the namespace stops being shared, version
+numbers become per-module, Hard Rule 6's globally-unique-≥5 decree retires, and `submission/` can
+finally have a `migrations.py` like every other module.
+
+**Adoption of existing databases needs no special code path.** Keep the `ADD COLUMN` skip but
+*record* it as applied, and the ordinary loop is already correct on a legacy file — no
+`user_version` archaeology, no one-shot adoption script. On the live `career.db`: `vacancy_search`
+1–4 skip-and-record, `profile` 5–6 apply. This is provably safe because **all six migrations in
+project history are `ADD COLUMN`**, so a pre-ledger database cannot be carrying an unrecorded
+migration of any other form.
+
+Facts verified directly against the real database rather than carried over from `docs/todo.md`:
+`user_version = 4`; `vacancies` has all four match columns and 10 rows; `candidate_profile` has no
+`email`/`phone` and 1 row; `generation_log` 43 rows; `approvals` 10 rows; **no `submissions`
+table** — Stage 6 has still never run against it. Also checked: nothing outside the test suite
+reads `user_version` (`tools/dashboard_server.py` included), and exactly four test assertions would
+need converting to ledger equivalents — none deleted, each listed by name in the ADR's Consequences.
+
+The ADR carries an 11-step atomic TDD Build Queue, fully offline, with a verify-against-a-copy step
+before anything touches the real `career.db`. Open for Tebello: whether to fix `vacancy_search`'s
+baseline `CREATE TABLE` in the same change (recommended — it is the one provably wrong-shaped
+baseline, and what made the Phase 17 regression fatal rather than cosmetic), and whether to run
+`/codex-review` on an ADR given Hard Rule 13 names `docs/specs/` only.
+
+Session housekeeping: renamed a stale `Continuation` session to
+`Cont-"Hub session-end, vault push & staleness audit"`, and archived
+`Cont-"TebelloReborn Stage 6 submission core"` at Tebello's confirmation — Phase 16 closed out
+2026-08-06. Shared-core marketplace clone checked: 0 commits behind upstream.
+
 ## 2026-08-07 — Indeed submit adapter Phase A built (contact details + the project's first migrations)
 
 Phase A of `docs/specs/indeed-submit-adapter.md` (§Amendment A5): `CandidateProfile` gains `email`

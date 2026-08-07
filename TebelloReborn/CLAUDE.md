@@ -221,6 +221,7 @@ No Gmail integration in the MVP (no email-sending stage) — may be added if/whe
 - **ADR-001**: SQLite is the source of truth for profile + vacancy data (mirrors `ai-outreach-agency` ADR-001).
 - **ADR-002**: Job-board scraping via Apify (Indeed + LinkedIn actors) for MVP; PNet/Careers24 covered via the generic crawler + local LLM extraction + automated discovery (2026-07-29 amendment) — no dedicated Apify actor exists for either.
 - **ADR-003**: OpenRouter dropped entirely — AI Matching routes to local Ollama (`qwen3:8b`), Document Generation routes to headless Claude Code (`claude -p`), $0 marginal cost on both, no scheduler/volume-cap machinery adopted (no documented need). See `docs/decisions/ADR-003-inference-provider-split.md`.
+- **ADR-004**: `PRAGMA user_version` retired as a migration gate — a `schema_migrations(module, version, applied_at)` ledger plus one shared runner in `src/shared/migrations.py`. Versions are per-module; migration payloads may be a SQL string or a callable. See `docs/decisions/ADR-004-schema-migration-ledger.md`.
 - **DB access**: SQLite via `sqlite3`. No schema change without a migration file.
 - **Config**: `src/config.py` `Settings` via `python-dotenv`. Never hardcode. Never commit `.env`.
 - **Approval gate is structural**, not advisory — enforced by the status state machine, not just convention (same principle as `ai-outreach-agency`).
@@ -300,7 +301,8 @@ TebelloReborn/
 └── src/
     ├── main.py                   ← CLI runner
     ├── config.py                 ← Settings via python-dotenv
-    ├── shared/                   ← rate_limiter.py, ollama_client.py (ADR-003; promoted from matching/ in Phase 9)
+    ├── shared/                   ← rate_limiter.py, ollama_client.py (ADR-003; promoted from matching/ in Phase 9),
+    │                                migrations.py (ADR-004 — the one migration runner, five consumers)
     ├── profile/                  ← CandidateProfile schema + db
     ├── vacancy_search/           ← Vacancy schema + db + apify_client.py + crawler_client.py +
     │                                discovery.py + extraction_prompt.py + extractor.py (PNet/Careers24)
@@ -309,7 +311,7 @@ TebelloReborn/
     ├── review/                   ← approval gate CLI
     └── submission/               ← Stage 6 core: schema.py, db.py, session.py,
                                      eligibility.py, pipeline.py, cli.py
-                                     (no migrations.py — deliberate, see Hard Rule 6)
+                                     (no migrations.py yet — Phase B adds one at version 1)
 ```
 
 `.session/` (gitignored) holds the Playwright `storageState` file once a login is saved — a live authenticated session, treated as a credential.
@@ -323,7 +325,12 @@ TebelloReborn/
 3. **One task = one commit** — atomic, traceable, revertable.
 4. **Tests must pass** before any commit.
 5. **No secrets in code** — not even in comments, debug prints, or `.env.example`.
-6. **No schema changes without a migration file** — and **any new migration, in any module, must take a globally-unique `PRAGMA user_version` ≥ 5.** `profile/`, `vacancy_search/`, `doc_gen/` and `review/` each own a separate `MIGRATIONS` list but read and write the **same** global `user_version` on the same database. `vacancy_search` holds 1–4 and the live `career.db` is at 4, so adding `(1, "ALTER TABLE ...")` to another module — the obvious move — is **silently skipped forever**: `apply_migrations` runs `if version > current`, and `current` is already 4. No error, no warning, no migration. (A net-new *table* needs no migration at all: its `CREATE TABLE IF NOT EXISTS` goes in that module's `init_db()`, per `docs/todo.md`'s Resolved Items. `src/submission/` deliberately has no `migrations.py` for this reason.)
+6. **No schema changes without a migration file** — and **migrations are versioned per module, starting at 1** (ADR-004). Each module's `migrations.py` keeps its own `MIGRATIONS` list and delegates to the one shared runner in `src/shared/migrations.py`, which records every applied migration in a `schema_migrations(module, version, applied_at)` ledger keyed by `(module, version)`. `(profile, 5)` and `(vacancy_search, 5)` are different keys, so there is no shared namespace to collide in. Rules that follow:
+   - **A shipped migration is immutable.** Once it may have run anywhere, never edit or renumber it — ship a correction as a new version. The ledger records that a version ran, not what it contained.
+   - **A migration's payload is `str | Callable[[sqlite3.Connection], None]`.** Use a callable for anything multi-statement — `Connection.execute()` rejects multi-statement SQL, and `executescript()` implicitly commits, which would break the runner's atomicity. A table rebuild (the only way SQLite can change a CHECK) must be a callable, and owns its own FK handling via `PRAGMA defer_foreign_keys` — `PRAGMA foreign_keys` is a no-op inside a transaction.
+   - **A net-new *table* needs no migration at all**: its `CREATE TABLE IF NOT EXISTS` goes in that module's `init_db()`, per `docs/todo.md`'s Resolved Items.
+   - **`PRAGMA user_version` is frozen and means nothing.** The live `career.db` keeps its historical 4; the runner never reads or writes it. Do not reintroduce it as a gate.
+   - *Superseded:* the old rule required a globally-unique `user_version` ≥ 5 for every migration in any module. That decree was a manual workaround for a shared namespace that did not need to be shared, and it failed silently when forgotten — see ADR-004 for the full reasoning and the Phase 17 regression that forced it.
 7. **Offline-first always** — core logic never depends on connectivity.
 8. **Default Sonnet-5-medium; escalate to Opus only on evidence.**
 9. **Orchestrator routes. Executors build.** Never reverse this.

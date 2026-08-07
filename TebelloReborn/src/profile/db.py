@@ -20,11 +20,12 @@ def init_db(db_path: Optional[Path] = None) -> sqlite3.Connection:
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA journal_mode=WAL")
     # email/phone are in the baseline as well as in migrations 5/6 on purpose.
-    # A fresh database must reach the current shape WITHOUT advancing the shared
-    # user_version, or it strands vacancy_search's migrations 1-4 (see
-    # migrations.apply_migrations). The migrations exist for databases created
-    # before this column pair; the baseline exists for new ones; the guard in
-    # apply_migrations stops the two from colliding.
+    # The migrations exist for databases created before this column pair; the
+    # baseline exists for new ones. The shared runner's ADD COLUMN rule stops
+    # the two colliding — it skips a column that already exists and records the
+    # migration as applied anyway (ADR-004 §3). Belt-and-braces now rather than
+    # load-bearing: the ledger no longer lets one module's versions strand
+    # another's, which is what this duplication originally worked around.
     conn.execute("""
         CREATE TABLE IF NOT EXISTS candidate_profile (
             id INTEGER PRIMARY KEY CHECK (id = 1),

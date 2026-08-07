@@ -6,13 +6,18 @@ from .schema import SubmissionAttempt, SubmissionMethod, SubmissionOutcome
 
 DEFAULT_DB_PATH = Path(__file__).parent.parent.parent / "career.db"
 
-# This module deliberately has NO migrations.py. `submissions` is a net-new
-# table, so its CREATE TABLE belongs in init_db() per this project's convention
-# (docs/todo.md Resolved Items), and all four existing migration modules share a
-# single global `PRAGMA user_version` — an empty stub here would invite a future
-# `(1, ...)` entry that would be silently skipped forever, since the live DB is
-# already at version 4. Any future migration anywhere must use a globally-unique
-# version >= 5. See docs/specs/submission-core.md §Migration Note.
+# This module has no migrations.py yet, for the ordinary reason: `submissions`
+# is a net-new table, so its CREATE TABLE belongs in init_db() per this
+# project's convention (docs/todo.md Resolved Items), and nothing has changed
+# it since.
+#
+# The *original* reason was different and no longer applies. Every module used
+# to share one global `PRAGMA user_version`, so an empty stub here invited a
+# future `(1, ...)` entry that would be skipped forever against a live database
+# already at version 4. ADR-004 replaced the counter with a per-module ledger,
+# so adding a migrations.py here starting at version 1 is now correct and safe
+# — which is exactly what Phase B does.
+# See docs/specs/submission-core.md §Migration Note and ADR-004.
 
 
 def _attempt_from_row(row: sqlite3.Row) -> SubmissionAttempt:

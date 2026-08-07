@@ -9,6 +9,60 @@
 
 2026-08-07 codex-review docs/decisions/ADR-004-schema-migration-ledger.md: ran
 
+## 2026-08-07 — ADR-004 accepted, Codex-reviewed, and built: the schema migration ledger
+
+Both open questions answered by Tebello: `vacancy_search`'s baseline **is** fixed in the same change
+(§6), and `/codex-review` **was** run first. The skill's path guard refused the file — it is
+hard-scoped to `docs/specs/`, matching Hard Rule 13's literal wording — so the identical review
+instruction and payload discipline went through a direct `codex exec` call, sending that one file and
+nothing else. Worth deciding whether the guard should widen to `docs/decisions/`, since this is the
+second time an ADR has wanted the gate.
+
+**The Codex pass earned its place, again — third consecutive review to return something that would
+have failed at runtime, and this one hit the ADR's own motivating case.** Verified against this
+machine's sqlite3 3.49.1 rather than accepted on the review's word: a migration payload of `str`
+cannot express Phase B's table rebuild, because `Connection.execute()` raises `ProgrammingError` on
+multi-statement SQL. Worse, and not in the review: `executescript()` is no escape hatch either — it
+issues an **implicit COMMIT before running** (`in_transaction` True → False, confirmed), so the ADR's
+"commits once at the end" guarantee would have evaporated silently, leaving a half-applied rebuild
+with a ledger row claiming success. Fixed as A1 (payload is `str | Callable[[sqlite3.Connection],
+None]`) and A2 (one `BEGIN IMMEDIATE` per migration; DDL and its ledger row commit together or not at
+all). 13 accepted changes, 3 declined, in the ADR's `§Amendment`.
+
+**Built the same session — Phase 18, steps 107–117, ten commits.** All five modules delegate to
+`src/shared/migrations.py`; every applied migration records into
+`schema_migrations(module, version, applied_at)`; version numbers are per-module and
+`PRAGMA user_version` is frozen, never read or written. `vacancy_search`'s baseline
+`CREATE TABLE vacancies` now declares `score`/`strengths`/`weaknesses`/`recommendation` — the one
+provably wrong-shaped baseline, and what made the Phase 17 regression a crash rather than a cosmetic
+problem. **399 tests passing, was 362, zero regressions.**
+
+**A second finding surfaced from making the rebuild test actually pass, not from review:**
+`PRAGMA foreign_keys` is a **no-op inside a transaction**, so SQLite's documented "turn foreign keys
+off first" rebuild step is unavailable to a migration the runner has already wrapped.
+`PRAGMA defer_foreign_keys` is the one settable mid-transaction. Phase B should follow
+`TestPhaseBShapedRebuild` in `tests/unit/test_shared_migrations.py` rather than the SQLite docs
+verbatim — that test models the real `submissions.outcome` CHECK widening, with a populated child
+table and a live foreign key, and covers the failure path too (a rebuild that dies after the rename
+rolls back whole, leaving no `submissions_new` and nothing recorded).
+
+**Verified against a copy of the live `career.db`, never the real file** (sqlite3 backup API,
+read-only on the source). Exactly as §4 predicted with no special adoption code path:
+`vacancy_search` 1–4 skip-and-record (columns already present), `profile` 5–6 apply, the frozen
+counter stays at 4, `integrity_check` ok, `foreign_key_check` clean, and all data intact — 10
+vacancies (10/10 scored, 6 approved / 4 rejected), 10 approvals, 43 generation-log rows, 1 profile. A
+second init pass in reversed module order was a clean no-op. `get_profile()` raises its actionable
+"re-run import-profile" error, as designed.
+
+**Unchanged and still pending:** the real `career.db` has not been migrated — that happens on the
+next `init_db()` from any command, after which `career-engine import-profile --file
+data/profile_seed.json` must be re-run to populate the contact details. Two byte-identical backups
+still exist; one should be deleted once Tebello picks which to keep.
+
+Session housekeeping: archived `Cont-"ADR-004 migration ledger, written & pushed"` and
+`Cont-"TebelloReborn vacancy pipeline dashboard"` at Tebello's confirmation. Shared-core marketplace
+clone: 0 commits behind upstream.
+
 ## 2026-08-07 — ADR-004 written: schema migration ledger (PROPOSED, not decided, no code changed)
 
 `docs/decisions/ADR-004-schema-migration-ledger.md` — the ADR the previous session's Open Item

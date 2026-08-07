@@ -1,9 +1,10 @@
 # Task Queue — TebelloReborn (Career Engine)
 
-> Updated: 2026-08-07 (Indeed site adapter: spec written, Codex-reviewed, fold-in complete, and
-> **Phase A built** — steps 103–104, see Phase 17 below. Phases B–H remain. Stage 6 submission
-> core built 2026-08-06, Phase 16 steps 81–102, see `docs/specs/submission-core.md` and
-> session-log.md)
+> Updated: 2026-08-07 (**ADR-004 built** — the schema migration ledger, Phase 18 steps 107–117.
+> All five modules now share one migration runner; `PRAGMA user_version` is retired as a gate and
+> CLAUDE.md Hard Rule 6 is rewritten. **Phase B of the Indeed adapter is unblocked.** Earlier the
+> same day: Indeed site adapter Phase A built, steps 103–104, see Phase 17; Phases B–H remain.
+> Stage 6 submission core built 2026-08-06, Phase 16 steps 81–102.)
 
 ---
 
@@ -291,6 +292,50 @@ went first; **B–H are not started.**
 > `user_version` 4 → 6, both columns added, all 10 vacancies and 6 approved applications intact,
 > and `import-profile` repopulating the contact details cleanly.
 
+### Phase 18 — ADR-004: schema migration ledger (built 2026-08-07)
+
+Replaces the shared `PRAGMA user_version` counter with a
+`schema_migrations(module, version, applied_at)` ledger and one shared runner. Offline throughout.
+See `docs/decisions/ADR-004-schema-migration-ledger.md` and its `§Amendment — 2026-08-07 (Codex
+fold-in)`.
+
+- [x] 107. [RED+GREEN] `tests/unit/test_shared_migrations.py` + `src/shared/migrations.py`
+      (`899890a`) — landed together because the RED state is a `ModuleNotFoundError` that breaks
+      suite collection, same precedent as steps 90–91
+- [x] 108. [RED] `tests/unit/test_profile_db.py` — counter assertions become ledger assertions
+      (`98725f7`)
+- [x] 109. [GREEN] `src/profile/migrations.py` delegates (`7df3d51`)
+- [x] 110. [RED] `tests/unit/test_vacancy_db.py` — baseline declares the match columns, ledger
+      records 1–4 (`4394890`)
+- [x] 111. [GREEN] `src/vacancy_search/migrations.py` delegates + `db.py` baseline gains
+      `score`/`strengths`/`weaknesses`/`recommendation` (§6, `278a5eb`)
+- [x] 112. [GREEN] `src/doc_gen/migrations.py` + `src/review/migrations.py` delegate (`fe5866b`)
+- [x] 113. `tests/unit/test_submission_db.py` — `test_does_not_advance_user_version` becomes its
+      ledger equivalent (`bc6ae0a`)
+- [x] 114. [GREEN] Phase-B-shaped table-rebuild acceptance test (`6545af7`) — **the step that proves
+      the stated blocker is solved**, not merely asserted
+- [x] 115. `tests/integration/test_full_pipeline.py` — all five `init_db()`s against one database in
+      both orders (`bbcef1c`)
+- [x] 116. Verified against a **copy** of the live `career.db`, never the real file
+- [x] 117. Docs closeout — CLAUDE.md Hard Rule 6 rewritten, `docs/architecture.md` gains a Schema
+      Migrations section, this file, `docs/session-log.md`
+
+**Result:** 399 tests passing (was 362), zero regressions.
+
+> **Two findings from building it, both verified against this machine's sqlite3 3.49.1 rather than
+> assumed.** The first came from the Codex pass and would have failed at runtime: a migration payload
+> of `str` cannot express Phase B's table rebuild, because `Connection.execute()` raises
+> `ProgrammingError` on multi-statement SQL — and `executescript()` is no escape hatch, since it
+> issues an **implicit COMMIT before running**, which would have silently voided the ADR's
+> "commits once at the end" atomicity. Payloads are now `str | Callable[[sqlite3.Connection], None]`
+> with one `BEGIN IMMEDIATE` per migration. The second surfaced while making the rebuild test
+> actually pass: `PRAGMA foreign_keys` is a **no-op inside a transaction**, so SQLite's documented
+> "turn foreign keys off first" rebuild step is unavailable to a migration the runner has already
+> wrapped. `PRAGMA defer_foreign_keys` is settable mid-transaction and is what a rebuild must use.
+> Phase B should follow `TestPhaseBShapedRebuild`'s shape rather than the SQLite docs verbatim.
+
+---
+
 ---
 
 ## Resolved Items
@@ -407,62 +452,13 @@ went first; **B–H are not started.**
 
 ## Open Items (require Tebello — not something an agent should attempt)
 
-- [ ] **The shared-`user_version` bug is fixed in `src/profile/` only — the same trap is still armed
-      in the other three modules. ADR-004 is ACCEPTED as of 2026-08-07, Codex-reviewed, fold-in
-      complete — ready to build, no code has changed yet.** See
-      `docs/decisions/ADR-004-schema-migration-ledger.md` and its `§Amendment — 2026-08-07 (Codex
-      fold-in)`, which carries the revised **12-step** atomic Build Queue. Both open questions are
-      answered: `vacancy_search`'s baseline **is** fixed in the same change (§6), and `/codex-review`
-      **was** run (the skill's path guard refuses non-`docs/specs/` files, so the identical review
-      instruction and payload discipline went through a direct `codex exec` call).
-
-      **The Codex pass found a blocker that would have failed at runtime, verified directly against
-      this machine's sqlite3 3.49.1 rather than taken on the review's word:** §2's
-      `list[tuple[int, str]]` cannot represent Phase B's table rebuild at all —
-      `Connection.execute()` raises `ProgrammingError: You can only execute one statement at a time`
-      — and `executescript()` is not a safe fallback either, because it issues an **implicit COMMIT
-      before running** (`in_transaction` True → False, confirmed), which would have silently voided
-      §2's "commits once at the end" atomicity and left a half-applied rebuild with an inconsistent
-      ledger. Fixed by A1 (payload becomes `str | Callable[[sqlite3.Connection], None]`) plus A2
-      (per-migration `BEGIN IMMEDIATE`; DDL and its ledger row commit together or not at all).
-      Twelve more accepted changes, three declined — full list in the Amendment.
-
-      **The ADR's decisive finding — it changes which option is viable.** `docs/todo.md`'s original
-      recommendation below offered "a shared runner, or fold each module's migrations into its
-      baseline and apply the `profile` guard everywhere." Reading the code showed the second half
-      of that cannot work for what comes next: the `profile` guard gates on `PRAGMA table_info`, so
-      it only understands `ADD COLUMN`. **Phase B's central migration is a table rebuild** — spec
-      §Amendment A4 adds `pending_review` to the `submissions.outcome` CHECK, and SQLite cannot
-      alter a CHECK in place. No column-existence check can gate that. Extending the `profile`
-      pattern verbatim would force Phase B to invent a third mechanism inline, inside a feature
-      build. ADR-004 therefore proposes a `schema_migrations(module, version, applied_at)` ledger
-      plus one shared runner in `src/shared/migrations.py`, which makes version numbers per-module
-      and retires Hard Rule 6's globally-unique-≥5 decree.
-
-      **Adoption of the live `career.db` needs no special code path** under that proposal — keep the
-      `ADD COLUMN` skip but *record* it as applied, and the ordinary loop is already correct on a
-      legacy database: `vacancy_search` 1–4 skip-and-record (columns present), `profile` 5–6 apply
-      (they are not). Verified against the real file: `user_version = 4`, `vacancies` has all four
-      match columns + 10 rows, `candidate_profile` has no `email`/`phone`, `generation_log` 43 rows,
-      `approvals` 10 rows, no `submissions` table. All six migrations in project history are
-      `ADD COLUMN`, which is what makes that rule provably safe for pre-ledger databases.
-
-      Everything below remains factually true of the code as it stands today:
-      - `vacancy_search/`, `doc_gen/` and `review/` each still have the counter-only
-        `apply_migrations` (`if version > current`, no schema check), so any of them can be skipped
-        by a module that advanced the counter first.
-      - **`vacancy_search`'s baseline `CREATE TABLE vacancies` still omits `score`/`strengths`/
-        `weaknesses`/`recommendation`** — those columns exist *only* in migrations 1–4. That is what
-        made the Phase 17 regression fatal rather than cosmetic, and it is unchanged. Nothing hits it
-        today only because `profile` no longer advances the counter on a fresh database.
-      - Consequence: **the next module to add a migration re-introduces the bug**, and Phase B is
-        exactly that — it adds `submission_preps`/`screening_questions` and, per A4, may need a
-        `user_version ≥ 5` migration for the `submissions.outcome` CHECK rebuild.
-      Recommended before Phase B: an ADR making schema state the source of truth across all four
-      modules (either a shared runner in `src/shared/`, or fold each module's existing migrations
-      into its own baseline and apply the `profile` guard everywhere). This is an architecture
-      decision about a mechanism CLAUDE.md Hard Rule 6 names explicitly, so it should not be
-      settled inline inside a feature build.
+- [x] **Shared-`user_version` migration trap — RESOLVED 2026-08-07 by ADR-004, built and verified.**
+      `docs/decisions/ADR-004-schema-migration-ledger.md` is **Accepted**, Codex-reviewed, folded in,
+      and its 12-step Build Queue is complete — see Phase 18 in the Build Queue above. All five
+      modules now delegate to one runner in `src/shared/migrations.py` and record into a
+      `schema_migrations(module, version, applied_at)` ledger; version numbers are per-module;
+      `PRAGMA user_version` is frozen and no longer gates anything. CLAUDE.md Hard Rule 6 was
+      rewritten accordingly. **Phase B is unblocked.**
 
 - [x] **Manual PNet bare-URL verification (Amendment, Open Item 4) — resolved 2026-07-31.** Tebello
       personally opened `https://www.pnet.co.za/jobs/operations-foreman/in-gauteng` (the bare path-only

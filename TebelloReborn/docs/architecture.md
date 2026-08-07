@@ -182,6 +182,41 @@ career-engine run-all [--status <status>]
 
 ---
 
+## Schema Migrations (ADR-004)
+
+One SQLite database (`career.db`, ADR-001), five modules with their own `db.py`
+and `init_db()`. Each module's `init_db()` creates its own tables directly
+(`CREATE TABLE IF NOT EXISTS`) and then delegates any *changes* to those tables
+to `src/shared/migrations.py`, the single migration runner.
+
+```
+src/<module>/migrations.py     MIGRATIONS = [(version, sql | callable), ...]
+        └── delegates to ──►   src/shared/migrations.py::apply_migrations(conn, module, migrations)
+                                        │
+                                        └── records each in ──►  schema_migrations(module, version, applied_at)
+```
+
+- **Versions are per-module, starting at 1.** `(profile, 5)` and
+  `(vacancy_search, 5)` are different ledger keys, so modules cannot collide.
+  Existing numbers were kept, not renumbered — `vacancy_search` holds 1–4 and
+  `profile` holds 5–6 for historical reasons only.
+- **The ledger is the record**, not `PRAGMA user_version`. That counter is
+  frozen and never read or written; the live `career.db` keeps its historical
+  `4`, which now means nothing. It was a single integer being used as a
+  multi-writer applied-migrations record, and could not answer *"has this
+  migration, from this module, already run on this database?"*
+- **A payload is a SQL string or a callable.** Callables exist because
+  `Connection.execute()` rejects multi-statement SQL and `executescript()`
+  implicitly commits — so SQLite's create/copy/drop/rename table rebuild (the
+  only way to change a CHECK) cannot be a string.
+- **Each migration commits with its ledger row, or neither does.** One
+  `BEGIN IMMEDIATE` per migration; a failure rolls both back, stops the run,
+  and leaves earlier migrations applied and recorded so a re-run resumes.
+- **An `ADD COLUMN` whose column already exists is skipped but still
+  recorded.** This is what lets a pre-ledger database be adopted with no
+  special code path: on the live `career.db`, `vacancy_search` 1–4
+  skip-and-record while `profile` 5–6 genuinely apply.
+
 ## Relationship to `ai-outreach-agency`
 
 This project deliberately mirrors that repo's proven architecture rather than the generic stack recommended in the original Drive-doc plan (which suggested n8n, FastAPI, Streamlit — none of which are used here or there). Specifically reused patterns:

@@ -1,7 +1,83 @@
+## 2026-08-07 — ADR-004 answered the `user_version` question; Phases B and C then built the same day
+**Source:** session (this machine, hub `/continue`) — read from the Pappa T vault's
+commits, `TebelloReborn/docs/decisions/ADR-004-schema-migration-ledger.md`, and that
+project's own `docs/session-log.md` entries for Phases B and C
+**Status:** active
+
+Supersedes the *prediction* in the entry below ("Phase B is blocked on an ADR that
+does not exist yet"). Its diagnosis of the bug stands unchanged and is still the
+best statement of it; only its forecast is now history. The ADR was written,
+Codex-reviewed, accepted and **built** on 2026-08-07 (Phase 18, steps 107–117), and
+Phases B and C shipped on top of it the same day.
+
+**State now: Stage 6 stands at Phases A, B, C built; D–H remaining.** 485 tests
+passing (344 → 399 → 456 → 485 across the ADR, B and C), zero regressions
+throughout, still fully offline — nothing on the wire, no `playwright` dependency
+declared until Phase H, and the adapter registry is still empty, so all 6 approved
+Indeed vacancies route to manual today. Vault is clean and pushed (`63687c5`).
+
+**ADR-004's decision, in one line: `PRAGMA user_version` was a single-writer counter
+being used as a multi-writer applied-migrations record.** It stores one number, not a
+set, so it cannot answer the only question a migration runner asks — *has this
+migration, from this module, already run on this database?* Every symptom was
+downstream of that. It is replaced by a per-module ledger table with a shared runner;
+Hard Rule 6's "globally-unique version ≥ 5" decree was a manual collision-avoidance
+scheme for a namespace that never needed to be shared, and it failed silently because
+`if version > current` has no error path. Live `career.db` was inspected directly for
+the ADR and stayed at `user_version = 4` throughout.
+
+**Why it was genuinely blocking and not merely untidy — a detail the entry below
+didn't have.** The `profile` fix works by asking `PRAGMA table_info` whether a column
+exists, so it only understands `ADD COLUMN`. There is no equivalent question for a
+`CREATE INDEX`, a backfill, or a table rebuild. **Phase B's central migration is a
+table rebuild** — SQLite cannot alter a CHECK constraint in place, so widening
+`submissions.outcome` for `pending_review` is the 12-step rebuild. Extending the
+`profile` pattern verbatim would not have worked; Phase B would have had to invent a
+third mechanism inline, inside a feature build.
+
+**Phase B (Phase 19, steps 118–122) — the design point worth keeping.** The spec's
+original `all_questions_reviewed()` could not have worked: counting
+`screening_questions` rows cannot distinguish "prep never ran" from "prepped, and
+this posting genuinely has no questions." Both are zero rows and exactly one of them
+is submittable. Prep state now lives in its own append-only `submission_preps` table,
+where the absence of a row is the one state that genuinely is an absence.
+Phase B also **deviated from its own spec deliberately**: A4 resolved the CHECK
+widening as a DDL edit plus a loud guard, correct when written because the live DB
+has no `submissions` table — but on a database where `submit` had run once that
+combination fails at `init_db()` with no automated remedy. ADR-004 landed in between
+and made the remedy cheap, so it shipped `src/submission/migrations.py` version 1
+instead, this project's first table rebuild.
+
+**Phase C (Phase 20, steps 123–127) — two orderings, each with its own test, because
+getting either wrong fails silently.** (1) The prep gate runs *before* the session
+check: every answer it gives is already-recorded state, so none of it needs a live
+session. Session-check-first would tell Tebello "no saved browser session — run the
+login setup" for a recorded `external_ats` posting, sending him to fix something that
+isn't broken and burying the one finding that means *submit by hand*. (2) The `--all`
+refusal is checked *last*, so a vacancy with a real gate reason hears that instead —
+"run `prep-submission`" beats "use an explicit `--vacancy-id`" for something you'd
+have to prep first anyway.
+
+**General pattern, now confirmed twice in this project:** `pending_review` and
+`not_supported` leave the vacancy in the *same* state, so CLI wording is the only
+thing separating them for the operator. Its test asserts `"FAILED"` is **absent** as
+well as asserting the right substrings present — without a dedicated
+`report_attempt()` branch the detail printed under a FAILED label, which is the right
+words under the wrong verdict and would have passed a naive substring assertion.
+Assert what must not appear, not only what must.
+
+**Open, not blocking:** `/codex-review`'s path guard is hard-scoped to `docs/specs/`
+and refused ADR-004 — the review went through a direct `codex exec` with the
+identical instruction and payload discipline instead. Second time an ADR has wanted
+that gate. Also two byte-identical `career.db` backups are sitting untouched awaiting
+Tebello's pick of which to keep.
+
 ## 2026-08-07 — Phase A built; the `user_version` fix is scoped to one module and Phase B re-arms it
 **Source:** session (this machine, hub `/session-end`) — read from the Pappa T
 vault's commits and `TebelloReborn/docs/todo.md` Open Items
-**Status:** active
+**Status:** superseded in part — the diagnosis below stands and is still the clearest
+statement of the bug; its closing forecast ("Phase B is blocked, that project wants
+an ADR") is resolved by the entry above, which is authoritative for current state
 
 Closes the "Next: Phase A, blocked on…" line in the entry below — both of its
 blockers were cleared and Phase A shipped (Phase 17, steps 103–104; vault

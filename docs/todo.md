@@ -42,83 +42,68 @@ flags re-checked 2026-08-03 after the O-P-C consolidation — see note below)
 > won't reach the actual running project and O-P-C will need re-merging
 > afterward to pick it up.
 
-1. [ ] **TebelloReborn: Indeed site adapter** — **core built 2026-08-06; spec
-      written, Codex-reviewed and folded in 2026-08-07; Phase A built the same
-      day. Phases B–H not started.** 📍 Live `Desktop/Pappa T/TebelloReborn/`.
+1. [ ] **TebelloReborn: Indeed site adapter** — **Phases A, B and C built
+      2026-08-07. D–H remaining; Phase D is next.** 📍 Live
+      `Desktop/Pappa T/TebelloReborn/`. **Not blocked** — no decision is
+      outstanding and the spec is build-ready.
 
-      **Phase A is done** (Phase 17, steps 103–104 — vault `9d4ee17` RED,
-      `379a4b2` GREEN, closed out in `b4dd652`). `email`/`phone` are on
-      `CandidateProfile` with migrations 5 and 6, real values sourced from
-      `data/Tebello_Lelosa_Master_CV_2026.md` and guarded by a test asserting the
-      seed and the CV never drift. `career.db` was backed up first
-      (`career.pre-migration-5-6-20260807.db`, sqlite3 backup API,
-      integrity-checked and row-count-verified) ahead of the project's first-ever
-      migrations, which auto-apply on the next `init_db()` from any command.
-      `TebelloReborn/docs/specs/indeed-submit-adapter.md` §Amendment is
-      authoritative for the rest.
+      `TebelloReborn/docs/specs/indeed-submit-adapter.md` §Amendment carries the
+      phase-level Build Queue and is authoritative; that project's own
+      `docs/todo.md` and `docs/session-log.md` carry the detail. This entry is a
+      pointer, per hub-and-spoke.
 
-      ⚠️ **Phase B is blocked on an architecture decision, per that project's own
-      Open Items:** the shared `PRAGMA user_version` bug was fixed in
-      `src/profile/` **only** and is still armed in `vacancy_search/`, `doc_gen/`
-      and `review/`. `vacancy_search`'s baseline `CREATE TABLE vacancies` still
-      omits `score`/`strengths`/`weaknesses`/`recommendation` — those exist only
-      in migrations 1–4, which is what made the Phase 17 regression fatal rather
-      than cosmetic. Phase B adds migrations, so it re-introduces the bug. That
-      project wants an ADR making schema state the source of truth across all
-      four modules before Phase B starts — not something to settle inline inside
-      a feature build.
+      **Phase D** is `src/submission/browser.py`: session load, expiry detection,
+      CAPTCHA detection, the combined navigation-state check, step logging. Still
+      offline — the last purely-offline phase before the spec's network work
+      starts at E. The `playwright` dependency isn't declared until Phase H.
 
-      Worth Tebello's confirmation when Phase B lands: the amendment makes
-      `submit --all` refuse auto-submit entirely, so the 6 approved vacancies go
-      out as six deliberate single commands.
+      **State as of vault `63687c5` (pushed, clean, 0 ahead / 0 behind):** 485
+      tests passing, zero regressions across every phase (344 → 399 → 456 → 485).
+      The adapter registry is still empty, so `career.db`'s 6 `approved` Indeed
+      vacancies all route to manual today — verified by running the real
+      `submit --all` against a sqlite3-backup copy of the live database.
 
-      **The ToS/account-risk gate flagged above (and by the concurrent session
-      that first hit it) is now closed** — Tebello gave an explicit, separate
-      acknowledgement in a later 2026-08-07 session, distinct from the earlier
-      sign-in-for-recon action which correctly was not treated as that
-      acknowledgement. Platform (Indeed's own apply form only) and the
-      `playwright` runtime dependency were also confirmed directly.
+      - **ADR-004** (`docs/decisions/ADR-004-schema-migration-ledger.md`, accepted
+        + built, Phase 18 steps 107–117) closed the shared-`user_version` question
+        this entry previously listed as a blocker: the counter is replaced by a
+        per-module ledger table. It was genuinely blocking, for a reason the old
+        entry didn't have — the `profile` fix works by asking `PRAGMA table_info`
+        whether a column exists, so it only understands `ADD COLUMN`, and Phase B's
+        central migration is a **table rebuild** (SQLite can't alter a CHECK in
+        place). No column-existence check could have gated it.
+      - **Phase A** (Phase 17, steps 103–104) — `email`/`phone` on
+        `CandidateProfile`, migrations 5 and 6, real values from
+        `data/Tebello_Lelosa_Master_CV_2026.md` with a CV-drift guard test.
+        `career.db` backed up beforehand via the sqlite3 backup API,
+        integrity-checked and row-count-verified.
+      - **Phase B** (Phase 19, steps 118–122) — `submission_preps` /
+        `screening_questions`, the `pending_review` outcome, the widened
+        `submissions.outcome` CHECK with its rebuild migration and drift guard,
+        and `submission_prep_ready()`.
+      - **Phase C** (Phase 20, steps 123–127) — the prep-state gate wired into
+        `pipeline.py`, `pending_review` reporting, and the `--all` auto-submit
+        refusal.
 
-      **That later session then found the real scope was bigger than either
-      earlier pass assumed.** A live `claude-in-chrome` walkthrough of the real
-      Indeed apply flow (signed in as Tebello, nothing submitted) found the flow
-      is **reCAPTCHA-protected** (now a hard rule: detect and abort, never
-      solve/defeat it) and that **employer screening questions are real,
-      per-posting, and often open-ended free-text** — not a pure deterministic
-      form-fill. Tebello decided screening answers get LLM-drafted (headless
-      Claude Code) but held for his explicit per-question approval before any
-      submission. Full design, acceptance criteria, and a phase-level Build
-      Queue: `TebelloReborn/docs/specs/indeed-submit-adapter.md` (new). Codex's
-      second opinion on it flagged real gaps (an accidentally-networked
-      `can_handle()`, no question-drift policy, underspecified CAPTCHA
-      detection, missing `prep_failed` outcome semantics) — **all resolved
-      2026-08-07** in that spec's §Amendment, along with four further findings
-      that came from reading the code rather than the review, two of which would
-      have failed at runtime as specced. Detail: `knowledge/tebelloreborn.md`.
+      **Already confirmed with Tebello, no longer open:** the ToS/account-risk
+      exposure (explicit, separate acknowledgement); Indeed's own apply form as
+      the only platform; `playwright` as a runtime dependency; and — before Phase C
+      was written — that `submit --all` refuses auto-submit, so the 6 approved
+      vacancies go out as six deliberate single commands.
 
-      **Concurrent-session note, resolved not just warned-about:** the entry
-      that previously occupied this spot came from a same-morning concurrent
-      terminal session (Pappa T vault commit `93f8e5b`) that reached the same
-      Indeed sign-in wall independently and parked there. Confirmed with
-      Tebello that session was already closed before the later session's work
-      landed (Pappa T vault commit `8c95cf2`) — a sequential handoff, not an
-      active collision, reconciled as a real union in
-      `TebelloReborn/docs/todo.md` rather than overwritten. Worth remembering
-      as a real instance of the risk hub Hard Rule 6 exists for, now observed
-      at project level too.
-
-      Phase A is profile-schema work only — no adapter exists yet, so `career.db`'s
-      6 `approved` Indeed vacancies all still route to `not_supported` until one
-      registers.
-
-      📍 **3 unpushed commits in the Pappa T vault** as of this writing
-      (`9d4ee17`, `379a4b2`, `b4dd652` — the whole of Phase A, including the two
-      migrations). Not pushed on Tebello's behalf; surfacing only.
+      **Standing constraints from the live recon**, unchanged: the apply flow is
+      reCAPTCHA-protected (hard rule — detect and abort, never solve or defeat it),
+      and employer screening questions are real, per-posting and often open-ended
+      free text, so answers are LLM-drafted but held for Tebello's explicit
+      per-question approval before any submission.
 
       Hub spec `docs/specs/2026-08-04-tebelloreborn-playwright-auto-submit.md`
       stays superseded by the project-side specs above — it scoped the build to
       LinkedIn Easy Apply, a platform this project formally dropped on
       2026-08-01, three days before that spec was written.
+
+      **Awaiting Tebello, neither blocking:** two byte-identical `career.db`
+      backups, untouched because it's real career data — pick one and the other
+      gets deleted.
 2. [ ] **SOPS: give the go-ahead to run the AvgMovement migration against
       `instance/sops.db`** — Supplier/Lead-Time + AMU/Min-Max logic ported
       and fully tested (Batch 32/33, commits `fe06eaa`/`112e321`), held for
@@ -151,6 +136,18 @@ abandoned either — no work is lost by leaving them here.
 
 ## Backlog / ideas (not committed)
 
+- [ ] **Widen `/codex-review`'s path guard to `docs/decisions/`** — the skill is
+      hard-scoped to `docs/specs/` and refuses ADRs outright. TebelloReborn hit
+      this on 2026-08-07 reviewing `ADR-004-schema-migration-ledger.md` and worked
+      around it with a direct `codex exec` carrying the identical review
+      instruction and payload discipline — so the gate was satisfied in substance,
+      by hand. **Second time an ADR has wanted the gate**, which is the argument
+      for changing it rather than working around it a third time. Note the guard
+      matches CORE.md Universal Hard Rule 9's literal wording ("every spec in
+      `docs/specs/`"), so widening the skill without widening that rule leaves the
+      two disagreeing — this is a marketplace change (`tlelosa-claude-config`,
+      codex-gate plugin + `dcoe-roster/CORE.md`), upstream-first per ADR-008, not
+      a local edit.
 - [ ] **Add `*.db-shm` / `*.db-wal` to the Pappa T vault `.gitignore`** — the
       2026-08-06 backup run opens each SQLite DB read-only, and opening a
       WAL-mode database creates its `-shm`/`-wal` sidecars. Two now show as
@@ -168,6 +165,35 @@ abandoned either — no work is lost by leaving them here.
 
 ## Done
 
+- [x] **2026-08-07** — Caught the hub up to Phases B and C, which landed after its
+      last write — **and found why writing the lesson down hadn't stopped it.** The
+      hub's previous close-out (`25b0173`, 11:11) was 5h19m behind the vault
+      (`63687c5`, 16:30) and asserted three things that were false by the time this
+      session read them: "Phases B–H not started" (B and C built), "Phase B is
+      blocked on an ADR" (ADR-004 written, accepted, built), and "3 unpushed commits
+      in the vault" (pushed). Third occurrence of this drift, and the second one
+      *after* `knowledge/hub-process.md` gained an entry specifically about it.
+      **The recurrence is structural, not a discipline failure**, which is the new
+      finding: `/session-end` runs the staleness check at the moment the hub is last
+      correct, so it cannot see work landing afterwards — and work landing
+      afterwards is the normal case, since the reason one session is ending is
+      usually that another is still going. The check belongs in `/continue`'s orient
+      step, because the *reading* session is the one that can be wrong. Recorded as
+      a new `hub-process.md` entry rather than as an edit to the existing one, which
+      remains correct about the mechanism.
+      Item #1 rewritten from "blocked" to a build-ready pointer at Phase D, trimmed
+      to hub-and-spoke depth (net −27 lines): ADR-004's decision, the three built
+      phases, and the constraints that still bind, with the resolved gates stated as
+      resolved rather than re-litigated. `knowledge/tebelloreborn.md` gained a new
+      entry; the Phase A entry below it was marked `superseded in part` rather than
+      edited — its *diagnosis* of the `user_version` bug is still the clearest
+      statement of it and only its forecast expired. Also surfaced two things
+      waiting on Tebello that neither project nor hub was tracking: the duplicate
+      byte-identical `career.db` backups, and `/codex-review`'s `docs/specs/`-only
+      path guard refusing ADRs for the second time (now a backlog item, and a
+      marketplace change rather than a local one — the guard matches CORE.md Hard
+      Rule 9's literal wording, so widening one without the other leaves them
+      disagreeing). No project code touched; the vault was read-only this session.
 - [x] **2026-08-07** — TebelloReborn: folded Codex's review into
       `docs/specs/indeed-submit-adapter.md`, closing that project's Hard Rule 13 gate
       before any Executor is dispatched (Pappa T vault `3267cb5`, pushed). 22 accepted

@@ -2261,3 +2261,72 @@ the Pappa T vault can drift for hours when both are being written — check comm
 times across repos, not just the final log entry.
 **Blockers:** Phase B is blocked on the shared-`user_version` ADR. 3 unpushed
 commits sit in the Pappa T vault, awaiting Tebello's call.
+
+## 2026-08-07 — Third staleness catch-up, and the reason the second one didn't take
+
+`/continue` run, scoped by Tebello to reconciliation only — no project code was
+written and the Pappa T vault was read-only from here.
+
+**The entry directly above is what this session had to correct**, which is the
+point of writing this one. It was itself a staleness catch-up, and it closed with
+"Phase B is blocked on the shared-`user_version` ADR. 3 unpushed commits sit in the
+Pappa T vault." By the time `/continue` Step 1 read it, all three of its factual
+claims were false: ADR-004 had been written, Codex-reviewed, accepted and **built**
+(Phase 18, steps 107–117); Phases B and C had shipped on top of it (Phases 19 and
+20, steps 118–127); and the vault was clean, pushed, 0 ahead / 0 behind. Hub last
+write `25b0173` at 11:11, vault last commit `63687c5` at 16:30 — 5h19m of drift.
+
+**What's actually new here, and worth more than the catch-up itself.** The entry
+above already diagnosed this drift correctly and `knowledge/hub-process.md` already
+carried an entry telling a future session exactly how to detect it. It happened
+again anyway, larger. That is evidence the mitigation was in the wrong place, not
+evidence someone was careless: **`/session-end` runs the check at the one moment
+the hub is guaranteed to be current** — its own close-out — and is structurally
+blind to everything landing afterwards. In a hub plus a live sub-project, work
+landing afterwards is the normal case, because the usual reason one session is
+ending is that another is still running. The check belongs in `/continue`'s orient
+step instead, where the session that can actually be *wrong* is the one doing the
+asking. Filed as a new `hub-process.md` entry rather than an edit to the existing
+one — that entry is correct about the mechanism and only incomplete about placement.
+
+**What changed:** `docs/todo.md` item #1 went from "blocked" to a build-ready
+pointer at Phase D, trimmed by 27 lines to hub-and-spoke depth — resolved gates
+stated as resolved rather than re-argued, with the constraints that still bind
+(reCAPTCHA abort-never-solve, per-question approval on screening answers) kept in
+full per the corollary that gates don't compress to pointers.
+`knowledge/tebelloreborn.md` gained a new entry carrying ADR-004's decision, the
+three phases, and the two Phase C orderings that each needed their own test because
+both fail silently. The Phase A entry beneath it was marked **`superseded in part`**
+rather than rewritten: its diagnosis of the `user_version` bug is still the sharpest
+statement of it anywhere, and only its closing forecast expired. `INDEX.md` rows
+updated for both files.
+
+**Two things found that neither queue was tracking**, both surfaced from reading the
+archived sessions' own closing messages rather than from any doc: two byte-identical
+`career.db` backups sitting untouched pending Tebello's pick, and `/codex-review`'s
+path guard — hard-scoped to `docs/specs/` — refusing an ADR for the **second** time.
+The ADR-004 review went through a direct `codex exec` with identical instruction and
+payload discipline, so the gate was met in substance by hand. Filed as backlog with
+the non-obvious part named: the guard matches CORE.md Universal Hard Rule 9's literal
+wording, so widening the skill alone would leave rule and tool disagreeing. That
+makes it a marketplace change, upstream-first per ADR-008.
+
+**Session housekeeping:** renamed the untitled `Continuation` session to
+`Cont-"Indeed adapter Phase C: submit gate"`; archived
+`Cont-"Indeed adapter Phase B: prep/question schema"` on Tebello's confirmation
+(Phase B pushed, Phase C built on top). He chose to keep
+`Cont-"Hub session-end, vault push & staleness audit"` open despite it being
+verifiably complete. The two older sessions (2026-08-01, 2026-08-03) are inside the
+7-day window, so neither was proposed.
+
+**Last completed:** Hub queue, session log and knowledge cache reconciled to the
+vault's real state through Phase C (this entry)
+**Next task:** Indeed adapter **Phase D** — `src/submission/browser.py`, in the live
+`Desktop/Pappa T/TebelloReborn/`. Spec is build-ready, no gate outstanding, still
+offline. This hub's own remaining item is unchanged: `docs/todo.md` #2, the SOPS
+AvgMovement migration, still gated on an explicit in-session go-ahead.
+**Known risks:** None new. Backup failures remain silent (backlog). Hub↔vault drift
+is now understood as structural — expect this file's final entry to be stale
+whenever a sub-project session outlived the hub session that wrote it, and check
+commit clocks at orient time rather than trusting it.
+**Blockers:** None. Phase D can start immediately.

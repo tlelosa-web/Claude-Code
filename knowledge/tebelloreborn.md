@@ -1,3 +1,71 @@
+## 2026-08-07 — Phase D: how a module that will import playwright got built without it
+**Source:** session (this machine, hub `/continue`) — built in the live
+`Desktop/Pappa T/TebelloReborn/`, vault commits `88123f6` / `a0757c2` / `ed359f8`
+**Status:** active
+
+Phase 21, steps 128–130. **485 → 538 tests, zero regressions.** `src/submission/browser.py`
+95% covered — the 6 uncovered lines are the playwright body inside `authenticated_page()`,
+exactly what spec Amendment A19 exempts.
+
+**The reusable part is the shape, not the CAPTCHA rules.** `playwright` isn't installed on
+this machine and isn't declared until Phase H, yet Phase D is the module that will import it.
+Both hold only if the module's *decisions* never need a browser. Resolution: split judgment
+from observation. The adapter observes the page (which iframes exist, whether each is visible,
+which landmarks it found) and passes small structural values in; `browser.py` judges what was
+observed and never queries a DOM. The one function that does drive a browser imports
+playwright lazily inside its own body, so importing the module never requires one.
+
+Consequence worth reusing on any "we can't test this until we're live" module: all twelve A7
+CAPTCHA states were pinned by unit test *before* any live recon, because none of them needed a
+page — only a description of one. `session.py` had already set this precedent in the same
+project for the same reason.
+
+**The never-abort cases are the load-bearing ones.** Recon found a "protected by reCAPTCHA"
+notice and a zero-sized invisible-v3 anchor frame on a *healthy* run. A detector treating
+either as a challenge aborts 100% of runs, so seven tests exist specifically to stop that
+being reintroduced. Related: the Google `/sorry/` block check parses host and path separately
+— `https://za.indeed.com/sorry/viewjob` is not a block page, and a regex loose enough to span
+the whole URL is exactly how it would become one.
+
+**Three spec gaps, all the same species: the spec described behavior recon had not verified.**
+
+- **A17's landmarks.** The check needs a URL segment *and* a structural landmark, but the live
+  walkthrough only ever recorded segments — never a selector. Resolution: `WizardStep` stores
+  landmark *names* (opaque tokens) that Phase E maps to real selectors, and it refuses
+  construction with an empty landmark tuple, since that silently degrades A17 back into the
+  URL contract it exists to replace. `WIZARD_STEPS` omits the review step entirely because the
+  walkthrough deliberately stopped at questions and never reached it — same empty-until-known
+  discipline as `eligibility.ADAPTERS`, and the same lesson as the Apify payload-shape bug.
+- **A7 rule 5** names only `recaptcha/api2/anchor`. Extended to `enterprise/anchor`: rule 1
+  already pairs both bframe paths and the escalation reasoning ("invisible v3 never renders an
+  interactive checkbox") is identical. Extra detection means extra aborts — the safe direction
+  for a rule whose entire purpose is to stop rather than proceed.
+- **`INDEED_AUTH_MARKERS` was cut down, not filled out.** Recon ran signed in and never saw an
+  expired session, so every marker is inferred. A false positive tells Tebello to re-run a
+  login setup that was fine, so a broad `/auth` was dropped; `login_form_present` is the signal
+  that needs no route guess at all.
+
+**Two orderings pinned by their own tests**, the same silent-failure class Phase C established:
+session expiry is decided *before* "unrecognized step" (an auth page fails the landmark check
+too, so branch order alone decides whether Tebello is told to re-run the login setup or to
+debug a form that is fine), and a missing session is reported *before* a missing `playwright`
+(both are true on a fresh machine, and "install playwright" is the wrong — and harder — first
+instruction for someone who simply never ran the login setup).
+
+**C3's step log takes no field values because there is no parameter to pass one through**, so
+the guarantee is structural rather than a rule to remember per call site. Its directory is
+derived from the session path (`.session/logs/`) so one `SESSION_STATE_PATH` override moves
+both and neither drifts outside `.gitignore`'s coverage.
+
+**Known deviation:** `browser.py` is 397 lines against that project's documented 300-line file
+standard. Not split — the spec names one module and `submission/db.py` already sits at 370 —
+but it wants a deliberate answer at Phase H closeout.
+
+**Next is Phase E**, the first networked phase of the build and the first requiring Tebello
+physically present: `tools/indeed_login_setup.py` opens a visible browser for a manual Indeed
+sign-in. Nothing reached the wire in Phase D; the registry is still empty and the 6 approved
+Indeed vacancies still route to manual.
+
 ## 2026-08-07 — ADR-004 answered the `user_version` question; Phases B and C then built the same day
 **Source:** session (this machine, hub `/continue`) — read from the Pappa T vault's
 commits, `TebelloReborn/docs/decisions/ADR-004-schema-migration-ledger.md`, and that

@@ -2330,3 +2330,59 @@ is now understood as structural — expect this file's final entry to be stale
 whenever a sub-project session outlived the hub session that wrote it, and check
 commit clocks at orient time rather than trusting it.
 **Blockers:** None. Phase D can start immediately.
+
+## 2026-08-07 — TebelloReborn Indeed adapter Phase D built (hub caught up same session)
+
+`/continue` run. **The hub's state was accurate at orient time for the first time in four
+sessions** — the commit-clock check that `ef247bc` recorded as a `hub-process.md` finding was run
+manually here (hub `ef247bc` 16:56 vs vault `63687c5` 16:30, hub ahead, vault clean 0/0) and found
+no drift. Worth naming, though: **that check still isn't in `.claude/commands/continue.md`.**
+`ef247bc`'s message says the check moved to `/continue`, and it did move — into
+`knowledge/hub-process.md` as a written finding. The command file was not among the five files it
+touched. So the mechanism a future session would actually execute is still absent, which is the
+same shape as the two prior recurrences: the lesson is written down, the step isn't installed. Not
+fixed here (this session's scope was Phase D, and it is a hub-command change rather than a
+project one) — raised as the first thing worth doing next in the hub.
+
+**Phase D built** in the live `Desktop/Pappa T/TebelloReborn/` — Phase 21, steps 128–130, three
+commits, TDD. **485 → 538 tests, zero regressions.** Detail lives in that project's own
+`docs/todo.md` and `docs/session-log.md` per hub-and-spoke; the hub entry is a pointer.
+
+**What made the phase non-trivial, and it wasn't the CAPTCHA rules.** `playwright` is not installed
+on this machine and is not declared until Phase H, yet Phase D is the module that will import it.
+Both facts hold only if the module's *decisions* never need a browser — so `browser.py` separates
+judgment from observation: the adapter observes the page, this module judges what was observed and
+never queries a DOM. That is what let all twelve A7 states be pinned by unit test today rather than
+waiting for Phase E's live recon, and it follows the precedent `session.py` already set.
+
+**Three spec gaps decided rather than defaulted**, all of the same kind — the spec described
+behavior that recon had not actually verified:
+
+- A17 requires a URL segment **and** a structural landmark, but the live recon only ever recorded
+  segments, never a selector. Rather than invent selectors, `WizardStep` stores landmark *names* for
+  Phase E to map, and refuses construction with an empty landmark tuple (which would silently
+  degrade A17 back into the URL contract it exists to replace). `WIZARD_STEPS` omits the review step
+  entirely — the walkthrough deliberately stopped at questions and never saw it.
+- A7 rule 5 names only `recaptcha/api2/anchor`; extended to `enterprise/anchor` because rule 1
+  already pairs both bframe paths and the escalation reasoning is identical. Extra detection means
+  extra aborts — the safe direction for a rule whose purpose is to stop.
+- `INDEED_AUTH_MARKERS` was cut down rather than filled out. Recon ran signed in and never saw an
+  expired session, so every marker is inferred, and a false positive tells Tebello to re-run a login
+  setup that was fine. A broad `/auth` was dropped; `login_form_present` needs no route guess at all.
+
+**Deliberately not done:** the 3 vault commits are **not pushed** — pushing wasn't asked for, and
+the hub queue entry says so explicitly rather than leaving the state ambiguous. `browser.py` is 397
+lines against that project's 300-line standard, recorded as a known deviation rather than split
+(the spec names one module; `db.py` already sits at 370). Nothing reached the wire; nothing was
+submitted; the adapter registry is still empty, so the 6 approved Indeed vacancies still route to
+manual.
+
+**Last completed:** TebelloReborn Indeed adapter Phase D — `browser.py`, offline, no `playwright`
+dependency (this entry)
+**Next task:** Indeed adapter **Phase E** — the first networked phase of the whole build, and the
+first that needs Tebello physically present: `tools/indeed_login_setup.py` opens a visible browser
+for a manual Indeed sign-in. This hub's own remaining item is unchanged: `docs/todo.md` #2, the SOPS
+AvgMovement migration, still gated on an explicit in-session go-ahead.
+**Known risks:** None new. Backup failures remain silent (backlog). The commit-clock staleness check
+is documented but still not installed in `/continue` — expect to have to run it by hand.
+**Blockers:** None for Phase E beyond Tebello's availability to sign in.

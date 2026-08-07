@@ -42,26 +42,39 @@ flags re-checked 2026-08-03 after the O-P-C consolidation — see note below)
 > won't reach the actual running project and O-P-C will need re-merging
 > afterward to pick it up.
 
-1. [ ] **TebelloReborn: Indeed site adapter** — **Phases A, B and C built
-      2026-08-07. D–H remaining; Phase D is next.** 📍 Live
-      `Desktop/Pappa T/TebelloReborn/`. **Not blocked** — no decision is
-      outstanding and the spec is build-ready.
+1. [ ] **TebelloReborn: Indeed site adapter** — **Phases A, B, C and D built
+      2026-08-07. E–H remaining; Phase E is next.** 📍 Live
+      `Desktop/Pappa T/TebelloReborn/`. **Not blocked, but Phase E is the first
+      phase that needs Tebello physically present** — it opens a visible browser
+      for a manual Indeed sign-in (`tools/indeed_login_setup.py`, built first in
+      that phase) and is the first networked phase of the whole build.
 
       `TebelloReborn/docs/specs/indeed-submit-adapter.md` §Amendment carries the
       phase-level Build Queue and is authoritative; that project's own
       `docs/todo.md` and `docs/session-log.md` carry the detail. This entry is a
       pointer, per hub-and-spoke.
 
-      **Phase D** is `src/submission/browser.py`: session load, expiry detection,
-      CAPTCHA detection, the combined navigation-state check, step logging. Still
-      offline — the last purely-offline phase before the spec's network work
-      starts at E. The `playwright` dependency isn't declared until Phase H.
+      **Phase E** is the first networked phase: `can_handle()` as a static
+      predicate, `inspect_apply_flow()`, the `prep-submission` CLI, question
+      extraction with fingerprints, and Claude-Code drafting. It needs
+      `tools/indeed_login_setup.py` built first **and Tebello present** to sign in
+      to Indeed by hand in a visible browser window — that is the one part no
+      session can do unattended.
 
-      **State as of vault `63687c5` (pushed, clean, 0 ahead / 0 behind):** 485
-      tests passing, zero regressions across every phase (344 → 399 → 456 → 485).
-      The adapter registry is still empty, so `career.db`'s 6 `approved` Indeed
-      vacancies all route to manual today — verified by running the real
+      **State as of vault `ed359f8` (committed, 3 commits NOT yet pushed):** 538
+      tests passing, zero regressions across every phase (344 → 399 → 456 → 485 →
+      538). The adapter registry is still empty, so `career.db`'s 6 `approved`
+      Indeed vacancies all route to manual today — verified by running the real
       `submit --all` against a sqlite3-backup copy of the live database.
+
+      - **Phase D** (Phase 21, steps 128–130) — `src/submission/browser.py`:
+        CAPTCHA detection (A7), the combined navigation-state check (A17),
+        continuous session-expiry detection (A18), and the plain-text step log
+        (C3). Offline throughout and **still no `playwright` dependency**, which
+        is only possible because the module separates judgment from observation:
+        the adapter observes the page, `browser.py` judges what was observed and
+        never queries a DOM. 95% covered — the 6 uncovered lines are the
+        playwright body A19 already exempts.
 
       - **ADR-004** (`docs/decisions/ADR-004-schema-migration-ledger.md`, accepted
         + built, Phase 18 steps 107–117) closed the shared-`user_version` question
@@ -165,6 +178,37 @@ abandoned either — no work is lost by leaving them here.
 
 ## Done
 
+- [x] **2026-08-07** — TebelloReborn: built Indeed adapter **Phase D**
+      (`src/submission/browser.py`, Phase 21 steps 128–130, 3 commits in the Pappa T
+      vault, **485 → 538 tests, zero regressions**). CAPTCHA detection, the combined
+      navigation-state check, continuous session-expiry detection, and the step log.
+      **Offline throughout, and still no `playwright` dependency** — which was the
+      real constraint, since Phase D is the module that will eventually import it and
+      it isn't installed on this machine. Both hold only if the module's *decisions*
+      never need a browser, so `browser.py` separates judgment from observation: the
+      adapter observes the page (which iframes exist, whether each is visible, which
+      landmarks it found), `browser.py` judges what was observed and never queries a
+      DOM. That let all twelve CAPTCHA states be pinned by unit test now instead of
+      waiting for Phase E's live recon. 95% covered; the 6 uncovered lines are the
+      playwright body A19 already exempts.
+      **The never-abort tests matter more than the abort ones here** — recon
+      established that a "protected by reCAPTCHA" notice and a zero-sized anchor
+      frame appear on a *healthy* run, so a detector tripping on either aborts 100%
+      of runs; seven tests exist to keep that from being reintroduced.
+      **Three places the spec left room, decided rather than defaulted:** landmark
+      selectors were *not* invented (A17 needs a URL segment plus a landmark, but
+      recon only verified the segments — so `WizardStep` stores landmark names for
+      Phase E to map, and `WIZARD_STEPS` omits the review step entirely because the
+      walkthrough never reached it); A7 rule 5 was extended to
+      `recaptcha/enterprise/anchor` since rule 1 already pairs both bframe paths and
+      the escalation reasoning is identical; and `INDEED_AUTH_MARKERS` was cut down
+      rather than filled out, because recon ran signed in and never saw an expiry, so
+      a broad `/auth` marker would tell Tebello to re-run a login setup that was fine.
+      Two orderings pinned by their own tests, same silent-failure class as Phase C's.
+      Recorded as a known deviation rather than quietly accepted: `browser.py` is 397
+      lines against that project's documented 300-line standard (not split — the spec
+      names one module, and `db.py` already sits at 370). Nothing reached the wire and
+      nothing was submitted. See `knowledge/tebelloreborn.md`.
 - [x] **2026-08-07** — Caught the hub up to Phases B and C, which landed after its
       last write — **and found why writing the lesson down hadn't stopped it.** The
       hub's previous close-out (`25b0173`, 11:11) was 5h19m behind the vault

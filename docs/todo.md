@@ -42,8 +42,8 @@ flags re-checked 2026-08-03 after the O-P-C consolidation — see note below)
 > won't reach the actual running project and O-P-C will need re-merging
 > afterward to pick it up.
 
-1. [ ] **TebelloReborn: Playwright site adapter** — **core built 2026-08-06,
-      adapter blocked on two answers from Tebello, not on code.** 📍 Live
+1. [ ] **TebelloReborn: Indeed site adapter** — **core built 2026-08-06; adapter
+      build started 2026-08-07 in a concurrent terminal session.** 📍 Live
       `Desktop/Pappa T/TebelloReborn/`.
 
       The platform-agnostic submission core is done and committed (Phase 16,
@@ -53,27 +53,48 @@ flags re-checked 2026-08-03 after the O-P-C consolidation — see note below)
       no change to `pipeline.py`. Project spec:
       `TebelloReborn/docs/specs/submission-core.md`.
 
-      **Two decisions must come first — neither is a coding question:**
+      **Decisions made in that session (observed 2026-08-07 from its terminal
+      output, not from a spec — confirm against the project's own docs before
+      relying on them):**
 
-      1. **Which platform gets the first adapter?** Indeed is the only live
-         source with approved applications (6), but its flow varies per employer
-         and many postings redirect to an external ATS with no fixed shape.
-         Realistically "Indeed's own apply form only, everything else stays
-         `not_supported`".
-      2. **ToS / account risk, explicitly acknowledged.** Driving an
-         authenticated session to submit applications is a different exposure
-         from scraping via Apify — it is Tebello's own account at risk, and it
-         is against LinkedIn's User Agreement and plausibly Indeed's. No agent
-         should start this on an assumption that the risk is accepted.
+      - **Indeed is the first platform.** The only live source with approved
+        applications (6). Its flow still varies per employer and many postings
+        redirect to an external ATS, so `can_handle()` must decline confidently —
+        an over-eager `True` turns a clean `not_supported` into a silent failure.
+      - **`playwright` approved as a runtime dependency**, browser binaries
+        included, accepted as a deliberate break from the project's
+        3-dependency offline-first footprint.
+      - **`email`/`phone` to be added to `CandidateProfile`** — neither
+        `src/profile/schema.py` nor `data/profile_seed.json` has any contact
+        field, and an apply form needs both. Found before building, not as a bug.
+      - **Live browser DOM recon chosen** over writing selectors blind — the
+        Apify payload-shape lesson applied deliberately.
 
-      Also needs a deliberate call on the `playwright` dependency + browser
-      binaries in an offline-first project, and a real-site smoke test (mocks
-      verify you called the transport, not that the site accepts what you sent —
-      the Apify payload-shape lesson).
+      **Still genuinely open:**
 
-      Until then the core behaves honestly: every approved application produces
-      a recorded `not_supported` attempt, is reported with its URL and an
-      explicit "submit this one by hand", and stays at `approved`.
+      1. **The ToS / account-risk acknowledgement has not been made on record.**
+         Driving an authenticated session to submit is a different exposure from
+         scraping via Apify — it is Tebello's own account at risk, and it is
+         against LinkedIn's User Agreement and plausibly Indeed's. Signing in for
+         read-only DOM inspection is *not* that decision. Worth making
+         deliberately rather than arriving at it by momentum.
+      2. **Recon was halted on an Indeed sign-in boundary.** That session found a
+         posting with a native "Apply with Indeed" button (so the platform's own
+         apply form does exist, not only ATS redirects) but the Chrome session
+         was signed out. No agent handles those credentials — Tebello signs in,
+         or the spec carries `TODO` selectors.
+      3. **A real-site smoke test is still required.** Mocks verify you called
+         the transport, not that the site accepts what you sent.
+
+      Until an adapter registers, the core behaves honestly: every approved
+      application produces a recorded `not_supported` attempt, is reported with
+      its URL and an explicit "submit this one by hand", and stays at `approved`.
+
+      ⚠️ **Concurrent-session warning.** That session writes to the same live
+      repo and will run its own `/session-end`. Pull before editing this file
+      (Hard Rule 6), and expect the project-side
+      `TebelloReborn/docs/todo.md` — not this entry — to be authoritative on
+      build detail per hub-and-spoke.
 
       Hub spec `docs/specs/2026-08-04-tebelloreborn-playwright-auto-submit.md`
       is **superseded** by the project-side spec above — it scoped the build to

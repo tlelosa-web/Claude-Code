@@ -1,6 +1,6 @@
 # ADR-004: Schema State, Not a Shared Counter — a Per-Module Migration Ledger
 
-**Status:** Proposed — awaiting Tebello's decision. No code written yet.
+**Status:** **Accepted** 2026-08-07 (both open questions answered, Codex-reviewed, fold-in complete — see §Amendment, which supersedes §1–§7 wherever they conflict). No code written yet.
 **Date:** 2026-08-07
 **Decider:** Tebello Lelosa
 **Author:** Architect
@@ -192,3 +192,134 @@ Offline throughout. No network stage is touched.
 
 1. **§6 — fix `vacancy_search`'s baseline in this change, or leave it?** Recommended: fix it. It is the one baseline that is provably wrong and it is what made Phase 17 fatal rather than cosmetic. It does add a file to the change.
 2. **Does this need `/codex-review` before build?** Hard Rule 13 names `docs/specs/`, and this is an ADR in `docs/decisions/` — so the rule does not literally bind. Given it redesigns a mechanism Hard Rule 6 names explicitly, and the last two Codex passes both returned findings that would have failed at runtime, running it anyway looks like the better bet.
+
+**Both answered by Tebello, 2026-08-07.** (1) **Fix `vacancy_search`'s baseline in this change** — §6 stands as written, build steps 5–6 included. (2) **Run `/codex-review`** — done, output appended below. Note the `/codex-review` skill's path guard refused the ADR (it is scoped to `docs/specs/` only, matching the literal wording of Hard Rule 13); the identical review instruction and payload discipline were applied via a direct `codex exec` call instead, sending this file and nothing else.
+
+## Codex second opinion (advisory) — 2026-08-07
+
+**Second Opinion Review**
+
+This ADR is directionally sound. The diagnosis is correct: `PRAGMA user_version` is the wrong shape for independent module migrations, and a `(module, version)` ledger is the right minimal fix. I would not reject the spec. I would tighten several details before build.
+
+**1. Buried Or Unstated Assumptions**
+
+The biggest hidden assumption is that `migrations: list[tuple[int, str]]` can carry Phase B's table rebuild. The ADR says Phase B needs SQLite's "12-step rebuild" and then defines the runner as executing one SQL string per migration. Python's `sqlite3.Connection.execute()` will not execute multiple statements in one string. If the runner uses `execute(sql)`, a rebuild migration cannot be represented. If it switches to `executescript()`, transaction behavior changes and must be designed deliberately.
+
+The ADR assumes "runs the SQL, records the row, then commits once at the end" is atomic enough. That needs to be explicit. For DDL plus ledger writes, the acceptance criteria should prove that a failed migration does not leave a ledger row claiming success. This matters especially for the table rebuild case.
+
+The wording "Order within a module is the list's order, ascending by version" hides an ambiguity. Is the runner sorting by version, or trusting the list order? Those are different behaviors. If it sorts, list order is not authoritative. If it trusts list order, "ascending by version" must be validated.
+
+The ADD COLUMN auto-detection assumes simple unquoted identifiers: `ALTER TABLE <t> ADD COLUMN <c>`. That matches current migrations, but it should be documented as the only supported auto-skip form. Quoted identifiers, schema-qualified tables, `IF NOT EXISTS`, or unusual whitespace/comments could be misparsed.
+
+The adoption argument assumes every pre-ledger migration in the real world is one of the six known `ADD COLUMN`s. The ADR says this was verified in the working tree, which is good, but it also mentions "Tebello's two backups." If there are any older/exported/copied databases outside those three files, the spec does not say whether they are supported.
+
+**2. Missing Or Untestable Acceptance Criteria**
+
+Add an acceptance criterion for failed migration atomicity: if migration N fails, `(module, N)` must not be recorded, later migrations must not run, and the schema must not be half-declared as complete.
+
+Add explicit tests for duplicate and invalid versions inside one module. Example: `[(1, ...), (1, ...)]` should fail loudly, not silently skip the second because the ledger already has version 1. Same for non-positive versions and out-of-order versions if the project expects ascending order.
+
+Add a direct acceptance test for the Phase B-shaped case: one migration that rebuilds a table with existing rows, preserves data, records exactly one ledger row, and reruns as a no-op. Without that, the ADR's stated blocker is not actually proven solved.
+
+Add a test for ledger corruption or pre-existing bad rows only if you care to support it. At minimum, define behavior for a pre-existing `schema_migrations` table with wrong shape. Right now "created and owned by a new shared runner" does not say whether the runner verifies the table schema or blindly trusts any table with that name.
+
+Add an acceptance criterion around fresh databases after baseline duplication. The ADR implies a fresh `vacancy_search.init_db()` should create the four columns in baseline, skip all four `ADD COLUMN`s, and record versions 1-4. That should be asserted directly.
+
+**3. Failure Modes Not Considered**
+
+Partial table rebuild failure is the main one. A rebuild can fail after creating a temporary table, after copying rows, or after dropping/renaming. The spec does not say how the migration should name temp tables, guard against leftovers, or recover from a previous failed attempt.
+
+Concurrency is not discussed. If two commands initialize the same database at the same time, both may see a missing ledger row and both may try to apply the same migration. SQLite locking may serialize writes, but the runner should be tested or designed so the primary-key insert and DDL order do not produce confusing duplicate-column or duplicate-ledger failures.
+
+The ledger records only `(module, version, applied_at)`, not the SQL/checksum/name. That is probably acceptable for this project, but it means changing the SQL for an already-recorded migration will be invisible. The ADR should state that migrations are immutable once shipped.
+
+`ADD COLUMN` skip-and-record can mask drift. If a column named `email` exists with the wrong type or semantics, the runner records the migration as applied. SQLite's typing is loose, so this may be fine, but the spec's phrase "schema state" is stronger than the check actually performed: it checks column presence, not full schema compatibility.
+
+Foreign keys and indexes after table rebuild are not mentioned. Phase B's `submissions` table has a foreign key to `vacancies`; rebuilding it must preserve constraints and any indexes/triggers if they exist later. The migration pattern should include `PRAGMA foreign_keys` handling and post-rebuild schema verification.
+
+**4. Architectural Alternatives Worth Weighing**
+
+A structured migration object instead of raw SQL tuples is worth considering:
+
+```python
+Migration(
+    version=1,
+    sql=...,
+    idempotency=AddColumn(table="vacancies", column="score"),
+)
+```
+
+or separate helpers like `add_column(...)`, `execute_once(...)`, `rebuild_table(...)`. This avoids regex-driven SQL parsing while keeping the project lightweight. I would seriously weigh this because the ADR's only special idempotency rule depends on parsing SQL strings.
+
+A ledger with `module`, `version`, `name`, and `checksum` is also worth weighing. I would not call it mandatory, but it gives better protection against accidental edits to historical migrations. The current three-column ledger is simpler, but it relies on discipline rather than detection.
+
+For the table rebuild specifically, I would consider allowing callable migrations:
+
+```python
+MIGRATIONS = [
+    Migration(1, rebuild_submissions_outcome_check),
+]
+```
+
+That is a better fit than cramming SQLite's 12-step rebuild into a string. It also makes tests clearer: the callable can run multiple statements inside the runner's transaction and raise on validation failure.
+
+Bottom line: the ADR's core decision is sound. The weak spot is not the ledger idea; it is the underspecified execution model for non-trivial migrations, especially the table rebuild that motivated the ADR in the first place. Tighten that before implementation.
+
+_Advisory only — reviewer agent retains sole APPROVE/BLOCK authority._
+
+---
+
+## Amendment — 2026-08-07 (Codex fold-in)
+
+**This Amendment supersedes §1–§7 wherever they conflict.** Thirteen accepted changes, three considered-and-declined. Hard Rule 13's gate is satisfied (run via direct `codex exec`, see the note under Open Questions).
+
+Codex's bottom line was that the ledger idea is right and the *execution model for non-trivial migrations* is underspecified. That is correct, and the central finding is worse than Codex stated — it was verified directly against this machine's `sqlite3` (3.49.1) rather than accepted on the review's word:
+
+```
+execute("CREATE TABLE …; INSERT …; DROP …;")
+  → sqlite3.ProgrammingError: You can only execute one statement at a time.
+
+executescript(...)  →  in_transaction: True → False
+  (an uncommitted INSERT was committed by the executescript call itself)
+```
+
+So both halves fail: §2's `list[tuple[int, str]]` **cannot represent Phase B's rebuild**, and `executescript` is not a safe escape hatch either — it issues an implicit `COMMIT` before running, which would silently destroy §2's "commits once at the end" atomicity and leave a half-applied rebuild with an inconsistent ledger. This is exactly the case the ADR exists to unblock, so it had to be fixed before build.
+
+### Accepted
+
+- **A1 — A migration's payload becomes `str | Callable[[sqlite3.Connection], None]`.** §2's signature becomes `list[tuple[int, str | Callable]]`. A `str` is a single SQL statement, executed as today; a callable receives the open connection and may issue as many `execute()` calls as it needs, **inside the runner's transaction**, so a 12-step rebuild is an ordinary Python function. All six existing migrations stay unchanged as strings. Phase B's `submissions.outcome` CHECK rebuild is written as a callable. *(Chosen over Codex §4's structured `Migration` dataclass — see Declined D1.)*
+- **A2 — Atomicity is per migration, and explicit.** §2's "commits once at the end" is replaced: the runner opens `BEGIN IMMEDIATE`, runs one migration, inserts its ledger row, and commits — **the DDL and its ledger row commit together or not at all**. On failure it rolls back that migration and its ledger row, does not run any later migration, and re-raises. Earlier migrations stay applied *and* recorded, so a re-run resumes correctly rather than restarting. This is what makes A1's callable rebuild safe.
+- **A3 — Migration lists are validated, and bad ones fail loudly.** The runner trusts list order but asserts it: versions must be **strictly ascending** and **positive**. A duplicate version within a module, a non-positive version, or an out-of-order list raises `MigrationDefinitionError` at call time. Codex's `[(1, ...), (1, ...)]` case would otherwise have the second silently swallowed by the ledger. This resolves §1's "ascending by version" ambiguity in favour of *validate, don't sort* — sorting would make list order non-authoritative and hide the mistake.
+- **A4 — The `ADD COLUMN` auto-skip is narrowed and documented as the only supported form.** It matches `ALTER TABLE <table> ADD COLUMN <column> …` with simple unquoted identifiers and ordinary whitespace, and nothing else. Quoted or schema-qualified identifiers, `IF NOT EXISTS`, and embedded comments are **not** recognised and are not auto-skipped — they simply run under ordinary ledger gating. The skip **never applies to a callable** (A1): callables are gated by the ledger alone.
+- **A5 — The runner verifies the ledger table rather than trusting any table of that name.** If `schema_migrations` exists with the wrong shape (missing columns, wrong primary key), the runner raises `MigrationLedgerError` instead of proceeding against it. §2's "ensures the ledger table exists" was silent on this.
+- **A6 — Shipped migrations are immutable.** Once a migration may have run anywhere, its version is never edited or renumbered — a correction ships as a new version. This goes into the rewritten Hard Rule 6, not just here. It is the discipline that stands in for the checksum column (see Declined D2).
+- **A7 — Concurrency is handled by `BEGIN IMMEDIATE`, and stated.** Taking the write lock *before* reading the ledger means two simultaneous `init_db()` calls serialize: the second sees the rows the first recorded and no-ops, rather than both attempting the same DDL and producing a confusing `duplicate column name` or ledger primary-key collision. §2 did not discuss concurrency at all.
+- **A8 — New acceptance test: the Phase-B-shaped rebuild.** One callable migration that rebuilds a table holding existing rows — data preserved, exactly one ledger row written, re-run is a no-op. Without this the ADR's stated blocker is asserted but not proven; it becomes build step 9.
+- **A9 — New acceptance test: failed-migration atomicity.** Migration N raises → `(module, N)` is absent from the ledger, migrations after N never ran, and the schema is not half-declared complete.
+- **A10 — New acceptance assertion: fresh-database baseline duplication.** A fresh `vacancy_search.init_db()` must create the four match columns *in the baseline* (§6), skip all four `ADD COLUMN`s, and **record versions 1–4**. §6 implied this; it is now asserted directly.
+- **A11 — Table rebuilds own their foreign-key handling; the runner must not fight them.** SQLite's documented rebuild procedure requires `PRAGMA foreign_keys=OFF` for the drop/rename, and `PRAGMA foreign_keys` cannot be changed inside a transaction. The runner therefore neither sets nor assumes that pragma; a rebuild callable manages it around its own work and verifies with `PRAGMA foreign_key_check` before returning. Relevant immediately: `submissions.vacancy_id` is a real FK into `vacancies`. This is a constraint on Phase B, recorded here so it isn't rediscovered mid-build.
+- **A12 — The `ADD COLUMN` skip checks column *presence*, not type or semantics — accepted as a documented limitation.** Codex is right that §3's phrase "schema state" is stronger than the check performed. Accepted rather than fixed: SQLite's typing is loose, and all six historical migrations add plain `TEXT`/`INTEGER` columns, so there is no realistic drift for this rule to mask today. Revisit only if a migration ever adds a column with a constraint or default.
+- **A13 — Adoption is guaranteed only for the three known databases** (the live `career.db` and Tebello's two backups), whose entire migration history is the six verified `ADD COLUMN`s. Any older exported or copied database outside those three is out of scope — §4's "no special code path" claim rests on that verification, and is not a claim about arbitrary files.
+
+### Considered and declined
+
+- **D1 — Structured `Migration` dataclass with declared idempotency** (`Migration(version, sql, idempotency=AddColumn(table, column))`, Codex §4). Declined in favour of A1's union type: it solves the actual blocker with zero churn to the six existing migrations, and A4 narrows the regex enough that the "only special rule depends on parsing SQL strings" objection loses most of its force. Reconsider if a second idempotency form is ever needed — at that point declared idempotency earns its keep.
+- **D2 — `name` + `checksum` columns on the ledger** (Codex §4). Declined in favour of A6's written immutability rule. A callable migration (A1) has no stable text to checksum, so the protection would cover only half the migrations while complicating the adoption path — the runner would have to invent checksums for the four `vacancy_search` migrations it skips and records.
+- **D3 — Recovery from a corrupt or partially-bad ledger beyond shape verification** (Codex §2). Declined as out of scope. A5's fail-loud *is* the defined behaviour; a database whose ledger has been hand-edited is a restore-from-backup situation, not a case for the runner to reason about.
+
+### Build Queue — revised (supersedes the queue above)
+
+Offline throughout. No network stage is touched.
+
+1. **[RED]** `tests/unit/test_shared_migrations.py` (new) — ledger table shape and `(module, version)` primary key; per-module isolation; re-run is a no-op; `ADD COLUMN` skipped **and recorded**; a non-`ADD COLUMN` migration runs exactly once; adoption of a ledger-less database. **Plus, per this Amendment:** a callable migration issuing multiple statements inside one transaction (A1); failed-migration atomicity (A2/A9); `MigrationDefinitionError` on duplicate/non-positive/non-ascending versions (A3); the narrowed `ADD COLUMN` parse and its non-matching forms (A4); `MigrationLedgerError` on a wrong-shape ledger table (A5); concurrent-init serialization (A7).
+2. **[GREEN]** `src/shared/migrations.py` — the runner, `MigrationDefinitionError`, `MigrationLedgerError`.
+3. **[RED]** `tests/unit/test_profile_db.py` — the two `user_version` assertions become ledger assertions; both init-ordering regression tests keep their intent (they must still converge on identical schemas).
+4. **[GREEN]** `src/profile/migrations.py` — delegate; drop the local guard and the counter writes. Baseline in `db.py` unchanged.
+5. **[RED]** `tests/unit/test_vacancy_db.py` — baseline `CREATE TABLE vacancies` includes the four match columns; fresh and legacy databases converge on the same schema; fresh DB records 1–4 as skipped (A10).
+6. **[GREEN]** `src/vacancy_search/migrations.py` delegates + `src/vacancy_search/db.py` baseline gains the four columns (§6, confirmed by Tebello).
+7. **[GREEN]** `src/doc_gen/migrations.py` + `src/review/migrations.py` delegate. Empty lists, no behaviour change.
+8. **[RED]** `tests/unit/test_submission_db.py` — replace `test_does_not_advance_user_version` with the ledger equivalent.
+9. **[RED/GREEN]** the Phase-B-shaped rebuild acceptance test (A8) — a callable migration rebuilding a populated table, data preserved, one ledger row, re-run a no-op. **This is the step that proves the ADR's stated blocker is actually solved.**
+10. `tests/integration/test_full_pipeline.py` — end-to-end init in **both** module orders against one database, asserting identical final schema and a complete ledger. This is the test class that caught the Phase 17 regression.
+11. Verify against a **copy** of the live `career.db` before anything touches the real one — ledger created, `vacancy_search` 1–4 recorded-not-rerun, `profile` 5–6 applied, all 10 vacancies / 10 approvals / 43 generation-log rows intact.
+12. Docs closeout — `CLAUDE.md` Hard Rule 6 rewritten (§5 + A6's immutability rule + per-module numbering from 1), `docs/architecture.md`, `docs/todo.md` Open Item closed, `docs/session-log.md`.

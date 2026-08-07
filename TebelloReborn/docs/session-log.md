@@ -7,6 +7,8 @@
 
 ---
 
+2026-08-07 codex-review docs/decisions/ADR-004-schema-migration-ledger.md: ran
+
 ## 2026-08-07 — ADR-004 written: schema migration ledger (PROPOSED, not decided, no code changed)
 
 `docs/decisions/ADR-004-schema-migration-ledger.md` — the ADR the previous session's Open Item

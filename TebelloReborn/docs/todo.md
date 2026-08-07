@@ -408,12 +408,24 @@ went first; **B–H are not started.**
 ## Open Items (require Tebello — not something an agent should attempt)
 
 - [ ] **The shared-`user_version` bug is fixed in `src/profile/` only — the same trap is still armed
-      in the other three modules. ADR-004 is now WRITTEN and PROPOSED (2026-08-07); it awaits
-      Tebello's decision, and no code has changed.** See
-      `docs/decisions/ADR-004-schema-migration-ledger.md` — it carries the full decision, the
-      alternatives, and an 11-step atomic Build Queue. Two open questions in that ADR need Tebello's
-      answer before an Executor is dispatched (fix `vacancy_search`'s baseline in the same change?
-      run `/codex-review` on an ADR, given Hard Rule 13 names `docs/specs/` only?).
+      in the other three modules. ADR-004 is ACCEPTED as of 2026-08-07, Codex-reviewed, fold-in
+      complete — ready to build, no code has changed yet.** See
+      `docs/decisions/ADR-004-schema-migration-ledger.md` and its `§Amendment — 2026-08-07 (Codex
+      fold-in)`, which carries the revised **12-step** atomic Build Queue. Both open questions are
+      answered: `vacancy_search`'s baseline **is** fixed in the same change (§6), and `/codex-review`
+      **was** run (the skill's path guard refuses non-`docs/specs/` files, so the identical review
+      instruction and payload discipline went through a direct `codex exec` call).
+
+      **The Codex pass found a blocker that would have failed at runtime, verified directly against
+      this machine's sqlite3 3.49.1 rather than taken on the review's word:** §2's
+      `list[tuple[int, str]]` cannot represent Phase B's table rebuild at all —
+      `Connection.execute()` raises `ProgrammingError: You can only execute one statement at a time`
+      — and `executescript()` is not a safe fallback either, because it issues an **implicit COMMIT
+      before running** (`in_transaction` True → False, confirmed), which would have silently voided
+      §2's "commits once at the end" atomicity and left a half-applied rebuild with an inconsistent
+      ledger. Fixed by A1 (payload becomes `str | Callable[[sqlite3.Connection], None]`) plus A2
+      (per-migration `BEGIN IMMEDIATE`; DDL and its ledger row commit together or not at all).
+      Twelve more accepted changes, three declined — full list in the Amendment.
 
       **The ADR's decisive finding — it changes which option is viable.** `docs/todo.md`'s original
       recommendation below offered "a shared runner, or fold each module's migrations into its

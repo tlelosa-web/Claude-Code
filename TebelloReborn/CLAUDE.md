@@ -161,7 +161,7 @@ Design modules so offline stages never import or depend on network-requiring cod
 
 Stage 6's **platform-agnostic core is built** (2026-08-06, `docs/specs/submission-core.md`): status vocabulary, the `submissions` attempt log, session-state path handling, capability-based adapter dispatch, and outcome recording. Its **site adapter is not** — the registry ships empty, so every approved application produces a `not_supported` attempt, is reported to the operator with an instruction to submit it by hand, and stays at `approved`. No `playwright` dependency, no browser binary, nothing on the wire.
 
-The Indeed adapter's **Phases A, B and C are built** (2026-08-07, `docs/specs/indeed-submit-adapter.md`): profile contact details; then the `submission_preps`/`screening_questions` tables, the `pending_review` outcome, and `submission_prep_ready()`; then that gate wired into `pipeline.py` ahead of the session check, `pending_review` reporting, and the `--all` auto-submit refusal (A15 — real applications go out one at a time, by explicit id; confirmed with Tebello 2026-08-07). Still offline, still no adapter registered, so every approved application routes to manual today. Phases D–H remain — Indeed's apply flow will add three commands run in sequence:
+The Indeed adapter's **Phases A, B, C and D are built** (2026-08-07, `docs/specs/indeed-submit-adapter.md`): profile contact details; then the `submission_preps`/`screening_questions` tables, the `pending_review` outcome, and `submission_prep_ready()`; then that gate wired into `pipeline.py` ahead of the session check, `pending_review` reporting, and the `--all` auto-submit refusal (A15 — real applications go out one at a time, by explicit id; confirmed with Tebello 2026-08-07); then `browser.py`'s CAPTCHA detection, combined navigation-state check, continuous session-expiry detection, and step log. Still offline, still **no `playwright` dependency** (Phase H declares it), still no adapter registered, so every approved application routes to manual today. Phases E–H remain — Indeed's apply flow will add three commands run in sequence:
 
 ```
 career-engine prep-submission --vacancy-id <id>   (network, read-only recon — extracts screening questions)
@@ -320,7 +320,10 @@ TebelloReborn/
     └── submission/               ← Stage 6 core: schema.py, db.py, session.py,
                                      eligibility.py, pipeline.py, cli.py +
                                      migrations.py (ADR-004, version 1 — the
-                                     submissions.outcome CHECK rebuild, Phase B)
+                                     submissions.outcome CHECK rebuild, Phase B) +
+                                     browser.py (Phase D — pure page-state
+                                     judgment; the only module that may import
+                                     playwright, and it does so lazily)
 ```
 
 `.session/` (gitignored) holds the Playwright `storageState` file once a login is saved — a live authenticated session, treated as a credential.

@@ -1,8 +1,12 @@
 # Task Queue — TebelloReborn (Career Engine)
 
-> Updated: 2026-08-07 (**Indeed adapter Phase C built** — Phase 20, steps 123–127: the prep-state
+> Updated: 2026-08-07 (**Indeed adapter Phase D built** — Phase 21, steps 128–130: `browser.py`'s
+> CAPTCHA detection, combined navigation-state check, continuous session-expiry detection, and step
+> log. Offline, and still no `playwright` dependency; **Phase E is next** — the first phase in this
+> whole build that touches the network, and the one that needs `tools/indeed_login_setup.py` and
+> Tebello present to sign in. Earlier the same day: Phase C, Phase 20, steps 123–127 — the prep-state
 > submit gate wired into `pipeline.py`, `pending_review` reporting, and the `--all` auto-submit
-> refusal. Offline; **Phase D is next**. Earlier the same day: Phase B, Phase 19, steps 118–122 — the
+> refusal. Also earlier the same day: Phase B, Phase 19, steps 118–122 — the
 > `submission_preps`/`screening_questions` tables, the `pending_review` outcome, the widened
 > `submissions.outcome` CHECK with its migration and drift guard, and `submission_prep_ready()`.
 > Also earlier the same day: ADR-004's schema migration ledger,
@@ -428,6 +432,63 @@ Nothing on the wire, no `playwright` dependency, the adapter registry still empt
 > branch and its own asserted substrings, and why the summary counts them in separate buckets:
 > folding them together would tell Tebello to submit by hand a batch that one `prep-submission` run
 > may unblock.
+
+---
+
+### Phase 21 — Indeed submit adapter, **Phase D** (see `docs/specs/indeed-submit-adapter.md`
+§Amendment A7/A17/A18/C3 — built 2026-08-07)
+
+`src/submission/browser.py`: everything `prep-submission` and `submit` will both need to read a live
+page safely. **Offline throughout, and still no `playwright` dependency** — Phase H declares it, and
+it is not installed on this machine, so the whole phase had to be buildable and testable without one.
+
+- [x] 128. [RED] `tests/unit/test_submission_browser.py` (`88123f6`) — A7's five abort states and
+      seven never-abort states, A17's two-signal check, A18's expiry, C3's step log, and two
+      ordering tests
+- [x] 129. [GREEN] `src/submission/browser.py` (`a0757c2`)
+- [x] 130. Docs closeout — `docs/architecture.md` (the Phase D block), `CLAUDE.md` (Stage 6 +
+      directory structure), this file, `docs/session-log.md`
+
+**Result:** 538 tests passing (was 485). `browser.py` 95% covered — the 6 uncovered lines are the
+playwright body inside `authenticated_page()`, which is exactly what A19 exempts.
+
+> **The design decision that made the phase possible: judgment is separated from observation.**
+> The adapter observes the page (which iframes exist, whether each is visible, which landmarks it
+> found); `browser.py` judges what was observed and never queries a DOM. That is what lets every A7
+> rule be exercised from a plain unit test with no browser present, instead of waiting for Phase E's
+> live recon to test any of it.
+>
+> **Two orderings pinned by their own test**, same class as Phase C's:
+>
+> 1. **Session expiry is decided before "unrecognized step".** An auth page fails the landmark check
+>    too, so branch order alone decides whether Tebello is told to re-run the login setup or to debug
+>    a form that is fine.
+> 2. **A missing session is reported before a missing `playwright`.** Both are true on a fresh
+>    machine, and "install playwright" is the wrong first instruction for someone who has simply never
+>    run the login setup — and the harder of the two to act on.
+>
+> **Three places the spec left room, decided deliberately rather than by default:**
+>
+> - **Landmark selectors are not invented.** A17 needs a URL segment *and* a structural landmark, but
+>   recon only ever verified the segments. `WizardStep` stores landmark *names*; Phase E maps them to
+>   real selectors from live recon. `WIZARD_STEPS` carries only the two segments recon actually saw —
+>   the review step was never reached, so it is absent rather than plausibly guessed. Same
+>   empty-until-known discipline as `eligibility.ADAPTERS`, and the same lesson as the Apify
+>   payload-shape bug.
+> - **A7 rule 5 extended to `recaptcha/enterprise/anchor`.** The spec names only `api2/anchor`, but
+>   rule 1 already pairs both bframe paths and the escalation reasoning is identical. Extra detection
+>   means extra aborts — the safe direction.
+> - **`INDEED_AUTH_MARKERS` deliberately short.** Recon ran signed in and never saw an expired
+>   session, so every marker is inferred and a false positive tells Tebello to re-run a login setup
+>   that was fine. A broad `/auth` was dropped for that reason; `login_form_present` is the signal
+>   that needs no route guess at all.
+
+**Known deviation:** `browser.py` is 397 lines against `CLAUDE.md`'s documented 300-line file
+standard. Not split — the spec names this single module, and `submission/db.py` already sits at 370.
+Worth a deliberate answer at Phase H's closeout rather than drift.
+
+---
+
 
 ---
 

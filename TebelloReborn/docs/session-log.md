@@ -7,7 +7,77 @@
 
 ---
 
-## 2026-08-07 (latest) — Indeed adapter Phase C: the prep-state gate, wired
+## 2026-08-07 (latest) — Indeed adapter Phase D: browser.py, judged offline
+
+Resumed via `/continue` from the hub, which reported Phase D as build-ready with no gate
+outstanding — correct this time, and worth noting given the last three sessions each had to
+correct a stale hub. Phase D of `docs/specs/indeed-submit-adapter.md` (§Amendment A7/A17/A18/C3)
+— Phase 21, steps 128–130, TDD throughout. **538 tests passing, was 485. Zero regressions.**
+`browser.py` 95% covered; the 6 uncovered lines are the playwright body inside
+`authenticated_page()`, which is exactly what A19 exempts.
+
+**The constraint that shaped the whole phase: `playwright` is not installed on this machine and
+is not declared until Phase H, yet Phase D is the module that will import it.** Both hold only if
+the module's *decisions* never need a browser. So `browser.py` is split — the adapter observes
+the page (which iframes exist, whether each is visible, which landmarks it found) and this module
+judges what was observed. Nothing in it queries a DOM. That is what let all twelve A7 states be
+pinned by unit test today rather than waiting for Phase E's live recon to exercise any of them,
+and it follows the precedent `session.py` already set for the same reason.
+
+**Two orderings, each with its own test, same class as Phase C's:**
+
+1. **Expiry is decided before "unrecognized step".** An auth page fails the landmark check too, so
+   branch order alone decides whether Tebello is told to re-run the login setup or to debug a form
+   that is fine.
+2. **A missing session is reported before a missing `playwright`.** Both are true on a fresh
+   machine, and "install playwright" is the wrong first instruction for someone who has simply
+   never run the login setup — and much the harder of the two to act on.
+
+**Three places the spec left room, and what was chosen instead of defaulting:**
+
+- **No landmark selectors were invented.** A17 requires a URL segment *and* a structural landmark,
+  but the live recon only ever verified the segments — it never recorded a selector. `WizardStep`
+  therefore stores landmark *names*, which Phase E maps to real selectors, and it refuses to be
+  constructed with an empty landmark tuple (that would silently degrade A17 back into the URL
+  contract it exists to replace). `WIZARD_STEPS` carries only the two segments recon actually saw;
+  the review step was never reached, so it is absent rather than plausibly guessed. Same
+  empty-until-known discipline as `eligibility.ADAPTERS`, and the same lesson as the Apify
+  payload-shape bug.
+- **A7 rule 5 extended to `recaptcha/enterprise/anchor`.** The spec names only `api2/anchor`, but
+  rule 1 already pairs both bframe paths and the escalation reasoning ("invisible v3 never renders
+  an interactive checkbox") is identical. Extra detection means extra aborts — the safe direction
+  for a rule whose whole purpose is to stop rather than proceed.
+- **`INDEED_AUTH_MARKERS` was cut down, not filled out.** Recon ran signed in and never saw an
+  expired session, so every marker is inferred. A false positive here tells Tebello to re-run a
+  login setup that was fine, so a broad `/auth` was dropped as too easy to hit by accident;
+  `login_form_present` is the signal that needs no route guess at all, and Phase E confirms the
+  remaining two against real expired-session behavior.
+
+**The never-abort tests are the ones that matter most in this file.** Recon established that a
+"protected by reCAPTCHA" notice and a zero-sized anchor frame are present on a *healthy* run, so a
+detector that treats either as a challenge aborts 100% of runs — seven tests exist to make that
+impossible to reintroduce. The Google `/sorry/` check parses host and path separately for the same
+reason: `https://za.indeed.com/sorry/viewjob` is not a block page, and a regex loose enough to span
+the whole URL is precisely how it would become one.
+
+**C3's step log takes no field values, and cannot.** There is no parameter to pass one through, so
+the guarantee is structural rather than a rule someone has to remember at each call site. Its
+directory is derived from the session path (`.session/logs/`), so one `SESSION_STATE_PATH` override
+moves both and neither can drift outside `.gitignore`'s coverage.
+
+**Known deviation, recorded rather than quietly accepted:** `browser.py` is 397 lines against
+`CLAUDE.md`'s documented 300-line file standard. Not split — the spec names this single module and
+`submission/db.py` already sits at 370 — but it deserves a deliberate answer at Phase H's closeout.
+
+**Nothing reached the wire this session, and nothing was submitted.** The adapter registry is still
+empty, so `career.db`'s 6 approved Indeed vacancies still route to manual.
+
+**Next:** Phase E — the first networked phase of this build, and the one that needs
+`tools/indeed_login_setup.py` built first *and* Tebello present to sign in by hand.
+
+---
+
+## 2026-08-07 (later, 3) — Indeed adapter Phase C: the prep-state gate, wired
 
 Resumed via `/continue` straight after Phase B pushed. Phase C of
 `docs/specs/indeed-submit-adapter.md` (§Amendment A2/A3/A15) — Phase 20, steps 123–127, four

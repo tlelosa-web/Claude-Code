@@ -212,6 +212,69 @@ class ScreeningQuestion:
 
 
 @dataclass(frozen=True)
+class ExtractedQuestion:
+    """One form control, exactly as the adapter *observed* it.
+
+    Deliberately not a ScreeningQuestion. This carries no fingerprint, no
+    sensitivity, no drafted answer and no decision, because none of those are
+    observations — they are judgments that `questions.py` and `drafting.py`
+    make, and `prep.py` records. Phase D established the split for the browser
+    (the adapter observes the page, `browser.py` judges it); this is the same
+    split one layer up, and the reason an adapter can never decide whether an
+    answer is submittable.
+    """
+
+    question_text: str
+    field_type: FieldType
+    step_url: str
+    position: int
+    field_key: Optional[str] = None
+    required: bool = False
+    options: Optional[List[str]] = None
+
+    def __post_init__(self):
+        if not isinstance(self.field_type, FieldType):
+            raise TypeError(
+                f"field_type must be a FieldType, got {type(self.field_type).__name__}"
+            )
+
+
+@dataclass(frozen=True)
+class PrepResult:
+    """What one `inspect_apply_flow()` run found. The adapter's whole return.
+
+    The two guards below refuse to construct states that `db.py` already has to
+    defend against downstream: a `questions_extracted` run that found nothing is
+    a form submitted with its questions blank, and `submission_prep_ready()`
+    calls that out explicitly. Refusing it here stops the bad row being written
+    rather than catching it after it has been.
+    """
+
+    status: PrepStatus
+    detail: str
+    step_url: Optional[str] = None
+    questions: tuple[ExtractedQuestion, ...] = ()
+
+    def __post_init__(self):
+        if not isinstance(self.status, PrepStatus):
+            raise TypeError(
+                f"status must be a PrepStatus, got {type(self.status).__name__}"
+            )
+
+        if self.status is PrepStatus.QUESTIONS_EXTRACTED and not self.questions:
+            raise ValueError(
+                "questions_extracted with no questions — use NO_QUESTIONS for a "
+                "posting that genuinely has none; the two are not the same state"
+            )
+
+        if self.status is not PrepStatus.QUESTIONS_EXTRACTED and self.questions:
+            raise ValueError(
+                f"{self.status.value} carries no questions — only "
+                f"questions_extracted does"
+            )
+
+
+@dataclass(frozen=True)
 class PrepReadiness:
     """Whether a vacancy may proceed to `IndeedAdapter.submit()`, and if not,
     what `pipeline.py` should record and tell the operator to do.

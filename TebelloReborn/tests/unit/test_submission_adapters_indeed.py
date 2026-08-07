@@ -76,7 +76,9 @@ class TestCanHandleDeclines:
         )
 
     def test_a_non_viewjob_path(self, adapter):
-        assert not adapter.can_handle(vacancy_at("https://za.indeed.com/jobs?q=engineer"))
+        assert not adapter.can_handle(
+            vacancy_at("https://za.indeed.com/jobs?q=engineer")
+        )
 
     def test_a_lookalike_suffix_domain(self, adapter):
         # "notindeed.com".endswith("indeed.com") is True. A1's sketch is written
@@ -94,8 +96,13 @@ class TestCanHandleDeclines:
     def test_a_malformed_url(self, adapter):
         assert not adapter.can_handle(vacancy_at("not a url at all"))
 
-    def test_an_empty_url(self, adapter):
-        assert not adapter.can_handle(vacancy_at(""))
+    def test_an_empty_url_cannot_reach_the_predicate_at_all(self):
+        # Not a can_handle() case: Vacancy validates url as a required field, so
+        # the empty-URL state is unreachable from a real vacancy. Pinned here
+        # rather than deleted, because the predicate's defensive `url or ""`
+        # only looks unnecessary while this invariant holds upstream.
+        with pytest.raises(ValueError, match="url"):
+            vacancy_at("")
 
 
 class TestCanHandleIsPure:
@@ -188,9 +195,7 @@ class TestPrepResult:
             position=0,
         )
         with pytest.raises(ValueError):
-            PrepResult(
-                status=PrepStatus.NO_QUESTIONS, detail="", questions=(question,)
-            )
+            PrepResult(status=PrepStatus.NO_QUESTIONS, detail="", questions=(question,))
 
     def test_a_failure_status_carries_no_questions(self):
         result = PrepResult(

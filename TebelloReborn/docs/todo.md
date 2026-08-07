@@ -397,40 +397,39 @@ binary, nothing on the wire.
 ## Future (not yet scheduled)
 
 - [ ] **Indeed site adapter for Stage 6** (was "Playwright site adapter"; before that "Phase 6,
-      post-MVP numbering"). **No longer unscheduled — the build started 2026-08-07** in a separate
-      terminal session. This entry is stale the moment that session writes its own Build Queue phase;
-      it exists so the item isn't misread as not-started in the meantime. The core is built (Phase 16
-      above) and the registry is empty, so every approved application still routes to manual today.
-      Adding an adapter is one `ADAPTERS["<platform>"] = ...` entry against the `SubmitAdapter`
-      Protocol — no change to `pipeline.py`.
+      post-MVP numbering"). **Two concurrent terminal sessions worked this item on 2026-08-07** — the
+      one that wrote the block below (parked at the Indeed sign-in boundary, ToS/risk unanswered),
+      and a second, later one (this entry) that got Tebello's ToS/account-risk acknowledgement
+      directly, completed the sign-in, ran a live DOM recon, and wrote a full spec. **Flagged to
+      Tebello as a real concurrent-session collision** — not resolved by this edit alone; see this
+      session's own report. The core is built (Phase 16 above) and the registry is still empty, so
+      every approved application still routes to manual today.
 
-      **Answered 2026-08-07** (recorded from that session's own prompts, not yet from a written spec —
-      supersedes `docs/specs/submission-core.md` §Open Items items 1 and 3, which still read as open):
-      1. **Platform: Indeed**, its native apply form only. A live posting with a real "Apply with
-         Indeed" button was confirmed to exist, so the platform's own form is not a myth — but
-         per-employer variation and external-ATS redirects are unchanged, so `can_handle()` must
-         decline confidently. An over-eager `True` converts a clean `not_supported` into a silent
-         failure, which is strictly worse than having no adapter.
-      2. **`playwright` accepted** as a runtime dependency, browser binaries included — a deliberate
-         break from the three-dependency offline-first footprint, made rather than drifted into.
-      3. **`email`/`phone` to be added to `CandidateProfile`.** Neither `src/profile/schema.py` nor
-         `data/profile_seed.json` has any contact field today, and an apply form needs both. Found
-         before building rather than as a runtime bug.
-      4. **Selectors come from live DOM recon, not guesswork** — the Apify payload-shape lesson
-         applied deliberately.
+      **Superseding update (this session, later 2026-08-07):** the three "still open" items directly
+      below are now stale.
+      1. **ToS/account-risk exposure: explicitly accepted by Tebello**, in-session, distinct from and
+         after the earlier sign-in-for-recon action (which correctly was *not* treated as that
+         acknowledgement).
+      2. **The sign-in boundary was crossed** — signed in as Tebello (he signed in himself; no agent
+         touched credentials), then a real `claude-in-chrome` walkthrough of one of the 6 approved
+         vacancies (`Utopia`, `jk=d7d04674eabafbac`) ran to the screening-questions step. **Nothing
+         was submitted.**
+      3. **The real-site smoke test requirement stands, and got bigger.** Recon surfaced two findings
+         neither prior pass had: the flow is **reCAPTCHA-protected** (now a hard, non-negotiable
+         design rule — detect and abort, never solve/defeat it, a separate risk from the ToS
+         acknowledgement above) and **employer screening questions are real, per-posting, and often
+         open-ended free-text** (one posting asked for a project-description essay) — not a pure
+         deterministic form-fill as both earlier passes assumed. Tebello decided these get
+         LLM-drafted (headless Claude Code) answers held for his explicit per-question approval
+         before any submission.
 
-      **Still open:**
-      1. **ToS / account risk has NOT been acknowledged on record.** Driving an authenticated session
-         to submit is a different exposure from scraping via Apify — it is Tebello's own account at
-         risk, and it is against LinkedIn's User Agreement (plausibly Indeed's too). Signing in for
-         read-only DOM inspection is *not* that acknowledgement. This gate is unchanged by the build
-         having started; it should be answered deliberately, not passed by momentum.
-      2. **Recon is parked on an Indeed sign-in boundary.** The browsing session was signed out. No
-         agent handles those credentials under any authorization, so either Tebello signs in and recon
-         resumes, or the spec carries `TODO` selectors and the real DOM is captured during the build's
-         own smoke test.
-      3. **Real-site smoke test still required** — mocks verify you called the transport, not that the
-         site accepts what you sent.
+      Full design, acceptance criteria, and a phase-level Build Queue:
+      `docs/specs/indeed-submit-adapter.md` (new, 2026-08-07). `/codex-review` ran on it per Hard
+      Rule 13 and returned substantive findings (an accidentally-networked `can_handle()`, no
+      question-drift policy, underspecified CAPTCHA detection, missing `prep_failed` outcome
+      semantics, duplicate-submission risk, and more) — **not yet resolved into the design.** No code
+      written by this session. Next: resolve Codex's findings, get real `email`/`phone` values for
+      `profile_seed.json`, then build — see the spec's own Open Items.
 - [ ] Phase 7 (post-MVP numbering): tracking dashboard (applications, match-score distribution, response rate).
 - [ ] Decide whether recruiter cold-outreach (in `data/legacy_reference/`, not part of the original 7-phase plan) gets revived as a later phase.
 - [ ] Volume-cap / scheduler layer for document generation (ADR-003 §6, open judgment call #1) — only if Tebello confirms a controlled-batch need; would need its own spec + ADR, and likely a `PRAGMA user_version` migration via the `src/doc_gen/migrations.py` stub (step 34).

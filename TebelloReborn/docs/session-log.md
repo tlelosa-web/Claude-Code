@@ -7,6 +7,51 @@
 
 ---
 
+## 2026-08-07 — Indeed submit adapter: spec written, screening-question review scope discovered
+
+Unblocked from hub `docs/todo.md` #1 by Tebello answering the two `submission-core.md` Open Items
+directly in a hub `/continue` session: platform = **Indeed's own apply form only**; ToS/account-risk
+exposure **explicitly accepted**. A third decision (`playwright` as a new runtime dependency) was
+also confirmed.
+
+Before writing the Build Queue, did a live `claude-in-chrome` walkthrough of Indeed's real
+SmartApply flow (signed in as Tebello, one of the 6 approved vacancies) rather than guessing
+selectors — this project's own Apify-payload-shape lesson. **Nothing was submitted.** Found: the
+flow is a separate multi-step app (`smartapply.indeed.com`) with per-step URLs; resume selection
+defaults away from the generated CV; the flow is reCAPTCHA-protected (CAPTCHA-abort is now a hard,
+non-negotiable design rule — never solve/defeat it, distinct from the already-accepted ToS risk);
+and **employer screening questions are real, per-posting, and often open-ended free-text** (one
+posting asked for an essay describing a recent project). That last finding reshapes the whole
+adapter: it can't be a pure deterministic form-filler. Tebello decided screening-question answers
+get **LLM-drafted (headless Claude Code, `wrap_untrusted_text()`-wrapped) but held for his explicit
+per-question approval** before any submission — never auto-answered unsupervised.
+
+Wrote `docs/specs/indeed-submit-adapter.md`: three new CLI commands
+(`prep-submission`/`review-questions`/`submit`), a new `screening_questions` table, a new
+`pending_review` outcome distinct from `not_supported`, `CandidateProfile` gaining `email`/`phone`
+(neither existed — verified, not assumed), and a phase-level Build Queue. Ran `/codex-review` per
+Hard Rule 13 — real second opinion, not a rubber stamp: flagged `can_handle()` as accidentally a
+networked/browser action (architectural mismatch with the cheap-predicate contract), missing drift
+policy for questions changing between prep and submit, an underspecified CAPTCHA-detection
+criterion, missing `prep_failed` outcome-table semantics, and several failure modes (duplicate
+submission risk, session expiry mid-wizard, ambiguous success detection). Folded in as the spec's
+own advisory section, not yet resolved into the design — that's the next session's first task before
+any executor is dispatched.
+
+**No code written this session** — Hard Rule 2 (plan before code >2 files) and Hard Rule 10 (stop
+and ask when acceptance criteria are unclear) both applied throughout; three separate
+`AskUserQuestion` checkpoints resolved the platform, risk, dependency, and screening-question-review
+decisions before the spec was drafted.
+
+**Last completed:** Indeed submit adapter spec drafted + Codex-reviewed (this entry).
+**Next task:** Resolve Codex's spec-level findings (concrete CAPTCHA-detection states, question-drift
+policy, `can_handle()` static/live split, `prep_failed` table semantics) before dispatching a build
+session. Real `profile_seed.json` email/phone values are also needed first (spec Open Item 1).
+**Known risks:** None new beyond what the spec itself now documents (reCAPTCHA, screening-question
+variability, account-risk — all explicitly accepted or hard-ruled-around, not hidden).
+**Blockers:** Build session needs the spec's Open Items answered first (real contact info, which
+posting is the Phase G smoke-test target, login-setup script timing).
+
 ## 2026-08-06 — Stage 6 submission core built (Phase 16, steps 81–102)
 
 Built the platform-agnostic half of Stage 6: status vocabulary, the `submissions`

@@ -53,48 +53,25 @@ flags re-checked 2026-08-03 after the O-P-C consolidation — see note below)
       no change to `pipeline.py`. Project spec:
       `TebelloReborn/docs/specs/submission-core.md`.
 
-      **Decisions made in that session (observed 2026-08-07 from its terminal
-      output, not from a spec — confirm against the project's own docs before
-      relying on them):**
+      **Detail lives in `TebelloReborn/docs/todo.md`** (Future section, adapter
+      entry) — reconciled there 2026-08-07 and authoritative per hub-and-spoke.
+      At a glance: Indeed chosen as the first platform, `playwright` accepted as
+      a runtime dependency, `email`/`phone` to be added to `CandidateProfile`,
+      selectors to come from live DOM recon rather than guesswork.
 
-      - **Indeed is the first platform.** The only live source with approved
-        applications (6). Its flow still varies per employer and many postings
-        redirect to an external ATS, so `can_handle()` must decline confidently —
-        an over-eager `True` turns a clean `not_supported` into a silent failure.
-      - **`playwright` approved as a runtime dependency**, browser binaries
-        included, accepted as a deliberate break from the project's
-        3-dependency offline-first footprint.
-      - **`email`/`phone` to be added to `CandidateProfile`** — neither
-        `src/profile/schema.py` nor `data/profile_seed.json` has any contact
-        field, and an apply form needs both. Found before building, not as a bug.
-      - **Live browser DOM recon chosen** over writing selectors blind — the
-        Apify payload-shape lesson applied deliberately.
-
-      **Still genuinely open:**
-
-      1. **The ToS / account-risk acknowledgement has not been made on record.**
-         Driving an authenticated session to submit is a different exposure from
-         scraping via Apify — it is Tebello's own account at risk, and it is
-         against LinkedIn's User Agreement and plausibly Indeed's. Signing in for
-         read-only DOM inspection is *not* that decision. Worth making
-         deliberately rather than arriving at it by momentum.
-      2. **Recon was halted on an Indeed sign-in boundary.** That session found a
-         posting with a native "Apply with Indeed" button (so the platform's own
-         apply form does exist, not only ATS redirects) but the Chrome session
-         was signed out. No agent handles those credentials — Tebello signs in,
-         or the spec carries `TODO` selectors.
-      3. **A real-site smoke test is still required.** Mocks verify you called
-         the transport, not that the site accepts what you sent.
+      **The one thing that must not get lost:** the **ToS / account-risk
+      acknowledgement has still not been made on record.** Driving an
+      authenticated session to submit is Tebello's own account at risk, and is
+      against LinkedIn's User Agreement and plausibly Indeed's. Signing in for
+      read-only DOM inspection is not that acknowledgement. The build having
+      started does not retire this gate.
 
       Until an adapter registers, the core behaves honestly: every approved
       application produces a recorded `not_supported` attempt, is reported with
       its URL and an explicit "submit this one by hand", and stays at `approved`.
 
       ⚠️ **Concurrent-session warning.** That session writes to the same live
-      repo and will run its own `/session-end`. Pull before editing this file
-      (Hard Rule 6), and expect the project-side
-      `TebelloReborn/docs/todo.md` — not this entry — to be authoritative on
-      build detail per hub-and-spoke.
+      repo and will run its own `/session-end`. Pull before editing either file.
 
       Hub spec `docs/specs/2026-08-04-tebelloreborn-playwright-auto-submit.md`
       is **superseded** by the project-side spec above — it scoped the build to

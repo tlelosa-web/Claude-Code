@@ -22,15 +22,23 @@ from .schema import SubmissionAttempt, SubmissionOutcome
 def report_attempt(vacancy: Vacancy, attempt: SubmissionAttempt) -> None:
     """One line per vacancy, with the exact strings an operator needs.
 
-    The not_supported wording is asserted by tests on purpose: it is the only
-    outcome this build can produce, so if it stops telling Tebello what to do
-    the feature is useless even while every test of the machinery still passes.
+    The not_supported and pending_review wordings are asserted by tests on
+    purpose: they are the only outcomes this build can produce, so if either
+    stops telling Tebello what to do the feature is useless even while every
+    test of the machinery still passes. The two leave the vacancy in the same
+    state ('approved'), so this wording is the only thing distinguishing them —
+    run a command, versus submit it by hand.
     """
     if attempt.outcome == SubmissionOutcome.NOT_SUPPORTED:
         print(
             f"  Vacancy {vacancy.id} ({vacancy.company} — {vacancy.title}): "
             f"no automated submission available — submit this one by hand.\n"
             f"    {vacancy.url}"
+        )
+    elif attempt.outcome == SubmissionOutcome.PENDING_REVIEW:
+        print(
+            f"  Vacancy {vacancy.id} ({vacancy.company} — {vacancy.title}): "
+            f"not ready to submit — {attempt.detail}"
         )
     elif attempt.outcome == SubmissionOutcome.SUBMITTED:
         print(f"  Vacancy {vacancy.id}: submitted ({attempt.detail}).")
@@ -39,12 +47,12 @@ def report_attempt(vacancy: Vacancy, attempt: SubmissionAttempt) -> None:
 
 
 def submit_one(
-    vacancy: Vacancy, manual: bool, db_path: Path
+    vacancy: Vacancy, manual: bool, db_path: Path, batch: bool = False
 ) -> Optional[SubmissionAttempt]:
     """Returns the attempt, or None if this vacancy could not be submitted at
     all. Callers decide what a None means for their exit code."""
     try:
-        attempt = run_submission(vacancy, manual=manual, db_path=db_path)
+        attempt = run_submission(vacancy, manual=manual, batch=batch, db_path=db_path)
     except SubmissionNotAllowedError as exc:
         print(f"  Refused: {exc}")
         return None
@@ -61,7 +69,12 @@ def submit_one(
 def _submit_all(manual: bool, db_path: Path) -> None:
     """Every approved vacancy, one at a time. A failure on one does not abandon
     the rest. Only picks up 'approved' — retries of a failed submission are
-    explicit, per-vacancy, so a batch run can't silently re-drive them."""
+    explicit, per-vacancy, so a batch run can't silently re-drive them.
+
+    Passes batch=True: a vacancy that would reach a real adapter.submit() is
+    refused and recorded as pending_review instead (Amendment A15). Real
+    applications go out one at a time, by explicit id.
+    """
     conn = init_vacancy_db(db_path)
     try:
         vacancies = get_by_status(conn, "approved")
@@ -74,23 +87,31 @@ def _submit_all(manual: bool, db_path: Path) -> None:
 
     print(f"Submitting {len(vacancies)} approved vacancies.\n")
 
-    counts = {"submitted": 0, "failed": 0, "not supported": 0}
+    counts = {"submitted": 0, "failed": 0, "not supported": 0, "pending review": 0}
     for vacancy in vacancies:
-        attempt = submit_one(vacancy, manual, db_path)
+        attempt = submit_one(vacancy, manual, db_path, batch=True)
         if attempt is None or attempt.outcome == SubmissionOutcome.FAILED:
             counts["failed"] += 1
         elif attempt.outcome == SubmissionOutcome.SUBMITTED:
             counts["submitted"] += 1
+        elif attempt.outcome == SubmissionOutcome.PENDING_REVIEW:
+            # Its own bucket, not folded into 'not supported': one tells Tebello
+            # to submit by hand, the other that a single prep-submission run may
+            # unblock the lot.
+            counts["pending review"] += 1
         else:
             counts["not supported"] += 1
 
     print(
         f"\nDone — submitted: {counts['submitted']}, failed: {counts['failed']}, "
-        f"not supported: {counts['not supported']}"
+        f"not supported: {counts['not supported']}, "
+        f"pending review: {counts['pending review']}"
     )
 
-    # 'not supported' is the expected outcome of every vacancy in this build, so
-    # it must not make a normal run look broken. Only real failures do.
+    # 'not supported' and 'pending review' are the expected outcomes of every
+    # vacancy in this build — and 'pending review' stays expected afterwards,
+    # since --all never auto-submits. Neither may make a normal run look broken.
+    # Only real failures do.
     if counts["failed"]:
         sys.exit(1)
 

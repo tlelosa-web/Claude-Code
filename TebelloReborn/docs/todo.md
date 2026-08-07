@@ -1,8 +1,9 @@
 # Task Queue — TebelloReborn (Career Engine)
 
-> Updated: 2026-08-07 (Indeed site adapter build started in a separate session — see the Future
-> section's adapter entry for the decisions made and the ToS gate still open; Stage 6 submission core
-> built 2026-08-06, Phase 16 steps 81–102, see `docs/specs/submission-core.md` and session-log.md)
+> Updated: 2026-08-07 (Indeed site adapter: spec written, Codex-reviewed, and **fold-in complete** —
+> see the Future section's adapter entry; build not started, Phase A needs real `email`/`phone`
+> values. Stage 6 submission core built 2026-08-06, Phase 16 steps 81–102, see
+> `docs/specs/submission-core.md` and session-log.md)
 
 ---
 
@@ -427,9 +428,46 @@ binary, nothing on the wire.
       `docs/specs/indeed-submit-adapter.md` (new, 2026-08-07). `/codex-review` ran on it per Hard
       Rule 13 and returned substantive findings (an accidentally-networked `can_handle()`, no
       question-drift policy, underspecified CAPTCHA detection, missing `prep_failed` outcome
-      semantics, duplicate-submission risk, and more) — **not yet resolved into the design.** No code
-      written by this session. Next: resolve Codex's findings, get real `email`/`phone` values for
-      `profile_seed.json`, then build — see the spec's own Open Items.
+      semantics, duplicate-submission risk, and more).
+
+      **Codex fold-in complete (2026-08-07, later hub session) — the spec's §Amendment now closes
+      all of it, and Hard Rule 13's gate is satisfied.** 22 accepted changes (A1–A22), 6
+      clarifications, 4 considered-and-declined. The four named gaps resolved concretely:
+      `can_handle()` is now a pure offline URL predicate with all live work moved to a non-Protocol
+      `inspect_apply_flow()`; question drift is a sha256 fingerprint over normalized
+      text/type/required/options compared as a set, aborting in both directions; CAPTCHA detection
+      is five specific abort states and three explicit never-abort states (the reCAPTCHA *notice* is
+      normal and must not trip it); and `prep_failed` was **deleted** rather than defined —
+      prep failures are not submission attempts, so they go to a new `submission_preps` table whose
+      seven states also fix the "zero questions = never prepped or genuinely none?" ambiguity in
+      `all_questions_reviewed()`.
+
+      **Four further findings came from reading the code and the live `career.db` during the
+      fold-in, not from Codex** — two of them would have failed at runtime as written:
+      - **`email`/`phone` need real migrations (A5).** The spec claimed "no DB migration, same
+        precedent as `VALID_PLATFORMS`/`VALID_STATUSES`" — a false analogy. Those validate values in
+        an existing unconstrained column; these are **new columns** on the real `candidate_profile`
+        table, so `upsert_profile()` would have failed with `no such column: email`. Now
+        `(5, "ALTER TABLE candidate_profile ADD COLUMN email TEXT")` and `(6, … phone …)` in
+        `profile/migrations.py` — versions 5/6 per Hard Rule 6, the first migration this project has
+        written since that rule was recorded.
+      - **The `submissions.outcome` CHECK is a trap with a closing window (A4).** Verified: the live
+        `career.db` is at `user_version = 4` and has **no `submissions` table** — Stage 6 has never
+        run against it. So editing the inlined CHECK works today, but `CREATE TABLE IF NOT EXISTS`
+        will silently keep the old 3-value constraint the moment anyone runs `submit` once first,
+        and `pending_review` inserts would then fail at runtime. Phase B adds the value **and** a
+        DDL-drift guard in `init_db()` that refuses loudly instead.
+      - **`prep-submission` is a network command in two senses (A9).** `run_claude_code()` shells to
+        `claude -p`, which needs connectivity — "local subprocess" (ADR-003) is not "offline". Only
+        `review-questions` is genuinely offline.
+      - **No PDF path exists in the database (A16).** `generation_log` has no path column, so the
+        adapter must reconstruct `pdf_export`'s naming; Phase G promotes it to a shared
+        `resolve_export_paths()` rather than duplicating the format string.
+
+      No code written yet. Next: **Phase A** (back up `career.db` first — see the spec's Open Item
+      4), which needs Tebello's real `email`/`phone` values for `profile_seed.json`. Also worth his
+      confirmation: A15 makes `submit --all` refuse auto-submit entirely, so the 6 approved
+      vacancies go out as six deliberate single commands.
 - [ ] Phase 7 (post-MVP numbering): tracking dashboard (applications, match-score distribution, response rate).
 - [ ] Decide whether recruiter cold-outreach (in `data/legacy_reference/`, not part of the original 7-phase plan) gets revived as a later phase.
 - [ ] Volume-cap / scheduler layer for document generation (ADR-003 §6, open judgment call #1) — only if Tebello confirms a controlled-batch need; would need its own spec + ADR, and likely a `PRAGMA user_version` migration via the `src/doc_gen/migrations.py` stub (step 34).

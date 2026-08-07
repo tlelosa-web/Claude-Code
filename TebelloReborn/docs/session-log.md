@@ -7,6 +7,85 @@
 
 ---
 
+## 2026-08-07 — Indeed submit adapter: Codex fold-in complete, spec now build-ready
+
+Hard Rule 13's gate closed on `docs/specs/indeed-submit-adapter.md`. The `/codex-review` from
+earlier the same day had returned real findings that were explicitly left unresolved; this session
+folded them into a dated §Amendment (same A/B/C convention `submission-core.md` established) before
+any Executor is dispatched. **22 accepted changes (A1-A22), 6 clarifications, 4
+considered-and-declined. No code written.**
+
+The four gaps the hub queue named, resolved concretely rather than acknowledged:
+
+- **`can_handle()` (A1)** is now pure, offline and side-effect-free — a `urlsplit` check on
+  platform + host + `/viewjob` path, nothing more. Every live action moved to
+  `inspect_apply_flow()`, deliberately **outside** the `SubmitAdapter` Protocol, called only by
+  `prep-submission`. This matters more than it first looks: `eligibility.get_adapter()` runs
+  `can_handle()` on *every* `submit` invocation including `--manual` and every `not_supported`
+  case, so a networked predicate would have opened a browser on paths that submit nothing.
+- **Question drift (A6)** is a sha256 fingerprint over `norm(text) | field_type | required |
+  norm(options)`, compared as a **set** — order and position deliberately excluded (a reordered
+  form is the same form), aborting in *both* directions, including a reviewed question that
+  vanished.
+- **CAPTCHA detection (A7)** is five specific abort states (visible `bframe` iframe, challenge-titled
+  iframe, hCaptcha challenge frame, `google.com/sorry/`, a visible `api2/anchor` checkbox) and three
+  explicit **never-abort** states — the "protected by reCAPTCHA" notice and the `.grecaptcha-badge`
+  are normal and present on every healthy run, so conflating them with a rendered challenge would
+  have aborted 100% of runs.
+- **`prep_failed` (A3)** was **deleted rather than defined.** Prep attempts no submission, so
+  recording its failure in `submissions` would put non-attempts in an attempt log. Prep state moved
+  to a new `submission_preps` table whose seven statuses also fix the ambiguity Codex found in
+  `all_questions_reviewed()` — zero question rows meant both "genuinely no questions" and "prep
+  never ran", and only one of those is submittable. Renamed `submission_prep_ready()`.
+
+**Four findings came from reading the code and the live `career.db`, not from Codex** — two would
+have failed at runtime as specced:
+
+- **A5 — `email`/`phone` need real migrations.** The spec claimed no DB migration was needed, "same
+  precedent as `VALID_PLATFORMS`/`VALID_STATUSES`". False analogy: those validate *values* in an
+  existing unconstrained column, while these are **new columns** on the real `candidate_profile`
+  table (verified: `id, name, region, skills, experience, target_titles, industries,
+  salary_floor`). `upsert_profile()` writes by name and would have died on `no such column: email`.
+  Now migrations **5 and 6** in `profile/migrations.py` — globally-unique per Hard Rule 6, since
+  `vacancy_search` holds 1-4 and the live DB is at 4. This is the first migration the project has
+  written since that rule was recorded, and it is exactly the case the rule anticipated.
+- **A4 — the `submissions.outcome` CHECK trap, with a closing window.** Verified against the live
+  `career.db`: `user_version = 4`, tables are `candidate_profile`/`vacancies`/`generation_log`/
+  `approvals` — **no `submissions` table**. Stage 6 has never run against it. So editing the inlined
+  CHECK to admit `pending_review` works cleanly *today*, but `CREATE TABLE IF NOT EXISTS` silently
+  keeps the old 3-value constraint the instant anyone runs `submit` once first, and the failure
+  would surface as a CHECK violation at insert time, far from its cause. Phase B adds the value
+  **and** a DDL-drift guard in `init_db()` that reads `sqlite_master.sql` and refuses loudly.
+- **A9 — `prep-submission` is a network command in two senses.** `run_claude_code()` shells to
+  `claude -p`, which needs connectivity. ADR-003's "local subprocess" is about rate-limiting and
+  cost, not offline capability; the spec's "local, network-optional drafting pass" was wrong. A
+  throttled draft now still persists the extracted questions with `drafted_answer = NULL`, so a
+  throttle costs the draft, not the recon.
+- **A16 — no PDF path exists in the database.** `generation_log` has no path column, so the adapter
+  must reconstruct `pdf_export`'s `{company}_{id}_{cv|cover_letter}.pdf` convention. Phase G
+  promotes it to a shared `resolve_export_paths()` rather than duplicating the format string into
+  the adapter, which is how the two would drift apart.
+
+Other changes worth carrying forward: every employer-authored question is now reviewed (A10 deletes
+the `auto_fillable` "matched confidently" concept — untestable as written, and a location field
+auto-filled from `profile.region` is still an answer Tebello's name goes on); sensitive question
+classes (compensation, work-authorization, demographic) are **never LLM-drafted** at all (A11);
+ambiguous post-submit states record `UNCONFIRMED:` and **block further automated attempts** rather
+than reporting a retryable `failed` that would invite a duplicate application (A13/A14); and
+`submit --all` refuses auto-submit entirely in this build (A15) — real applications go out one at a
+time by explicit id, which is a policy answer to the account-risk exposure rather than an untuned
+backoff engine.
+
+Declined on the record: Playwright trace/video capture (C3) — application pages carry contact
+details and CV content, and a trace is a rich artifact of all of it outside `.gitignore`'s current
+coverage; replaced with a plain-text step log under `.session/logs/` carrying no field values.
+
+**Next:** Phase A. Blocked on Tebello's real `email`/`phone` values for `profile_seed.json`, and
+`career.db` should be backed up first — migrations 5/6 auto-apply on the next `init_db()` from any
+command, including `career-engine list`.
+
+---
+
 ## 2026-08-07 — Indeed submit adapter: spec written, screening-question review scope discovered
 
 Unblocked from hub `docs/todo.md` #1 by Tebello answering the two `submission-core.md` Open Items

@@ -91,7 +91,13 @@ class TestDraftingInstructionConstraints:
         instruction = build_drafting_instruction(
             "Describe a project", profile, vacancy
         ).lower()
-        for forbidden in ("employer", "date", "qualification", "certification", "figure"):
+        for forbidden in (
+            "employer",
+            "date",
+            "qualification",
+            "certification",
+            "figure",
+        ):
             assert forbidden in instruction, forbidden
 
     def test_restricts_the_answer_to_supplied_profile_facts(self, profile, vacancy):
@@ -185,7 +191,8 @@ class TestDraftingResults:
         monkeypatch.setattr("src.submission.drafting.run_claude_code", recorder)
 
         assert (
-            draft_answer("Location", Sensitivity.ORDINARY, profile, vacancy) == "Gauteng"
+            draft_answer("Location", Sensitivity.ORDINARY, profile, vacancy)
+            == "Gauteng"
         )
 
     @pytest.mark.parametrize(

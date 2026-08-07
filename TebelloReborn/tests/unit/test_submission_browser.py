@@ -57,7 +57,9 @@ class TestCaptchaAbortStates:
 
     def test_visible_api2_bframe_is_a_challenge(self):
         frames = [
-            FrameView(src="https://www.google.com/recaptcha/api2/bframe?k=x", visible=True)
+            FrameView(
+                src="https://www.google.com/recaptcha/api2/bframe?k=x", visible=True
+            )
         ]
 
         assert captcha_reason(RESUME_URL, frames) is not None
@@ -65,7 +67,8 @@ class TestCaptchaAbortStates:
     def test_visible_enterprise_bframe_is_a_challenge(self):
         frames = [
             FrameView(
-                src="https://www.google.com/recaptcha/enterprise/bframe?k=x", visible=True
+                src="https://www.google.com/recaptcha/enterprise/bframe?k=x",
+                visible=True,
             )
         ]
 
@@ -86,7 +89,9 @@ class TestCaptchaAbortStates:
 
     def test_visible_hcaptcha_challenge_is_a_challenge(self):
         frames = [
-            FrameView(src="https://newassets.hcaptcha.com/captcha/v1/challenge", visible=True)
+            FrameView(
+                src="https://newassets.hcaptcha.com/captcha/v1/challenge", visible=True
+            )
         ]
 
         assert captcha_reason(RESUME_URL, frames) is not None
@@ -94,18 +99,25 @@ class TestCaptchaAbortStates:
     def test_hcaptcha_without_challenge_in_src_is_not_a_challenge(self):
         # A7 requires hcaptcha.com *and* 'challenge' — the bare host is the
         # equivalent of Google's badge, not a rendered puzzle.
-        frames = [FrameView(src="https://newassets.hcaptcha.com/c/1234/static", visible=True)]
+        frames = [
+            FrameView(src="https://newassets.hcaptcha.com/c/1234/static", visible=True)
+        ]
 
         assert captcha_reason(RESUME_URL, frames) is None
 
     def test_google_sorry_interstitial_is_a_challenge(self):
-        assert captcha_reason("https://www.google.com/sorry/index?continue=x", []) is not None
+        assert (
+            captcha_reason("https://www.google.com/sorry/index?continue=x", [])
+            is not None
+        )
 
     def test_visible_anchor_means_the_flow_escalated_to_v2(self):
         # Invisible v3 never renders an interactive checkbox. On screen, it
         # means the flow escalated — abort rather than click it.
         frames = [
-            FrameView(src="https://www.google.com/recaptcha/api2/anchor?k=x", visible=True)
+            FrameView(
+                src="https://www.google.com/recaptcha/api2/anchor?k=x", visible=True
+            )
         ]
 
         assert captcha_reason(RESUME_URL, frames) is not None
@@ -116,7 +128,8 @@ class TestCaptchaAbortStates:
         # reasoning is identical for the enterprise anchor.
         frames = [
             FrameView(
-                src="https://www.google.com/recaptcha/enterprise/anchor?k=x", visible=True
+                src="https://www.google.com/recaptcha/enterprise/anchor?k=x",
+                visible=True,
             )
         ]
 
@@ -129,14 +142,18 @@ class TestCaptchaNeverAbortStates:
 
     def test_hidden_anchor_is_the_normal_invisible_v3_case(self):
         frames = [
-            FrameView(src="https://www.google.com/recaptcha/api2/anchor?k=x", visible=False)
+            FrameView(
+                src="https://www.google.com/recaptcha/api2/anchor?k=x", visible=False
+            )
         ]
 
         assert captcha_reason(RESUME_URL, frames) is None
 
     def test_hidden_bframe_is_not_a_challenge(self):
         frames = [
-            FrameView(src="https://www.google.com/recaptcha/api2/bframe?k=x", visible=False)
+            FrameView(
+                src="https://www.google.com/recaptcha/api2/bframe?k=x", visible=False
+            )
         ]
 
         assert captcha_reason(RESUME_URL, frames) is None
@@ -158,7 +175,9 @@ class TestCaptchaNeverAbortStates:
     def test_a_recaptcha_title_without_challenge_is_not_enough(self):
         # The badge's own iframe is titled "reCAPTCHA". Only the challenge frame
         # says so in its title.
-        frames = [FrameView(src="https://example.invalid/x", title="reCAPTCHA", visible=True)]
+        frames = [
+            FrameView(src="https://example.invalid/x", title="reCAPTCHA", visible=True)
+        ]
 
         assert captcha_reason(RESUME_URL, frames) is None
 
@@ -173,7 +192,9 @@ class TestCaptchaNeverAbortStates:
 
 class TestCaptchaDetail:
     def test_detail_leads_with_the_spec_wording_and_the_step_url(self):
-        reason = captcha_reason(RESUME_URL, [FrameView(src="recaptcha/api2/bframe", visible=True)])
+        reason = captcha_reason(
+            RESUME_URL, [FrameView(src="recaptcha/api2/bframe", visible=True)]
+        )
 
         detail = captcha_detail(RESUME_URL, reason)
 
@@ -183,7 +204,9 @@ class TestCaptchaDetail:
     def test_detail_carries_no_retry_instruction(self):
         # There is no retry path anywhere in this adapter (A7). A detail that
         # suggests one would invite the operator to build the loop by hand.
-        reason = captcha_reason(RESUME_URL, [FrameView(src="recaptcha/api2/bframe", visible=True)])
+        reason = captcha_reason(
+            RESUME_URL, [FrameView(src="recaptcha/api2/bframe", visible=True)]
+        )
 
         detail = captcha_detail(RESUME_URL, reason).lower()
 
@@ -217,9 +240,7 @@ class TestNavigationState:
         assert verdict is NavVerdict.OK
 
     def test_any_one_landmark_is_enough(self):
-        verdict = check_navigation_state(
-            RESUME_URL, RESUME_STEP, ["step-heading"]
-        )
+        verdict = check_navigation_state(RESUME_URL, RESUME_STEP, ["step-heading"])
 
         assert verdict is NavVerdict.OK
 
@@ -309,7 +330,9 @@ class TestStepLog:
     sitting on disk; this carries nothing that would hurt if it leaked."""
 
     def test_logs_live_beside_the_session_credential(self, monkeypatch, tmp_path):
-        monkeypatch.setenv("SESSION_STATE_PATH", str(tmp_path / ".session" / "state.json"))
+        monkeypatch.setenv(
+            "SESSION_STATE_PATH", str(tmp_path / ".session" / "state.json")
+        )
 
         assert resolve_log_dir() == tmp_path / ".session" / "logs"
 

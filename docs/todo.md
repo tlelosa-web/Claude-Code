@@ -9,6 +9,31 @@ Per DCOE: update after every completed task; one task = one commit.
 
 ## In progress
 
+- [ ] **`hub-template/continue.md` reconcile — PR open, awaiting merge.**
+      https://github.com/tlelosa-web/tlelosa-claude-config/pull/14 (branch
+      `hub-template-continue-reconcile`, commit `fbf6810`, pushed 2026-08-08).
+      Folds four `/continue` improvements up per ADR-008: Step 0.5 category B,
+      Step 1.75, Step 1.9, Step 2.5, and Step 3's Hub-state/⚠️ fields — plus
+      three vault-specific leaks the template already carried against its own
+      vault-agnostic contract (the `2. SOPS` parallel-sessions example, a SOPS
+      session-title example, and Step 3's hardcoded "surface the OneDrive/git
+      item" known-risk instruction). `HUB-CHECKLIST.md` also gained a diff-an-
+      existing-copy instruction and an item for the hooks Steps 1.75/1.9/2.5 are
+      inert without.
+      **Two actions left, both blocked from a session — Tebello's to run:**
+      1. Merge the PR (`gh pr merge 14 --repo tlelosa-web/tlelosa-claude-config
+         --squash --delete-branch`) — the merge was denied by the permission
+         classifier this session.
+      2. ⚠️ **The local marketplace clone is left on the feature branch**, also
+         denied: `git -C ~/.claude/plugins/marketplaces/tlelosa-claude-config
+         checkout main`. This matters — `/continue` Step 1.5 runs
+         `rev-list HEAD..origin/main` on that clone, and from a branch whose tip
+         is *ahead* of `origin/main` that count reads `0`, i.e. "up to date,"
+         which is exactly the false-clean answer Step 1.9 exists to catch.
+      Landing upstream does **not** update any hub's installed copy — file-copy
+      distribution per ADR-008. This hub already has all five steps; other vaults
+      take it deliberately.
+
 - [ ] **O-P-C machine consolidation** — Operations and Pappa T subtree-
       merged into this repo (`Pappa T/`, `Operations/`, both with full
       history preserved for their git sub-repos). Old `Claude-Code` Desktop
@@ -149,15 +174,6 @@ abandoned either — no work is lost by leaving them here.
 
 ## Backlog / ideas (not committed)
 
-- [ ] **Fold this hub's `/continue` improvements up into `hub-template/`** — per
-      ADR-008 that fold-up is the expected direction, and Step 1.9 (the cross-repo
-      staleness check, installed 2026-08-08) is the trigger. It **cannot go alone**:
-      it names Step 1.75 and depends on running after it, and upstream's template has
-      no Step 1.75. Checked 2026-08-08 — `tlelosa-claude-config/hub-template/continue.md`
-      is four improvements behind this hub's instance: Step 0.5's stale/idle category B
-      (2026-07-29 broadening), Step 1.75 (sync check), Step 2.5 (machine-bound flagging),
-      Step 1.9, and Step 3's ⚠️/Hub-state report fields. A marketplace change,
-      upstream-first, and a real reconciliation job rather than a one-line patch.
 - [ ] **Widen `/codex-review`'s path guard to `docs/decisions/`** — the skill is
       hard-scoped to `docs/specs/` and refuses ADRs outright. TebelloReborn hit
       this on 2026-08-07 reviewing `ADR-004-schema-migration-ledger.md` and worked

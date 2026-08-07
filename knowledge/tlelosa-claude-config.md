@@ -1,3 +1,44 @@
+## 2026-08-08 — hub-template drifts *both* ways, and it carried vault-specific content
+**Source:** session (this machine), PR
+https://github.com/tlelosa-web/tlelosa-claude-config/pull/14 (`fbf6810`, open — merge
+denied by the permission classifier, awaiting Tebello)
+**Status:** active
+
+ADR-008 predicted drift from hubs *not taking* template updates. The first real
+reconciliation showed it runs the other way too, and harder:
+`hub-template/continue.md` was **four improvements behind** the O-P-C hub instance
+(Step 0.5 category B, Step 1.75, Step 2.5, Step 1.9, plus Step 3's report fields).
+Nothing detected this, because `HUB-CHECKLIST.md` only ever handled a *missing*
+`continue.md` — an existing one was never diffed against the template. Fixed in the
+same PR; the checklist now says to diff and fold each difference the correct way
+(vault-specific stays local, generally useful gets promoted).
+
+**A dependency chain can make a one-step backport impossible.** Step 1.9 could not go
+up alone: it names Step 1.75 and depends on running after it, and the template had no
+Step 1.75. Check what a step *references* before scoping a backport as small.
+
+**The template contained three vault-specific leaks despite its own verbatim-copy
+contract.** Two were cosmetic examples (`2. SOPS` as the parallel-sessions case, a SOPS
+session title). The third actively misleads: Step 3's known-risks instruction read
+"surface the OneDrive/git item from `CLAUDE.md`" — one hub's risk hardcoded as every
+hub's, so a fresh vault adopting the template is told to report a risk it doesn't have.
+**Being declared vault-agnostic is not evidence that a file is** — grep the template for
+machine/project/vault names before trusting the label.
+
+**A generalisation can beat the instance it came from.** The hub's Step 1.9 hardcodes
+its two known repo layouts; the template can't, so it resolves roots with
+`git -C "<path>" rev-parse --show-toplevel`. That is strictly better — a hub commonly
+has both one-repo-many-subprojects *and* one-repo-per-subproject at once, and assuming
+either silently reads the wrong clock. Worth folding back down into the hub copy.
+
+**Gotcha — a marketplace clone left on a feature branch makes `/continue` Step 1.5 lie.**
+Step 1.5 runs `rev-list HEAD..origin/main --count` against
+`~/.claude/plugins/marketplaces/tlelosa-claude-config`. From a branch tip that is
+*ahead* of `origin/main`, that count is `0`, reported as "shared core up to date." A
+false clean in the step immediately before the one written to catch false cleans. If a
+session branches that clone and can't restore it, say so loudly:
+`git -C ~/.claude/plugins/marketplaces/tlelosa-claude-config checkout main`.
+
 ## 2026-08-06 — /session-end promoted to hub-template; hub instance adopted
 **Source:** session (this machine, `TshepangLelosa`) + marketplace commits
 `a56ea84`/`9a18c8f`, spec `docs/specs/2026-08-04-session-end-command.md`

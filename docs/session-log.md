@@ -2473,3 +2473,73 @@ still gated on an explicit in-session go-ahead.
 fold-up is now four improvements behind — new backlog item, upstream-first per ADR-008.
 **Blockers:** None. Note for the next run: Step 1.9 is now installed, so the commit-clock
 check no longer has to be run by hand — if it wasn't reported, it wasn't run.
+
+## 2026-08-08 — `hub-template/continue.md` fold-up: PR #14 open, merge blocked
+
+Follow-on from the entry above, at Tebello's direction ("fold the hub-template backport up
+now"). Same session, separate task and separate repo.
+
+**Landed as a PR, not merged:**
+https://github.com/tlelosa-web/tlelosa-claude-config/pull/14 — branch
+`hub-template-continue-reconcile`, commit `fbf6810`, 2 files, +228/−28.
+
+**What went up.** All five of the improvements the backlog item named: Step 0.5 category B
+(stale/idle, 7-day rule), Step 1.75 (sync check), Step 1.9 (cross-repo staleness), Step 2.5
+(machine-bound flagging), and Step 3's `Hub state:` + ⚠️ machine-bound fields with the
+`AskUserQuestion` access-gap note.
+
+**Three vault-specific leaks were already in the template and got fixed on the way past.**
+They contradict the template's own contract — ADR-008's whole premise is that
+`hub-template/continue.md` is copied *verbatim* into any hub root, so anything naming one
+vault is a defect, not a stylistic choice: Step 0.5's `2. SOPS` example of legitimately
+parallel sessions, Step 0's `Cont-"SOPS dashboard & BOM UI fixes batch"` title example, and —
+the one that actually misleads — Step 3's known-risks instruction, which read *"surface the
+OneDrive/git item from `CLAUDE.md`"*. That is one specific hub's risk hardcoded as every
+hub's; a fresh vault adopting the template would be told to report a risk it doesn't have.
+
+**One generalisation came out better than this hub's own version.** Step 1.9 in the hub
+instance hardcodes its two known layouts (the Pappa T vault is one repo covering all its
+sub-projects; Operations' `2. SOPS` and `3. Nameplate` are separate repos). The template
+can't name those, so it resolves the root instead —
+`git -C "<project path>" rev-parse --show-toplevel`. That is strictly better: a hub commonly
+has **both** shapes at once, and a session that assumes either will `git -C` a path that
+isn't a repo root and silently read the wrong clock. Worth folding back *down* into this
+hub's copy at some point; not done here, since that's a third task.
+
+**`HUB-CHECKLIST.md` gained two things,** because the checklist only ever handled a *missing*
+`continue.md`. It now says to **diff an existing copy** against the template and fold each
+difference the correct way (vault-specific stays local, generally useful gets promoted) —
+which is the bidirectional drift ADR-008 predicted and this PR is the first instance of. And
+a new item for the vault-specific hooks Steps 1.75/1.9/2.5 are inert without: contention
+files, the live-vs-mirror convention, machine names. "Not applicable here" counts as filled
+in; silence doesn't.
+
+**Not spec-gated.** Judgment call worth stating rather than glossing: CORE.md's Router rule 0
+classifies governance/shared-core docs as Structural regardless of file count, which would
+imply a spec. Treated instead as a backport of already-built, already-exercised content
+rather than new design — consistent with marketplace PRs #11 and #12, which were handled the
+same way.
+
+**Two actions remain and neither could be done from this session — both denied by the
+permission classifier, and not worked around:**
+
+1. **The merge.** `gh pr merge 14 --repo tlelosa-web/tlelosa-claude-config --squash
+   --delete-branch`.
+2. ⚠️ **The local marketplace clone is left on the feature branch.**
+   `git -C ~/.claude/plugins/marketplaces/tlelosa-claude-config checkout main`. This one is
+   more than tidiness: `/continue` Step 1.5 runs `rev-list HEAD..origin/main --count` against
+   that clone, and from a branch tip that is *ahead* of `origin/main` the count is `0` —
+   reported as "shared core up to date." A false clean, of exactly the kind Step 1.9 was
+   written to catch, in the step right before it.
+
+**Last completed:** `hub-template/continue.md` reconciled and pushed as PR #14 — open, not
+merged (this entry)
+**Next task:** Merge PR #14 and restore the marketplace clone to `main` (both Tebello's to
+run — see the In progress item in `docs/todo.md`). Then the queue is unchanged: Indeed
+adapter **Phase E**, 📍 live `Desktop/Pappa T/TebelloReborn/`, gated on Tebello being present
+to sign in; and `docs/todo.md` #2, the SOPS AvgMovement migration, gated on an explicit
+in-session go-ahead.
+**Known risks:** The marketplace clone sitting on a feature branch will make Step 1.5 report
+a false "up to date" until it's back on `main`. Backup failures remain silent (backlog).
+**Blockers:** PR #14 needs a human merge; this session was denied both the merge and the
+branch restore.

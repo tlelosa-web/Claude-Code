@@ -126,6 +126,30 @@ abandoned either — no work is lost by leaving them here.
 
 ## Done
 
+- [x] **2026-08-07** — Queue accuracy pass: item #1 corrected from "blocked" to
+      "in progress", then reconciled across both files. A separate terminal
+      session had started the Indeed adapter build and answered most of the
+      gating questions directly (Indeed's native apply form only, `playwright`
+      accepted as a runtime dependency, `email`/`phone` to be added to
+      `CandidateProfile`, selectors from live DOM recon) — none of which had
+      reached either queue, so both still described the work as not-started.
+      Reconciled in the **opposite** direction to the usual hub-and-spoke rule:
+      the project file is authoritative, but it was the *stale* one, so it got
+      brought up to date first (Pappa T vault `93f8e5b`) and this hub's entry was
+      then trimmed from ~40 duplicated lines to a pointer (`6e3702f`, net −23).
+      Authority over the detail stayed with the project; only the content moved.
+      **Deliberately kept in both files:** the ToS/account-risk acknowledgement is
+      still not on record, and the build having started does not retire it —
+      signing in for read-only DOM inspection is not that acknowledgement. Also
+      recorded that `TebelloReborn/docs/specs/submission-core.md` §Open Items 1
+      and 3 now read as open despite being answered; amending that spec is the
+      building session's call, not this one's. Decisions were observed from that
+      session's terminal scrollback, not a written spec, and both entries say so.
+      Earlier in the session: committed the close-out correction the previous
+      session left hanging (`5904833` — verified the 23-commit claim against the
+      vault before committing it), pulled the shared core (`3ceb2f3..9f85d40`,
+      docs-only, nothing to re-apply downstream), and archived 3 completed
+      sessions.
 - [x] **2026-08-06** — TebelloReborn: built the Stage 6 submission core
       (platform-agnostic, no Playwright). 23 commits in the Pappa T vault,
       **249 → 344 tests, zero regressions, 100% coverage on `src/submission/`**,

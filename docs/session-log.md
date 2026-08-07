@@ -1965,3 +1965,75 @@ ToS/account-risk acknowledgement. Neither is a coding question. #2 (SOPS
 AvgMovement migration) remains gated on an explicit go-ahead.
 **Known risks:** None new. Backup failures remain silent (backlog).
 **Blockers:** The adapter task cannot start until the two decisions above are made.
+
+## 2026-08-07 — Queue accuracy: the adapter was already being built
+
+A `/continue` run that turned into a reconciliation. The queue said item #1 was
+blocked on two decisions from Tebello; a separate terminal session had already
+started the Indeed adapter build and collected most of those answers directly.
+Neither `docs/todo.md` nor `TebelloReborn/docs/todo.md` knew, so both still
+described the work as not-started.
+
+**Cleared first**, before anything else: the previous session ended by asking
+whether to commit its close-out correction and never got an answer, so three
+files sat uncommitted in the tree. Committed as `5904833` after verifying the
+claim rather than trusting it — `897610e..10b9e3f` really is 23 commits and the
+vault really was in sync. Then pulled the shared core (`3ceb2f3..9f85d40`) and
+archived three completed sessions.
+
+**The reconciliation went the opposite way to the usual hub-and-spoke rule.**
+The project's `docs/todo.md` is authoritative for build detail — but here it was
+the *stale* file, still reading "blocked on two answers from Tebello." Making the
+hub match it would have re-broken what had just been fixed. So the project file
+was brought up to date first (Pappa T vault `93f8e5b`), and only then was the hub
+entry trimmed from ~40 duplicated lines to a pointer (`6e3702f`, net −23).
+Authority over the detail stayed where hub-and-spoke puts it; only the content
+moved. Worth remembering: "the project file wins" is a rule about *ownership*,
+not about which copy happens to be correct on a given day.
+
+**Decisions recorded, with their provenance stated.** Indeed as the first
+platform (its native apply form only — a live posting with a real "Apply with
+Indeed" button was confirmed, so the platform's own form exists, but per-employer
+ATS redirects are unchanged), `playwright` accepted as a runtime dependency
+including browser binaries, `email`/`phone` to be added to `CandidateProfile`
+(neither `src/profile/schema.py` nor `data/profile_seed.json` has any contact
+field today), and selectors to come from live DOM recon rather than guesswork.
+All four were read off that session's terminal scrollback, partly garbled by
+redraw — not from a written spec. Both entries say so rather than presenting them
+as settled.
+
+**The ToS gate was deliberately not retired.** It moved from "blocking" to "still
+open, and will be decided by momentum if nobody decides it deliberately," and it
+is stated in full in *both* files rather than delegated to the pointer — it is the
+single check that entry exists to enforce, and a pointer is easy not to follow.
+Signing in to Indeed for read-only DOM inspection is not that acknowledgement.
+
+**Left for the building session, not done from here:**
+`TebelloReborn/docs/specs/submission-core.md` §Open Items 1 and 3 still read as
+open despite being answered, and the adapter item still sits under "Future (not
+yet scheduled)" when it needs a real Build Queue phase. Both are that session's
+to own; editing a spec out from under a live build is how two writers corrupt one
+file. Recorded in the project todo instead.
+
+**Concurrent-write risk, accepted knowingly.** That session is live in the same
+vault and parked on a sign-in prompt. Its tree was clean and it had not touched
+`TebelloReborn/docs/todo.md` since 2026-08-06 17:33, so the window was small, and
+both commits re-checked `rev-list HEAD..origin/main` immediately before writing
+rather than only at session start. If that session holds the old text and does a
+full rewrite, this edit is lost; an `Edit` would fail loudly instead.
+
+**Also found:** passing a PowerShell here-string containing double quotes to
+`git commit -m` splits it into pathspecs — PowerShell 5.1 re-quotes native-exe
+arguments and the inner `"` breaks the boundary. Every hub commit goes through
+PowerShell, so `git commit -F <file>` is the reliable form.
+
+**Last completed:** Queue accuracy pass — item #1 corrected and reconciled across
+both files (this entry)
+**Next task:** Nothing hub-level is queued and actionable. The Indeed adapter
+continues in its own session (project file authoritative). This hub's remaining
+item is `docs/todo.md` #2, the SOPS AvgMovement migration, still gated on an
+explicit in-session go-ahead.
+**Known risks:** None new. Backup failures remain silent (backlog). A concurrent
+session is writing to the Pappa T vault — pull before editing either todo.
+**Blockers:** The ToS/account-risk acknowledgement for the adapter is still not on
+record, and adapter recon is parked on an Indeed sign-in that only Tebello can do.

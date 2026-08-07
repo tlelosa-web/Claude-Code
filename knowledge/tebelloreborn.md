@@ -1,3 +1,43 @@
+## 2026-08-07 — Indeed adapter build started; decisions made, ToS gate still open
+**Source:** session (this machine), observed from a concurrent terminal session's
+scrollback — **not** from a written spec
+**Status:** active
+
+Supersedes the "still blocked on Tebello" close of the 2026-08-06 entry below.
+A separate session began the adapter build and answered most of the gating
+questions in its own prompts. Recorded here with that provenance attached: this
+came off a terminal scrollback, partly garbled by redraw, so confirm against
+`TebelloReborn/docs/todo.md` (reconciled 2026-08-07, vault `93f8e5b`) before
+relying on any of it.
+
+- **Indeed, its native apply form only.** A live posting with a real "Apply with
+  Indeed" button was confirmed, so the platform's own form genuinely exists and
+  isn't only external-ATS redirects. Per-employer variation is unchanged, so
+  `can_handle()` must decline confidently — an over-eager `True` converts a clean
+  `not_supported` into a silent failure, which is worse than no adapter at all.
+- **`playwright` accepted as a runtime dependency**, browser binaries included —
+  a deliberate break from the three-dependency offline-first footprint.
+- **`email`/`phone` to be added to `CandidateProfile`.** Neither
+  `src/profile/schema.py` nor `data/profile_seed.json` has any contact field
+  today, and an apply form needs both. Found before building, not as a runtime bug.
+- **Selectors from live DOM recon, not guesswork** — the Apify payload-shape
+  lesson applied deliberately.
+
+**Still open, and the build starting does not retire it:** the ToS/account-risk
+acknowledgement is not on record. Signing in to Indeed for read-only DOM
+inspection is *not* that acknowledgement. Recon is parked on that sign-in
+boundary — no agent handles those credentials under any authorization.
+
+**Live-DB observation (read-only query, 2026-08-07):** `career.db` holds 6
+`approved` + 4 `rejected`, all `indeed`, `user_version = 4`. The `submissions`
+table **does not exist yet** — `init_db` creates it on first use, so Stage 6 code
+is fully built and tested but has never run against the real database. Worth
+knowing before the first live `career-engine submit`.
+
+**Also stale as a result:** `TebelloReborn/docs/specs/submission-core.md`
+§Open Items 1 and 3 still read as open despite being answered. Amending that spec
+belongs to the session doing the build.
+
 ## 2026-08-06 — Stage 6 submission core built (platform-agnostic, no Playwright)
 **Source:** session (this machine) — Phase 16, steps 81–102
 **Status:** active

@@ -411,3 +411,141 @@ class TestConcurrency:
 
         holder.rollback()
         assert "a" not in _columns(conn, "widgets")
+
+
+class TestPhaseBShapedRebuild:
+    """A8 — the acceptance test the ADR's stated blocker demands.
+
+    Phase B adds `pending_review` to the `submissions.outcome` CHECK, and
+    SQLite cannot alter a CHECK in place: it is the create/copy/drop/rename
+    rebuild. This models that exact shape — a populated child table with a
+    foreign key and a CHECK — and proves the runner carries it. Without this,
+    the ADR's whole premise is asserted but never demonstrated.
+    """
+
+    OLD_CHECK = "'submitted', 'failed', 'not_supported'"
+    NEW_CHECK = "'submitted', 'failed', 'not_supported', 'pending_review'"
+
+    def _seed(self, tmp_path):
+        conn = sqlite3.connect(tmp_path / "career.db")
+        conn.execute("PRAGMA foreign_keys = ON")
+        conn.execute("CREATE TABLE vacancies (id INTEGER PRIMARY KEY, company TEXT)")
+        conn.execute(f"""
+            CREATE TABLE submissions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                vacancy_id INTEGER NOT NULL REFERENCES vacancies(id),
+                outcome TEXT NOT NULL CHECK (outcome IN ({self.OLD_CHECK})),
+                attempted_at TEXT NOT NULL
+            )
+        """)
+        conn.execute("INSERT INTO vacancies (id, company) VALUES (1, 'Utopia')")
+        conn.execute(
+            "INSERT INTO submissions (vacancy_id, outcome, attempted_at) "
+            "VALUES (1, 'not_supported', '2026-08-06T00:00:00+00:00')"
+        )
+        conn.commit()
+        return conn
+
+    def _rebuild(self, conn):
+        """The 12-step rebuild, as a callable (A1).
+
+        `PRAGMA foreign_keys` is a no-op inside a transaction, so the documented
+        "turn it off first" step is unavailable to a migration the runner has
+        already wrapped. `defer_foreign_keys` is the one that *is* settable
+        mid-transaction — it postpones enforcement to COMMIT — which is what
+        A11's "the rebuild owns its foreign-key handling" means in practice.
+        """
+        conn.execute("PRAGMA defer_foreign_keys = ON")
+        conn.execute(f"""
+            CREATE TABLE submissions_new (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                vacancy_id INTEGER NOT NULL REFERENCES vacancies(id),
+                outcome TEXT NOT NULL CHECK (outcome IN ({self.NEW_CHECK})),
+                attempted_at TEXT NOT NULL
+            )
+        """)
+        conn.execute(
+            "INSERT INTO submissions_new (id, vacancy_id, outcome, attempted_at) "
+            "SELECT id, vacancy_id, outcome, attempted_at FROM submissions"
+        )
+        conn.execute("DROP TABLE submissions")
+        conn.execute("ALTER TABLE submissions_new RENAME TO submissions")
+        violations = conn.execute("PRAGMA foreign_key_check").fetchall()
+        if violations:
+            raise AssertionError(f"rebuild left FK violations: {violations}")
+
+    def test_the_old_check_really_does_reject_the_new_value(self, tmp_path):
+        """Establishes the premise — otherwise the test below proves nothing."""
+        conn = self._seed(tmp_path)
+
+        with pytest.raises(sqlite3.IntegrityError):
+            conn.execute(
+                "INSERT INTO submissions (vacancy_id, outcome, attempted_at) "
+                "VALUES (1, 'pending_review', '2026-08-07T00:00:00+00:00')"
+            )
+
+    def test_rebuild_widens_the_check_and_preserves_existing_rows(self, tmp_path):
+        conn = self._seed(tmp_path)
+
+        apply_migrations(conn, "submission", [(1, self._rebuild)])
+
+        assert conn.execute(
+            "SELECT id, vacancy_id, outcome FROM submissions"
+        ).fetchall() == [(1, 1, "not_supported")]
+        conn.execute(
+            "INSERT INTO submissions (vacancy_id, outcome, attempted_at) "
+            "VALUES (1, 'pending_review', '2026-08-07T00:00:00+00:00')"
+        )
+        assert _ledger(conn, "submission") == {("submission", 1)}
+
+    def test_rebuild_records_exactly_one_ledger_row_and_reruns_as_a_no_op(
+        self, tmp_path
+    ):
+        conn = self._seed(tmp_path)
+        migrations = [(1, self._rebuild)]
+
+        apply_migrations(conn, "submission", migrations)
+        apply_migrations(conn, "submission", migrations)  # must not rebuild again
+
+        assert _ledger(conn, "submission") == {("submission", 1)}
+        tables = {
+            r[0]
+            for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")
+        }
+        assert "submissions_new" not in tables
+        assert conn.execute("SELECT count(*) FROM submissions").fetchone()[0] == 1
+
+    def test_the_rebuilt_table_still_enforces_its_foreign_key(self, tmp_path):
+        """A11: constraints must survive the rebuild, not just the data."""
+        conn = self._seed(tmp_path)
+
+        apply_migrations(conn, "submission", [(1, self._rebuild)])
+
+        with pytest.raises(sqlite3.IntegrityError):
+            conn.execute(
+                "INSERT INTO submissions (vacancy_id, outcome, attempted_at) "
+                "VALUES (999, 'submitted', '2026-08-07T00:00:00+00:00')"
+            )
+
+    def test_a_failed_rebuild_leaves_the_original_table_untouched(self, tmp_path):
+        """The failure mode Codex named: a rebuild can fail after creating the
+        new table, after copying, or after the drop. A2 makes all three the
+        same outcome — full rollback, nothing recorded, no leftovers."""
+        conn = self._seed(tmp_path)
+
+        def failing_rebuild(conn):
+            self._rebuild(conn)
+            raise RuntimeError("failed after the rename")
+
+        with pytest.raises(RuntimeError):
+            apply_migrations(conn, "submission", [(1, failing_rebuild)])
+
+        assert _ledger(conn, "submission") == set()
+        assert conn.execute("SELECT outcome FROM submissions").fetchall() == [
+            ("not_supported",)
+        ]
+        with pytest.raises(sqlite3.IntegrityError):
+            conn.execute(
+                "INSERT INTO submissions (vacancy_id, outcome, attempted_at) "
+                "VALUES (1, 'pending_review', '2026-08-07T00:00:00+00:00')"
+            )

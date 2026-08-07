@@ -7,6 +7,62 @@
 
 ---
 
+## 2026-08-07 (latest) — Indeed adapter Phase C: the prep-state gate, wired
+
+Resumed via `/continue` straight after Phase B pushed. Phase C of
+`docs/specs/indeed-submit-adapter.md` (§Amendment A2/A3/A15) — Phase 20, steps 123–127, four
+commits, TDD throughout. **485 tests passing, was 456. Zero regressions.** Coverage on the phase's
+three modules: `pipeline.py` 100%, `cli.py` 100%, `eligibility.py` 100%.
+
+It adds no new state. Everything it needed already existed after Phase B; this phase is the wiring
+that makes `submission_prep_ready()` actually gate something.
+
+**What landed**
+
+- `pipeline._decide()` consults `submission_prep_ready()` after the adapter lookup. `PENDING_REVIEW`
+  joins `NOT_SUPPORTED` in `_OUTCOME_STATUS` as a no-transition outcome — both mean the application
+  still needs Tebello's action, differing only in which action.
+- `run_submission(batch=)`, and `--all` passes it. A vacancy that would reach a real
+  `adapter.submit()` in a batch is recorded as `pending_review` with
+  `"auto-submit requires an explicit --vacancy-id"` instead (A15).
+- `report_attempt()` gains a `pending_review` branch; `_submit_all()` counts it in its own bucket.
+- `eligibility.can_handle()`'s contract records that it is pure and offline, and that an
+  external-ATS posting deliberately *passes* it and is declined one layer down by the gate (A1).
+- One submission connection now serves both the gate's read and the attempt's write, rather than
+  opening a second one to read what the first is about to record.
+
+**Two orderings decided here — each has its own test, because getting either wrong is silent.**
+
+1. **The gate runs before the session check.** Every answer it gives is state `prep-submission`
+   already recorded, so none of it needs a live session to read. Session-check-first would report a
+   recorded `external_ats` as "no saved browser session — run the login setup": sending Tebello to
+   fix something that isn't broken, and burying the one finding that genuinely means "submit by
+   hand".
+2. **The `--all` refusal is checked last.** A vacancy that also has a real gate reason hears that
+   instead — "run `prep-submission`" beats "use an explicit `--vacancy-id`" for someone who has to
+   prep first anyway. Refusal-first would give every un-prepped vacancy in a batch the wrong next
+   step.
+
+**A15 was confirmed with Tebello before any code was written**, since the spec's own §Open Items
+item 5 exists precisely so the behavior isn't a surprise: submitting the 6 approved Indeed vacancies
+will be six deliberate commands. The rationale is that the accepted account-risk exposure is
+per-account, and six real applications in ninety seconds is a materially different risk from six
+deliberate single runs — refusing needs no tuning and cannot be mis-tuned, where a backoff policy
+would need real observed behavior to tune against.
+
+**One thing worth carrying forward:** `pending_review` and `not_supported` leave the vacancy in the
+*same* state, so the CLI's wording is the only thing distinguishing them for the operator. The
+wording test asserts `"FAILED"` is absent as well as the right substrings being present — without a
+dedicated `report_attempt()` branch the detail printed under a FAILED label, which is the right
+words under the wrong verdict and would have passed a naive substring assertion.
+
+Still offline. Nothing on the wire, no `playwright` dependency, the adapter registry still empty —
+every approved application routes to manual today. **Phase D is next**: `src/submission/browser.py`
+(session load, expiry detection, CAPTCHA detection, the combined navigation-state check, step
+logging).
+
+---
+
 ## 2026-08-07 (later) — Indeed adapter Phase B: screening-question state
 
 Picked up the first thing ADR-004 unblocked, the same day it landed. Phase B of

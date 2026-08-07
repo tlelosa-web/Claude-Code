@@ -86,7 +86,7 @@ Responsibilities:
 
 Responsibilities:
 - `pipeline.run_submission()` is the single entry point and the only place that writes. It gates on `vacancy.status`, never on the presence of an `approvals` row (see `src/review/cli.py`'s closing comment).
-- `eligibility.py` holds an adapter registry that is **empty in this build, by design**. Dispatch is capability-based: an adapter is found by platform, then asked `can_handle(vacancy)` — so a registered adapter can still decline an individual posting (an external-ATS redirect, say) and have it fall through to manual.
+- `eligibility.py` holds an adapter registry that is **empty in this build, by design**. Dispatch is capability-based: an adapter is found by platform, then asked `can_handle(vacancy)` — so a registered adapter can still decline an individual posting and have it fall through to manual. `can_handle()` is pure, offline and side-effect-free (Amendment A1): it runs on every `submit`, including `--manual`, so it can never open a browser. Live findings — an external-ATS redirect, a CAPTCHA, an unrecognised form — belong to `prep-submission`, which records them as prep state for the gate below to act on.
 - With no adapter, every approved application produces a `not_supported` attempt, is reported to the operator with its URL and an explicit instruction to submit it by hand, and **stays at `approved`** — it still needs action, so the status keeps saying so.
 - `session.py` resolves the Playwright `storageState` path (`.session/storage_state.json`, gitignored — it is a live authenticated session, not config). It imports nothing from Playwright, which is what keeps this stage offline-testable with no browser installed.
 - Adapters never touch the database and never transition status. That is what makes it structurally impossible for a future adapter to route around the approval gate.
@@ -95,8 +95,23 @@ Responsibilities:
 
 - `submission_preps` — append-only, one row per `prep-submission` run, with a seven-value `status`. Prep state is *recorded*, never inferred: counting `screening_questions` rows alone cannot tell "prep never ran" from "prepped, and this posting genuinely has no questions", and only one of those may proceed. The absence of any prep row is the one state that genuinely is an absence.
 - `screening_questions` — one row per extracted question, scoped by `prep_id` so a re-prep's set never inherits a stale set's decisions. `decision` starts `pending` and only a human moves it. `sensitivity` marks the classes that are never LLM-drafted at all (compensation, work authorization, demographic) — a draft anchors the answer.
-- `db.submission_prep_ready()` returns the whole gate decision (prep state *and* question decisions), not just a question tally, as a `PrepReadiness`. `pipeline.py` consumes it in Phase C.
+- `db.submission_prep_ready()` returns the whole gate decision (prep state *and* question decisions), not just a question tally, as a `PrepReadiness`.
 - `submissions.outcome` gained `pending_review`: an adapter exists and the posting is native, but prep hasn't run or its questions aren't reviewed. Deliberately distinct from `not_supported` — "one command away" is not "no automated path exists", and conflating them would hide real progress from the operator and from any Stage 7 reader counting rows.
+
+**The submit gate (Phase C, 2026-08-07 — §Amendment A2/A3/A15).** `pipeline._decide()` consults `submission_prep_ready()` after the adapter lookup and **before** the session check. Every answer it returns is state `prep-submission` already recorded, so none of it needs a live session to read — and a recorded external-ATS finding must not be masked behind "run the login setup", which would send Tebello to fix something that isn't broken. Two orderings matter and both are pinned by tests:
+
+| latest prep state | outcome | operator's next move |
+|---|---|---|
+| *(no row)* | `pending_review` | run `prep-submission` |
+| `external_ats` | `not_supported` | submit by hand |
+| `captcha_detected`, `session_expired`, `unsupported_form`, `error` | `pending_review` | re-run `prep-submission` |
+| `no_questions` | proceeds to the adapter | — |
+| `questions_extracted`, all questions `approved`/`edited` | proceeds to the adapter | — |
+| `questions_extracted`, any question `pending` or `rejected` | `pending_review` | run `review-questions` |
+
+`pending_review` maps to **no status transition**, exactly as `not_supported` does — both mean the application still needs Tebello's action, and they differ only in which action. This is Hard Rule 1 extended past the CV and cover letter to every generated word an employer reads.
+
+**`submit --all` does not auto-submit (Amendment A15).** A vacancy that would reach a real `adapter.submit()` under `--all` is instead recorded as `pending_review` with detail `"auto-submit requires an explicit --vacancy-id"`. The refusal is checked *last*, so a vacancy with a real gate reason hears that instead — "run prep-submission" is more use than "use an explicit id" to someone who has to prep first anyway. Rationale: the accepted account-risk exposure is per-account, and six real applications in ninety seconds is a materially different risk from six deliberate single runs. `--all` is otherwise unchanged for `not_supported`, `pending_review`, and `--manual`. Confirmed with Tebello 2026-08-07 (spec §Open Items, item 5).
 
 Not built: the Playwright site adapter itself, the `playwright` dependency, and any real-site smoke test. Those are Phases D–H of `docs/specs/indeed-submit-adapter.md`.
 

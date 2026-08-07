@@ -1,9 +1,11 @@
 # Task Queue — TebelloReborn (Career Engine)
 
-> Updated: 2026-08-07 (**Indeed adapter Phase B built** — Phase 19, steps 118–122: the
+> Updated: 2026-08-07 (**Indeed adapter Phase C built** — Phase 20, steps 123–127: the prep-state
+> submit gate wired into `pipeline.py`, `pending_review` reporting, and the `--all` auto-submit
+> refusal. Offline; **Phase D is next**. Earlier the same day: Phase B, Phase 19, steps 118–122 — the
 > `submission_preps`/`screening_questions` tables, the `pending_review` outcome, the widened
 > `submissions.outcome` CHECK with its migration and drift guard, and `submission_prep_ready()`.
-> Offline throughout; **Phase C is next**. Earlier the same day: ADR-004's schema migration ledger,
+> Also earlier the same day: ADR-004's schema migration ledger,
 > Phase 18 steps 107–117; Indeed adapter Phase A, steps 103–104, see Phase 17. Stage 6 submission
 > core built 2026-08-06, Phase 16 steps 81–102.)
 
@@ -383,6 +385,50 @@ adapter registry still empty.
 > `integrity_check = ok`, `user_version` still frozen at 4, the three tables present with the widened
 > CHECK, and all 6 approved vacancies correctly gating to `pending_review` with "never prepped".
 
+### Phase 20 — Indeed submit adapter, **Phase C** (see `docs/specs/indeed-submit-adapter.md`
+§Amendment A2/A3/A15 — built 2026-08-07)
+
+The prep-state gate, wired. Offline throughout, adds no new state — it consumes what Phase B built.
+Nothing on the wire, no `playwright` dependency, the adapter registry still empty.
+
+- [x] 123. [RED] `tests/unit/test_submission_pipeline.py` (`861cff5`) — one test per row of A2's gate
+      table, the two orderings below, and A15's batch refusal. Existing adapter-path tests updated to
+      seed a prep row: reaching `submit()` without one is now the bug, not incidental setup
+- [x] 124. [GREEN] `src/submission/pipeline.py` + `src/submission/eligibility.py` (`80a49ee`) —
+      `PENDING_REVIEW` joins `NOT_SUPPORTED` as a no-transition outcome; `_decide()` consults
+      `submission_prep_ready()`; `run_submission(batch=)`; `can_handle()`'s pure/offline contract (A1)
+- [x] 125. [RED] `tests/unit/test_submission_cli.py` (`fdbacaf`) — `pending_review` wording, its own
+      summary bucket, `batch=` on both dispatch paths, exit codes
+- [x] 126. [GREEN] `src/submission/cli.py` (`86d90c4`)
+- [x] 127. Docs closeout — `docs/architecture.md` (the gate table, the `--all` policy, `can_handle()`'s
+      amended contract), `CLAUDE.md` Stage 6, this file, `docs/session-log.md`
+
+**Result:** 485 tests passing (was 456). Coverage on the phase's three modules: `pipeline.py` 100%,
+`cli.py` 100%, `eligibility.py` 100%.
+
+> **Two orderings decided here, both pinned by their own test, because getting either wrong is
+> silent.**
+>
+> 1. **The gate runs before the session check.** Every answer it gives is state `prep-submission`
+>    already recorded, so none of it needs a live session to read. Putting the session check first
+>    would report a recorded `external_ats` as "no saved browser session — run the login setup",
+>    sending Tebello to fix something that isn't broken and hiding the one finding that genuinely
+>    means "submit by hand".
+> 2. **The `--all` refusal is checked last, not first.** A vacancy that also has a real gate reason
+>    hears that reason instead: "run `prep-submission`" is more use than "use an explicit
+>    `--vacancy-id`" to someone who would have to prep first anyway. Checking it first would make
+>    every un-prepped vacancy in a batch report the wrong next step.
+>
+> **A15 confirmed with Tebello before the build** (spec §Open Items, item 5 — it was raised there
+> precisely so the behavior wouldn't be a surprise). Submitting the 6 approved Indeed vacancies will
+> be six deliberate commands, by design.
+>
+> **`pending_review` and `not_supported` both map to no status transition**, so the CLI's wording is
+> the *only* thing separating them for the operator. That is why `report_attempt()` gets a dedicated
+> branch and its own asserted substrings, and why the summary counts them in separate buckets:
+> folding them together would tell Tebello to submit by hand a batch that one `prep-submission` run
+> may unblock.
+
 ---
 
 ---
@@ -634,10 +680,16 @@ adapter registry still empty.
       `submission_prep_ready()` implements A2's gate table in full. The A4 trap is closed by a real
       migration rather than only a guard — see the deviation note in Phase 19.
 
-      Next: **Phase C** (`pending_review` wired into `pipeline.py`'s pre-check, `eligibility.py`
-      extension, and the `--all` auto-submit refusal — A2/A3/A15). Offline. Everything it needs
-      from the database layer now exists; it consumes `submission_prep_ready()` rather than adding
-      any new state.
+      **Phase C is built — 2026-08-07, see Phase 20 in the Build Queue above** (`861cff5`,
+      `80a49ee`, `fdbacaf`, `86d90c4`). The gate is wired, `pending_review` reaches the operator with
+      the command it needs next, and `--all` refuses to auto-submit (A15, confirmed with Tebello
+      before the build). Still offline, still no adapter registered — every approved application
+      routes to manual today.
+
+      Next: **Phase D** — `src/submission/browser.py`: session load, expiry detection (A18), CAPTCHA
+      detection (A7), the combined navigation-state check (A17), step logging (C3). Offline for the
+      logic; exercised live in E/G. The `playwright` runtime dependency itself is not declared until
+      Phase H, per the amended phase table — Phase D writes the logic that will use it.
 - [ ] Phase 7 (post-MVP numbering): tracking dashboard (applications, match-score distribution, response rate).
 - [ ] Decide whether recruiter cold-outreach (in `data/legacy_reference/`, not part of the original 7-phase plan) gets revived as a later phase.
 - [ ] Volume-cap / scheduler layer for document generation (ADR-003 §6, open judgment call #1) — only if Tebello confirms a controlled-batch need; would need its own spec + ADR, and likely a `PRAGMA user_version` migration via the `src/doc_gen/migrations.py` stub (step 34).

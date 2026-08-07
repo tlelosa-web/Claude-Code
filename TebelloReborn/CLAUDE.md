@@ -161,7 +161,7 @@ Design modules so offline stages never import or depend on network-requiring cod
 
 Stage 6's **platform-agnostic core is built** (2026-08-06, `docs/specs/submission-core.md`): status vocabulary, the `submissions` attempt log, session-state path handling, capability-based adapter dispatch, and outcome recording. Its **site adapter is not** — the registry ships empty, so every approved application produces a `not_supported` attempt, is reported to the operator with an instruction to submit it by hand, and stays at `approved`. No `playwright` dependency, no browser binary, nothing on the wire.
 
-The Indeed adapter's **Phases A and B are built** (2026-08-07, `docs/specs/indeed-submit-adapter.md`): profile contact details, then the `submission_preps`/`screening_questions` tables, the `pending_review` outcome, and the `submission_prep_ready()` gate. Still offline, still no adapter registered. Phases C–H remain — Indeed's apply flow will add three commands run in sequence:
+The Indeed adapter's **Phases A, B and C are built** (2026-08-07, `docs/specs/indeed-submit-adapter.md`): profile contact details; then the `submission_preps`/`screening_questions` tables, the `pending_review` outcome, and `submission_prep_ready()`; then that gate wired into `pipeline.py` ahead of the session check, `pending_review` reporting, and the `--all` auto-submit refusal (A15 — real applications go out one at a time, by explicit id; confirmed with Tebello 2026-08-07). Still offline, still no adapter registered, so every approved application routes to manual today. Phases D–H remain — Indeed's apply flow will add three commands run in sequence:
 
 ```
 career-engine prep-submission --vacancy-id <id>   (network, read-only recon — extracts screening questions)
@@ -329,7 +329,7 @@ TebelloReborn/
 
 ## ⚠️ Hard Rules — Never Violate
 
-1. **No application submitted without the human approval gate.** Stage 6 now exists, and enforces this structurally: `run_submission()` acts only on `approved` or `submission_failed`, and `submission_failed` is reachable only from `approved`. Adapters never write to the database and never transition status, so no adapter can route around the gate. **This extends to every piece of generated text, not just the CV and cover letter** — a screening question's answer is content an employer reads, so `screening_questions.decision` starts `pending`, only `review-questions` moves it, and `submission_prep_ready()` refuses to let a vacancy through while any answer is `pending` or `rejected`.
+1. **No application submitted without the human approval gate.** Stage 6 now exists, and enforces this structurally: `run_submission()` acts only on `approved` or `submission_failed`, and `submission_failed` is reachable only from `approved`. Adapters never write to the database and never transition status, so no adapter can route around the gate. **This extends to every piece of generated text, not just the CV and cover letter** — a screening question's answer is content an employer reads, so `screening_questions.decision` starts `pending`, only `review-questions` moves it, and `submission_prep_ready()` refuses to let a vacancy through while any answer is `pending` or `rejected`. As of Phase C that refusal is live: `pipeline._decide()` consults the gate before any adapter runs, and records `pending_review` — no status change — rather than submitting.
 2. **No code without a plan** for any task touching > 2 files.
 3. **One task = one commit** — atomic, traceable, revertable.
 4. **Tests must pass** before any commit.

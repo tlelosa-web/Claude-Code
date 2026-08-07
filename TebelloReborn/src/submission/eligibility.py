@@ -29,8 +29,19 @@ class SubmitAdapter(Protocol):
     platform: str
 
     def can_handle(self, vacancy: Vacancy) -> bool:
-        """False for anything this adapter can't submit reliably — an external
-        ATS redirect, an unrecognised form. Declining is a normal answer."""
+        """Pure, offline and side-effect-free — static URL shape only. False for
+        anything this adapter can't submit reliably. Declining is a normal
+        answer.
+
+        It is called on *every* submit run, including --manual and every
+        not_supported case, so it can never open a browser (Amendment A1). Live
+        findings — an external-ATS redirect, an unrecognised form, a CAPTCHA —
+        belong to prep-submission, which records them as prep state; the gate in
+        pipeline.py then declines the vacancy at submit time. So a posting that
+        redirects to an external ATS deliberately *passes* can_handle() and is
+        declined one layer down, reaching the same operator-visible
+        not_supported without a networked predicate.
+        """
         ...
 
     def submit(self, vacancy: Vacancy, session_state_path: Path) -> tuple[bool, str]:

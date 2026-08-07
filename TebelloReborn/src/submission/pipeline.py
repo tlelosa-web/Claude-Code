@@ -6,8 +6,14 @@
 # presence of an approvals row, exactly as src/review/cli.py's closing comment
 # requires. Adapters never write to the database and never transition status —
 # this module owns all persistence, so no adapter can route around the gate.
+#
+# The same rule extends past the CV and cover letter to every generated word an
+# employer reads: _decide() consults submission_prep_ready() before any adapter
+# runs, so a vacancy whose screening answers are still pending or rejected
+# cannot be submitted (Amendment A2).
 
 import logging
+import sqlite3
 from pathlib import Path
 from typing import Optional
 
@@ -18,7 +24,7 @@ from src.vacancy_search.db import (
 )
 from src.vacancy_search.schema import Vacancy
 
-from .db import init_db as init_submission_db, save_attempt
+from .db import init_db as init_submission_db, save_attempt, submission_prep_ready
 from .eligibility import get_adapter
 from .schema import SubmissionAttempt, SubmissionMethod, SubmissionOutcome
 from .session import resolve_session_state_path, session_state_available
@@ -31,12 +37,17 @@ ELIGIBLE_STATUSES = {"approved", "submission_failed"}
 
 MANUAL_DETAIL = "operator-asserted manual submission"
 
-# NOT_SUPPORTED maps to no transition on purpose: the application still needs
-# Tebello's action, so the status must keep saying so.
+BATCH_REFUSAL_DETAIL = "auto-submit requires an explicit --vacancy-id"
+
+# NOT_SUPPORTED and PENDING_REVIEW both map to no transition, for the same
+# reason: the application still needs Tebello's action, so the status must keep
+# saying so. They differ only in which action — submit by hand, versus run
+# prep-submission/review-questions (Amendment A3).
 _OUTCOME_STATUS: dict[SubmissionOutcome, Optional[str]] = {
     SubmissionOutcome.SUBMITTED: "submitted",
     SubmissionOutcome.FAILED: "submission_failed",
     SubmissionOutcome.NOT_SUPPORTED: None,
+    SubmissionOutcome.PENDING_REVIEW: None,
 }
 
 
@@ -61,12 +72,17 @@ class SubmissionStatusError(Exception):
 
 
 def _decide(
-    vacancy: Vacancy, manual: bool
+    vacancy: Vacancy,
+    manual: bool,
+    submission_conn: sqlite3.Connection,
+    batch: bool,
 ) -> tuple[SubmissionMethod, SubmissionOutcome, str]:
-    """Work out what happened, without touching the database."""
+    """Work out what happened. Reads prep state; writes nothing."""
     if manual:
         # The system cannot witness a manual submission — it records the
-        # operator's assertion that one happened, and says so.
+        # operator's assertion that one happened, and says so. Nothing this
+        # system generated is being sent, so neither the prep gate nor the batch
+        # refusal has anything to say about it.
         return SubmissionMethod.MANUAL, SubmissionOutcome.SUBMITTED, MANUAL_DETAIL
 
     adapter = get_adapter(vacancy)
@@ -75,6 +91,24 @@ def _decide(
             SubmissionMethod.AUTO,
             SubmissionOutcome.NOT_SUPPORTED,
             f"no auto-submit adapter for platform '{vacancy.platform}'",
+        )
+
+    # Ahead of the session check on purpose. Every answer below is state that
+    # prep already recorded, so none of it needs a live session to read — and a
+    # recorded external-ATS finding must not be masked behind "run the login
+    # setup", which would send Tebello to fix something that isn't broken.
+    readiness = submission_prep_ready(submission_conn, vacancy.id)
+    if not readiness.ready:
+        return SubmissionMethod.AUTO, readiness.outcome, readiness.reason
+
+    # Last, so a vacancy that also has a real gate reason hears that instead:
+    # "run prep-submission" is more use than "use an explicit --vacancy-id" to
+    # someone who would have to run prep first anyway (Amendment A15).
+    if batch:
+        return (
+            SubmissionMethod.AUTO,
+            SubmissionOutcome.PENDING_REVIEW,
+            BATCH_REFUSAL_DETAIL,
         )
 
     if not session_state_available():
@@ -99,9 +133,13 @@ def run_submission(
     vacancy: Vacancy,
     *,
     manual: bool = False,
+    batch: bool = False,
     db_path: Optional[Path] = None,
 ) -> SubmissionAttempt:
     """Submit one approved application, or record why it wasn't submitted.
+
+    `batch` marks a `submit --all` run, which refuses to drive a real submission
+    (Amendment A15) — real applications go out one at a time, by explicit id.
 
     Returns the persisted SubmissionAttempt for every real outcome. Raises only
     when the approval gate refuses (SubmissionNotAllowedError), when the vacancy
@@ -121,14 +159,17 @@ def run_submission(
                 "must pass the human approval gate first."
             )
 
-        method, outcome, detail = _decide(current, manual)
-
-        attempt = SubmissionAttempt(
-            vacancy_id=current.id, method=method, outcome=outcome, detail=detail
-        )
-
+        # One connection for both the prep gate's read and the attempt's write:
+        # the gate decides what to record, so reading it on a second connection
+        # would only widen the window for the two to disagree.
         submission_conn = init_submission_db(db_path)
         try:
+            method, outcome, detail = _decide(current, manual, submission_conn, batch)
+
+            attempt = SubmissionAttempt(
+                vacancy_id=current.id, method=method, outcome=outcome, detail=detail
+            )
+
             # Committed BEFORE the status transition below. A crash in between
             # leaves a recorded attempt with a stale status (fails closed), never
             # a 'submitted' vacancy with no attempt on file (fails open). Same

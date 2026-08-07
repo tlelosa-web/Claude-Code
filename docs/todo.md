@@ -174,6 +174,15 @@ abandoned either — no work is lost by leaving them here.
 
 ## Backlog / ideas (not committed)
 
+- [ ] **Fold `rev-parse --show-toplevel` back down into this hub's Step 1.9** — the
+      reverse direction of PR #14. This hub's Step 1.9 hardcodes the two repo layouts
+      it knows (`Desktop/Pappa T/` is one repo covering all its sub-projects;
+      Operations' `2. SOPS` and `3. Nameplate` are separate repos). The template
+      couldn't name those, so it resolves roots with
+      `git -C "<project path>" rev-parse --show-toplevel` instead — which is strictly
+      better, since a hub has both shapes at once and a wrong assumption silently
+      reads the clock of a path that isn't a repo root. Keep the named examples as
+      illustration, but resolve rather than assume. Small, local, no gate.
 - [ ] **Widen `/codex-review`'s path guard to `docs/decisions/`** — the skill is
       hard-scoped to `docs/specs/` and refuses ADRs outright. TebelloReborn hit
       this on 2026-08-07 reviewing `ADR-004-schema-migration-ledger.md` and worked

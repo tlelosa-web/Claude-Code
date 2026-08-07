@@ -126,6 +126,55 @@ class TestDispatchSubmit:
 
     @patch("src.submission.cli.run_submission")
     @patch("src.submission.cli.get_by_id")
+    def test_single_run_is_not_a_batch(self, mock_get_by_id, mock_run_submission):
+        """The A15 refusal is scoped to --all; an explicit id is exactly the
+        thing it asks for, so it must not be refused too."""
+        mock_get_by_id.return_value = _make_vacancy(id=7, status="approved")
+        mock_run_submission.return_value = _attempt(SubmissionOutcome.NOT_SUPPORTED)
+
+        main(["submit", "--vacancy-id", "7"])
+
+        assert mock_run_submission.call_args.kwargs["batch"] is False
+
+    @patch("src.submission.cli.run_submission")
+    @patch("src.submission.cli.get_by_id")
+    def test_pending_review_output_names_the_next_command(
+        self, mock_get_by_id, mock_run_submission, capsys
+    ):
+        """pending_review and not_supported both leave the vacancy at approved,
+        so the only thing separating them for Tebello is this wording: run a
+        command, versus submit it by hand."""
+        mock_get_by_id.return_value = _make_vacancy(id=7, status="approved")
+        attempt = _attempt(SubmissionOutcome.PENDING_REVIEW)
+        attempt.detail = (
+            "never prepped — run `career-engine prep-submission --vacancy-id 7`"
+        )
+        mock_run_submission.return_value = attempt
+
+        main(["submit", "--vacancy-id", "7"])
+
+        out = capsys.readouterr().out
+        assert "prep-submission" in out
+        assert "submit this one by hand" not in out
+        # Falling through to the else branch would print the detail under a
+        # "FAILED" label — right words, wrong verdict, and exactly the kind of
+        # near-miss that passes a substring assertion for the wrong reason.
+        assert "FAILED" not in out
+
+    @patch("src.submission.cli.run_submission")
+    @patch("src.submission.cli.get_by_id")
+    def test_pending_review_does_not_exit_non_zero(
+        self, mock_get_by_id, mock_run_submission
+    ):
+        """It is the ordinary state of an un-prepped application, not a failure —
+        the same reasoning that keeps not_supported at exit 0."""
+        mock_get_by_id.return_value = _make_vacancy(id=7, status="approved")
+        mock_run_submission.return_value = _attempt(SubmissionOutcome.PENDING_REVIEW)
+
+        main(["submit", "--vacancy-id", "7"])  # must not raise SystemExit
+
+    @patch("src.submission.cli.run_submission")
+    @patch("src.submission.cli.get_by_id")
     def test_gate_refusal_is_reported_not_traced(
         self, mock_get_by_id, mock_run_submission, capsys
     ):
@@ -227,3 +276,59 @@ class TestDispatchSubmitAll:
         main(["submit", "--all"])
 
         mock_run_submission.assert_not_called()
+
+    @patch("src.submission.cli.run_submission")
+    @patch("src.submission.cli.get_by_status")
+    def test_all_marks_every_run_as_a_batch(
+        self, mock_get_by_status, mock_run_submission
+    ):
+        """Amendment A15's refusal is enforced in the pipeline, where the attempt
+        is recorded — the CLI's whole job is to say which kind of run this is."""
+        mock_get_by_status.return_value = [
+            _make_vacancy(id=1, status="approved"),
+            _make_vacancy(id=2, url="https://y", status="approved"),
+        ]
+        mock_run_submission.return_value = _attempt(SubmissionOutcome.PENDING_REVIEW)
+
+        main(["submit", "--all"])
+
+        assert [c.kwargs["batch"] for c in mock_run_submission.call_args_list] == [
+            True,
+            True,
+        ]
+
+    @patch("src.submission.cli.run_submission")
+    @patch("src.submission.cli.get_by_status")
+    def test_summary_counts_pending_review_separately(
+        self, mock_get_by_status, mock_run_submission, capsys
+    ):
+        """Folding it into 'not supported' would tell Tebello to submit six
+        applications by hand that a single prep-submission run would unblock."""
+        mock_get_by_status.return_value = [
+            _make_vacancy(id=1, status="approved"),
+            _make_vacancy(id=2, url="https://y", status="approved"),
+            _make_vacancy(id=3, url="https://z", status="approved"),
+        ]
+        mock_run_submission.side_effect = [
+            _attempt(SubmissionOutcome.PENDING_REVIEW),
+            _attempt(SubmissionOutcome.PENDING_REVIEW),
+            _attempt(SubmissionOutcome.NOT_SUPPORTED),
+        ]
+
+        main(["submit", "--all"])
+
+        out = capsys.readouterr().out
+        assert "pending review: 2" in out
+        assert "not supported: 1" in out
+
+    @patch("src.submission.cli.run_submission")
+    @patch("src.submission.cli.get_by_status")
+    def test_a_pending_review_batch_exits_zero(
+        self, mock_get_by_status, mock_run_submission
+    ):
+        """The expected shape of every --all run once an adapter exists: nothing
+        auto-submits, and that is the design, not a fault."""
+        mock_get_by_status.return_value = [_make_vacancy(id=1, status="approved")]
+        mock_run_submission.return_value = _attempt(SubmissionOutcome.PENDING_REVIEW)
+
+        main(["submit", "--all"])  # must not raise SystemExit

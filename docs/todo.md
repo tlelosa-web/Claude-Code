@@ -9,30 +9,22 @@ Per DCOE: update after every completed task; one task = one commit.
 
 ## In progress
 
-- [ ] **`hub-template/continue.md` reconcile — PR open, awaiting merge.**
-      https://github.com/tlelosa-web/tlelosa-claude-config/pull/14 (branch
-      `hub-template-continue-reconcile`, commit `fbf6810`, pushed 2026-08-08).
-      Folds four `/continue` improvements up per ADR-008: Step 0.5 category B,
-      Step 1.75, Step 1.9, Step 2.5, and Step 3's Hub-state/⚠️ fields — plus
-      three vault-specific leaks the template already carried against its own
-      vault-agnostic contract (the `2. SOPS` parallel-sessions example, a SOPS
-      session-title example, and Step 3's hardcoded "surface the OneDrive/git
-      item" known-risk instruction). `HUB-CHECKLIST.md` also gained a diff-an-
-      existing-copy instruction and an item for the hooks Steps 1.75/1.9/2.5 are
-      inert without.
-      **Two actions left, both blocked from a session — Tebello's to run:**
-      1. Merge the PR (`gh pr merge 14 --repo tlelosa-web/tlelosa-claude-config
-         --squash --delete-branch`) — the merge was denied by the permission
-         classifier this session.
-      2. ⚠️ **The local marketplace clone is left on the feature branch**, also
-         denied: `git -C ~/.claude/plugins/marketplaces/tlelosa-claude-config
-         checkout main`. This matters — `/continue` Step 1.5 runs
-         `rev-list HEAD..origin/main` on that clone, and from a branch whose tip
-         is *ahead* of `origin/main` that count reads `0`, i.e. "up to date,"
-         which is exactly the false-clean answer Step 1.9 exists to catch.
-      Landing upstream does **not** update any hub's installed copy — file-copy
-      distribution per ADR-008. This hub already has all five steps; other vaults
-      take it deliberately.
+- [ ] ⚠️ **Marketplace clone is on a feature branch, not `main`** — leftover from
+      the PR #14 work below. The clone `/continue` Step 1.5 actually reads,
+      `~/.claude/plugins/marketplaces/tlelosa-claude-config`, is still on
+      `hub-template-continue-reconcile` and is now 1 behind `origin/main`:
+
+      ```
+      git -C ~/.claude/plugins/marketplaces/tlelosa-claude-config checkout main
+      git -C ~/.claude/plugins/marketplaces/tlelosa-claude-config pull origin main
+      ```
+
+      **Why this stayed open after being reported fixed:** there are *two* clones
+      of this repo on this machine, and the fix was applied to the wrong one.
+      `~/Downloads/tlelosa-claude-config` (a stray clone, already noted in
+      `knowledge/pappa-t.md`) is on `main` and always was; the marketplace clone
+      under `~/.claude/plugins/` is the one that governs. Always path-qualify with
+      `git -C` when touching this repo.
 
 - [ ] **O-P-C machine consolidation** — Operations and Pappa T subtree-
       merged into this repo (`Pappa T/`, `Operations/`, both with full
@@ -212,6 +204,31 @@ abandoned either — no work is lost by leaving them here.
 
 ## Done
 
+- [x] **2026-08-08** — Folded this hub's `/continue` improvements up into
+      `hub-template/` per ADR-008 — **merged** as PR #14
+      (https://github.com/tlelosa-web/tlelosa-claude-config/pull/14, merge commit
+      `5660e1d`, branch deleted). Step 0.5 category B, Step 1.75, Step 1.9,
+      Step 2.5, and Step 3's `Hub state:` + ⚠️ machine-bound fields.
+      **Step 1.9 could not be backported alone** — it names Step 1.75 and depends
+      on running after it, and the template had no Step 1.75; checking why turned
+      up that the template was *four* improvements behind, not one.
+      **ADR-008 predicted drift from hubs not taking template updates; the first
+      real reconcile showed it runs the other way too**, and nothing detected it
+      because `HUB-CHECKLIST.md` only ever handled a *missing* `continue.md` and
+      never diffed an existing one. Fixed in the same PR, along with a new item
+      for the vault-specific hooks Steps 1.75/1.9/2.5 are inert without.
+      **Three vault-specific leaks were already in the template**, against its own
+      verbatim-copy contract: the `2. SOPS` parallel-sessions example, a SOPS
+      session-title example, and — the one that actively misleads — Step 3's
+      "surface the OneDrive/git item from `CLAUDE.md`", one hub's risk hardcoded
+      as every hub's, so a fresh vault would be told to report a risk it doesn't
+      have. Being *declared* vault-agnostic is not evidence that a file is.
+      **The template's version of Step 1.9 came out better than this hub's** — it
+      resolves repo roots with `rev-parse --show-toplevel` instead of hardcoding
+      layouts, which is now a backlog item to fold back down.
+      Landing upstream does **not** update any hub's installed copy (file-copy
+      distribution, ADR-008); this hub already has all five steps. See
+      `knowledge/tlelosa-claude-config.md`.
 - [x] **2026-08-08** — Installed the cross-repo staleness check into `/continue`
       as **Step 1.9**, closing a gap that had been *written down three times and
       never built*. `knowledge/hub-process.md` carried the finding since

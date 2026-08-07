@@ -1,7 +1,7 @@
 ## 2026-08-08 — hub-template drifts *both* ways, and it carried vault-specific content
 **Source:** session (this machine), PR
-https://github.com/tlelosa-web/tlelosa-claude-config/pull/14 (`fbf6810`, open — merge
-denied by the permission classifier, awaiting Tebello)
+https://github.com/tlelosa-web/tlelosa-claude-config/pull/14 (merged, `5660e1d`, branch
+deleted)
 **Status:** active
 
 ADR-008 predicted drift from hubs *not taking* template updates. The first real
@@ -38,6 +38,17 @@ Step 1.5 runs `rev-list HEAD..origin/main --count` against
 false clean in the step immediately before the one written to catch false cleans. If a
 session branches that clone and can't restore it, say so loudly:
 `git -C ~/.claude/plugins/marketplaces/tlelosa-claude-config checkout main`.
+
+**And path-qualify it, because this machine has two clones of this repo.** Attempting
+that restore without `-C` landed it in `~/Downloads/tlelosa-claude-config` — the stray
+clone from the 2026-07-28 Pappa T survey, which was already on `main` — so the command
+succeeded, reported success, and changed nothing that matters. The marketplace clone
+under `~/.claude/plugins/` is the only one that governs `/continue`, `/plugin`, or
+`CORE.md` reads. Verify by branch name at the intended path, not by exit code:
+
+```
+git -C ~/.claude/plugins/marketplaces/tlelosa-claude-config rev-parse --abbrev-ref HEAD
+```
 
 ## 2026-08-06 — /session-end promoted to hub-template; hub instance adopted
 **Source:** session (this machine, `TshepangLelosa`) + marketplace commits

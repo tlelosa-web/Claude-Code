@@ -2474,7 +2474,7 @@ fold-up is now four improvements behind — new backlog item, upstream-first per
 **Blockers:** None. Note for the next run: Step 1.9 is now installed, so the commit-clock
 check no longer has to be run by hand — if it wasn't reported, it wasn't run.
 
-## 2026-08-08 — `hub-template/continue.md` fold-up: PR #14 open, merge blocked
+## 2026-08-08 — `hub-template/continue.md` fold-up: PR #14 merged
 
 Follow-on from the entry above, at Tebello's direction ("fold the hub-template backport up
 now"). Same session, separate task and separate repo.
@@ -2532,14 +2532,35 @@ permission classifier, and not worked around:**
    reported as "shared core up to date." A false clean, of exactly the kind Step 1.9 was
    written to catch, in the step right before it.
 
-**Last completed:** `hub-template/continue.md` reconciled and pushed as PR #14 — open, not
-merged (this entry)
-**Next task:** Merge PR #14 and restore the marketplace clone to `main` (both Tebello's to
-run — see the In progress item in `docs/todo.md`). Then the queue is unchanged: Indeed
-adapter **Phase E**, 📍 live `Desktop/Pappa T/TebelloReborn/`, gated on Tebello being present
-to sign in; and `docs/todo.md` #2, the SOPS AvgMovement migration, gated on an explicit
-in-session go-ahead.
-**Known risks:** The marketplace clone sitting on a feature branch will make Step 1.5 report
-a false "up to date" until it's back on `main`. Backup failures remain silent (backlog).
-**Blockers:** PR #14 needs a human merge; this session was denied both the merge and the
-branch restore.
+**Outcome (same session, after the close-out):** Tebello merged PR #14 — merge commit
+`5660e1d`, remote branch deleted. Verified against the GitHub API and `origin/main`, not
+taken on report.
+
+**The branch restore was reported done and was not — because this machine has two clones of
+the repo, and the fix landed in the wrong one.** `~/Downloads/tlelosa-claude-config` is on
+`main` and always was (a stray clone, already noted in `knowledge/pappa-t.md` from the
+2026-07-28 survey). The clone that governs —
+`~/.claude/plugins/marketplaces/tlelosa-claude-config`, the one `/continue` Step 1.5 actually
+reads — is still on `hub-template-continue-reconcile`, now 1 behind `origin/main`. Left open
+as a ⚠️ item at the top of `docs/todo.md`.
+
+**This is the same failure shape as the drift the whole session was about**, one level down:
+a state that *reads* correct from the outside, verified against the wrong object. Checking
+"is the clone on main?" by running a command and seeing it succeed is not the same as
+checking the clone that matters. The rule that falls out: **path-qualify with `git -C` when
+touching this repo** — a bare `checkout` in whatever directory a shell happens to be in has
+a plausible-looking success path that changes nothing.
+
+**Last completed:** `hub-template/continue.md` reconciled and merged upstream as PR #14
+(`5660e1d`) — this hub's `/continue` improvements are now in the template every future vault
+copies from (this entry)
+**Next task:** ⚠️ First, restore the marketplace clone to `main` (see the top item in
+`docs/todo.md`) — one command, but `/continue` Step 1.5 misreports until it's done. Then the
+queue is unchanged: Indeed adapter **Phase E**, 📍 live `Desktop/Pappa T/TebelloReborn/`,
+gated on Tebello being present to sign in; and `docs/todo.md` #2, the SOPS AvgMovement
+migration, gated on an explicit in-session go-ahead.
+**Known risks:** The marketplace clone is on a feature branch and 1 behind `origin/main`, so
+Step 1.5 will report a stale/incorrect shared-core status until it's checked out. Backup
+failures remain silent (backlog).
+**Blockers:** None. PR #14 is merged; the only outstanding action is the clone checkout,
+which was denied to this session by the permission classifier.

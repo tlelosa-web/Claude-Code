@@ -9,10 +9,12 @@ adapted to this project's 5-stage pipeline and CLI (Build Queue step 52).
 
 import io
 import json
+import sqlite3
 
 import pytest
 
 from src.main import main
+from src.profile.db import init_db as init_profile_db
 from src.doc_gen.db import get_by_vacancy_id as get_generation_log
 from src.doc_gen.db import init_db as init_doc_gen_db
 from src.review.db import get_approval_by_vacancy_id, init_db as init_review_db
@@ -274,5 +276,120 @@ class TestSubmissionStage:
         conn = init_vacancy_db(db_path)
         try:
             assert len(get_by_status(conn, "approved")) == 3
+        finally:
+            conn.close()
+
+
+class TestMigrationLedgerAcrossModules:
+    """ADR-004 build step 10. This is the test class that caught the Phase 17
+    regression — a fresh install where `import-profile` ran first came out with
+    a `vacancies` table that had no `score` column, because profile's
+    migrations 5-6 advanced the shared PRAGMA user_version past
+    vacancy_search's 1-4 and skipped them silently.
+
+    No unit test caught it: each module's migrations were correct in isolation,
+    and the bug only existed in the interaction between two of them on one
+    database. So the proof that ADR-004 did its job belongs here, exercising
+    every module's real init_db() against a single file in both orders.
+    """
+
+    MODULES = {
+        "profile": init_profile_db,
+        "vacancy_search": init_vacancy_db,
+        "doc_gen": init_doc_gen_db,
+        "review": init_review_db,
+        "submission": init_submission_db,
+    }
+
+    MATCH_COLUMNS = {"score", "strengths", "weaknesses", "recommendation"}
+
+    def _init_all(self, db_path, order):
+        for name in order:
+            conn = self.MODULES[name](db_path)
+            conn.close()
+
+    def _schema(self, db_path):
+        """Every table's full column set — the thing that must not depend on
+        which module happened to run first."""
+        conn = sqlite3.connect(str(db_path))
+        try:
+            tables = [
+                row[0]
+                for row in conn.execute(
+                    "SELECT name FROM sqlite_master WHERE type='table' "
+                    "AND name NOT LIKE 'sqlite_%' ORDER BY name"
+                )
+            ]
+            return {
+                table: {row[1] for row in conn.execute(f"PRAGMA table_info({table})")}
+                for table in tables
+            }
+        finally:
+            conn.close()
+
+    def _ledger(self, db_path):
+        conn = sqlite3.connect(str(db_path))
+        try:
+            return {
+                (row[0], row[1])
+                for row in conn.execute("SELECT module, version FROM schema_migrations")
+            }
+        finally:
+            conn.close()
+
+    def test_both_init_orders_converge_on_an_identical_schema(self, tmp_path):
+        documented = ["profile", "vacancy_search", "doc_gen", "review", "submission"]
+        reversed_order = list(reversed(documented))
+
+        first = tmp_path / "documented.db"
+        second = tmp_path / "reversed.db"
+        self._init_all(first, documented)
+        self._init_all(second, reversed_order)
+
+        assert self._schema(first) == self._schema(second)
+
+    def test_vacancies_has_its_match_columns_whichever_module_ran_first(self, tmp_path):
+        """The Phase 17 regression itself. `import-profile` is the documented
+        first command, and profile owns the highest version numbers."""
+        db_path = tmp_path / "career.db"
+        self._init_all(db_path, ["profile", "vacancy_search", "doc_gen", "review"])
+
+        assert self.MATCH_COLUMNS <= self._schema(db_path)["vacancies"]
+
+    def test_the_ledger_records_every_module_that_owns_migrations(self, tmp_path):
+        db_path = tmp_path / "career.db"
+        self._init_all(
+            db_path, ["profile", "vacancy_search", "doc_gen", "review", "submission"]
+        )
+
+        assert self._ledger(db_path) == {
+            ("vacancy_search", 1),
+            ("vacancy_search", 2),
+            ("vacancy_search", 3),
+            ("vacancy_search", 4),
+            ("profile", 5),
+            ("profile", 6),
+        }
+
+    def test_re_initialising_every_module_is_a_no_op(self, tmp_path):
+        db_path = tmp_path / "career.db"
+        order = ["profile", "vacancy_search", "doc_gen", "review", "submission"]
+        self._init_all(db_path, order)
+        schema_before = self._schema(db_path)
+
+        self._init_all(db_path, order)
+        self._init_all(db_path, list(reversed(order)))
+
+        assert self._schema(db_path) == schema_before
+        assert len(self._ledger(db_path)) == 6
+
+    def test_the_frozen_counter_is_never_written(self, tmp_path):
+        """ADR-004 §5. A fresh database stays at 0 forever now."""
+        db_path = tmp_path / "career.db"
+        self._init_all(db_path, ["profile", "vacancy_search", "doc_gen", "review"])
+
+        conn = sqlite3.connect(str(db_path))
+        try:
+            assert conn.execute("PRAGMA user_version").fetchone()[0] == 0
         finally:
             conn.close()

@@ -149,6 +149,15 @@ abandoned either — no work is lost by leaving them here.
 
 ## Backlog / ideas (not committed)
 
+- [ ] **Fold this hub's `/continue` improvements up into `hub-template/`** — per
+      ADR-008 that fold-up is the expected direction, and Step 1.9 (the cross-repo
+      staleness check, installed 2026-08-08) is the trigger. It **cannot go alone**:
+      it names Step 1.75 and depends on running after it, and upstream's template has
+      no Step 1.75. Checked 2026-08-08 — `tlelosa-claude-config/hub-template/continue.md`
+      is four improvements behind this hub's instance: Step 0.5's stale/idle category B
+      (2026-07-29 broadening), Step 1.75 (sync check), Step 2.5 (machine-bound flagging),
+      Step 1.9, and Step 3's ⚠️/Hub-state report fields. A marketplace change,
+      upstream-first, and a real reconciliation job rather than a one-line patch.
 - [ ] **Widen `/codex-review`'s path guard to `docs/decisions/`** — the skill is
       hard-scoped to `docs/specs/` and refuses ADRs outright. TebelloReborn hit
       this on 2026-08-07 reviewing `ADR-004-schema-migration-ledger.md` and worked
@@ -178,6 +187,36 @@ abandoned either — no work is lost by leaving them here.
 
 ## Done
 
+- [x] **2026-08-08** — Installed the cross-repo staleness check into `/continue`
+      as **Step 1.9**, closing a gap that had been *written down three times and
+      never built*. `knowledge/hub-process.md` carried the finding since
+      2026-08-07 and the hub still drifted; the 2026-08-07 Phase D session ran
+      the check by hand and recorded that the command file had never actually
+      been touched. **The reusable part is why that kept happening:**
+      `knowledge/` records why something is true, but only the command file
+      changes what a session executes — and a finding filed there is read by a
+      session that goes looking for it, which is precisely not the session
+      confidently reporting stale state. Filing the lesson feels enough like
+      closure to hide that the step is missing.
+      **The prescription was wrong on placement and needed correcting on
+      contact:** the entry said "Step 1, as part of orienting," but Step 1.75 is
+      what pulls `origin/main`, so a check at Step 1 compares the project's clock
+      against a possibly stale local hub `HEAD` and can report drift *backwards*.
+      It went in after the sync check instead, with the ordering dependency
+      stated in the step itself. Step 1 gained a paragraph making its two reads
+      an unverified claim rather than state.
+      Step 1.9 requires the result in the Step 3 report **even when it passes** —
+      a silent pass and a check that never ran are indistinguishable, which is
+      exactly how three recurrences went unnoticed — and requires the live repo's
+      `status --porcelain`, since the hub can be right about what was committed
+      and still wrong about what exists. It also names the repo roots explicitly,
+      because they aren't the project folders: `Desktop/Pappa T/` is one repo
+      covering all its sub-projects, while Operations' `2. SOPS` and
+      `3. Nameplate` are separate repos. Finding drift is explicitly *not* made
+      this session's task to fix — surface and let Tebello pick.
+      Deliberately **not** backported upstream this session: the ADR-008 fold-up
+      is blocked on scope, not permission — see the new backlog item. No project
+      code touched. See `knowledge/hub-process.md`.
 - [x] **2026-08-07** — TebelloReborn: built Indeed adapter **Phase D**
       (`src/submission/browser.py`, Phase 21 steps 128–130, 3 commits in the Pappa T
       vault, **485 → 538 tests, zero regressions**). CAPTCHA detection, the combined

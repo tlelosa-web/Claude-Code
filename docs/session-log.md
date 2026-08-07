@@ -2386,3 +2386,86 @@ AvgMovement migration, still gated on an explicit in-session go-ahead.
 **Known risks:** None new. Backup failures remain silent (backlog). The commit-clock staleness check
 is documented but still not installed in `/continue` — expect to have to run it by hand.
 **Blockers:** None for Phase E beyond Tebello's availability to sign in.
+
+## 2026-08-08 — Cross-repo staleness check installed in `/continue` as Step 1.9
+
+`/continue` run. Tebello picked the hub item over Phase E (which is gated on his
+availability to sign in to Indeed by hand, not on anything technical).
+
+**Orient was clean.** Hub 0 behind `origin/main`, shared core 0 behind upstream. Ran the
+commit-clock check by hand for the fourth session running: hub `fb90810` 19:33:34 vs Pappa T
+vault `ed359f8` 19:31:12 — hub ahead, vault clean and pushed, only the two known
+`outreach.db-shm`/`-wal` sidecars untracked. Hub state accurate.
+
+**Then built the thing that makes running it by hand unnecessary.** The check now exists as
+`/continue` **Step 1.9**, between the sync check and Step 2.
+
+**The finding worth keeping is not the check — it's why writing it down three times didn't
+work.** `knowledge/hub-process.md` has carried this lesson since 2026-08-07, in three separate
+entries, each filed after a recurrence and each more emphatic than the last. The drift happened
+anyway. The reason: **a `knowledge/` entry is a record, not a control.** It records why
+something is true; only the command file changes what a session executes. And a finding filed
+in `knowledge/` gets read by a session that goes looking for it — which is exactly not the
+session that needs it, because a session confidently reporting stale state has no reason to
+suspect it should look. Filing the lesson feels enough like closure to hide that the step was
+never installed. Recorded as a new entry rather than an edit; the three above remain correct
+about the mechanism, and the sequence of them is itself the evidence.
+
+**The prescription was wrong and had to be corrected on contact.** The 2026-08-07 entry says
+the check belongs in "Step 1, as part of orienting." It cannot: **Step 1.75 is what pulls
+`origin/main`**, so a check at Step 1 compares the live project's clock against a possibly
+stale local hub `HEAD` — and can therefore report drift *backwards*, flagging the hub as behind
+when it is merely un-pulled, or clearing it when it isn't. Placed at 1.9 instead, after the
+sync check, with the ordering dependency written into the step rather than left implicit.
+Step 1 keeps its two reads but gains a paragraph making them an unverified claim with a
+timestamp, not to be carried into the Step 3 report until 1.9 has run. All existing step
+numbers were left untouched — 1.9 slots in without renumbering anything the session log or
+`CLAUDE.md` already reference.
+
+**Three things the step requires that a naive version would omit:**
+
+- **Report a passing check, not just a failing one.** A silent pass and a check that never ran
+  are indistinguishable from outside — which is precisely how three recurrences went unnoticed.
+  Step 3 gained a `Hub state:` field with a filled-in template for all three outcomes
+  (verified / stale / machine unreachable).
+- **Read `status --porcelain` on the live repo, not just `log`.** The hub can be accurate about
+  what was *committed* and still wrong about what exists; unpushed commits and uncommitted work
+  change the real answer.
+- **Name the repo roots, because they are not the project folders.** `Desktop/Pappa T/` is one
+  repo covering all its sub-projects (TebelloReborn, ai-outreach-agency, …), while Operations'
+  `2. SOPS` and `3. Nameplate & Test Sheet` are their own separate repos. A session guessing at
+  this would `git -C` a path that isn't a repo root and silently get the wrong clock.
+
+Also written in: finding drift does **not** make reconciling it this session's task — surface
+it and let Tebello pick — and if both files are wrong, the direction from `hub-process.md`
+applies (bring the authoritative project file current first, then trim the hub to a pointer).
+
+**Not backported upstream, and the reason is scope rather than permission.** ADR-008 makes
+folding hub `continue.md` improvements into `tlelosa-claude-config/hub-template/` the expected
+direction, so this was checked rather than assumed. Step 1.9 **cannot go alone** — it names
+Step 1.75 and depends on its ordering, and the upstream template has no Step 1.75 at all.
+Reading it confirmed the template is *four* improvements behind this hub's instance, not one:
+Step 0.5's stale/idle category B (the 2026-07-29 broadening), Step 1.75, Step 2.5, Step 1.9,
+and Step 3's ⚠️ machine-bound fields. That is a real reconciliation job, now a backlog item,
+not a same-session afterthought.
+
+**Session housekeeping:** renamed the untitled `Continuation` to
+`Cont-"Indeed adapter Phase D + hub catch-up"`. Two archive candidates surfaced and left for
+Tebello, neither archived — `Cont-"Hub reconciled to Phases B and C"` (superseded by
+`fb90810`, which caught the hub up through Phase D) and `Operations process optimization`
+(2026-08-01, 7 days idle, mistitled — it was actually the TebelloReborn PNet/Careers24
+discovery fix, shipped at 249 tests against the project's current 538).
+`Cont-"Hub session-end, vault push & staleness audit"` was not re-proposed: Tebello chose to
+keep it open on 2026-08-07 despite it being verifiably complete.
+
+**Last completed:** `/continue` Step 1.9 — cross-repo staleness check installed, plus the
+finding that a `knowledge/` entry is a record and not a control (this entry)
+**Next task:** Indeed adapter **Phase E** — first networked phase, 📍 live
+`Desktop/Pappa T/TebelloReborn/`, spec build-ready at `docs/specs/indeed-submit-adapter.md`
+§Amendment. Gated only on Tebello being present to sign in to Indeed in a visible browser.
+This hub's own remaining item is unchanged: `docs/todo.md` #2, the SOPS AvgMovement migration,
+still gated on an explicit in-session go-ahead.
+**Known risks:** None new. Backup failures remain silent (backlog). The `hub-template/`
+fold-up is now four improvements behind — new backlog item, upstream-first per ADR-008.
+**Blockers:** None. Note for the next run: Step 1.9 is now installed, so the commit-clock
+check no longer has to be run by hand — if it wasn't reported, it wasn't run.

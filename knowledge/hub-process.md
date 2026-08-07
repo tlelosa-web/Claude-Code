@@ -115,3 +115,41 @@ header before repeating the hub's version of its status.
 the work it summarises is stale by default, and its own confidence is not evidence.
 The cost is asymmetric — checking is two `git log` calls; not checking hands the
 next session a confident, wrong starting brief.
+
+## 2026-08-08 — A `knowledge/` entry is a record, not a control
+**Source:** session (this machine), installing the check the entry above prescribes
+**Status:** active
+
+The three entries above are the same finding written down three times, each after a
+recurrence, each more emphatic than the last. The fourth session ran the check *by
+hand* and noted that it still wasn't in `.claude/commands/continue.md`. The reason is
+now clear enough to state as a rule: **`knowledge/` records why something is true;
+only the command file changes what a session actually executes.** A finding filed in
+`knowledge/` is read by a session that goes looking for it, which is precisely not the
+session that needs it — the one confidently reporting stale state has no reason to
+suspect it should look. Filing the lesson and installing the step are two different
+tasks, and the first one feels enough like closure to hide that the second is missing.
+When a finding prescribes a step, the close-out is not done until the step is in the
+file that runs.
+
+**The prescription needed one correction on contact.** The entry above says the check
+belongs in "Step 1, as part of orienting." It cannot go there: Step 1.75 is what pulls
+`origin/main`, so a check at Step 1 compares the project's clock against a possibly
+stale local hub `HEAD` and can report drift backwards. It went in as **Step 1.9**,
+after the sync check and before Step 2, with the ordering dependency stated in the
+step itself. Step 1 instead gained one paragraph saying its two reads are a claim with
+a timestamp and are not to be carried into the report until 1.9 has run.
+
+**Reporting a *passing* check is load-bearing, not noise.** Step 1.9 requires a line in
+the Step 3 report either way, because a silent pass and a check that never ran look
+identical from the outside — which is exactly how three recurrences went unnoticed.
+Same reason the step requires the live repo's `status --porcelain` output: the hub can
+be accurate about what was committed and still wrong about what exists.
+
+**Backporting it upstream is blocked on scope, not on permission.** ADR-008 makes
+folding hub `continue.md` improvements into `tlelosa-claude-config/hub-template/` the
+expected direction. Step 1.9 can't go alone: it names Step 1.75 and depends on its
+ordering, and upstream's template has no Step 1.75 at all. Checked this session, the
+template is also missing Step 0.5's stale/idle category B, Step 2.5, and Step 3's
+machine-bound report fields — four hub improvements behind, not one. The fold-up is a
+real reconciliation job, so it's a queued item rather than a same-session afterthought.

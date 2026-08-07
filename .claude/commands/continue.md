@@ -101,6 +101,11 @@ Read:
 - `docs/todo.md` → current hub task queue and priorities
 - `docs/session-log.md` → last session summary (final entry only)
 
+Read both as a **claim with a timestamp**, not as state. Neither is
+verified until Step 1.9 has compared them against the live sub-project
+repos they name — do not carry anything from them into the Step 3 report
+before that check has run.
+
 ## Step 1.5 — Shared Core Update Check (ADR-007)
 
 Check whether the shared `CORE.md` (DCOE architecture, sub-agent roster,
@@ -140,6 +145,66 @@ sure any *edit* later in the session starts from a current base). If the
 pull produces conflicts on the three contention files, resolve as a real
 union per `CLAUDE.md` Hard Rule 6 — never pick one side and drop the
 other's work.
+
+## Step 1.9 — Cross-Repo Staleness Check (verifies Step 1 before you believe it)
+
+Run this **after** Step 1.75, not before — comparing against a stale local
+`main` compares the wrong clock.
+
+`docs/session-log.md`'s final entry was written by a session that has since
+ended, and the work it describes usually continued afterwards in a
+*different* repo that pushes on its own schedule. **Nothing about a stale
+entry looks stale:** `git status` is clean, `rev-list HEAD..origin/main` is
+`0`, and the entry reads as a confident, complete close-out. This produced a
+wrong resume report three times (2026-08-07; worst case the hub was 5h19m
+behind the vault and wrong on three separate facts, including calling a
+phase "blocked" whose blocking ADR had already been written, accepted and
+built). Under the O-P-C consolidation this is the normal condition, not an
+edge case — hub-level docs and the live sub-projects are separate repos by
+design. Full reasoning: `knowledge/hub-process.md`.
+
+1. **List the live repos to check.** Take every sub-project named by the
+   final `session-log.md` entry and by the `todo.md` "Next task." The repo
+   root is not always the project folder, and it is never O-P-C's
+   consolidation snapshot — use the live `Desktop/` working copy per the
+   📍 convention in `docs/todo.md`:
+   - `Desktop/Pappa T/` is **one** repo covering all of its sub-projects
+     (TebelloReborn, ai-outreach-agency, …) — check the vault root.
+   - `Desktop/Operations/2. SOPS/` and
+     `Desktop/Operations/3. Nameplate & Test Sheet/` are their **own**
+     separate repos.
+   If a named machine isn't reachable from this session, say so in the
+   report and skip that repo — never guess at its state.
+
+2. **Compare newest-commit clocks**, one call per repo:
+
+   ```
+   git -C . log -4 --format="%h %ci %s"
+   git -C "<live project repo>" log -6 --format="%h %ci %s"
+   git -C "<live project repo>" status --porcelain=v1 -b
+   ```
+
+3. **If the project's newest commit is later than the hub's newest commit
+   touching that item, the hub entry is stale** — however complete it
+   reads. Don't repeat it. Read that project's own `docs/todo.md` header
+   and `docs/session-log.md` final entry and report *those* as current
+   state instead.
+
+4. **The `status` line is part of the answer.** The hub can be accurate
+   about what was committed and still wrong about what exists — unpushed
+   commits, or uncommitted work in the live repo, change the real state.
+   Report them; a clean `rev-list` alone is not the whole picture.
+
+5. **Report the outcome either way in Step 3, including a pass.** One line
+   is enough ("hub `<sha>` `<time>` ahead of vault `<sha>` `<time>` — hub
+   state accurate"). Silence is indistinguishable from not having run the
+   check, which is exactly how this went unnoticed three times.
+
+6. **Finding drift does not make reconciling it this session's task.**
+   Surface it in the Step 3 report and let Tebello pick. If both files are
+   wrong, `knowledge/hub-process.md` gives the direction: bring the
+   *authoritative* (project) file current first, then trim the hub entry to
+   a pointer at it.
 
 ## Step 2 — Identify Scope
 
@@ -189,14 +254,17 @@ Then proceed to Step 3.
 ## Step 3 — Report State
 
 Tell Tebello:
-1. **Last completed task** — from `session-log.md`
+1. **Last completed task** — from `session-log.md`, **as verified by Step
+   1.9**, not as the entry states it
 2. **Next pending task** — from `todo.md`, with which project (if any) it
    touches
 3. **Spec status** — does a spec exist in `docs/specs/` (or the project's
    own `docs/specs/`) for the next task, if it's a build task?
-4. **Known risks** — surface the OneDrive/git item from `CLAUDE.md` if
+4. **Hub state** — Step 1.9's result, stated explicitly whether it passed
+   or found drift
+5. **Known risks** — surface the OneDrive/git item from `CLAUDE.md` if
    still unresolved
-5. **Blockers** — anything unresolved, pending decisions, or missing
+6. **Blockers** — anything unresolved, pending decisions, or missing
    context
 
 Format:
@@ -208,6 +276,7 @@ Format:
 **Last completed:** [task name]
 **Next task:** [task name from todo.md — if machine-bound and unreachable from this session, say so here: "⚠️ requires local access on <machine> — not runnable from this session"]
 **Spec:** [exists at docs/specs/<name>.md | MISSING — must write spec before building | N/A]
+**Hub state:** [Step 1.9 — verified: hub <sha> <time> ahead of <repo> <sha> <time>, entry accurate | STALE: <repo> is <N> ahead of the hub's last write, state above taken from that project's own docs | not checkable: <machine> unreachable from this session]
 **Known risks:** [none new | OneDrive/git fix still pending, see docs/todo.md]
 **Blockers:** [none | description — include any machine-access gap from Step 2.5 here too]
 

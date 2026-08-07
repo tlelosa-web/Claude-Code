@@ -16,7 +16,7 @@ from src.matching.pipeline import run_matching
 from src.profile.db import get_profile, init_db as init_profile_db, upsert_profile
 from src.profile.schema import CandidateProfile
 from src.review.cli import run_review_gate
-from src.submission.cli import cmd_submit
+from src.submission.cli import cmd_prep_submission, cmd_submit
 from src.vacancy_search.apify_client import fetch_vacancies
 from src.vacancy_search.db import (
     get_by_id,
@@ -79,6 +79,17 @@ def build_parser() -> argparse.ArgumentParser:
         "--manual",
         action="store_true",
         help="Record that you already submitted this one by hand",
+    )
+
+    # No --all counterpart, deliberately. Prep opens an authenticated browser
+    # against a real employer's form; doing that to six postings from one
+    # command is the same class of unattended action A15 refuses for submit.
+    p_prep = subparsers.add_parser(
+        "prep-submission",
+        help="Read-only walk of one approved posting's apply form (network)",
+    )
+    p_prep.add_argument(
+        "--vacancy-id", type=int, required=True, help="Vacancy ID to inspect"
     )
 
     return parser
@@ -244,6 +255,7 @@ def main(argv=None) -> None:
         "run": cmd_run,
         "run-all": cmd_run_all,
         "submit": cmd_submit,
+        "prep-submission": cmd_prep_submission,
     }
 
     dispatch[args.command](args, settings)

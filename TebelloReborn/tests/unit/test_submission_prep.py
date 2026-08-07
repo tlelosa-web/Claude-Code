@@ -39,11 +39,13 @@ from src.submission.schema import (
     QuestionDecision,
     Sensitivity,
 )
-from src.vacancy_search.db import get_by_id, init_db as init_vacancy_db, save_vacancy
+from src.vacancy_search.db import get_by_id, init_db as init_vacancy_db, insert_vacancy
 from src.vacancy_search.schema import Vacancy
 
 INDEED_URL = "https://za.indeed.com/viewjob?jk=d7d04674eabafbac"
-STEP_URL = "https://smartapply.indeed.com/beta/indeedapply/form/questions-module/questions/1"
+STEP_URL = (
+    "https://smartapply.indeed.com/beta/indeedapply/form/questions-module/questions/1"
+)
 
 
 class FakeAdapter:
@@ -84,7 +86,7 @@ def db_path(tmp_path):
     path = tmp_path / "career.db"
 
     conn = init_vacancy_db(path)
-    save_vacancy(
+    insert_vacancy(
         conn,
         Vacancy(
             company="Utopia",
@@ -107,7 +109,9 @@ def db_path(tmp_path):
             skills=["Maintenance planning"],
             experience=[
                 ExperienceEntry(
-                    title="Operations Foreman", company="Fan Movement", start_date="2019-01"
+                    title="Operations Foreman",
+                    company="Fan Movement",
+                    start_date="2019-01",
                 )
             ],
             target_titles=[TitleLane(title="Operations Manager", primary=True)],
@@ -270,7 +274,10 @@ class TestQuestionPersistence:
             status=PrepStatus.QUESTIONS_EXTRACTED,
             detail="",
             step_url=STEP_URL,
-            questions=(question(), question("Describe a project", FieldType.TEXTAREA, 1)),
+            questions=(
+                question(),
+                question("Describe a project", FieldType.TEXTAREA, 1),
+            ),
         )
         monkeypatch.setattr(
             "src.submission.prep.get_adapter", lambda v: FakeAdapter(result=result)
@@ -342,9 +349,9 @@ class TestQuestionPersistence:
         assert first_prep.id != second_prep.id
         conn = init_submission_db(db_path)
         try:
-            assert [q.question_text for q in get_questions_for_prep(conn, first_prep.id)] == [
-                "Old question"
-            ]
+            assert [
+                q.question_text for q in get_questions_for_prep(conn, first_prep.id)
+            ] == ["Old question"]
             assert [
                 q.question_text for q in get_questions_for_prep(conn, second_prep.id)
             ] == ["New question"]
@@ -357,16 +364,21 @@ class TestSensitivityAndDrafting:
         self, db_path, vacancy, monkeypatch
     ):
         # A11 end to end: prep classifies, and drafting.py refuses. The real
-        # draft_answer is used here rather than the fixture stub, because the
-        # refusal is the behaviour under test.
-        monkeypatch.undo()
+        # draft_answer is put back rather than undoing every monkeypatch —
+        # monkeypatch.undo() would also revert the autouse session fixture, and
+        # the test would then fail for a reason that has nothing to do with A11.
+        from src.submission import drafting
+
+        monkeypatch.setattr("src.submission.prep.draft_answer", drafting.draft_answer)
         result = PrepResult(
             status=PrepStatus.QUESTIONS_EXTRACTED,
             detail="",
             step_url=STEP_URL,
             questions=(
                 question("What is your expected salary?", FieldType.TEXT, 0),
-                question("Are you authorized to work in South Africa?", FieldType.TEXT, 1),
+                question(
+                    "Are you authorized to work in South Africa?", FieldType.TEXT, 1
+                ),
             ),
         )
         monkeypatch.setattr(
@@ -419,9 +431,7 @@ class TestSensitivityAndDrafting:
         # A9: a throttle costs the draft, not the extraction. If the question
         # were lost, Tebello would have to re-run a live browser walkthrough to
         # recover from a transient subscription limit.
-        monkeypatch.setattr(
-            "src.submission.prep.draft_answer", lambda *a, **k: None
-        )
+        monkeypatch.setattr("src.submission.prep.draft_answer", lambda *a, **k: None)
         result = PrepResult(
             status=PrepStatus.QUESTIONS_EXTRACTED,
             detail="",
@@ -490,7 +500,9 @@ class TestFailureOutcomes:
         self, db_path, vacancy, monkeypatch
     ):
         result = PrepResult(
-            status=PrepStatus.NO_QUESTIONS, detail="no screening questions", step_url=STEP_URL
+            status=PrepStatus.NO_QUESTIONS,
+            detail="no screening questions",
+            step_url=STEP_URL,
         )
         monkeypatch.setattr(
             "src.submission.prep.get_adapter", lambda v: FakeAdapter(result=result)
@@ -555,5 +567,5 @@ class TestAdaptersNeverTouchTheDatabase:
 
         run_prep(vacancy, db_path=db_path)
 
-        (_, session_path), = adapter.calls
+        ((_, session_path),) = adapter.calls
         assert session_path.name == "storage_state.json"

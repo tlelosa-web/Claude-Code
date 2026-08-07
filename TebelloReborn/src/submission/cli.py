@@ -16,7 +16,13 @@ from src.vacancy_search.db import get_by_id, get_by_status, init_db as init_vaca
 from src.vacancy_search.schema import Vacancy
 
 from .pipeline import SubmissionNotAllowedError, SubmissionStatusError, run_submission
-from .schema import SubmissionAttempt, SubmissionOutcome
+from .prep import (
+    PrepNotSupportedError,
+    ProfileMissingError,
+    SessionSetupRequiredError,
+    run_prep,
+)
+from .schema import PrepStatus, SubmissionAttempt, SubmissionOutcome
 
 
 def report_attempt(vacancy: Vacancy, attempt: SubmissionAttempt) -> None:
@@ -113,6 +119,78 @@ def _submit_all(manual: bool, db_path: Path) -> None:
     # since --all never auto-submits. Neither may make a normal run look broken.
     # Only real failures do.
     if counts["failed"]:
+        sys.exit(1)
+
+
+# What the operator does next, per prep outcome. Keyed on status rather than
+# built from prep.detail: the detail says what the browser saw, this says what
+# Tebello should do about it, and collapsing the two is how "external ATS"
+# ended up reading as "try again".
+_PREP_NEXT_STEP: dict[PrepStatus, str] = {
+    PrepStatus.QUESTIONS_EXTRACTED: (
+        "run `career-engine review-questions --vacancy-id {vacancy_id}` to "
+        "approve or edit each answer"
+    ),
+    PrepStatus.NO_QUESTIONS: (
+        "this posting has no screening questions — it is ready to submit"
+    ),
+    PrepStatus.EXTERNAL_ATS: (
+        "this posting hands off to an external ATS — submit it by hand"
+    ),
+    PrepStatus.CAPTCHA_DETECTED: (
+        "a CAPTCHA challenge was showing — nothing was solved or clicked "
+        "through. Submit this one by hand, or try prep again later"
+    ),
+    PrepStatus.SESSION_EXPIRED: (
+        "the saved session expired mid-flow — re-run "
+        "`python tools/indeed_login_setup.py`, then prep again"
+    ),
+    PrepStatus.UNSUPPORTED_FORM: (
+        "the form's structure wasn't recognised — submit this one by hand"
+    ),
+    PrepStatus.ERROR: "prep failed — see the detail above, then try again",
+}
+
+
+def cmd_prep_submission(args, settings) -> None:
+    """Read-only recon over one posting's apply form.
+
+    Exits non-zero on anything that leaves the vacancy unsubmittable, so the
+    command is usable in a shell chain. `no_questions` and `questions_extracted`
+    are the only two successes, and only one of them is finished.
+    """
+    db_path = Path(settings.DB_PATH)
+
+    conn = init_vacancy_db(db_path)
+    try:
+        vacancy = get_by_id(conn, args.vacancy_id)
+    finally:
+        conn.close()
+
+    if vacancy is None:
+        print(f"Error: no vacancy found with ID {args.vacancy_id}")
+        sys.exit(1)
+
+    print(f"Prepping vacancy {vacancy.id} ({vacancy.company} — {vacancy.title})")
+    print(f"  {vacancy.url}\n")
+
+    try:
+        prep = run_prep(vacancy, db_path=db_path)
+    except (
+        SubmissionNotAllowedError,
+        PrepNotSupportedError,
+        SessionSetupRequiredError,
+        ProfileMissingError,
+    ) as exc:
+        # Each of these is a precondition rather than a finding about the
+        # posting, and prep deliberately records no row for any of them.
+        print(f"  Refused: {exc}")
+        sys.exit(1)
+
+    print(f"  Result: {prep.status.value} — {prep.detail}")
+    print(f"  Next: {_PREP_NEXT_STEP[prep.status].format(vacancy_id=vacancy.id)}")
+
+    if prep.status not in (PrepStatus.QUESTIONS_EXTRACTED, PrepStatus.NO_QUESTIONS):
         sys.exit(1)
 
 

@@ -1,5 +1,7 @@
 """RED: src/vacancy_search/db.py doesn't exist yet — these imports must fail first."""
 
+import sqlite3
+
 import pytest
 
 from src.vacancy_search.db import (
@@ -226,4 +228,94 @@ class TestSubmissionTransitions:
 
         with pytest.raises(ValueError, match="Invalid transition"):
             update_vacancy_status(conn, vacancy_id, "submitted")
+        conn.close()
+
+
+def _ledger(conn, module):
+    """Versions recorded for `module` in ADR-004's schema_migrations ledger."""
+    rows = conn.execute(
+        "SELECT version FROM schema_migrations WHERE module = ?", (module,)
+    )
+    return {row[0] for row in rows}
+
+
+def _columns(conn, table):
+    return {row[1] for row in conn.execute(f"PRAGMA table_info({table})")}
+
+
+MATCH_COLUMNS = {"score", "strengths", "weaknesses", "recommendation"}
+
+
+class TestBaselineMatchColumns:
+    """ADR-004 §6, confirmed by Tebello. The four match columns lived ONLY in
+    migrations 1-4 — `CREATE TABLE vacancies` omitted them entirely. That is
+    what turned the Phase 17 regression from cosmetic into a crash on every new
+    install: once profile advanced the shared counter past 4, the migrations
+    were skipped and the columns existed nowhere at all.
+
+    Not strictly required for correctness once the ledger exists, but the ADR's
+    premise is that schema state should be legible from the schema, and this
+    was the one baseline provably wrong-shaped."""
+
+    def test_baseline_declares_the_match_columns(self, tmp_path):
+        conn = init_db(tmp_path / "career.db")
+
+        assert MATCH_COLUMNS <= _columns(conn, "vacancies")
+        conn.close()
+
+    def test_fresh_database_records_migrations_one_to_four_as_applied(self, tmp_path):
+        """§3's skip-and-record. The baseline supplies the columns, so 1-4 have
+        no DDL to do — but they must still be recorded, or a later run would
+        try to ADD COLUMN over the top of them."""
+        conn = init_db(tmp_path / "career.db")
+
+        assert _ledger(conn, "vacancy_search") == {1, 2, 3, 4}
+        conn.close()
+
+    def test_fresh_and_legacy_databases_converge_on_the_same_schema(self, tmp_path):
+        """A legacy file reaches the columns through migrations 1-4; a fresh one
+        gets them from the baseline. Both must end up identical, or the fix has
+        simply moved the divergence somewhere new."""
+        legacy_path = tmp_path / "legacy.db"
+        legacy = sqlite3.connect(str(legacy_path))
+        legacy.execute("""
+            CREATE TABLE vacancies (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                company TEXT NOT NULL,
+                title TEXT NOT NULL,
+                url TEXT NOT NULL,
+                description TEXT DEFAULT '',
+                platform TEXT NOT NULL,
+                salary TEXT,
+                deadline TEXT,
+                scraped_at TEXT NOT NULL,
+                status TEXT NOT NULL DEFAULT 'new',
+                UNIQUE(company, title, url)
+            )
+        """)
+        legacy.execute("PRAGMA user_version = 4")
+        legacy.commit()
+        legacy.close()
+
+        legacy_conn = init_db(legacy_path)
+        fresh_conn = init_db(tmp_path / "fresh.db")
+
+        assert _columns(legacy_conn, "vacancies") == _columns(fresh_conn, "vacancies")
+        assert MATCH_COLUMNS <= _columns(legacy_conn, "vacancies")
+        assert _ledger(legacy_conn, "vacancy_search") == {1, 2, 3, 4}
+        legacy_conn.close()
+        fresh_conn.close()
+
+    def test_the_frozen_counter_is_left_alone(self, tmp_path):
+        """§5: whatever value a database carries, it keeps. The live career.db
+        stays at 4 forever, and it means nothing."""
+        db_path = tmp_path / "career.db"
+        seed = sqlite3.connect(str(db_path))
+        seed.execute("PRAGMA user_version = 4")
+        seed.commit()
+        seed.close()
+
+        conn = init_db(db_path)
+
+        assert conn.execute("PRAGMA user_version").fetchone()[0] == 4
         conn.close()

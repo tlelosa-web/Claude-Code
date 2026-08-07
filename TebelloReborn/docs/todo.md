@@ -1,10 +1,16 @@
 # Task Queue — TebelloReborn (Career Engine)
 
-> Updated: 2026-08-07 (**Indeed adapter Phase D built** — Phase 21, steps 128–130: `browser.py`'s
+> Updated: 2026-08-08 (**Indeed adapter Phase E — offline half built**, Phase 22, steps 131–139:
+> `questions.py` (A6 fingerprints, A11 sensitivity), `drafting.py` (A20/A9/A11), the `IndeedAdapter`
+> shell with A1's static `can_handle()`, `prep.py` + the `prep-submission` CLI, and
+> `tools/indeed_login_setup.py`. **`playwright` and Chromium are now installed on this machine** —
+> the constraint every phase up to D was built around is gone, though `pyproject.toml` still declares
+> the dependency at Phase H. **Steps 140–141 remain and need Tebello:** `inspect_apply_flow()` is
+> unwritten and the adapter is deliberately **not registered** in `eligibility.ADAPTERS`, because its
+> selectors need a live recon that needs a saved Indeed session that needs a human at a keyboard.
+> Previously: Phase D, Phase 21, steps 128–130 — `browser.py`'s
 > CAPTCHA detection, combined navigation-state check, continuous session-expiry detection, and step
-> log. Offline, and still no `playwright` dependency; **Phase E is next** — the first phase in this
-> whole build that touches the network, and the one that needs `tools/indeed_login_setup.py` and
-> Tebello present to sign in. Earlier the same day: Phase C, Phase 20, steps 123–127 — the prep-state
+> log. Earlier: Phase C, Phase 20, steps 123–127 — the prep-state
 > submit gate wired into `pipeline.py`, `pending_review` reporting, and the `--all` auto-submit
 > refusal. Also earlier the same day: Phase B, Phase 19, steps 118–122 — the
 > `submission_preps`/`screening_questions` tables, the `pending_review` outcome, the widened
@@ -486,6 +492,69 @@ playwright body inside `authenticated_page()`, which is exactly what A19 exempts
 **Known deviation:** `browser.py` is 397 lines against `CLAUDE.md`'s documented 300-line file
 standard. Not split — the spec names this single module, and `submission/db.py` already sits at 370.
 Worth a deliberate answer at Phase H's closeout rather than drift.
+
+---
+
+### Phase 22 — Indeed submit adapter, **Phase E** (see `docs/specs/indeed-submit-adapter.md`
+§Amendment A1/A6/A9/A11/A12/A20 — offline half built 2026-08-08; 140–141 open)
+
+The first phase that touches the network, and it splits at a hard line: everything that *judges* an
+apply form is buildable now, and everything that *observes* one needs a live session Tebello has to
+create by hand. Steps 131–139 are the first half. **`playwright` 1.62.0 and Chromium 151 were
+installed on this machine at the start of this phase** — the constraint Phases A–D were built around
+no longer holds, though `pyproject.toml` still declares the dependency at Phase H per the spec.
+
+- [x] 131. [RED] `tests/unit/test_submission_questions.py` (`afeb202`) — A6 identity and drift in
+      both directions, A11's three classes plus a false-positive class of its own
+- [x] 132. [GREEN] `src/submission/questions.py` (`3b39c1c`)
+- [x] 133. [RED] `tests/unit/test_submission_drafting.py` (`bf0ca21`) — A20's constraint placement,
+      A11's never-called assertion, A9's throttle/error paths
+- [x] 134. [GREEN] `src/submission/drafting.py` (`b349af2`)
+- [x] 135. [RED] `tests/unit/test_submission_adapters_indeed.py` (`74cf83d`) — A1's predicate against
+      the six real approved URLs, and its purity
+- [x] 136. [GREEN] `src/submission/adapters/` + `ExtractedQuestion`/`PrepResult` (`0423665`)
+- [x] 137. [RED] `tests/unit/test_submission_prep.py` (`07bee82`) — B1, B2, B3, A9, A12's re-prep
+      isolation
+- [x] 138. [GREEN] `src/submission/prep.py` + `cli.py` + `main.py` (`4b5ab8d`)
+- [x] 139. `tools/indeed_login_setup.py` + its two pure helpers' tests (`6fcd866`)
+- [ ] 140. **Live recon → `inspect_apply_flow()`**, the `WIZARD_STEPS` landmark selectors, the review
+      step's URL segment, `INDEED_AUTH_MARKERS` confirmation, and **registering the adapter in
+      `eligibility.ADAPTERS`**. ⚠️ Needs a saved Indeed session, which needs Tebello to run
+      `python tools/indeed_login_setup.py` in a real terminal — the script waits on `input()`, so no
+      agent session can drive it.
+- [ ] 141. Docs closeout — `docs/architecture.md`, `CLAUDE.md`, this file, `docs/session-log.md`
+
+**Result so far:** 673 tests passing (was 538). Zero regressions.
+
+> **The adapter is deliberately NOT registered in `eligibility.ADAPTERS` yet**, and a test pins that
+> absence. `inspect_apply_flow()` needs selectors only a live recon can supply, and registering
+> first would let a real vacancy reach a prep run that could only fail. Same empty-until-known
+> discipline as `WIZARD_STEPS` omitting the review step, and `ADAPTERS` itself since Phase 16.
+>
+> **Three places the spec was wrong or one step short, corrected rather than followed:**
+>
+> - **A1's own code sketch accepts a lookalike domain.** `"notindeed.com".endswith("indeed.com")` is
+>   `True`. `browser.py._is_google_block_page` already refuses that shortcut deliberately;
+>   `is_indeed_host()` now does too — and the identical bug was then reintroduced by hand-writing the
+>   check a second time in the login script, where its own test caught it. It is one shared function
+>   now, which is the actual fix.
+> - **A6's normalizer is one step short.** Its four steps end at the trailing-marker strip, leaving
+>   `"question "` for a form that renders `"Question *"` and `"question"` for one that renders
+>   `"Question"` — one question with two fingerprints, over exactly the styling the rule exists to
+>   ignore. A final strip, pinned by its own test.
+> - **A9's correction needed a companion decision the spec didn't make.** Prep records a row for what
+>   it learns about a *posting*; "no adapter", "never logged in" and "no profile imported" are facts
+>   about this machine, so all three raise without writing one. A `session_expired` row for a login
+>   setup that was never run would make `submission_prep_ready()` tell Tebello to re-run
+>   prep-submission when the fix is the login script — the gate builds its own instruction from the
+>   status and never reads `detail`.
+>
+> **Classify-then-draft, not draft-then-discard.** Reversing the order satisfies the same assertion
+> about the stored row while breaking A11's actual guarantee, which is that a compensation or
+> work-authorization question is never sent anywhere at all.
+>
+> **`prep-submission` has no `--all`.** Opening an authenticated browser against six real employers'
+> forms from one command is the same class of unattended action A15 already refuses for `submit`.
 
 ---
 

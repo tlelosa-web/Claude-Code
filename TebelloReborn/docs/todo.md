@@ -1,9 +1,9 @@
 # Task Queue — TebelloReborn (Career Engine)
 
-> Updated: 2026-08-07 (Indeed site adapter: spec written, Codex-reviewed, and **fold-in complete** —
-> see the Future section's adapter entry; build not started, Phase A needs real `email`/`phone`
-> values. Stage 6 submission core built 2026-08-06, Phase 16 steps 81–102, see
-> `docs/specs/submission-core.md` and session-log.md)
+> Updated: 2026-08-07 (Indeed site adapter: spec written, Codex-reviewed, fold-in complete, and
+> **Phase A built** — steps 103–104, see Phase 17 below. Phases B–H remain. Stage 6 submission
+> core built 2026-08-06, Phase 16 steps 81–102, see `docs/specs/submission-core.md` and
+> session-log.md)
 
 ---
 
@@ -250,6 +250,47 @@ core; the site adapter is a separate, later task (see Open Items).
 **Result:** 344 tests passing (was 249), zero regressions. No `playwright` dependency, no browser
 binary, nothing on the wire.
 
+### Phase 17 — Indeed submit adapter, **Phase A only** (see `docs/specs/indeed-submit-adapter.md`
+§Amendment A5 — built 2026-08-07)
+
+Contact details for Indeed's application form. Phase A blocks every other phase in that spec, so it
+went first; **B–H are not started.**
+
+- [x] 103. [RED] `tests/unit/test_profile_schema.py` + `tests/unit/test_profile_db.py` (`9d4ee17`) —
+      `email`/`phone` in `REQUIRED_FIELDS`, migration versions asserted as `[5, 6]`, a test that
+      reproduces the live DB's `user_version = 4` pre-contact state, and an actionable-error test for
+      a profile row written before the migration
+- [x] 104. [GREEN] `src/profile/schema.py` + `migrations.py` + `db.py` + `data/profile_seed.json`
+      (`379a4b2`) — real values sourced from `data/Tebello_Lelosa_Master_CV_2026.md`
+      (`tlelosa@gmail.com`, `078 481 8711`), with a test asserting the seed and the CV never drift
+      apart (an employer sees both on the same application)
+- [x] 105. `.gitignore` — `*.db.backup-*`. `*.db` does **not** match
+      `career.db.backup-pre-phase-a-2026-08-07`; the timestamp suffix means the filename doesn't end
+      in `.db`, so a `git add -A` would have committed a full copy of the live career data
+- [x] 106. `docs/todo.md` + `docs/session-log.md` — this section
+
+**Result:** 362 tests passing (was 344), zero regressions.
+
+> **A real regression was introduced by this phase and caught by the integration suite, not by any
+> unit test** — the same class of gap as the Phase 7 fpdf2 bug and the Apify payload-shape bugs.
+> `profile` owns the highest migration versions (5–6) and `import-profile` is CLAUDE.md's documented
+> *first* command. So on a fresh database `profile.init_db()` advanced the shared `user_version`
+> 0 → 6 before `vacancy_search.init_db()` ever ran; its migrations 1–4 were then skipped by
+> `if version > current`, and because its baseline `CREATE TABLE` omits those columns, `vacancies`
+> came out with no `score`/`strengths`/`weaknesses`/`recommendation` at all — `IndexError: No item
+> with that key` on the first read, on every new install.
+>
+> **Fix (scoped to `src/profile/` deliberately):** schema state, not the counter, is the source of
+> truth. `email`/`phone` are in profile's baseline `CREATE TABLE` *as well as* in migrations 5/6, and
+> `apply_migrations` skips an `ADD COLUMN` whose column already exists, advancing `user_version` only
+> for migrations it actually ran. A fresh database therefore reaches the right shape while staying at
+> version 0, leaving the lower numbers free for `vacancy_search`. Two regression tests lock both
+> orderings and assert they converge on the same schema.
+>
+> Verified against a **copy** of the live `career.db` before anything touched the real one:
+> `user_version` 4 → 6, both columns added, all 10 vacancies and 6 approved applications intact,
+> and `import-profile` repopulating the contact details cleanly.
+
 ---
 
 ## Resolved Items
@@ -366,6 +407,26 @@ binary, nothing on the wire.
 
 ## Open Items (require Tebello — not something an agent should attempt)
 
+- [ ] **The shared-`user_version` bug is fixed in `src/profile/` only — the same trap is still armed
+      in the other three modules (2026-08-07, needs an ADR before the next migration).** Phase 17's
+      fix above was deliberately scoped to one module rather than expanded mid-build. Still true
+      everywhere else:
+      - `vacancy_search/`, `doc_gen/` and `review/` each still have the counter-only
+        `apply_migrations` (`if version > current`, no schema check), so any of them can be skipped
+        by a module that advanced the counter first.
+      - **`vacancy_search`'s baseline `CREATE TABLE vacancies` still omits `score`/`strengths`/
+        `weaknesses`/`recommendation`** — those columns exist *only* in migrations 1–4. That is what
+        made the Phase 17 regression fatal rather than cosmetic, and it is unchanged. Nothing hits it
+        today only because `profile` no longer advances the counter on a fresh database.
+      - Consequence: **the next module to add a migration re-introduces the bug**, and Phase B is
+        exactly that — it adds `submission_preps`/`screening_questions` and, per A4, may need a
+        `user_version ≥ 5` migration for the `submissions.outcome` CHECK rebuild.
+      Recommended before Phase B: an ADR making schema state the source of truth across all four
+      modules (either a shared runner in `src/shared/`, or fold each module's existing migrations
+      into its own baseline and apply the `profile` guard everywhere). This is an architecture
+      decision about a mechanism CLAUDE.md Hard Rule 6 names explicitly, so it should not be
+      settled inline inside a feature build.
+
 - [x] **Manual PNet bare-URL verification (Amendment, Open Item 4) — resolved 2026-07-31.** Tebello
       personally opened `https://www.pnet.co.za/jobs/operations-foreman/in-gauteng` (the bare path-only
       shape, no `?` query string) in an ordinary browser and confirmed it renders a working results page
@@ -464,11 +525,30 @@ binary, nothing on the wire.
         adapter must reconstruct `pdf_export`'s naming; Phase G promotes it to a shared
         `resolve_export_paths()` rather than duplicating the format string.
 
-      No code written yet. Next: **Phase A**. The `career.db` backup it needed is **done**
-      (2026-08-07, `career.pre-migration-5-6-20260807.db` — sqlite3 backup API, integrity-checked
-      and row-count-verified; spec Open Item 4). Still needs Tebello's real `email`/`phone` values
-      for `profile_seed.json`. Also worth his confirmation: A15 makes `submit --all` refuse
-      auto-submit entirely, so the 6 approved vacancies go out as six deliberate single commands.
+      **Phase A is built — 2026-08-07, see Phase 17 in the Build Queue above** (`9d4ee17` RED,
+      `379a4b2` GREEN). Both of its Open Items are closed: Tebello confirmed `tlelosa@gmail.com`
+      and the phone was taken from the Master CV (`078 481 8711`), and **A15 was confirmed as
+      wanted** — `submit --all` will refuse auto-submit, so the 6 approved vacancies go out as six
+      deliberate single commands (spec Open Item 5).
+
+      **Backup (spec Open Item 4) — done twice, by two concurrent sessions.** Two byte-identical
+      copies of the same unmigrated `career.db` now exist:
+      `career.pre-migration-5-6-20260807.db` (sqlite3 backup API, integrity-checked and
+      row-count-verified — the better-made one, recorded in `6c7058e`) and
+      `career.db.backup-pre-phase-a-2026-08-07` (plain file copy; safe here, verified no WAL
+      sidecars existed at the time). Both are gitignored. **One should be deleted once Tebello
+      picks which to keep** — not done unprompted, it's real career data.
+
+      **Two things Phase A deliberately did not do:**
+      1. **The live `career.db` is still at `user_version = 4`, unmigrated.** Migrations 5/6
+         auto-apply on the next `init_db()` from any command, after which `get_profile()` raises an
+         actionable error until `career-engine import-profile --file data/profile_seed.json` is
+         re-run to populate the contact details. Verified end-to-end on a copy.
+      2. **The shared-`user_version` fix covers `src/profile/` only** — see the new Open Item
+         above. Worth settling before Phase B, which is the next thing that adds a migration.
+
+      Next: **Phase B** (`submission_preps` + `screening_questions` tables, the
+      `submissions.outcome` CHECK change, and the DDL-drift guard — A2/A3/A4/A12). Offline.
 - [ ] Phase 7 (post-MVP numbering): tracking dashboard (applications, match-score distribution, response rate).
 - [ ] Decide whether recruiter cold-outreach (in `data/legacy_reference/`, not part of the original 7-phase plan) gets revived as a later phase.
 - [ ] Volume-cap / scheduler layer for document generation (ADR-003 §6, open judgment call #1) — only if Tebello confirms a controlled-batch need; would need its own spec + ADR, and likely a `PRAGMA user_version` migration via the `src/doc_gen/migrations.py` stub (step 34).

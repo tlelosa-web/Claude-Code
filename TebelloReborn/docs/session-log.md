@@ -7,6 +7,56 @@
 
 ---
 
+## 2026-08-07 — Indeed submit adapter Phase A built (contact details + the project's first migrations)
+
+Phase A of `docs/specs/indeed-submit-adapter.md` (§Amendment A5): `CandidateProfile` gains `email`
+and `phone`, backed by `profile/migrations.py` versions **5 and 6** — the first migrations this
+project has written since Hard Rule 6 was recorded. `9d4ee17` RED, `379a4b2` GREEN. **362 tests
+passing, was 344, zero regressions.** Phases B–H are not started.
+
+Real values came from `data/Tebello_Lelosa_Master_CV_2026.md` (`tlelosa@gmail.com`, `078 481 8711`)
+after Tebello confirmed the email in-session. A test asserts the seed and the CV never drift apart —
+an employer sees both on the same application, and nothing else in the pipeline would notice a
+contradiction, since the CV is hand-authored and the form is filled from the database.
+
+**The phase introduced a real regression, and the integration suite caught it — no unit test did.**
+Same class of gap as the Phase 7 fpdf2 bug and the Apify payload-shape bugs: every unit test builds
+its own `tmp_path` database through a single module's `init_db()`, so none of them exercise two
+modules initialising the *same* database in the order a real install uses.
+
+- **Cause.** `profile` owns the highest migration versions (5–6), and CLAUDE.md documents
+  `import-profile` as the *first* command. On a fresh database `profile.init_db()` therefore
+  advanced the shared `user_version` 0 → 6 before `vacancy_search.init_db()` ever ran. Its
+  migrations 1–4 were then skipped by `if version > current` — and because its baseline
+  `CREATE TABLE` omits those columns, `vacancies` ended up with no `score`/`strengths`/`weaknesses`/
+  `recommendation` at all. First read: `IndexError: No item with that key`. Every new install.
+- **Fix, deliberately scoped to `src/profile/`.** Schema state, not the counter, is the source of
+  truth. `email`/`phone` sit in profile's baseline `CREATE TABLE` *as well as* in migrations 5/6,
+  and `apply_migrations` skips an `ADD COLUMN` whose column already exists, advancing `user_version`
+  only for migrations it actually ran. A fresh database reaches the right shape while staying at
+  version 0, leaving the low numbers free for `vacancy_search`. Two regression tests lock both init
+  orderings and assert they converge on identical schemas.
+- **Still armed elsewhere — carried forward as an Open Item.** `vacancy_search`, `doc_gen` and
+  `review` all still use the counter-only `apply_migrations`, and `vacancy_search`'s baseline still
+  omits its own migrated columns. Nothing hits it today only because `profile` no longer advances
+  the counter on a fresh database. **The next module to add a migration re-introduces it, and Phase
+  B is exactly that.** Redesigning a mechanism Hard Rule 6 names explicitly does not belong inside a
+  feature build, so it wants its own ADR first.
+
+The live `career.db` was **not** migrated — it is still at `user_version = 4`. The whole path was
+verified against a copy instead: 4 → 6, both columns added, all 10 vacancies and 6 approved
+applications intact, the pre-migration row raising its actionable "re-run import-profile" error, and
+`import-profile` repopulating cleanly.
+
+Two housekeeping notes. `.gitignore` gained `*.db.backup-*` — `*.db` does **not** match
+`career.db.backup-pre-phase-a-2026-08-07`, because the timestamp suffix means the filename doesn't
+end in `.db`, so a `git add -A` would have committed a full copy of the live career data. And
+**this session ran concurrently with another one working the same item**: `6c7058e` landed
+mid-session, taking its own `career.pre-migration-5-6-20260807.db` backup (sqlite3 backup API,
+integrity-checked — the better-made of the two) and rewriting the same `docs/todo.md` paragraph this
+session then had to re-read and reconcile. Two byte-identical backups now exist; one should be
+deleted once Tebello picks which to keep.
+
 ## 2026-08-07 — Indeed submit adapter: Codex fold-in complete, spec now build-ready
 
 Hard Rule 13's gate closed on `docs/specs/indeed-submit-adapter.md`. The `/codex-review` from

@@ -6,6 +6,11 @@
 *.db-shm
 *.db-wal
 
+# Pre-migration database backups. `*.db` does NOT cover these — the timestamp
+# suffix means the filename doesn't end in .db — so without this line a
+# `git add -A` sweeps a full copy of the live career data into the repo.
+*.db.backup-*
+
 # Python
 __pycache__/
 *.pyc

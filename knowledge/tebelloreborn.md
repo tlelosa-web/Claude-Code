@@ -1,7 +1,80 @@
+## 2026-08-07 — Indeed adapter: spec written, Codex-reviewed, real scope findings
+**Source:** session (this machine, hub `/continue`) — authoritative, not scrollback.
+Directly ran the browser recon and wrote the spec this entry describes.
+**Status:** active
+
+**Supersedes the entry immediately below** (which was itself pieced together from a
+concurrent terminal session's garbled scrollback, "not from a written spec"). That
+concurrent session's work is real and preserved — commit `93f8e5b` in the Pappa T
+vault — but it parked at the Indeed sign-in boundary with the ToS/risk questions
+still open. **Confirmed with Tebello that session was already closed** before any
+further work happened here, so this is a sequential handoff, not an active collision,
+but it is worth remembering as a real instance of the class of risk that motivates
+this hub's own Hard Rule 6: two Claude Code sessions (this one running Sonnet 5, the
+other Opus 5) independently working the identical task in the identical project
+folder on the same morning, both editing the same files.
+
+**What actually got resolved, directly with Tebello, this session:**
+- **Platform: Indeed's own apply form only** (Indeed is the only live source with
+  approved applications — 6 — but per-employer variation and external-ATS redirects
+  mean `can_handle()` must decline confidently rather than guess).
+- **ToS/account-risk exposure: explicitly accepted.** This is the one the concurrent
+  session correctly refused to treat as settled by mere sign-in — it needed a real,
+  separate acknowledgement, which happened here.
+- **`playwright` accepted** as a new runtime dependency (browser binaries included),
+  a deliberate break from the project's three-dependency offline-first footprint.
+
+**Real live-site recon (`claude-in-chrome`, signed in as Tebello himself — no agent
+touched credentials at any point), one of the 6 approved vacancies, nothing
+submitted.** Three findings reshaped the build beyond what the concurrent session's
+scope decisions anticipated:
+1. Indeed's native apply flow is a separate app (`smartapply.indeed.com`,
+   `/beta/indeedapply/form/<module>/<step>`), not the job-posting page — a
+   multi-step wizard with per-step URLs, useful as a navigation-state signal (though
+   Codex's review below flags it as too brittle to be the *sole* signal).
+2. Resume selection **defaults away from the generated CV** to Indeed's own on-file
+   resume — the adapter has to actively select/upload the right PDF every time.
+3. The flow is **reCAPTCHA-protected**. No challenge rendered during this
+   walkthrough, but the design now carries a hard, non-negotiable rule: detect any
+   CAPTCHA challenge and abort immediately, never attempt to solve or defeat it —
+   this is a separate risk category from the ToS/account-risk acceptance above, not
+   covered by it.
+4. **Employer screening questions are real, per-posting, and often open-ended
+   free-text** — one posting asked for an essay describing a recent project. Neither
+   this session's design nor the concurrent session's scope notes anticipated this;
+   it's the finding that turned "one dict entry" into a real sub-pipeline. Tebello
+   decided: LLM-drafted answers (headless Claude Code, `wrap_untrusted_text()`-
+   wrapped, same untrusted-content discipline as `vacancy.description`), held for his
+   explicit per-question approval before any submission — never auto-answered.
+
+**Spec written:** `TebelloReborn/docs/specs/indeed-submit-adapter.md`. Three new CLI
+commands (`prep-submission` / `review-questions` / `submit`), a new
+`screening_questions` table, a new `pending_review` outcome distinct from
+`not_supported`, `CandidateProfile` gaining `email`/`phone` (confirmed missing
+entirely — neither `schema.py` nor `profile_seed.json` had either field). Ran
+`/codex-review` per that project's Hard Rule 13 — a real second opinion, not a
+rubber stamp: flagged `can_handle()` as accidentally a networked/browser action
+(mismatches the "cheap predicate" contract `submission-core.md` assumes), no defined
+question-drift policy between `prep-submission` and `submit`, underspecified CAPTCHA-
+detection criteria, a referenced-but-undefined `prep_failed` outcome, and failure
+modes the spec hadn't considered (duplicate-submission risk, mid-wizard session
+expiry, ambiguous success-screen detection). **Not yet resolved into the design** —
+that's explicitly the next session's first task, before any executor is dispatched.
+
+Reconciled `TebelloReborn/docs/todo.md` and `docs/session-log.md` as a real union
+against the concurrent session's own commit rather than overwriting it, then
+committed (`8c95cf2`, Pappa T vault) — not yet pushed to `tlelosa-web/pappa-t`.
+
+**No code written.** Both this project's Hard Rule 2 (plan before touching >2 files)
+and Hard Rule 10 (stop and ask when acceptance criteria are unclear) governed the
+whole session — three separate points where the honest answer was to stop and ask
+Tebello directly rather than assume: the platform/risk/dependency decisions, the
+contact-info gap, and how to handle LLM-drafted screening answers.
+
 ## 2026-08-07 — Indeed adapter build started; decisions made, ToS gate still open
 **Source:** session (this machine), observed from a concurrent terminal session's
 scrollback — **not** from a written spec
-**Status:** active
+**Status:** superseded
 
 Supersedes the "still blocked on Tebello" close of the 2026-08-06 entry below.
 A separate session began the adapter build and answered most of the gating

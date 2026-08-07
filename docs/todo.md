@@ -42,39 +42,48 @@ flags re-checked 2026-08-03 after the O-P-C consolidation — see note below)
 > won't reach the actual running project and O-P-C will need re-merging
 > afterward to pick it up.
 
-1. [ ] **TebelloReborn: Indeed site adapter** — **core built 2026-08-06; adapter
-      build started 2026-08-07 in a concurrent terminal session.** 📍 Live
+1. [ ] **TebelloReborn: Indeed site adapter** — **core built 2026-08-06; full spec
+      written + Codex-reviewed 2026-08-07, build not started.** 📍 Live
       `Desktop/Pappa T/TebelloReborn/`.
 
-      The platform-agnostic submission core is done and committed (Phase 16,
-      steps 81–102, 23 commits, 249 → 344 tests, 100% coverage on
-      `src/submission/`). Adding an adapter is one
-      `ADAPTERS["<platform>"] = ...` entry against the `SubmitAdapter` Protocol —
-      no change to `pipeline.py`. Project spec:
-      `TebelloReborn/docs/specs/submission-core.md`.
+      **The ToS/account-risk gate flagged above (and by the concurrent session
+      that first hit it) is now closed** — Tebello gave an explicit, separate
+      acknowledgement in a later 2026-08-07 session, distinct from the earlier
+      sign-in-for-recon action which correctly was not treated as that
+      acknowledgement. Platform (Indeed's own apply form only) and the
+      `playwright` runtime dependency were also confirmed directly.
 
-      **Detail lives in `TebelloReborn/docs/todo.md`** (Future section, adapter
-      entry) — reconciled there 2026-08-07 and authoritative per hub-and-spoke.
-      At a glance: Indeed chosen as the first platform, `playwright` accepted as
-      a runtime dependency, `email`/`phone` to be added to `CandidateProfile`,
-      selectors to come from live DOM recon rather than guesswork.
+      **That later session then found the real scope was bigger than either
+      earlier pass assumed.** A live `claude-in-chrome` walkthrough of the real
+      Indeed apply flow (signed in as Tebello, nothing submitted) found the flow
+      is **reCAPTCHA-protected** (now a hard rule: detect and abort, never
+      solve/defeat it) and that **employer screening questions are real,
+      per-posting, and often open-ended free-text** — not a pure deterministic
+      form-fill. Tebello decided screening answers get LLM-drafted (headless
+      Claude Code) but held for his explicit per-question approval before any
+      submission. Full design, acceptance criteria, and a phase-level Build
+      Queue: `TebelloReborn/docs/specs/indeed-submit-adapter.md` (new). Codex's
+      second opinion on it flagged real gaps (an accidentally-networked
+      `can_handle()`, no question-drift policy, underspecified CAPTCHA
+      detection, missing `prep_failed` outcome semantics) — **not yet resolved
+      into the design**, which is the next build session's first task.
 
-      **The one thing that must not get lost:** the **ToS / account-risk
-      acknowledgement has still not been made on record.** Driving an
-      authenticated session to submit is Tebello's own account at risk, and is
-      against LinkedIn's User Agreement and plausibly Indeed's. Signing in for
-      read-only DOM inspection is not that acknowledgement. The build having
-      started does not retire this gate.
+      **Concurrent-session note, resolved not just warned-about:** the entry
+      that previously occupied this spot came from a same-morning concurrent
+      terminal session (Pappa T vault commit `93f8e5b`) that reached the same
+      Indeed sign-in wall independently and parked there. Confirmed with
+      Tebello that session was already closed before the later session's work
+      landed (Pappa T vault commit `8c95cf2`) — a sequential handoff, not an
+      active collision, reconciled as a real union in
+      `TebelloReborn/docs/todo.md` rather than overwritten. Worth remembering
+      as a real instance of the risk hub Hard Rule 6 exists for, now observed
+      at project level too.
 
-      Until an adapter registers, the core behaves honestly: every approved
-      application produces a recorded `not_supported` attempt, is reported with
-      its URL and an explicit "submit this one by hand", and stays at `approved`.
-
-      ⚠️ **Concurrent-session warning.** That session writes to the same live
-      repo and will run its own `/session-end`. Pull before editing either file.
+      No code written yet. `career.db`: 6 `approved` Indeed vacancies, all
+      still routing to `not_supported` until an adapter registers.
 
       Hub spec `docs/specs/2026-08-04-tebelloreborn-playwright-auto-submit.md`
-      is **superseded** by the project-side spec above — it scoped the build to
+      stays superseded by the project-side specs above — it scoped the build to
       LinkedIn Easy Apply, a platform this project formally dropped on
       2026-08-01, three days before that spec was written.
 2. [ ] **SOPS: give the go-ahead to run the AvgMovement migration against

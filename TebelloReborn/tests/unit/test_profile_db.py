@@ -1,15 +1,23 @@
 """RED: src/profile/db.py doesn't exist yet — these imports must fail first."""
 
+import sqlite3
+
 import pytest
 
 from src.profile.db import get_profile, init_db, upsert_profile
+from src.profile.migrations import MIGRATIONS
 from src.profile.schema import CandidateProfile, ExperienceEntry, TitleLane
+
+EMAIL = "tlelosa@gmail.com"
+PHONE = "078 481 8711"
 
 
 def _profile(name: str = "Tebello Lelosa") -> CandidateProfile:
     return CandidateProfile(
         name=name,
         region="Gauteng, South Africa",
+        email=EMAIL,
+        phone=PHONE,
         skills=["Production Planning", "SOX Compliance"],
         experience=[
             ExperienceEntry(
@@ -61,6 +69,31 @@ class TestUpsertAndGetProfile:
         assert loaded.primary_title.title == "Operations Foreman/Manager"
         conn.close()
 
+    def test_upsert_then_get_round_trips_contact_details(self, tmp_path):
+        conn = init_db(tmp_path / "career.db")
+        upsert_profile(conn, _profile())
+
+        loaded = get_profile(conn)
+
+        assert loaded.email == EMAIL
+        assert loaded.phone == PHONE
+        conn.close()
+
+    def test_upsert_updates_contact_details_in_place(self, tmp_path):
+        conn = init_db(tmp_path / "career.db")
+        upsert_profile(conn, _profile())
+
+        changed = _profile()
+        changed.email = "new.address@example.com"
+        changed.phone = "011 555 0100"
+        upsert_profile(conn, changed)
+
+        loaded = get_profile(conn)
+
+        assert loaded.email == "new.address@example.com"
+        assert loaded.phone == "011 555 0100"
+        conn.close()
+
     def test_upsert_replaces_not_inserts_second_row(self, tmp_path):
         conn = init_db(tmp_path / "career.db")
         upsert_profile(conn, _profile(name="Tebello Lelosa"))
@@ -71,6 +104,100 @@ class TestUpsertAndGetProfile:
 
         assert count == 1
         assert loaded.name == "Tebello L. Updated"
+        conn.close()
+
+
+class TestContactDetailMigrations:
+    """Phase A (indeed-submit-adapter.md §Amendment A5). These are the first
+    migrations this project has written since Hard Rule 6 was recorded, and the
+    rule's whole point is that the obvious version numbers (1 and 2) would be
+    silently skipped forever on the live database."""
+
+    def test_migration_versions_are_globally_unique_and_at_least_five(self):
+        versions = [version for version, _ in MIGRATIONS]
+
+        assert versions == [5, 6], (
+            "profile migrations must start at 5 — vacancy_search owns 1-4 on the "
+            "same shared PRAGMA user_version (CLAUDE.md Hard Rule 6)"
+        )
+
+    def test_init_db_creates_email_and_phone_columns(self, tmp_path):
+        conn = init_db(tmp_path / "career.db")
+
+        columns = {
+            row[1] for row in conn.execute("PRAGMA table_info(candidate_profile)")
+        }
+
+        assert "email" in columns
+        assert "phone" in columns
+        conn.close()
+
+    def test_migrations_apply_to_a_database_already_at_version_four(self, tmp_path):
+        """The live `career.db` sits at user_version = 4 with the pre-contact
+        schema. This reproduces it exactly: had these migrations been numbered
+        1 and 2, `apply_migrations`' `if version > current` would skip both
+        without error and `upsert_profile` would die on `no such column: email`."""
+        db_path = tmp_path / "career.db"
+        legacy = sqlite3.connect(str(db_path))
+        legacy.execute("""
+            CREATE TABLE candidate_profile (
+                id INTEGER PRIMARY KEY CHECK (id = 1),
+                name TEXT NOT NULL,
+                region TEXT NOT NULL,
+                skills TEXT NOT NULL,
+                experience TEXT NOT NULL,
+                target_titles TEXT NOT NULL,
+                industries TEXT NOT NULL,
+                salary_floor INTEGER
+            )
+        """)
+        legacy.execute("PRAGMA user_version = 4")
+        legacy.commit()
+        legacy.close()
+
+        conn = init_db(db_path)
+
+        columns = {
+            row[1] for row in conn.execute("PRAGMA table_info(candidate_profile)")
+        }
+        assert "email" in columns
+        assert "phone" in columns
+        assert conn.execute("PRAGMA user_version").fetchone()[0] == 6
+
+        # and the migrated table is actually writable through the normal path
+        upsert_profile(conn, _profile())
+        assert get_profile(conn).email == EMAIL
+        conn.close()
+
+    def test_migrations_are_idempotent_across_repeated_init(self, tmp_path):
+        db_path = tmp_path / "career.db"
+        init_db(db_path).close()
+
+        conn = init_db(db_path)
+
+        assert conn.execute("PRAGMA user_version").fetchone()[0] == 6
+        conn.close()
+
+
+class TestPreMigrationRowIsActionable:
+    def test_row_predating_contact_columns_raises_actionable_error(self, tmp_path):
+        """A real consequence of A5 that the spec doesn't name: the live
+        `career.db` already holds a profile row, and the migration cannot
+        back-fill values only Tebello has. So the first `get_profile()` after
+        migrating reads NULL contact details and the schema layer rejects them.
+        The message has to say what to do about it, not just name the field."""
+        conn = init_db(tmp_path / "career.db")
+        conn.execute("""
+            INSERT INTO candidate_profile
+                (id, name, region, skills, experience, target_titles, industries, salary_floor)
+            VALUES (1, 'Tebello Lelosa', 'Gauteng', '["x"]',
+                    '[{"title": "Ops", "company": "F", "start_date": "2025-10"}]',
+                    '[{"title": "Ops", "primary": true, "weight": 1.0}]', '[]', NULL)
+            """)
+        conn.commit()
+
+        with pytest.raises(ValueError, match="import-profile"):
+            get_profile(conn)
         conn.close()
 
 

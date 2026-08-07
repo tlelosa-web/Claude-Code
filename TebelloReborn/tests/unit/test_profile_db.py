@@ -175,8 +175,66 @@ class TestContactDetailMigrations:
 
         conn = init_db(db_path)
 
-        assert conn.execute("PRAGMA user_version").fetchone()[0] == 6
+        columns = {
+            row[1] for row in conn.execute("PRAGMA table_info(candidate_profile)")
+        }
+        assert {"email", "phone"} <= columns
         conn.close()
+
+    def test_fresh_database_does_not_advance_the_shared_user_version(self, tmp_path):
+        """A fresh database gets email/phone from the baseline CREATE TABLE, so
+        migrations 5/6 have nothing to do and must NOT bump the counter.
+
+        `import-profile` is the documented first command, so if it advanced a
+        brand-new database to 6, vacancy_search's migrations 1-4 would be
+        skipped forever — its `vacancies` baseline omits those columns, so they
+        would exist nowhere at all."""
+        conn = init_db(tmp_path / "career.db")
+
+        assert conn.execute("PRAGMA user_version").fetchone()[0] == 0
+        conn.close()
+
+
+class TestSharedUserVersionOrdering:
+    """Regression lock for a bug this phase introduced and the integration
+    suite caught: profile's migrations are numbered above vacancy_search's, and
+    every module gates on the same PRAGMA user_version."""
+
+    def test_import_profile_first_does_not_strand_vacancy_migrations(self, tmp_path):
+        """CLAUDE.md documents `import-profile` as the first command and
+        `fetch-vacancies` as the second. In that order, profile's init_db used
+        to advance a fresh database to 6, so vacancy_search's migrations 1-4
+        were skipped and `vacancies` came out with no `score` column — an
+        IndexError on the first read, on every new install."""
+        from src.vacancy_search.db import init_db as init_vacancy_db
+
+        db_path = tmp_path / "career.db"
+
+        init_db(db_path).close()
+        conn = init_vacancy_db(db_path)
+
+        columns = {row[1] for row in conn.execute("PRAGMA table_info(vacancies)")}
+
+        assert {"score", "strengths", "weaknesses", "recommendation"} <= columns
+        conn.close()
+
+    def test_either_init_order_converges_on_the_same_schema(self, tmp_path):
+        from src.vacancy_search.db import init_db as init_vacancy_db
+
+        def _columns(db_path, first, second):
+            first(db_path).close()
+            conn = second(db_path)
+            result = {
+                table: {row[1] for row in conn.execute(f"PRAGMA table_info({table})")}
+                for table in ("candidate_profile", "vacancies")
+            }
+            conn.close()
+            return result
+
+        profile_first = _columns(tmp_path / "a.db", init_db, init_vacancy_db)
+        vacancy_first = _columns(tmp_path / "b.db", init_vacancy_db, init_db)
+
+        assert profile_first == vacancy_first
 
 
 class TestPreMigrationRowIsActionable:

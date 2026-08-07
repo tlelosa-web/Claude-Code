@@ -19,11 +19,19 @@ def init_db(db_path: Optional[Path] = None) -> sqlite3.Connection:
     conn = sqlite3.connect(str(db_path))
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA journal_mode=WAL")
+    # email/phone are in the baseline as well as in migrations 5/6 on purpose.
+    # A fresh database must reach the current shape WITHOUT advancing the shared
+    # user_version, or it strands vacancy_search's migrations 1-4 (see
+    # migrations.apply_migrations). The migrations exist for databases created
+    # before this column pair; the baseline exists for new ones; the guard in
+    # apply_migrations stops the two from colliding.
     conn.execute("""
         CREATE TABLE IF NOT EXISTS candidate_profile (
             id INTEGER PRIMARY KEY CHECK (id = 1),
             name TEXT NOT NULL,
             region TEXT NOT NULL,
+            email TEXT,
+            phone TEXT,
             skills TEXT NOT NULL,
             experience TEXT NOT NULL,
             target_titles TEXT NOT NULL,
@@ -40,11 +48,14 @@ def upsert_profile(conn: sqlite3.Connection, profile: CandidateProfile) -> None:
     conn.execute(
         """
         INSERT INTO candidate_profile
-            (id, name, region, skills, experience, target_titles, industries, salary_floor)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            (id, name, region, email, phone, skills, experience, target_titles,
+             industries, salary_floor)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT(id) DO UPDATE SET
             name = excluded.name,
             region = excluded.region,
+            email = excluded.email,
+            phone = excluded.phone,
             skills = excluded.skills,
             experience = excluded.experience,
             target_titles = excluded.target_titles,
@@ -55,6 +66,8 @@ def upsert_profile(conn: sqlite3.Connection, profile: CandidateProfile) -> None:
             _PROFILE_ID,
             profile.name,
             profile.region,
+            profile.email,
+            profile.phone,
             json.dumps(profile.skills),
             json.dumps([asdict(e) for e in profile.experience]),
             json.dumps([asdict(t) for t in profile.target_titles]),
@@ -82,10 +95,23 @@ def get_profile(conn: sqlite3.Connection) -> Optional[CandidateProfile]:
             f"candidate_profile row {row['id']} contains malformed JSON"
         ) from exc
 
+    # Migrations 5/6 add these columns but cannot back-fill them — only Tebello
+    # has the values. A row written before those migrations therefore reads NULL
+    # here, and CandidateProfile would reject it with a bare "Missing required
+    # field: email" that says nothing about the fix.
+    if not row["email"] or not row["phone"]:
+        raise ValueError(
+            f"candidate_profile row {row['id']} predates the contact-details "
+            "migration (email/phone are empty). Re-run: "
+            "career-engine import-profile --file data/profile_seed.json"
+        )
+
     return CandidateProfile(
         id=row["id"],
         name=row["name"],
         region=row["region"],
+        email=row["email"],
+        phone=row["phone"],
         skills=skills,
         experience=experience,
         target_titles=target_titles,

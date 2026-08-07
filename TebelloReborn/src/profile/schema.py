@@ -1,7 +1,7 @@
 from dataclasses import dataclass, field
 from typing import Optional
 
-REQUIRED_FIELDS = ("name", "region")
+REQUIRED_FIELDS = ("name", "region", "email", "phone")
 
 
 @dataclass
@@ -41,6 +41,12 @@ class ExperienceEntry:
 class CandidateProfile:
     name: str
     region: str
+    # Default to "" rather than being positional so every existing keyword call
+    # site still constructs; REQUIRED_FIELDS validation is what rejects the
+    # omission. Nullable in SQLite (see profile/migrations.py) — this is the
+    # only layer enforcing presence.
+    email: str = ""
+    phone: str = ""
     skills: list[str] = field(default_factory=list)
     experience: list[ExperienceEntry] = field(default_factory=list)
     target_titles: list[TitleLane] = field(default_factory=list)
@@ -70,7 +76,9 @@ class CandidateProfile:
             )
 
         if self.salary_floor is not None and self.salary_floor < 0:
-            raise ValueError(f"salary_floor must be non-negative, got {self.salary_floor}")
+            raise ValueError(
+                f"salary_floor must be non-negative, got {self.salary_floor}"
+            )
 
     @property
     def primary_title(self) -> TitleLane:
@@ -81,6 +89,8 @@ class CandidateProfile:
         return cls(
             name=data["name"],
             region=data["region"],
+            email=data.get("email", ""),
+            phone=data.get("phone", ""),
             skills=list(data.get("skills", [])),
             experience=[ExperienceEntry(**e) for e in data.get("experience", [])],
             target_titles=[TitleLane(**t) for t in data.get("target_titles", [])],

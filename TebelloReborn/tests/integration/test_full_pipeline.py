@@ -45,6 +45,8 @@ def _profile_json(tmp_path) -> str:
     data = {
         "name": "Tebello Lelosa",
         "region": "Gauteng, South Africa",
+        "email": "tlelosa@gmail.com",
+        "phone": "078 481 8711",
         "skills": ["Operations Management", "Lean Manufacturing"],
         "experience": [
             {

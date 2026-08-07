@@ -74,6 +74,8 @@ def _profile_json_file(tmp_path, **overrides):
     data = {
         "name": "Tebello Lelosa",
         "region": "Gauteng, South Africa",
+        "email": "tlelosa@gmail.com",
+        "phone": "078 481 8711",
         "skills": ["Operations Management", "Lean Manufacturing"],
         "experience": [
             {
@@ -97,6 +99,8 @@ def _make_profile(**overrides) -> CandidateProfile:
     defaults = dict(
         name="Tebello Lelosa",
         region="Gauteng, South Africa",
+        email="tlelosa@gmail.com",
+        phone="078 481 8711",
         skills=["Operations Management"],
         experience=[
             ExperienceEntry(

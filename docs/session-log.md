@@ -2450,13 +2450,17 @@ and Step 3's ⚠️ machine-bound fields. That is a real reconciliation job, now
 not a same-session afterthought.
 
 **Session housekeeping:** renamed the untitled `Continuation` to
-`Cont-"Indeed adapter Phase D + hub catch-up"`. Two archive candidates surfaced and left for
-Tebello, neither archived — `Cont-"Hub reconciled to Phases B and C"` (superseded by
-`fb90810`, which caught the hub up through Phase D) and `Operations process optimization`
-(2026-08-01, 7 days idle, mistitled — it was actually the TebelloReborn PNet/Careers24
-discovery fix, shipped at 249 tests against the project's current 538).
+`Cont-"Indeed adapter Phase D + hub catch-up"`. Two archive candidates surfaced and both
+archived on Tebello's explicit confirmation — `Cont-"Hub reconciled to Phases B and C"`
+(superseded by `fb90810`, which caught the hub up through Phase D) and
+`Operations process optimization` (2026-08-01, 7 days idle, mistitled — it was actually the
+TebelloReborn PNet/Careers24 discovery fix, shipped at 249 tests against the project's
+current 538). Four sessions remain open.
 `Cont-"Hub session-end, vault push & staleness audit"` was not re-proposed: Tebello chose to
-keep it open on 2026-08-07 despite it being verifiably complete.
+keep it open on 2026-08-07 despite it being verifiably complete. Note this is the second
+category-B (stale/idle) archive since the 2026-07-29 broadening — the 7-day rule is catching
+real dead weight that the original superseded-only test would have left open indefinitely,
+since nothing later in that project *superseded* the PNet fix, it simply finished.
 
 **Last completed:** `/continue` Step 1.9 — cross-repo staleness check installed, plus the
 finding that a `knowledge/` entry is a record and not a control (this entry)

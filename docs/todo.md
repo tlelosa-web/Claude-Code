@@ -49,10 +49,12 @@ flags re-checked 2026-08-03 after the O-P-C consolidation — see note below)
       **Ready to build, starting at the spec's Phase A** —
       `TebelloReborn/docs/specs/indeed-submit-adapter.md` §Amendment is authoritative
       (Pappa T vault `3267cb5`). Two things are needed from Tebello first, both in that
-      spec's Open Items: **real `email`/`phone` values** for `profile_seed.json`, and a
-      **backup of `career.db`** before Phase A, since this build carries the project's
-      first-ever migrations (`user_version` 5 and 6) and they auto-apply on the next
-      `init_db()` from any command. Worth his confirmation too: the amendment makes
+      spec's Open Items — one of which is now done. **`career.db` is backed up**
+      (2026-08-07, `career.pre-migration-5-6-20260807.db`, sqlite3 backup API,
+      integrity-checked and row-count-verified) ahead of the project's first-ever
+      migrations (`user_version` 5 and 6), which auto-apply on the next `init_db()`
+      from any command. Still outstanding: **real `email`/`phone` values** for
+      `profile_seed.json`. Worth his confirmation too: the amendment makes
       `submit --all` refuse auto-submit entirely, so the 6 approved vacancies go out as
       six deliberate single commands.
 

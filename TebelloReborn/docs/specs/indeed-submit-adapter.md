@@ -802,9 +802,14 @@ sequence from step 102, per this project's convention.
 
 ### Open Items added by this amendment
 
-4. **Back up `career.db` before Phase A** — migrations 5/6 auto-apply on the next `init_db()`, from
-   any command. Additive and safe, but the database holds the 6 approved applications and there is
-   no reason to run the project's first-ever migration without a copy on disk.
+4. ~~**Back up `career.db` before Phase A**~~ — **done 2026-08-07.**
+   `career.pre-migration-5-6-20260807.db`, taken via sqlite3's backup API (not a file copy — a raw
+   copy of a live WAL-mode database can capture a torn state) and verified:
+   `PRAGMA integrity_check = ok`, `user_version = 4` on both, and per-table row counts matching
+   source exactly (`vacancies` 10, `approvals` 10, `generation_log` 43, `candidate_profile` 1). The
+   name ends in `.db` so the existing `*.db` gitignore rule covers it, and the daily runtime-data
+   backup task picks it up by the same pattern. Rolling back means stopping, copying it over
+   `career.db`, and resetting `PRAGMA user_version` to 4 if a migration has already run.
 5. **Confirm the `--all` refusal (A15) is the wanted behavior**, not a surprise. It means submitting
    the 6 approved Indeed vacancies is six deliberate commands, by design.
 

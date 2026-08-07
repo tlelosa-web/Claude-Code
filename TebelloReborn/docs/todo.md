@@ -464,10 +464,11 @@ binary, nothing on the wire.
         adapter must reconstruct `pdf_export`'s naming; Phase G promotes it to a shared
         `resolve_export_paths()` rather than duplicating the format string.
 
-      No code written yet. Next: **Phase A** (back up `career.db` first — see the spec's Open Item
-      4), which needs Tebello's real `email`/`phone` values for `profile_seed.json`. Also worth his
-      confirmation: A15 makes `submit --all` refuse auto-submit entirely, so the 6 approved
-      vacancies go out as six deliberate single commands.
+      No code written yet. Next: **Phase A**. The `career.db` backup it needed is **done**
+      (2026-08-07, `career.pre-migration-5-6-20260807.db` — sqlite3 backup API, integrity-checked
+      and row-count-verified; spec Open Item 4). Still needs Tebello's real `email`/`phone` values
+      for `profile_seed.json`. Also worth his confirmation: A15 makes `submit --all` refuse
+      auto-submit entirely, so the 6 approved vacancies go out as six deliberate single commands.
 - [ ] Phase 7 (post-MVP numbering): tracking dashboard (applications, match-score distribution, response rate).
 - [ ] Decide whether recruiter cold-outreach (in `data/legacy_reference/`, not part of the original 7-phase plan) gets revived as a later phase.
 - [ ] Volume-cap / scheduler layer for document generation (ADR-003 §6, open judgment call #1) — only if Tebello confirms a controlled-batch need; would need its own spec + ADR, and likely a `PRAGMA user_version` migration via the `src/doc_gen/migrations.py` stub (step 34).

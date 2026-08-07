@@ -369,6 +369,10 @@ class TestMigrationLedgerAcrossModules:
             ("vacancy_search", 4),
             ("profile", 5),
             ("profile", 6),
+            # Phase B. `(submission, 1)` sitting beside `(vacancy_search, 1)` is
+            # the ledger's whole point — under the old shared counter this
+            # migration could not have existed at all.
+            ("submission", 1),
         }
 
     def test_re_initialising_every_module_is_a_no_op(self, tmp_path):
@@ -381,7 +385,7 @@ class TestMigrationLedgerAcrossModules:
         self._init_all(db_path, list(reversed(order)))
 
         assert self._schema(db_path) == schema_before
-        assert len(self._ledger(db_path)) == 6
+        assert len(self._ledger(db_path)) == 7
 
     def test_the_frozen_counter_is_never_written(self, tmp_path):
         """ADR-004 §5. A fresh database stays at 0 forever now."""

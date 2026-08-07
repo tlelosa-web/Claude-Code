@@ -107,19 +107,28 @@ class TestUpsertAndGetProfile:
         conn.close()
 
 
-class TestContactDetailMigrations:
-    """Phase A (indeed-submit-adapter.md §Amendment A5). These are the first
-    migrations this project has written since Hard Rule 6 was recorded, and the
-    rule's whole point is that the obvious version numbers (1 and 2) would be
-    silently skipped forever on the live database."""
+def _ledger(conn, module):
+    """Versions recorded for `module` in ADR-004's schema_migrations ledger."""
+    rows = conn.execute(
+        "SELECT version FROM schema_migrations WHERE module = ?", (module,)
+    )
+    return {row[0] for row in rows}
 
-    def test_migration_versions_are_globally_unique_and_at_least_five(self):
+
+class TestContactDetailMigrations:
+    """Phase A (indeed-submit-adapter.md §Amendment A5). These were the first
+    migrations this project wrote since Hard Rule 6 was recorded; under ADR-004
+    the shared counter they had to dodge is gone, and versions are per-module."""
+
+    def test_migration_versions_are_retained_not_renumbered(self):
+        """ADR-004 §1: version numbers become per-module, but existing ones are
+        deliberately left alone — `(profile, 5)` and `(vacancy_search, 5)` are
+        different ledger keys now, so there is nothing left to collide in.
+        Renumbering would be churn with a real risk of getting the adoption
+        path wrong, for no benefit."""
         versions = [version for version, _ in MIGRATIONS]
 
-        assert versions == [5, 6], (
-            "profile migrations must start at 5 — vacancy_search owns 1-4 on the "
-            "same shared PRAGMA user_version (CLAUDE.md Hard Rule 6)"
-        )
+        assert versions == [5, 6]
 
     def test_init_db_creates_email_and_phone_columns(self, tmp_path):
         conn = init_db(tmp_path / "career.db")
@@ -134,9 +143,12 @@ class TestContactDetailMigrations:
 
     def test_migrations_apply_to_a_database_already_at_version_four(self, tmp_path):
         """The live `career.db` sits at user_version = 4 with the pre-contact
-        schema. This reproduces it exactly: had these migrations been numbered
-        1 and 2, `apply_migrations`' `if version > current` would skip both
-        without error and `upsert_profile` would die on `no such column: email`."""
+        schema and no ledger. This reproduces it exactly.
+
+        ADR-004 §4: adoption needs no special code path. The runner creates the
+        ledger empty and the ordinary loop does the rest — email/phone are
+        genuinely absent, so 5 and 6 apply and record, while the frozen counter
+        keeps its historical 4 (§5)."""
         db_path = tmp_path / "career.db"
         legacy = sqlite3.connect(str(db_path))
         legacy.execute("""
@@ -162,7 +174,8 @@ class TestContactDetailMigrations:
         }
         assert "email" in columns
         assert "phone" in columns
-        assert conn.execute("PRAGMA user_version").fetchone()[0] == 6
+        assert _ledger(conn, "profile") == {5, 6}
+        assert conn.execute("PRAGMA user_version").fetchone()[0] == 4
 
         # and the migrated table is actually writable through the normal path
         upsert_profile(conn, _profile())
@@ -181,24 +194,30 @@ class TestContactDetailMigrations:
         assert {"email", "phone"} <= columns
         conn.close()
 
-    def test_fresh_database_does_not_advance_the_shared_user_version(self, tmp_path):
+    def test_fresh_database_records_migrations_without_touching_the_counter(
+        self, tmp_path
+    ):
         """A fresh database gets email/phone from the baseline CREATE TABLE, so
-        migrations 5/6 have nothing to do and must NOT bump the counter.
+        migrations 5/6 have no DDL to do — but ADR-004 §3 requires them to be
+        *recorded* anyway, not silently passed over. That is what makes the
+        ledger a true account of what has been applied.
 
-        `import-profile` is the documented first command, so if it advanced a
-        brand-new database to 6, vacancy_search's migrations 1-4 would be
-        skipped forever — its `vacancies` baseline omits those columns, so they
-        would exist nowhere at all."""
+        The counter stays at 0 because the runner never writes it (§5). Under
+        the old mechanism this was load-bearing: `import-profile` is the
+        documented first command, and advancing a brand-new database to 6
+        stranded vacancy_search's migrations 1-4 forever."""
         conn = init_db(tmp_path / "career.db")
 
+        assert _ledger(conn, "profile") == {5, 6}
         assert conn.execute("PRAGMA user_version").fetchone()[0] == 0
         conn.close()
 
 
-class TestSharedUserVersionOrdering:
-    """Regression lock for a bug this phase introduced and the integration
-    suite caught: profile's migrations are numbered above vacancy_search's, and
-    every module gates on the same PRAGMA user_version."""
+class TestModuleInitOrdering:
+    """Regression lock for the Phase 17 bug the integration suite caught and no
+    unit test did: profile's migrations are numbered above vacancy_search's, and
+    every module used to gate on the same PRAGMA user_version. ADR-004 removes
+    the shared namespace; these assert both orderings still converge."""
 
     def test_import_profile_first_does_not_strand_vacancy_migrations(self, tmp_path):
         """CLAUDE.md documents `import-profile` as the first command and

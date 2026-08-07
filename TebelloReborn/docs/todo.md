@@ -1,6 +1,8 @@
 # Task Queue — TebelloReborn (Career Engine)
 
-> Updated: 2026-08-06 (Stage 6 submission core built — Phase 16, steps 81–102; see `docs/specs/submission-core.md` and session-log.md)
+> Updated: 2026-08-07 (Indeed site adapter build started in a separate session — see the Future
+> section's adapter entry for the decisions made and the ToS gate still open; Stage 6 submission core
+> built 2026-08-06, Phase 16 steps 81–102, see `docs/specs/submission-core.md` and session-log.md)
 
 ---
 
@@ -394,21 +396,41 @@ binary, nothing on the wire.
 
 ## Future (not yet scheduled)
 
-- [ ] **Playwright site adapter for Stage 6** (was "Phase 6, post-MVP numbering"). The core is built
-      (Phase 16 above) and the registry is empty, so every approved application currently routes to
-      manual. Adding an adapter is one `ADAPTERS["<platform>"] = ...` entry against the
-      `SubmitAdapter` Protocol — no change to `pipeline.py`. **Blocked on two answers from Tebello,
-      not on code** (see `docs/specs/submission-core.md` §Open Items):
-      1. **Which platform?** Indeed is the only live source with approved applications (6), but its
-         flow varies per employer and many postings redirect to an external ATS with no fixed shape.
-         Realistically "Indeed's own apply form only, everything else `not_supported`".
-      2. **ToS / account risk, explicitly acknowledged.** Driving an authenticated session to submit
-         applications is a different exposure from scraping via Apify — it is Tebello's own account
-         at risk, and it is against LinkedIn's User Agreement (plausibly Indeed's too). No agent
-         should start this on an assumption that the risk is accepted.
-      Also needs: the `playwright` dependency + browser binaries (a deliberate decision in an
-      offline-first project), and a real-site smoke test, since mocks verify you called the transport,
-      not that the site accepts what you sent (the Apify payload-shape lesson).
+- [ ] **Indeed site adapter for Stage 6** (was "Playwright site adapter"; before that "Phase 6,
+      post-MVP numbering"). **No longer unscheduled — the build started 2026-08-07** in a separate
+      terminal session. This entry is stale the moment that session writes its own Build Queue phase;
+      it exists so the item isn't misread as not-started in the meantime. The core is built (Phase 16
+      above) and the registry is empty, so every approved application still routes to manual today.
+      Adding an adapter is one `ADAPTERS["<platform>"] = ...` entry against the `SubmitAdapter`
+      Protocol — no change to `pipeline.py`.
+
+      **Answered 2026-08-07** (recorded from that session's own prompts, not yet from a written spec —
+      supersedes `docs/specs/submission-core.md` §Open Items items 1 and 3, which still read as open):
+      1. **Platform: Indeed**, its native apply form only. A live posting with a real "Apply with
+         Indeed" button was confirmed to exist, so the platform's own form is not a myth — but
+         per-employer variation and external-ATS redirects are unchanged, so `can_handle()` must
+         decline confidently. An over-eager `True` converts a clean `not_supported` into a silent
+         failure, which is strictly worse than having no adapter.
+      2. **`playwright` accepted** as a runtime dependency, browser binaries included — a deliberate
+         break from the three-dependency offline-first footprint, made rather than drifted into.
+      3. **`email`/`phone` to be added to `CandidateProfile`.** Neither `src/profile/schema.py` nor
+         `data/profile_seed.json` has any contact field today, and an apply form needs both. Found
+         before building rather than as a runtime bug.
+      4. **Selectors come from live DOM recon, not guesswork** — the Apify payload-shape lesson
+         applied deliberately.
+
+      **Still open:**
+      1. **ToS / account risk has NOT been acknowledged on record.** Driving an authenticated session
+         to submit is a different exposure from scraping via Apify — it is Tebello's own account at
+         risk, and it is against LinkedIn's User Agreement (plausibly Indeed's too). Signing in for
+         read-only DOM inspection is *not* that acknowledgement. This gate is unchanged by the build
+         having started; it should be answered deliberately, not passed by momentum.
+      2. **Recon is parked on an Indeed sign-in boundary.** The browsing session was signed out. No
+         agent handles those credentials under any authorization, so either Tebello signs in and recon
+         resumes, or the spec carries `TODO` selectors and the real DOM is captured during the build's
+         own smoke test.
+      3. **Real-site smoke test still required** — mocks verify you called the transport, not that the
+         site accepts what you sent.
 - [ ] Phase 7 (post-MVP numbering): tracking dashboard (applications, match-score distribution, response rate).
 - [ ] Decide whether recruiter cold-outreach (in `data/legacy_reference/`, not part of the original 7-phase plan) gets revived as a later phase.
 - [ ] Volume-cap / scheduler layer for document generation (ADR-003 §6, open judgment call #1) — only if Tebello confirms a controlled-batch need; would need its own spec + ADR, and likely a `PRAGMA user_version` migration via the `src/doc_gen/migrations.py` stub (step 34).

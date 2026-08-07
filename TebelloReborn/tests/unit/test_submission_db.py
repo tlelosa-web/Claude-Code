@@ -51,21 +51,37 @@ class TestInitDb:
         assert len(tables) == 1
         conn.close()
 
-    def test_does_not_advance_user_version(self, tmp_path):
-        """This module owns no migrations. All four migration modules share one
-        global PRAGMA user_version, so a stray write here would silently skip a
-        real migration elsewhere (spec §Migration Note)."""
+    def test_records_nothing_in_the_migration_ledger(self, tmp_path):
+        """This module owns no migrations — `submissions` is a net-new table
+        created directly in init_db(), which needs none (spec §Migration Note).
+
+        Converted from `test_does_not_advance_user_version` per ADR-004's
+        Consequences: the counter it guarded is frozen, and the equivalent
+        assertion is that this module writes no ledger rows and disturbs no
+        other module's. Note the original reason for having no migrations.py at
+        all is now gone — under the ledger, versions are per-module, so Phase B
+        can add one starting at 1."""
         db_path = tmp_path / "career.db"
         _seed_vacancy(db_path)
 
         vacancy_conn = init_vacancy_db(db_path)
-        before = vacancy_conn.execute("PRAGMA user_version").fetchone()[0]
+        before = {
+            (row[0], row[1])
+            for row in vacancy_conn.execute(
+                "SELECT module, version FROM schema_migrations"
+            )
+        }
         vacancy_conn.close()
 
         conn = init_db(db_path)
-        after = conn.execute("PRAGMA user_version").fetchone()[0]
+        after = {
+            (row[0], row[1])
+            for row in conn.execute("SELECT module, version FROM schema_migrations")
+        }
+        submission_rows = [row for row in after if row[0] == "submission"]
         conn.close()
 
+        assert submission_rows == []
         assert after == before
 
 

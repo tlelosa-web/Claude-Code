@@ -43,8 +43,18 @@ flags re-checked 2026-08-03 after the O-P-C consolidation — see note below)
 > afterward to pick it up.
 
 1. [ ] **TebelloReborn: Indeed site adapter** — **core built 2026-08-06; full spec
-      written + Codex-reviewed 2026-08-07, build not started.** 📍 Live
-      `Desktop/Pappa T/TebelloReborn/`.
+      written, Codex-reviewed, and folded in 2026-08-07. Every design gate is now
+      closed; build not started.** 📍 Live `Desktop/Pappa T/TebelloReborn/`.
+
+      **Ready to build, starting at the spec's Phase A** —
+      `TebelloReborn/docs/specs/indeed-submit-adapter.md` §Amendment is authoritative
+      (Pappa T vault `3267cb5`). Two things are needed from Tebello first, both in that
+      spec's Open Items: **real `email`/`phone` values** for `profile_seed.json`, and a
+      **backup of `career.db`** before Phase A, since this build carries the project's
+      first-ever migrations (`user_version` 5 and 6) and they auto-apply on the next
+      `init_db()` from any command. Worth his confirmation too: the amendment makes
+      `submit --all` refuse auto-submit entirely, so the 6 approved vacancies go out as
+      six deliberate single commands.
 
       **The ToS/account-risk gate flagged above (and by the concurrent session
       that first hit it) is now closed** — Tebello gave an explicit, separate
@@ -65,8 +75,10 @@ flags re-checked 2026-08-03 after the O-P-C consolidation — see note below)
       Queue: `TebelloReborn/docs/specs/indeed-submit-adapter.md` (new). Codex's
       second opinion on it flagged real gaps (an accidentally-networked
       `can_handle()`, no question-drift policy, underspecified CAPTCHA
-      detection, missing `prep_failed` outcome semantics) — **not yet resolved
-      into the design**, which is the next build session's first task.
+      detection, missing `prep_failed` outcome semantics) — **all resolved
+      2026-08-07** in that spec's §Amendment, along with four further findings
+      that came from reading the code rather than the review, two of which would
+      have failed at runtime as specced. Detail: `knowledge/tebelloreborn.md`.
 
       **Concurrent-session note, resolved not just warned-about:** the entry
       that previously occupied this spot came from a same-morning concurrent
@@ -135,6 +147,33 @@ abandoned either — no work is lost by leaving them here.
 
 ## Done
 
+- [x] **2026-08-07** — TebelloReborn: folded Codex's review into
+      `docs/specs/indeed-submit-adapter.md`, closing that project's Hard Rule 13 gate
+      before any Executor is dispatched (Pappa T vault `3267cb5`, pushed). 22 accepted
+      changes, 6 clarifications, 4 declined. **No code written** — this was the spec
+      gate, not the build. The four gaps the queue named are resolved concretely:
+      `can_handle()` is now a pure offline URL predicate with all live work moved to a
+      non-Protocol `inspect_apply_flow()`; question drift is a sha256 fingerprint
+      compared as a set, aborting in both directions; CAPTCHA detection names five
+      abort states **and** three never-abort states (the "protected by reCAPTCHA"
+      notice is on every healthy run — a detector that trips on it aborts 100% of
+      runs); and `prep_failed` was **deleted rather than defined**, since prep attempts
+      no submission and its failures don't belong in an attempt log — they went to a
+      new `submission_preps` table whose states also fixed a separate bug, inferring
+      "prep never ran" from zero question rows.
+      **Four findings came from reading the code and the live `career.db`, not from
+      Codex, and two would have failed at runtime:** the spec's "no DB migration for
+      `email`/`phone`, same precedent as `VALID_STATUSES`" was a false analogy —
+      `candidate_profile` is a real table with named columns, so those are *new
+      columns* and `upsert_profile()` would have raised `no such column: email` (now
+      migrations 5/6, the project's first since Hard Rule 6 was written); and
+      `submissions.outcome`'s CHECK sits inside a `CREATE TABLE IF NOT EXISTS`, so the
+      DDL edit works only while the table doesn't exist — verified it doesn't yet
+      (live DB at `user_version = 4`, no `submissions` table), meaning the window is
+      open now and closes the first time anyone runs `submit`. Also: `prep-submission`
+      needs network twice (`claude -p` is a local subprocess, not an offline one), and
+      `generation_log` has no path column so the adapter must reconstruct
+      `pdf_export`'s naming via a shared helper. See `knowledge/tebelloreborn.md`.
 - [x] **2026-08-07** — Queue accuracy pass: item #1 corrected from "blocked" to
       "in progress", then reconciled across both files. A separate terminal
       session had started the Indeed adapter build and answered most of the

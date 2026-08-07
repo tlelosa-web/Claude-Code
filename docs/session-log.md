@@ -2110,3 +2110,101 @@ explicit in-session go-ahead.
 **Blockers:** None on this item — every gate that was open at the start of this
 session is now closed or has an owner. The SOPS migration remains gated on
 Tebello's explicit go-ahead.
+
+---
+
+## 2026-08-07 — TebelloReborn: Codex fold-in on the Indeed adapter spec
+
+**Scope:** `Desktop/Pappa T/TebelloReborn/` (live copy — that project's `CLAUDE.md`
+governed the work; this hub file records the outcome only).
+
+The task the previous session left as "the next build session's first task": resolve
+the `/codex-review` findings on `docs/specs/indeed-submit-adapter.md` before any
+Executor is dispatched. Done as a dated §Amendment following the same A/B/C convention
+`submission-core.md` established — 22 accepted changes, 6 clarifications, 4
+considered-and-declined. Committed and pushed (Pappa T vault `3267cb5`). **No code
+written; this was the spec gate, not the build.**
+
+**The four gaps the queue named, resolved rather than acknowledged:**
+
+- **`can_handle()` (A1).** Codex called it accidentally networked. What made that a
+  real defect and not a style note only shows up in the code: `get_adapter()` calls
+  `can_handle()` on *every* `submit` invocation, including `--manual` and every
+  `not_supported` case — neither of which touches the adapter. A predicate that opened
+  a browser would have driven a live authenticated session on paths that submit
+  nothing. Now a pure `urlsplit` check; all live work moved to `inspect_apply_flow()`,
+  deliberately outside the pinned `SubmitAdapter` Protocol.
+- **Question drift (A6).** sha256 fingerprint over normalized text/type/required/
+  options, compared as a **set** — order and position excluded on purpose, aborting in
+  both directions including a reviewed question that vanished.
+- **CAPTCHA detection (A7).** Five specific abort states **and** three explicit
+  never-abort states. That second list is the load-bearing one: the recon established
+  that a "protected by reCAPTCHA" notice and a `.grecaptcha-badge` appear on every
+  healthy run, so a detector keying on reCAPTCHA *presence* would abort 100% of runs.
+- **`prep_failed` (A3).** Deleted rather than defined. Prep attempts no submission, so
+  recording its failures in `submissions` would put non-attempts in an attempt log.
+  They moved to a new `submission_preps` table — whose seven states also fixed a
+  separate defect Codex spotted: zero `screening_questions` rows meant both "genuinely
+  no questions" and "prep never ran," and only one of those is submittable. Inferring
+  state from the absence of rows was the actual bug.
+
+**Four findings came from reading the code and the live `career.db`, not from the
+review — and two of them would have failed at runtime as specced:**
+
+1. **"No DB migration needed for `email`/`phone`" was a false analogy.** The spec cited
+   `VALID_PLATFORMS`/`VALID_STATUSES` as precedent, but those validate *values* in a
+   column that already exists. `candidate_profile` is a real table with named columns
+   and `upsert_profile()` writes them by name, so these are **new columns** and the
+   first write would have raised `no such column: email`. Now migrations **5 and 6** in
+   `profile/migrations.py` — globally unique per that project's Hard Rule 6, and the
+   first migration it has written since that rule was recorded.
+2. **A `CHECK` inlined in `CREATE TABLE IF NOT EXISTS` has a silent expiry.** Adding
+   `pending_review` to `submissions.outcome` means editing that DDL string, which only
+   works while the table doesn't exist. Verified it doesn't: live `career.db` is at
+   `user_version = 4` with `candidate_profile`/`vacancies`/`generation_log`/`approvals`
+   and **no `submissions` table** — Stage 6 has never run against it. So the window is
+   open right now and closes the first time anyone runs `career-engine submit`, after
+   which `IF NOT EXISTS` keeps the old constraint forever and the failure surfaces as a
+   CHECK violation at insert time, far from its cause. Resolution: change the DDL *and*
+   add a drift guard in `init_db()` that reads `sqlite_master.sql` and refuses loudly.
+   Same trap family as the shared-`user_version` one, different disguise.
+3. **`prep-submission` needs network twice.** `run_claude_code()` shells to `claude -p`,
+   which requires connectivity — ADR-003's "local subprocess" framing is about
+   rate-limiting and cost, not offline capability. The spec's "local, network-optional
+   drafting pass" was wrong.
+4. **Nothing in the database maps a vacancy to its PDFs.** `generation_log` has no path
+   column, so the adapter must reconstruct `pdf_export`'s naming — promoted to a shared
+   `resolve_export_paths()` rather than duplicated into the adapter, which is how the
+   two would drift apart.
+
+Also folded in: every employer-authored answer is now reviewed (the `auto_fillable`
+"matched confidently" concept was deleted, not made testable); compensation,
+work-authorization and demographic questions are never LLM-drafted at all; an ambiguous
+post-submit state records `UNCONFIRMED:` and **blocks** further automated attempts
+rather than reporting a retryable `failed` that would invite a duplicate application;
+and `submit --all` refuses auto-submit entirely in this build — a policy answer to the
+accepted account-risk exposure, chosen over a backoff engine that could be mis-tuned.
+Declined on the record: Playwright trace/video capture, since application pages carry
+contact details and CV content — replaced with a plain-text step log carrying no field
+values, under the same gitignored `.session/` directory as the session credential.
+
+Hub-and-spoke handled as usual: the project's own `docs/todo.md` and `docs/session-log.md`
+carry the authoritative detail, this hub's `docs/todo.md` #1 was updated to a
+build-ready pointer, and `knowledge/tebelloreborn.md` gained a new dated entry with the
+prior one marked partially superseded (its recon findings stand; its "not yet resolved"
+and "not yet pushed" closes do not). `origin/main` pulled before editing the contention
+files per Hard Rule 6 — 0 behind.
+
+**Last completed:** TebelloReborn Indeed adapter — Codex fold-in complete, spec
+build-ready (this entry).
+**Next task:** The adapter build itself, starting at the spec's **Phase A**. Blocked on
+two things from Tebello, both in that spec's Open Items: real `email`/`phone` values for
+`profile_seed.json`, and a backup of `career.db` before Phase A runs (migrations 5/6
+auto-apply on the next `init_db()`, from any command including `career-engine list`).
+Worth confirming with him too: A15 makes `submit --all` refuse auto-submit, so the 6
+approved vacancies go out as six deliberate single commands. This hub's own remaining
+item is unchanged: `docs/todo.md` #2, the SOPS AvgMovement migration, still gated on an
+explicit in-session go-ahead.
+**Known risks:** None new. Backup failures remain silent (backlog).
+**Blockers:** None on the design — every gate this spec had is now closed. The build is
+gated on Tebello's contact details and the `career.db` backup, both cheap.

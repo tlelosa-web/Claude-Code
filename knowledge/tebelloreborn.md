@@ -1,7 +1,87 @@
+## 2026-08-07 — Indeed adapter: Codex fold-in complete, spec build-ready
+**Source:** session (this machine, hub `/continue`) — read the code and the live
+`career.db` directly; four of the findings below are not in Codex's review at all.
+**Status:** active
+
+Closes the "not yet resolved into the design" gap left by the entry below. Amendment
+appended to `TebelloReborn/docs/specs/indeed-submit-adapter.md` (Pappa T vault
+`3267cb5`, pushed): 22 accepted changes, 6 clarifications, 4 declined. **No code
+written** — this was the spec gate, not the build.
+
+**Reusable, project-independent lesson: a capability predicate that is cheap for the
+caller who names it can still be expensive for the callers who don't.** Codex flagged
+`can_handle()` as accidentally a networked/browser action. What made it a real defect
+rather than a style point only shows up in the code: `eligibility.get_adapter()` calls
+`can_handle()` on **every** `submit` invocation — including `--manual` and every
+`not_supported` case, neither of which involves the adapter at all. A predicate that
+opens a browser would have driven a live session on paths that submit nothing. Fix:
+`can_handle()` is a pure `urlsplit` check; everything live moved to
+`inspect_apply_flow()`, deliberately outside the `SubmitAdapter` Protocol.
+
+**Two spec claims that would have failed at runtime, both found by reading code the
+spec described from memory:**
+
+1. **"No DB migration needed for `email`/`phone`" was a false analogy.** The spec cited
+   `VALID_PLATFORMS`/`VALID_STATUSES` as precedent — but those validate *values* in an
+   existing unconstrained `TEXT` column. `candidate_profile` is a real table with named
+   columns (`id, name, region, skills, experience, target_titles, industries,
+   salary_floor`) and `upsert_profile()` writes them by name, so `email`/`phone` are
+   **new columns** and would have raised `no such column: email` on first write. Now
+   migrations **5 and 6** in `profile/migrations.py` — the first migration this project
+   has written since Hard Rule 6 (globally-unique `user_version` ≥ 5, because
+   `vacancy_search` holds 1-4 and the live DB is at 4) was recorded. **The general
+   form: "it's just Python validation" is only true when the column already exists.**
+2. **A `CHECK` constraint inlined in `CREATE TABLE IF NOT EXISTS` has a silent
+   expiry.** Adding `pending_review` to `submissions.outcome` requires editing that
+   DDL string — which works only while the table doesn't exist. Verified the live
+   `career.db` is at `user_version = 4` with tables `candidate_profile`/`vacancies`/
+   `generation_log`/`approvals` and **no `submissions` table** (Stage 6 has never been
+   run against it), so the window is open today. Run `career-engine submit` once first
+   and `IF NOT EXISTS` keeps the old 3-value constraint forever, surfacing as a CHECK
+   violation at insert time, far from its cause. Resolution: change the DDL *and* add a
+   drift guard in `init_db()` that reads `sqlite_master.sql` and refuses loudly.
+   **Same trap family as the shared-`user_version` one, different disguise.**
+
+**Two more code-grounded corrections:** `run_claude_code()` shells to `claude -p`,
+which needs connectivity — ADR-003's "local subprocess" framing is about rate-limiting
+and cost, not offline capability, so the spec's "local, network-optional drafting pass"
+was wrong (`prep-submission` needs network twice: Indeed *and* Claude Code). And
+`generation_log` has **no path column**, so nothing in the DB maps a vacancy to its
+generated PDFs — the adapter must reconstruct `pdf_export`'s
+`{company}_{id}_{cv|cover_letter}.pdf` naming, promoted to a shared
+`resolve_export_paths()` rather than duplicated into the adapter.
+
+**Design decisions worth remembering:**
+- **`prep_failed` was deleted rather than defined.** Codex asked for outcome-table
+  semantics; the better answer was that prep attempts no submission, so its failures
+  don't belong in an attempt log at all. They went to a new `submission_preps` table,
+  whose seven states also fixed a separate ambiguity — zero `screening_questions` rows
+  meant both "genuinely no questions" and "prep never ran", and only one is
+  submittable. **Inferring state from the absence of rows was the actual bug.**
+- **CAPTCHA detection must name its never-abort states, not just its abort states.**
+  The recon established a "protected by reCAPTCHA" notice and a `.grecaptcha-badge` are
+  present on every *healthy* run; a detector that treats reCAPTCHA presence as a
+  challenge aborts 100% of runs. Five specific abort states, three explicit never-abort.
+- **Ambiguity after clicking submit is not `failed`.** Reporting failure on a
+  submission that went through invites a duplicate application. Ambiguous outcomes
+  record an `UNCONFIRMED:` detail that *blocks* further automated attempts until
+  Tebello resolves it with `--manual` or a re-prep.
+- **Every employer-authored answer is reviewed** — the `auto_fillable` "matched
+  confidently" concept was deleted, not made testable. A location field auto-filled
+  from `profile.region` is still an answer his name goes on. Compensation,
+  work-authorization and demographic questions are never LLM-drafted at all.
+- **`submit --all` refuses auto-submit in this build.** A policy answer to the accepted
+  account-risk exposure, chosen over a backoff engine that could be mis-tuned.
+
+**Next:** Phase A, blocked on Tebello's real `email`/`phone` values, and back up
+`career.db` first — migrations 5/6 auto-apply on the next `init_db()` from any command.
+
 ## 2026-08-07 — Indeed adapter: spec written, Codex-reviewed, real scope findings
 **Source:** session (this machine, hub `/continue`) — authoritative, not scrollback.
 Directly ran the browser recon and wrote the spec this entry describes.
-**Status:** active
+**Status:** partially superseded by the 2026-08-07 fold-in entry above — its recon
+findings and decisions stay accurate; its "not yet resolved into the design" close and
+its "not yet pushed" note do not (vault `8c95cf2` and `3267cb5` are both pushed).
 
 **Supersedes the entry immediately below** (which was itself pieced together from a
 concurrent terminal session's garbled scrollback, "not from a written spec"). That

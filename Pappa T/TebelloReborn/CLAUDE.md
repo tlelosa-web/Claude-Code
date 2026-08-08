@@ -46,11 +46,15 @@ career-engine fetch-vacancies --limit 25                      # Scrape Indeed + 
 career-engine list                                             # List vacancies and current status
 career-engine run --vacancy-id <id>                            # Score + generate assets for one vacancy
 career-engine run-all                                          # Run all eligible vacancies
+career-engine submit --vacancy-id <id>                         # Stage 6: submit an approved application, or record why it wasn't
+career-engine submit --all                                     # Same, for every approved vacancy
+career-engine submit --vacancy-id <id> --manual                # Record that you submitted it by hand
 
 # Tests
 python -m pytest                          # Full suite
 python -m pytest tests/unit               # Unit only
 python -m pytest tests/integration        # Integration only
+python -m pytest --cov=src/<module> --cov-fail-under=80        # Coverage gate for new code (needs the dev extra)
 
 # Format + lint
 black . && ruff check .
@@ -151,10 +155,25 @@ Design modules so offline stages never import or depend on network-requiring cod
 5. Human Review      → approve / reject / edit                     (status: approved | rejected)
 ```
 
-`approved` is the current terminal state. Two phases are explicitly **deferred, not built**:
+```
+6. Submission        → records an outcome per approved application          (status: submitted | submission_failed | unchanged)
+```
+
+Stage 6's **platform-agnostic core is built** (2026-08-06, `docs/specs/submission-core.md`): status vocabulary, the `submissions` attempt log, session-state path handling, capability-based adapter dispatch, and outcome recording. Its **site adapter is not** — the registry ships empty, so every approved application produces a `not_supported` attempt, is reported to the operator with an instruction to submit it by hand, and stays at `approved`. No `playwright` dependency, no browser binary, nothing on the wire.
+
+The Indeed adapter's **Phases A, B, C and D are built** (2026-08-07, `docs/specs/indeed-submit-adapter.md`): profile contact details; then the `submission_preps`/`screening_questions` tables, the `pending_review` outcome, and `submission_prep_ready()`; then that gate wired into `pipeline.py` ahead of the session check, `pending_review` reporting, and the `--all` auto-submit refusal (A15 — real applications go out one at a time, by explicit id; confirmed with Tebello 2026-08-07); then `browser.py`'s CAPTCHA detection, combined navigation-state check, continuous session-expiry detection, and step log. Still offline, still **no `playwright` dependency** (Phase H declares it), still no adapter registered, so every approved application routes to manual today. Phases E–H remain — Indeed's apply flow will add three commands run in sequence:
 
 ```
-6. Auto-Submit    → Playwright form-fill, paused before final submission   (future)
+career-engine prep-submission --vacancy-id <id>   (network, read-only recon — extracts screening questions)
+career-engine review-questions --vacancy-id <id>  (offline — approve/edit each drafted answer)
+career-engine submit --vacancy-id <id>            (network — unchanged command, now question-aware)
+```
+
+Building an adapter is gated on the platform question and the ToS/account-risk acknowledgement in that spec's Open Items.
+
+One phase remains explicitly **deferred, not built**:
+
+```
 7. Dashboard      → tracking view: applications, match scores, response rate (future)
 ```
 
@@ -210,6 +229,7 @@ No Gmail integration in the MVP (no email-sending stage) — may be added if/whe
 - **ADR-001**: SQLite is the source of truth for profile + vacancy data (mirrors `ai-outreach-agency` ADR-001).
 - **ADR-002**: Job-board scraping via Apify (Indeed + LinkedIn actors) for MVP; PNet/Careers24 covered via the generic crawler + local LLM extraction + automated discovery (2026-07-29 amendment) — no dedicated Apify actor exists for either.
 - **ADR-003**: OpenRouter dropped entirely — AI Matching routes to local Ollama (`qwen3:8b`), Document Generation routes to headless Claude Code (`claude -p`), $0 marginal cost on both, no scheduler/volume-cap machinery adopted (no documented need). See `docs/decisions/ADR-003-inference-provider-split.md`.
+- **ADR-004**: `PRAGMA user_version` retired as a migration gate — a `schema_migrations(module, version, applied_at)` ledger plus one shared runner in `src/shared/migrations.py`. Versions are per-module; migration payloads may be a SQL string or a callable. See `docs/decisions/ADR-004-schema-migration-ledger.md`.
 - **DB access**: SQLite via `sqlite3`. No schema change without a migration file.
 - **Config**: `src/config.py` `Settings` via `python-dotenv`. Never hardcode. Never commit `.env`.
 - **Approval gate is structural**, not advisory — enforced by the status state machine, not just convention (same principle as `ai-outreach-agency`).
@@ -289,25 +309,40 @@ TebelloReborn/
 └── src/
     ├── main.py                   ← CLI runner
     ├── config.py                 ← Settings via python-dotenv
-    ├── shared/                   ← rate_limiter.py, ollama_client.py (ADR-003; promoted from matching/ in Phase 9)
+    ├── shared/                   ← rate_limiter.py, ollama_client.py (ADR-003; promoted from matching/ in Phase 9),
+    │                                migrations.py (ADR-004 — the one migration runner, five consumers)
     ├── profile/                  ← CandidateProfile schema + db
     ├── vacancy_search/           ← Vacancy schema + db + apify_client.py + crawler_client.py +
     │                                discovery.py + extraction_prompt.py + extractor.py (PNet/Careers24)
     ├── matching/                 ← prompt_builder.py + scorer.py (ADR-003)
     ├── doc_gen/                  ← runner.py, schema.py, db.py, migrations.py (ADR-003) + cv_generator.py, cover_letter_generator.py, pdf_export.py
-    └── review/                   ← approval gate CLI
+    ├── review/                   ← approval gate CLI
+    └── submission/               ← Stage 6 core: schema.py, db.py, session.py,
+                                     eligibility.py, pipeline.py, cli.py +
+                                     migrations.py (ADR-004, version 1 — the
+                                     submissions.outcome CHECK rebuild, Phase B) +
+                                     browser.py (Phase D — pure page-state
+                                     judgment; the only module that may import
+                                     playwright, and it does so lazily)
 ```
+
+`.session/` (gitignored) holds the Playwright `storageState` file once a login is saved — a live authenticated session, treated as a credential.
 
 ---
 
 ## ⚠️ Hard Rules — Never Violate
 
-1. **No application submitted without the human approval gate.** This build stops at `approved` — no submission code exists yet, and none should be added without this rule in mind.
+1. **No application submitted without the human approval gate.** Stage 6 now exists, and enforces this structurally: `run_submission()` acts only on `approved` or `submission_failed`, and `submission_failed` is reachable only from `approved`. Adapters never write to the database and never transition status, so no adapter can route around the gate. **This extends to every piece of generated text, not just the CV and cover letter** — a screening question's answer is content an employer reads, so `screening_questions.decision` starts `pending`, only `review-questions` moves it, and `submission_prep_ready()` refuses to let a vacancy through while any answer is `pending` or `rejected`. As of Phase C that refusal is live: `pipeline._decide()` consults the gate before any adapter runs, and records `pending_review` — no status change — rather than submitting.
 2. **No code without a plan** for any task touching > 2 files.
 3. **One task = one commit** — atomic, traceable, revertable.
 4. **Tests must pass** before any commit.
 5. **No secrets in code** — not even in comments, debug prints, or `.env.example`.
-6. **No schema changes without a migration file.**
+6. **No schema changes without a migration file** — and **migrations are versioned per module, starting at 1** (ADR-004). Each module's `migrations.py` keeps its own `MIGRATIONS` list and delegates to the one shared runner in `src/shared/migrations.py`, which records every applied migration in a `schema_migrations(module, version, applied_at)` ledger keyed by `(module, version)`. `(profile, 5)` and `(vacancy_search, 5)` are different keys, so there is no shared namespace to collide in. Rules that follow:
+   - **A shipped migration is immutable.** Once it may have run anywhere, never edit or renumber it — ship a correction as a new version. The ledger records that a version ran, not what it contained.
+   - **A migration's payload is `str | Callable[[sqlite3.Connection], None]`.** Use a callable for anything multi-statement — `Connection.execute()` rejects multi-statement SQL, and `executescript()` implicitly commits, which would break the runner's atomicity. A table rebuild (the only way SQLite can change a CHECK) must be a callable, and owns its own FK handling via `PRAGMA defer_foreign_keys` — `PRAGMA foreign_keys` is a no-op inside a transaction.
+   - **A net-new *table* needs no migration at all**: its `CREATE TABLE IF NOT EXISTS` goes in that module's `init_db()`, per `docs/todo.md`'s Resolved Items.
+   - **`PRAGMA user_version` is frozen and means nothing.** The live `career.db` keeps its historical 4; the runner never reads or writes it. Do not reintroduce it as a gate.
+   - *Superseded:* the old rule required a globally-unique `user_version` ≥ 5 for every migration in any module. That decree was a manual workaround for a shared namespace that did not need to be shared, and it failed silently when forgotten — see ADR-004 for the full reasoning and the Phase 17 regression that forced it.
 7. **Offline-first always** — core logic never depends on connectivity.
 8. **Default Sonnet-5-medium; escalate to Opus only on evidence.**
 9. **Orchestrator routes. Executors build.** Never reverse this.

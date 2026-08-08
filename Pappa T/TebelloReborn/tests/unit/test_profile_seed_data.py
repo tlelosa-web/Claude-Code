@@ -6,6 +6,9 @@ from pathlib import Path
 from src.profile.schema import CandidateProfile
 
 SEED_PATH = Path(__file__).parent.parent.parent / "data" / "profile_seed.json"
+MASTER_CV_PATH = (
+    Path(__file__).parent.parent.parent / "data" / "Tebello_Lelosa_Master_CV_2026.md"
+)
 
 
 def _load_profile() -> CandidateProfile:
@@ -54,3 +57,32 @@ class TestProfileSeedData:
         profile = _load_profile()
 
         assert "Gauteng" in profile.region
+
+
+class TestSeedContactDetails:
+    """Phase A (indeed-submit-adapter.md §Amendment A5). These two values are
+    what Stage 6 types into Indeed's application form, so they have to be real
+    and they have to agree with the CV attached to the same application."""
+
+    def test_contact_details_are_present_and_plausible(self):
+        profile = _load_profile()
+
+        assert "@" in profile.email and "." in profile.email.split("@")[-1]
+        assert sum(ch.isdigit() for ch in profile.phone) >= 9
+
+    def test_contact_details_match_the_master_cv(self):
+        """An employer sees both at once. If the seed and the CV ever disagree,
+        the application contradicts itself — and nothing else in the pipeline
+        would notice, since the CV is authored by hand and the form is filled
+        from the database."""
+        profile = _load_profile()
+        cv_text = MASTER_CV_PATH.read_text(encoding="utf-8")
+
+        assert (
+            profile.email in cv_text
+        ), f"seed email {profile.email!r} does not appear in the Master CV"
+        cv_digits = "".join(ch for ch in cv_text if ch.isdigit())
+        seed_digits = "".join(ch for ch in profile.phone if ch.isdigit())
+        assert (
+            seed_digits in cv_digits
+        ), f"seed phone {profile.phone!r} does not appear in the Master CV"

@@ -74,6 +74,8 @@ def _profile_json_file(tmp_path, **overrides):
     data = {
         "name": "Tebello Lelosa",
         "region": "Gauteng, South Africa",
+        "email": "tlelosa@gmail.com",
+        "phone": "078 481 8711",
         "skills": ["Operations Management", "Lean Manufacturing"],
         "experience": [
             {
@@ -97,6 +99,8 @@ def _make_profile(**overrides) -> CandidateProfile:
     defaults = dict(
         name="Tebello Lelosa",
         region="Gauteng, South Africa",
+        email="tlelosa@gmail.com",
+        phone="078 481 8711",
         skills=["Operations Management"],
         experience=[
             ExperienceEntry(
@@ -468,3 +472,36 @@ class TestDispatchRunAll:
         assert mock_run_doc_gen.call_count == 2
         mock_run_review_gate.assert_called_once()
         assert mock_run_review_gate.call_args.args[0].id == 2
+
+
+class TestSubmitArgParsing:
+    """Stage 6 CLI: career-engine submit --vacancy-id <int> | --all [--manual]"""
+
+    def test_submit_parses_vacancy_id(self):
+        parser = build_parser()
+        args = parser.parse_args(["submit", "--vacancy-id", "7"])
+        assert args.command == "submit"
+        assert args.vacancy_id == 7
+        assert args.all is False
+        assert args.manual is False
+
+    def test_submit_parses_all(self):
+        parser = build_parser()
+        args = parser.parse_args(["submit", "--all"])
+        assert args.all is True
+        assert args.vacancy_id is None
+
+    def test_submit_parses_manual(self):
+        parser = build_parser()
+        args = parser.parse_args(["submit", "--vacancy-id", "7", "--manual"])
+        assert args.manual is True
+
+    def test_submit_requires_a_target(self):
+        parser = build_parser()
+        with pytest.raises(SystemExit):
+            parser.parse_args(["submit"])
+
+    def test_submit_rejects_both_targets(self):
+        parser = build_parser()
+        with pytest.raises(SystemExit):
+            parser.parse_args(["submit", "--vacancy-id", "7", "--all"])

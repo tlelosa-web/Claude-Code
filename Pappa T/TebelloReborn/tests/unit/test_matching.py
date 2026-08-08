@@ -15,6 +15,8 @@ def _profile() -> CandidateProfile:
     return CandidateProfile(
         name="Tebello Lelosa",
         region="Gauteng, South Africa",
+        email="tlelosa@gmail.com",
+        phone="078 481 8711",
         skills=["Production Planning", "SOX Compliance"],
         experience=[
             ExperienceEntry(

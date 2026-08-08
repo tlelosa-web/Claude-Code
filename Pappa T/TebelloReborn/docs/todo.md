@@ -1,10 +1,39 @@
 # Task Queue — TebelloReborn (Career Engine)
 
-> Updated: 2026-08-01 (added tools/dashboard — live vacancy pipeline dashboard, dev tool; see Completed and session-log.md)
+> Updated: 2026-08-08 (**Indeed adapter Phase E — offline half built**, Phase 22, steps 131–139:
+> `questions.py` (A6 fingerprints, A11 sensitivity), `drafting.py` (A20/A9/A11), the `IndeedAdapter`
+> shell with A1's static `can_handle()`, `prep.py` + the `prep-submission` CLI, and
+> `tools/indeed_login_setup.py`. **`playwright` and Chromium are now installed on this machine** —
+> the constraint every phase up to D was built around is gone, though `pyproject.toml` still declares
+> the dependency at Phase H. **Steps 140–141 remain and need Tebello:** `inspect_apply_flow()` is
+> unwritten and the adapter is deliberately **not registered** in `eligibility.ADAPTERS`, because its
+> selectors need a live recon that needs a saved Indeed session that needs a human at a keyboard.
+> Previously: Phase D, Phase 21, steps 128–130 — `browser.py`'s
+> CAPTCHA detection, combined navigation-state check, continuous session-expiry detection, and step
+> log. Earlier: Phase C, Phase 20, steps 123–127 — the prep-state
+> submit gate wired into `pipeline.py`, `pending_review` reporting, and the `--all` auto-submit
+> refusal. Also earlier the same day: Phase B, Phase 19, steps 118–122 — the
+> `submission_preps`/`screening_questions` tables, the `pending_review` outcome, the widened
+> `submissions.outcome` CHECK with its migration and drift guard, and `submission_prep_ready()`.
+> Also earlier the same day: ADR-004's schema migration ledger,
+> Phase 18 steps 107–117; Indeed adapter Phase A, steps 103–104, see Phase 17. Stage 6 submission
+> core built 2026-08-06, Phase 16 steps 81–102.)
 
 ---
 
 ## Known Issues (machine-specific, not architecture)
+
+- **`black .` as documented in CLAUDE.md now reformats 17 unrelated files — 2026-08-06.** Running the
+  documented pre-commit gate (`black . && ruff check .`) under this machine's current tooling
+  (black 26.5.1, ruff 0.15.22) rewrites 7 files in `_archive_qwen_prototype/` (protected by Hard Rule
+  12) plus 10 in `src/`/`tests/`/`tools/` that no one touched — formatter-version drift, since the
+  committed code was formatted by an older black. `ruff check .` separately reports 10 pre-existing
+  errors, 9 of them in the archive and 1 (`F401 json`) in `tests/unit/test_vacancy_match_result.py`.
+  So the gate as literally written does not pass on a clean checkout. Worked around during the Phase
+  16 build by scoping both tools to the files actually being changed. **Not fixed here** — a
+  repo-wide reformat is its own decision and its own commit, and it should not ride along inside a
+  feature build. Options: bump and reformat everything once, pin black in the dev extra, or add a
+  `[tool.black]`/`[tool.ruff]` `exclude` for `_archive_qwen_prototype/`.
 
 - **This machine's `.env` runs `OLLAMA_MODEL=qwen3:1.7b`, not the documented `qwen3:8b` default
   (CLAUDE.md/.env.example unchanged) — 2026-08-01.** Real go-live `run-all` hit severe RAM pressure
@@ -201,7 +230,345 @@
 - [x] 77. `docs/decisions/ADR-002-apify-job-scraping.md` — second dated amendment (`## Amendment — 2026-07-29 (Automated Discovery)`), additive
 - [x] 78. `docs/api-patterns.md` — PNet/Careers24 section (crawler_client.py + extractor.py + discovery.py subsections), Ollama section path fix
 - [x] 79. `CLAUDE.md` — External Client Patterns table + Directory Structure update for `crawler_client.py`/`discovery.py`/`discovery_config.json`
-- [x] 80. `docs/todo.md` — this section (you are here)
+- [x] 80. `docs/todo.md` — this section
+
+### Phase 16 — Stage 6: Submission core, platform-agnostic (see `docs/specs/submission-core.md` for full detail; Codex-reviewed and amended 2026-08-06 — **built 2026-08-06**)
+
+Ports and corrects the hub's `2026-08-04-tebelloreborn-playwright-auto-submit.md`, which scoped the
+build to **LinkedIn Easy Apply only** — a platform this project dropped on 2026-08-01, with zero rows
+in `career.db`. Built as written it could have submitted nothing. Scope became the platform-agnostic
+core; the site adapter is a separate, later task (see Open Items).
+
+- [x] 81. [RED] `tests/unit/test_submission_schema.py` — enums, `SubmissionAttempt`, tz-aware `attempted_at`
+- [x] 82. [GREEN] `src/submission/schema.py` + `__init__.py`
+- [x] 83. [RED] `tests/unit/test_vacancy_schema.py` — `submitted`/`submission_failed` statuses
+- [x] 84. [GREEN] `src/vacancy_search/schema.py` — `VALID_STATUSES` (no migration — Python-validation only, step-59 precedent)
+- [x] 85. [RED] `tests/unit/test_vacancy_db.py` — submission transitions, retry-that-fails-again, `submitted` terminal, Hard Rule 1 guards
+- [x] 86. [GREEN] `src/vacancy_search/db.py` — `VALID_TRANSITIONS` extension
+- [x] 87. [RED] `tests/unit/test_submission_db.py` — table, per-connection FK, CHECK constraints, `user_version` untouched
+- [x] 88. [GREEN] `src/submission/db.py` — `init_db`/`save_attempt`/`get_attempts_for_vacancy`; **no `migrations.py`** (Hard Rule 6)
+- [x] 89. [RED] `tests/unit/test_submission_session.py` — path resolution + `.gitignore` credential guard
+- [x] 90–91. [GREEN] `src/config.py` + `.gitignore` (`SESSION_STATE_PATH`, `.session/`) and `src/submission/session.py`. **Landed as one commit**: the `.gitignore` entry alone leaves the suite failing collection, and Hard Rule 4 requires tests passing before a commit
+- [x] 92. [RED] `tests/unit/test_submission_eligibility.py` — empty registry, capability dispatch, declining adapter
+- [x] 93. [GREEN] `src/submission/eligibility.py` — `SubmitAdapter` Protocol + `ADAPTERS` (empty by design) + `get_adapter`/`is_auto_submittable`
+- [x] 94. [RED] `tests/unit/test_submission_pipeline.py` — approval gate, all outcome paths, persistence-before-transition
+- [x] 95. [GREEN] `src/submission/pipeline.py` — `run_submission()`, `SubmissionNotAllowedError`, `SubmissionStatusError`
+- [x] 96. [RED] `tests/unit/test_main.py` + `tests/unit/test_submission_cli.py` — `submit` parsing and dispatch
+- [x] 97. [GREEN] `src/submission/cli.py` + `src/main.py` wiring. **Deviation from the spec:** the spec put the CLI in `main.py`; inlining it pushed `main.py` to 354 lines, past this project's own 300-line standard, so it moved to `src/submission/cli.py` — matching how `run_review_gate` already lives in `src/review/cli.py`. Dispatch tests moved with it
+- [x] 98. `tests/integration/test_full_pipeline.py` — offline end-to-end: approved → submit → `not_supported` recorded, status unchanged, operator told to submit by hand; plus Hard Rule 1 end-to-end and a `--all` summary run
+- [x] 99. `docs/architecture.md` — Stage 6 section + extended state machine
+- [x] 100. `CLAUDE.md` — Stage 6, submit commands, `src/submission/`, and the global-`user_version` rule in Hard Rule 6
+- [x] 101. `docs/todo.md` — this section
+- [x] 102. `pyproject.toml` — `pytest-cov` in dev extras so CLAUDE.md's ≥80% standard is enforceable (dev-only; runtime deps stay at three). Verified: **100%** across all seven `src/submission/` modules
+
+**Result:** 344 tests passing (was 249), zero regressions. No `playwright` dependency, no browser
+binary, nothing on the wire.
+
+### Phase 17 — Indeed submit adapter, **Phase A only** (see `docs/specs/indeed-submit-adapter.md`
+§Amendment A5 — built 2026-08-07)
+
+Contact details for Indeed's application form. Phase A blocks every other phase in that spec, so it
+went first; **B–H are not started.**
+
+- [x] 103. [RED] `tests/unit/test_profile_schema.py` + `tests/unit/test_profile_db.py` (`9d4ee17`) —
+      `email`/`phone` in `REQUIRED_FIELDS`, migration versions asserted as `[5, 6]`, a test that
+      reproduces the live DB's `user_version = 4` pre-contact state, and an actionable-error test for
+      a profile row written before the migration
+- [x] 104. [GREEN] `src/profile/schema.py` + `migrations.py` + `db.py` + `data/profile_seed.json`
+      (`379a4b2`) — real values sourced from `data/Tebello_Lelosa_Master_CV_2026.md`
+      (`tlelosa@gmail.com`, `078 481 8711`), with a test asserting the seed and the CV never drift
+      apart (an employer sees both on the same application)
+- [x] 105. `.gitignore` — `*.db.backup-*`. `*.db` does **not** match
+      `career.db.backup-pre-phase-a-2026-08-07`; the timestamp suffix means the filename doesn't end
+      in `.db`, so a `git add -A` would have committed a full copy of the live career data
+- [x] 106. `docs/todo.md` + `docs/session-log.md` — this section
+
+**Result:** 362 tests passing (was 344), zero regressions.
+
+> **A real regression was introduced by this phase and caught by the integration suite, not by any
+> unit test** — the same class of gap as the Phase 7 fpdf2 bug and the Apify payload-shape bugs.
+> `profile` owns the highest migration versions (5–6) and `import-profile` is CLAUDE.md's documented
+> *first* command. So on a fresh database `profile.init_db()` advanced the shared `user_version`
+> 0 → 6 before `vacancy_search.init_db()` ever ran; its migrations 1–4 were then skipped by
+> `if version > current`, and because its baseline `CREATE TABLE` omits those columns, `vacancies`
+> came out with no `score`/`strengths`/`weaknesses`/`recommendation` at all — `IndexError: No item
+> with that key` on the first read, on every new install.
+>
+> **Fix (scoped to `src/profile/` deliberately):** schema state, not the counter, is the source of
+> truth. `email`/`phone` are in profile's baseline `CREATE TABLE` *as well as* in migrations 5/6, and
+> `apply_migrations` skips an `ADD COLUMN` whose column already exists, advancing `user_version` only
+> for migrations it actually ran. A fresh database therefore reaches the right shape while staying at
+> version 0, leaving the lower numbers free for `vacancy_search`. Two regression tests lock both
+> orderings and assert they converge on the same schema.
+>
+> Verified against a **copy** of the live `career.db` before anything touched the real one:
+> `user_version` 4 → 6, both columns added, all 10 vacancies and 6 approved applications intact,
+> and `import-profile` repopulating the contact details cleanly.
+
+### Phase 18 — ADR-004: schema migration ledger (built 2026-08-07)
+
+Replaces the shared `PRAGMA user_version` counter with a
+`schema_migrations(module, version, applied_at)` ledger and one shared runner. Offline throughout.
+See `docs/decisions/ADR-004-schema-migration-ledger.md` and its `§Amendment — 2026-08-07 (Codex
+fold-in)`.
+
+- [x] 107. [RED+GREEN] `tests/unit/test_shared_migrations.py` + `src/shared/migrations.py`
+      (`899890a`) — landed together because the RED state is a `ModuleNotFoundError` that breaks
+      suite collection, same precedent as steps 90–91
+- [x] 108. [RED] `tests/unit/test_profile_db.py` — counter assertions become ledger assertions
+      (`98725f7`)
+- [x] 109. [GREEN] `src/profile/migrations.py` delegates (`7df3d51`)
+- [x] 110. [RED] `tests/unit/test_vacancy_db.py` — baseline declares the match columns, ledger
+      records 1–4 (`4394890`)
+- [x] 111. [GREEN] `src/vacancy_search/migrations.py` delegates + `db.py` baseline gains
+      `score`/`strengths`/`weaknesses`/`recommendation` (§6, `278a5eb`)
+- [x] 112. [GREEN] `src/doc_gen/migrations.py` + `src/review/migrations.py` delegate (`fe5866b`)
+- [x] 113. `tests/unit/test_submission_db.py` — `test_does_not_advance_user_version` becomes its
+      ledger equivalent (`bc6ae0a`)
+- [x] 114. [GREEN] Phase-B-shaped table-rebuild acceptance test (`6545af7`) — **the step that proves
+      the stated blocker is solved**, not merely asserted
+- [x] 115. `tests/integration/test_full_pipeline.py` — all five `init_db()`s against one database in
+      both orders (`bbcef1c`)
+- [x] 116. Verified against a **copy** of the live `career.db`, never the real file
+- [x] 117. Docs closeout — CLAUDE.md Hard Rule 6 rewritten, `docs/architecture.md` gains a Schema
+      Migrations section, this file, `docs/session-log.md`
+
+**Result:** 399 tests passing (was 362), zero regressions.
+
+> **Two findings from building it, both verified against this machine's sqlite3 3.49.1 rather than
+> assumed.** The first came from the Codex pass and would have failed at runtime: a migration payload
+> of `str` cannot express Phase B's table rebuild, because `Connection.execute()` raises
+> `ProgrammingError` on multi-statement SQL — and `executescript()` is no escape hatch, since it
+> issues an **implicit COMMIT before running**, which would have silently voided the ADR's
+> "commits once at the end" atomicity. Payloads are now `str | Callable[[sqlite3.Connection], None]`
+> with one `BEGIN IMMEDIATE` per migration. The second surfaced while making the rebuild test
+> actually pass: `PRAGMA foreign_keys` is a **no-op inside a transaction**, so SQLite's documented
+> "turn foreign keys off first" rebuild step is unavailable to a migration the runner has already
+> wrapped. `PRAGMA defer_foreign_keys` is settable mid-transaction and is what a rebuild must use.
+> Phase B should follow `TestPhaseBShapedRebuild`'s shape rather than the SQLite docs verbatim.
+
+### Phase 19 — Indeed submit adapter, **Phase B** (see `docs/specs/indeed-submit-adapter.md`
+§Amendment A2/A3/A4/A12 — built 2026-08-07)
+
+Screening-question state, offline throughout. Nothing on the wire, no `playwright` dependency, the
+adapter registry still empty.
+
+- [x] 118. [RED] `tests/unit/test_submission_schema.py` (`6e457a6`) — `PrepStatus` (7 states),
+      `FieldType` (with `radio`), `QuestionDecision`, `Sensitivity`, `SubmissionPrep`,
+      `ScreeningQuestion`, `PrepReadiness`, `SubmissionOutcome.PENDING_REVIEW`, plus a test pinning
+      `prep_failed` as never-added (A3 resolved it by deletion, not definition)
+- [x] 119. [GREEN] `src/submission/schema.py` (`adc3429`)
+- [x] 120. [RED] `tests/unit/test_submission_db.py` (`f80637c`) — both tables, CHECK constraints,
+      per-connection FK enforcement, `prep_id` scoping, one test per row of A2's gate table, and
+      three tests carrying the A4 trap. `test_records_nothing_in_the_migration_ledger` converted to
+      `test_records_its_own_version_1_and_disturbs_no_other_module` — Phase B ends its premise
+- [x] 121. [GREEN] `src/submission/db.py` + `src/submission/migrations.py` (`ad04b4a`)
+- [x] 122. Docs closeout — `docs/architecture.md` (Stage 6 screening-question state + two new
+      Schema Migrations bullets), `CLAUDE.md` (Hard Rule 1, Stage 6, directory structure), this
+      file, `docs/session-log.md`
+
+**Result:** 456 tests passing (was 399), zero regressions. Coverage on the new code: `schema.py`
+100%, `db.py` 99%, `migrations.py` 95%.
+
+> **Deviation from the spec, deliberate: Phase B ships a real migration, not only the DDL edit and
+> the drift guard.** A4's resolution was two-part — edit the inlined `CREATE TABLE` string (valid
+> only while `submissions` doesn't exist, which it verified is still true of the live database) and
+> add a guard that refuses loudly otherwise. Written that way, a database where `submit` had already
+> run once would fail at `init_db()` with no automated remedy. ADR-004 landed between the spec and
+> this build and makes the remedy cheap: `src/submission/migrations.py` version 1 rebuilds the table,
+> following `TestPhaseBShapedRebuild` rather than SQLite's documented procedure, since
+> `PRAGMA foreign_keys` is a no-op inside the runner's transaction and `defer_foreign_keys` is the
+> one settable mid-transaction. The guard stays, now as a genuine last-resort invariant for the cases
+> a migration cannot reach — a restored backup, a hand-edited schema, a ledger row without the DDL
+> change it claims. A4's own closing note ("the fix is SQLite's standard table rebuild … inside a
+> migration") is exactly this, brought forward from *if the guard fires* to *before it can*. Its
+> "globally-unique `user_version ≥ 5`" wording is superseded by ADR-004 — version 1, per-module.
+>
+> **The migration self-guards, which a callable has to do for itself.** The runner's
+> `_already_satisfied` shortcut is scoped to `ADD COLUMN` strings and never to a callable, so
+> `_widen_outcome_check()` reads `sqlite_master` and returns early when the baseline already produced
+> the widened shape. Without that, every fresh database would rebuild a table it had just correctly
+> created.
+>
+> **Verified against a copy of the live `career.db`, never the real file** (sqlite3 backup API, not a
+> file copy): 10 vacancies, 10 approvals, 43 `generation_log` rows and the profile all intact,
+> `integrity_check = ok`, `user_version` still frozen at 4, the three tables present with the widened
+> CHECK, and all 6 approved vacancies correctly gating to `pending_review` with "never prepped".
+
+### Phase 20 — Indeed submit adapter, **Phase C** (see `docs/specs/indeed-submit-adapter.md`
+§Amendment A2/A3/A15 — built 2026-08-07)
+
+The prep-state gate, wired. Offline throughout, adds no new state — it consumes what Phase B built.
+Nothing on the wire, no `playwright` dependency, the adapter registry still empty.
+
+- [x] 123. [RED] `tests/unit/test_submission_pipeline.py` (`861cff5`) — one test per row of A2's gate
+      table, the two orderings below, and A15's batch refusal. Existing adapter-path tests updated to
+      seed a prep row: reaching `submit()` without one is now the bug, not incidental setup
+- [x] 124. [GREEN] `src/submission/pipeline.py` + `src/submission/eligibility.py` (`80a49ee`) —
+      `PENDING_REVIEW` joins `NOT_SUPPORTED` as a no-transition outcome; `_decide()` consults
+      `submission_prep_ready()`; `run_submission(batch=)`; `can_handle()`'s pure/offline contract (A1)
+- [x] 125. [RED] `tests/unit/test_submission_cli.py` (`fdbacaf`) — `pending_review` wording, its own
+      summary bucket, `batch=` on both dispatch paths, exit codes
+- [x] 126. [GREEN] `src/submission/cli.py` (`86d90c4`)
+- [x] 127. Docs closeout — `docs/architecture.md` (the gate table, the `--all` policy, `can_handle()`'s
+      amended contract), `CLAUDE.md` Stage 6, this file, `docs/session-log.md`
+
+**Result:** 485 tests passing (was 456). Coverage on the phase's three modules: `pipeline.py` 100%,
+`cli.py` 100%, `eligibility.py` 100%.
+
+> **Two orderings decided here, both pinned by their own test, because getting either wrong is
+> silent.**
+>
+> 1. **The gate runs before the session check.** Every answer it gives is state `prep-submission`
+>    already recorded, so none of it needs a live session to read. Putting the session check first
+>    would report a recorded `external_ats` as "no saved browser session — run the login setup",
+>    sending Tebello to fix something that isn't broken and hiding the one finding that genuinely
+>    means "submit by hand".
+> 2. **The `--all` refusal is checked last, not first.** A vacancy that also has a real gate reason
+>    hears that reason instead: "run `prep-submission`" is more use than "use an explicit
+>    `--vacancy-id`" to someone who would have to prep first anyway. Checking it first would make
+>    every un-prepped vacancy in a batch report the wrong next step.
+>
+> **A15 confirmed with Tebello before the build** (spec §Open Items, item 5 — it was raised there
+> precisely so the behavior wouldn't be a surprise). Submitting the 6 approved Indeed vacancies will
+> be six deliberate commands, by design.
+>
+> **`pending_review` and `not_supported` both map to no status transition**, so the CLI's wording is
+> the *only* thing separating them for the operator. That is why `report_attempt()` gets a dedicated
+> branch and its own asserted substrings, and why the summary counts them in separate buckets:
+> folding them together would tell Tebello to submit by hand a batch that one `prep-submission` run
+> may unblock.
+
+---
+
+### Phase 21 — Indeed submit adapter, **Phase D** (see `docs/specs/indeed-submit-adapter.md`
+§Amendment A7/A17/A18/C3 — built 2026-08-07)
+
+`src/submission/browser.py`: everything `prep-submission` and `submit` will both need to read a live
+page safely. **Offline throughout, and still no `playwright` dependency** — Phase H declares it, and
+it is not installed on this machine, so the whole phase had to be buildable and testable without one.
+
+- [x] 128. [RED] `tests/unit/test_submission_browser.py` (`88123f6`) — A7's five abort states and
+      seven never-abort states, A17's two-signal check, A18's expiry, C3's step log, and two
+      ordering tests
+- [x] 129. [GREEN] `src/submission/browser.py` (`a0757c2`)
+- [x] 130. Docs closeout — `docs/architecture.md` (the Phase D block), `CLAUDE.md` (Stage 6 +
+      directory structure), this file, `docs/session-log.md`
+
+**Result:** 538 tests passing (was 485). `browser.py` 95% covered — the 6 uncovered lines are the
+playwright body inside `authenticated_page()`, which is exactly what A19 exempts.
+
+> **The design decision that made the phase possible: judgment is separated from observation.**
+> The adapter observes the page (which iframes exist, whether each is visible, which landmarks it
+> found); `browser.py` judges what was observed and never queries a DOM. That is what lets every A7
+> rule be exercised from a plain unit test with no browser present, instead of waiting for Phase E's
+> live recon to test any of it.
+>
+> **Two orderings pinned by their own test**, same class as Phase C's:
+>
+> 1. **Session expiry is decided before "unrecognized step".** An auth page fails the landmark check
+>    too, so branch order alone decides whether Tebello is told to re-run the login setup or to debug
+>    a form that is fine.
+> 2. **A missing session is reported before a missing `playwright`.** Both are true on a fresh
+>    machine, and "install playwright" is the wrong first instruction for someone who has simply never
+>    run the login setup — and the harder of the two to act on.
+>
+> **Three places the spec left room, decided deliberately rather than by default:**
+>
+> - **Landmark selectors are not invented.** A17 needs a URL segment *and* a structural landmark, but
+>   recon only ever verified the segments. `WizardStep` stores landmark *names*; Phase E maps them to
+>   real selectors from live recon. `WIZARD_STEPS` carries only the two segments recon actually saw —
+>   the review step was never reached, so it is absent rather than plausibly guessed. Same
+>   empty-until-known discipline as `eligibility.ADAPTERS`, and the same lesson as the Apify
+>   payload-shape bug.
+> - **A7 rule 5 extended to `recaptcha/enterprise/anchor`.** The spec names only `api2/anchor`, but
+>   rule 1 already pairs both bframe paths and the escalation reasoning is identical. Extra detection
+>   means extra aborts — the safe direction.
+> - **`INDEED_AUTH_MARKERS` deliberately short.** Recon ran signed in and never saw an expired
+>   session, so every marker is inferred and a false positive tells Tebello to re-run a login setup
+>   that was fine. A broad `/auth` was dropped for that reason; `login_form_present` is the signal
+>   that needs no route guess at all.
+
+**Known deviation:** `browser.py` is 397 lines against `CLAUDE.md`'s documented 300-line file
+standard. Not split — the spec names this single module, and `submission/db.py` already sits at 370.
+Worth a deliberate answer at Phase H's closeout rather than drift.
+
+---
+
+### Phase 22 — Indeed submit adapter, **Phase E** (see `docs/specs/indeed-submit-adapter.md`
+§Amendment A1/A6/A9/A11/A12/A20 — offline half built 2026-08-08; 140–141 open)
+
+The first phase that touches the network, and it splits at a hard line: everything that *judges* an
+apply form is buildable now, and everything that *observes* one needs a live session Tebello has to
+create by hand. Steps 131–139 are the first half. **`playwright` 1.62.0 and Chromium 151 were
+installed on this machine at the start of this phase** — the constraint Phases A–D were built around
+no longer holds, though `pyproject.toml` still declares the dependency at Phase H per the spec.
+
+- [x] 131. [RED] `tests/unit/test_submission_questions.py` (`afeb202`) — A6 identity and drift in
+      both directions, A11's three classes plus a false-positive class of its own
+- [x] 132. [GREEN] `src/submission/questions.py` (`3b39c1c`)
+- [x] 133. [RED] `tests/unit/test_submission_drafting.py` (`bf0ca21`) — A20's constraint placement,
+      A11's never-called assertion, A9's throttle/error paths
+- [x] 134. [GREEN] `src/submission/drafting.py` (`b349af2`)
+- [x] 135. [RED] `tests/unit/test_submission_adapters_indeed.py` (`74cf83d`) — A1's predicate against
+      the six real approved URLs, and its purity
+- [x] 136. [GREEN] `src/submission/adapters/` + `ExtractedQuestion`/`PrepResult` (`0423665`)
+- [x] 137. [RED] `tests/unit/test_submission_prep.py` (`07bee82`) — B1, B2, B3, A9, A12's re-prep
+      isolation
+- [x] 138. [GREEN] `src/submission/prep.py` + `cli.py` + `main.py` (`4b5ab8d`)
+- [x] 139. `tools/indeed_login_setup.py` + its two pure helpers' tests (`6fcd866`)
+- [x] 139a. Session reworked from a `storageState` file to a **Chrome profile directory**
+      (`1452059`) — Indeed refuses an automated sign-in, so the login left automation entirely. See
+      the spec's 2026-08-08 recon findings 1.
+- [ ] 140. **Live recon → `inspect_apply_flow()`**, the `WIZARD_STEPS` landmark selectors, the review
+      step's URL segment, `INDEED_AUTH_MARKERS` confirmation, and **registering the adapter in
+      `eligibility.ADAPTERS`**. **Partially done 2026-08-08 — see the spec's second-pass recon
+      findings.** Established: the wizard renders fine under automation once signed in; the
+      resume-selection URL segment matches `WIZARD_STEPS` exactly; `FrameView.visible` must use a
+      real visibility check, not a bounding box, or the reCAPTCHA v3 badge aborts every healthy run.
+      ⚠️ **Still unknown, and blocked:** the questions step's selectors and the review step's URL
+      segment. The pass ended when Cloudflare bot-challenged the job page ("Just a moment...") after
+      four automated runs in ~15 minutes. **No attempt was made to pass that challenge and none
+      should be** — same hard line as the CAPTCHA rule. Resuming needs a cooldown and much slower
+      pacing, and is a decision for Tebello rather than an automatic retry.
+- [ ] 141. Docs closeout — `docs/architecture.md`, `CLAUDE.md`, this file, `docs/session-log.md`
+
+**Result so far:** 673 tests passing (was 538). Zero regressions.
+
+> **The adapter is deliberately NOT registered in `eligibility.ADAPTERS` yet**, and a test pins that
+> absence. `inspect_apply_flow()` needs selectors only a live recon can supply, and registering
+> first would let a real vacancy reach a prep run that could only fail. Same empty-until-known
+> discipline as `WIZARD_STEPS` omitting the review step, and `ADAPTERS` itself since Phase 16.
+>
+> **Three places the spec was wrong or one step short, corrected rather than followed:**
+>
+> - **A1's own code sketch accepts a lookalike domain.** `"notindeed.com".endswith("indeed.com")` is
+>   `True`. `browser.py._is_google_block_page` already refuses that shortcut deliberately;
+>   `is_indeed_host()` now does too — and the identical bug was then reintroduced by hand-writing the
+>   check a second time in the login script, where its own test caught it. It is one shared function
+>   now, which is the actual fix.
+> - **A6's normalizer is one step short.** Its four steps end at the trailing-marker strip, leaving
+>   `"question "` for a form that renders `"Question *"` and `"question"` for one that renders
+>   `"Question"` — one question with two fingerprints, over exactly the styling the rule exists to
+>   ignore. A final strip, pinned by its own test.
+> - **A9's correction needed a companion decision the spec didn't make.** Prep records a row for what
+>   it learns about a *posting*; "no adapter", "never logged in" and "no profile imported" are facts
+>   about this machine, so all three raise without writing one. A `session_expired` row for a login
+>   setup that was never run would make `submission_prep_ready()` tell Tebello to re-run
+>   prep-submission when the fix is the login script — the gate builds its own instruction from the
+>   status and never reads `detail`.
+>
+> **Classify-then-draft, not draft-then-discard.** Reversing the order satisfies the same assertion
+> about the stored row while breaking A11's actual guarantee, which is that a compensation or
+> work-authorization question is never sent anywhere at all.
+>
+> **`prep-submission` has no `--all`.** Opening an authenticated browser against six real employers'
+> forms from one command is the same class of unattended action A15 already refuses for `submit`.
+
+---
+
+
+---
 
 ---
 
@@ -319,6 +686,14 @@
 
 ## Open Items (require Tebello — not something an agent should attempt)
 
+- [x] **Shared-`user_version` migration trap — RESOLVED 2026-08-07 by ADR-004, built and verified.**
+      `docs/decisions/ADR-004-schema-migration-ledger.md` is **Accepted**, Codex-reviewed, folded in,
+      and its 12-step Build Queue is complete — see Phase 18 in the Build Queue above. All five
+      modules now delegate to one runner in `src/shared/migrations.py` and record into a
+      `schema_migrations(module, version, applied_at)` ledger; version numbers are per-module;
+      `PRAGMA user_version` is frozen and no longer gates anything. CLAUDE.md Hard Rule 6 was
+      rewritten accordingly. **Phase B is unblocked.**
+
 - [x] **Manual PNet bare-URL verification (Amendment, Open Item 4) — resolved 2026-07-31.** Tebello
       personally opened `https://www.pnet.co.za/jobs/operations-foreman/in-gauteng` (the bare path-only
       shape, no `?` query string) in an ordinary browser and confirmed it renders a working results page
@@ -350,7 +725,110 @@
 
 ## Future (not yet scheduled)
 
-- [ ] Phase 6 (post-MVP numbering — original 7-phase plan): Playwright-based auto-fill/submit, paused before final submission.
+- [ ] **Indeed site adapter for Stage 6** (was "Playwright site adapter"; before that "Phase 6,
+      post-MVP numbering"). **Two concurrent terminal sessions worked this item on 2026-08-07** — the
+      one that wrote the block below (parked at the Indeed sign-in boundary, ToS/risk unanswered),
+      and a second, later one (this entry) that got Tebello's ToS/account-risk acknowledgement
+      directly, completed the sign-in, ran a live DOM recon, and wrote a full spec. **Flagged to
+      Tebello as a real concurrent-session collision** — not resolved by this edit alone; see this
+      session's own report. The core is built (Phase 16 above) and the registry is still empty, so
+      every approved application still routes to manual today.
+
+      **Superseding update (this session, later 2026-08-07):** the three "still open" items directly
+      below are now stale.
+      1. **ToS/account-risk exposure: explicitly accepted by Tebello**, in-session, distinct from and
+         after the earlier sign-in-for-recon action (which correctly was *not* treated as that
+         acknowledgement).
+      2. **The sign-in boundary was crossed** — signed in as Tebello (he signed in himself; no agent
+         touched credentials), then a real `claude-in-chrome` walkthrough of one of the 6 approved
+         vacancies (`Utopia`, `jk=d7d04674eabafbac`) ran to the screening-questions step. **Nothing
+         was submitted.**
+      3. **The real-site smoke test requirement stands, and got bigger.** Recon surfaced two findings
+         neither prior pass had: the flow is **reCAPTCHA-protected** (now a hard, non-negotiable
+         design rule — detect and abort, never solve/defeat it, a separate risk from the ToS
+         acknowledgement above) and **employer screening questions are real, per-posting, and often
+         open-ended free-text** (one posting asked for a project-description essay) — not a pure
+         deterministic form-fill as both earlier passes assumed. Tebello decided these get
+         LLM-drafted (headless Claude Code) answers held for his explicit per-question approval
+         before any submission.
+
+      Full design, acceptance criteria, and a phase-level Build Queue:
+      `docs/specs/indeed-submit-adapter.md` (new, 2026-08-07). `/codex-review` ran on it per Hard
+      Rule 13 and returned substantive findings (an accidentally-networked `can_handle()`, no
+      question-drift policy, underspecified CAPTCHA detection, missing `prep_failed` outcome
+      semantics, duplicate-submission risk, and more).
+
+      **Codex fold-in complete (2026-08-07, later hub session) — the spec's §Amendment now closes
+      all of it, and Hard Rule 13's gate is satisfied.** 22 accepted changes (A1–A22), 6
+      clarifications, 4 considered-and-declined. The four named gaps resolved concretely:
+      `can_handle()` is now a pure offline URL predicate with all live work moved to a non-Protocol
+      `inspect_apply_flow()`; question drift is a sha256 fingerprint over normalized
+      text/type/required/options compared as a set, aborting in both directions; CAPTCHA detection
+      is five specific abort states and three explicit never-abort states (the reCAPTCHA *notice* is
+      normal and must not trip it); and `prep_failed` was **deleted** rather than defined —
+      prep failures are not submission attempts, so they go to a new `submission_preps` table whose
+      seven states also fix the "zero questions = never prepped or genuinely none?" ambiguity in
+      `all_questions_reviewed()`.
+
+      **Four further findings came from reading the code and the live `career.db` during the
+      fold-in, not from Codex** — two of them would have failed at runtime as written:
+      - **`email`/`phone` need real migrations (A5).** The spec claimed "no DB migration, same
+        precedent as `VALID_PLATFORMS`/`VALID_STATUSES`" — a false analogy. Those validate values in
+        an existing unconstrained column; these are **new columns** on the real `candidate_profile`
+        table, so `upsert_profile()` would have failed with `no such column: email`. Now
+        `(5, "ALTER TABLE candidate_profile ADD COLUMN email TEXT")` and `(6, … phone …)` in
+        `profile/migrations.py` — versions 5/6 per Hard Rule 6, the first migration this project has
+        written since that rule was recorded.
+      - **The `submissions.outcome` CHECK is a trap with a closing window (A4).** Verified: the live
+        `career.db` is at `user_version = 4` and has **no `submissions` table** — Stage 6 has never
+        run against it. So editing the inlined CHECK works today, but `CREATE TABLE IF NOT EXISTS`
+        will silently keep the old 3-value constraint the moment anyone runs `submit` once first,
+        and `pending_review` inserts would then fail at runtime. Phase B adds the value **and** a
+        DDL-drift guard in `init_db()` that refuses loudly instead.
+      - **`prep-submission` is a network command in two senses (A9).** `run_claude_code()` shells to
+        `claude -p`, which needs connectivity — "local subprocess" (ADR-003) is not "offline". Only
+        `review-questions` is genuinely offline.
+      - **No PDF path exists in the database (A16).** `generation_log` has no path column, so the
+        adapter must reconstruct `pdf_export`'s naming; Phase G promotes it to a shared
+        `resolve_export_paths()` rather than duplicating the format string.
+
+      **Phase A is built — 2026-08-07, see Phase 17 in the Build Queue above** (`9d4ee17` RED,
+      `379a4b2` GREEN). Both of its Open Items are closed: Tebello confirmed `tlelosa@gmail.com`
+      and the phone was taken from the Master CV (`078 481 8711`), and **A15 was confirmed as
+      wanted** — `submit --all` will refuse auto-submit, so the 6 approved vacancies go out as six
+      deliberate single commands (spec Open Item 5).
+
+      **Backup (spec Open Item 4) — done twice, by two concurrent sessions.** Two byte-identical
+      copies of the same unmigrated `career.db` now exist:
+      `career.pre-migration-5-6-20260807.db` (sqlite3 backup API, integrity-checked and
+      row-count-verified — the better-made one, recorded in `6c7058e`) and
+      `career.db.backup-pre-phase-a-2026-08-07` (plain file copy; safe here, verified no WAL
+      sidecars existed at the time). Both are gitignored. **One should be deleted once Tebello
+      picks which to keep** — not done unprompted, it's real career data.
+
+      **Two things Phase A deliberately did not do:**
+      1. **The live `career.db` is still at `user_version = 4`, unmigrated.** Migrations 5/6
+         auto-apply on the next `init_db()` from any command, after which `get_profile()` raises an
+         actionable error until `career-engine import-profile --file data/profile_seed.json` is
+         re-run to populate the contact details. Verified end-to-end on a copy.
+      2. **The shared-`user_version` fix covers `src/profile/` only** — see the new Open Item
+         above. Worth settling before Phase B, which is the next thing that adds a migration.
+
+      **Phase B is built — 2026-08-07, see Phase 19 in the Build Queue above** (`6e457a6`,
+      `adc3429`, `f80637c`, `ad04b4a`). Both tables exist, `pending_review` is a real outcome, and
+      `submission_prep_ready()` implements A2's gate table in full. The A4 trap is closed by a real
+      migration rather than only a guard — see the deviation note in Phase 19.
+
+      **Phase C is built — 2026-08-07, see Phase 20 in the Build Queue above** (`861cff5`,
+      `80a49ee`, `fdbacaf`, `86d90c4`). The gate is wired, `pending_review` reaches the operator with
+      the command it needs next, and `--all` refuses to auto-submit (A15, confirmed with Tebello
+      before the build). Still offline, still no adapter registered — every approved application
+      routes to manual today.
+
+      Next: **Phase D** — `src/submission/browser.py`: session load, expiry detection (A18), CAPTCHA
+      detection (A7), the combined navigation-state check (A17), step logging (C3). Offline for the
+      logic; exercised live in E/G. The `playwright` runtime dependency itself is not declared until
+      Phase H, per the amended phase table — Phase D writes the logic that will use it.
 - [ ] Phase 7 (post-MVP numbering): tracking dashboard (applications, match-score distribution, response rate).
 - [ ] Decide whether recruiter cold-outreach (in `data/legacy_reference/`, not part of the original 7-phase plan) gets revived as a later phase.
 - [ ] Volume-cap / scheduler layer for document generation (ADR-003 §6, open judgment call #1) — only if Tebello confirms a controlled-batch need; would need its own spec + ADR, and likely a `PRAGMA user_version` migration via the `src/doc_gen/migrations.py` stub (step 34).

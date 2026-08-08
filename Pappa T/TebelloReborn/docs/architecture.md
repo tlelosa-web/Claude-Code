@@ -73,30 +73,82 @@ Responsibilities:
 
 Responsibilities:
 - CLI gate mirroring `ai-outreach-agency/src/approval/cli.py` exactly: show the vacancy, show the generated assets, take a decision, **persist it** (that repo had a real bug where approval decisions were computed but never saved to the DB — this project must not repeat it).
-- `approved` is the current terminal state.
+- `approved` is no longer terminal — Stage 6 continues from there. The gate itself is unchanged: nothing reaches Stage 6 without passing through it.
+
+---
+
+### Stage 6: Submission (core built, no site adapter yet)
+
+**Module:** `src/submission/`
+**Input:** a vacancy at `approved` (or `submission_failed`, for a retry)
+**Output:** a recorded `SubmissionAttempt` → `Vacancy.status: submitted | submission_failed`, or unchanged
+**Network:** None in the current build — no adapter exists, so nothing reaches the wire
+
+Responsibilities:
+- `pipeline.run_submission()` is the single entry point and the only place that writes. It gates on `vacancy.status`, never on the presence of an `approvals` row (see `src/review/cli.py`'s closing comment).
+- `eligibility.py` holds an adapter registry that is **empty in this build, by design**. Dispatch is capability-based: an adapter is found by platform, then asked `can_handle(vacancy)` — so a registered adapter can still decline an individual posting and have it fall through to manual. `can_handle()` is pure, offline and side-effect-free (Amendment A1): it runs on every `submit`, including `--manual`, so it can never open a browser. Live findings — an external-ATS redirect, a CAPTCHA, an unrecognised form — belong to `prep-submission`, which records them as prep state for the gate below to act on.
+- With no adapter, every approved application produces a `not_supported` attempt, is reported to the operator with its URL and an explicit instruction to submit it by hand, and **stays at `approved`** — it still needs action, so the status keeps saying so.
+- `session.py` resolves the Playwright `storageState` path (`.session/storage_state.json`, gitignored — it is a live authenticated session, not config). It imports nothing from Playwright, which is what keeps this stage offline-testable with no browser installed.
+- Adapters never touch the database and never transition status. That is what makes it structurally impossible for a future adapter to route around the approval gate.
+
+**Screening-question state (Phase B, 2026-08-07 — `docs/specs/indeed-submit-adapter.md` §Amendment A2/A3/A12).** Indeed's apply flow asks per-posting screening questions that are not knowable until a browser has loaded that specific posting, so filling them cannot happen inside one synchronous `submit()` call without either skipping human review or making `submit()` block on a prompt. Two tables carry the state between the three commands that will handle it (`prep-submission` → `review-questions` → `submit`):
+
+- `submission_preps` — append-only, one row per `prep-submission` run, with a seven-value `status`. Prep state is *recorded*, never inferred: counting `screening_questions` rows alone cannot tell "prep never ran" from "prepped, and this posting genuinely has no questions", and only one of those may proceed. The absence of any prep row is the one state that genuinely is an absence.
+- `screening_questions` — one row per extracted question, scoped by `prep_id` so a re-prep's set never inherits a stale set's decisions. `decision` starts `pending` and only a human moves it. `sensitivity` marks the classes that are never LLM-drafted at all (compensation, work authorization, demographic) — a draft anchors the answer.
+- `db.submission_prep_ready()` returns the whole gate decision (prep state *and* question decisions), not just a question tally, as a `PrepReadiness`.
+- `submissions.outcome` gained `pending_review`: an adapter exists and the posting is native, but prep hasn't run or its questions aren't reviewed. Deliberately distinct from `not_supported` — "one command away" is not "no automated path exists", and conflating them would hide real progress from the operator and from any Stage 7 reader counting rows.
+
+**The submit gate (Phase C, 2026-08-07 — §Amendment A2/A3/A15).** `pipeline._decide()` consults `submission_prep_ready()` after the adapter lookup and **before** the session check. Every answer it returns is state `prep-submission` already recorded, so none of it needs a live session to read — and a recorded external-ATS finding must not be masked behind "run the login setup", which would send Tebello to fix something that isn't broken. Two orderings matter and both are pinned by tests:
+
+| latest prep state | outcome | operator's next move |
+|---|---|---|
+| *(no row)* | `pending_review` | run `prep-submission` |
+| `external_ats` | `not_supported` | submit by hand |
+| `captcha_detected`, `session_expired`, `unsupported_form`, `error` | `pending_review` | re-run `prep-submission` |
+| `no_questions` | proceeds to the adapter | — |
+| `questions_extracted`, all questions `approved`/`edited` | proceeds to the adapter | — |
+| `questions_extracted`, any question `pending` or `rejected` | `pending_review` | run `review-questions` |
+
+`pending_review` maps to **no status transition**, exactly as `not_supported` does — both mean the application still needs Tebello's action, and they differ only in which action. This is Hard Rule 1 extended past the CV and cover letter to every generated word an employer reads.
+
+**`submit --all` does not auto-submit (Amendment A15).** A vacancy that would reach a real `adapter.submit()` under `--all` is instead recorded as `pending_review` with detail `"auto-submit requires an explicit --vacancy-id"`. The refusal is checked *last*, so a vacancy with a real gate reason hears that instead — "run prep-submission" is more use than "use an explicit id" to someone who has to prep first anyway. Rationale: the accepted account-risk exposure is per-account, and six real applications in ninety seconds is a materially different risk from six deliberate single runs. `--all` is otherwise unchanged for `not_supported`, `pending_review`, and `--manual`. Confirmed with Tebello 2026-08-07 (spec §Open Items, item 5).
+
+**Browser helpers (Phase D, 2026-08-07 — §Amendment A7/A17/A18/C3).** `browser.py` holds everything `prep-submission` and `submit` will both need to read a live page safely. It is split into a pure decision layer and one live shim, and **the split is what keeps this phase offline**: the adapter is responsible for *observing* the page (which iframes exist and whether each is visible, which landmarks it found), and this module is responsible for *judging* what was observed. Nothing here queries a DOM, so every rule below is exercisable from a unit test with no browser installed — which is why `playwright` can stay undeclared until Phase H. Only `authenticated_page()` drives a browser, importing playwright lazily inside its own body, and it is the sole part of the module A19 exempts from the coverage gate.
+
+- **CAPTCHA (A7).** `captcha_reason()` aborts only on a *visible* challenge surface — either bframe path, a frame titled as a reCAPTCHA challenge, an hCaptcha frame whose src also says `challenge`, an on-screen anchor checkbox (invisible v3 never renders one interactively, so it means the flow escalated to v2), or Google's own `/sorry/` interstitial. The never-abort half is equally load-bearing: recon found the "protected by reCAPTCHA" notice and a zero-sized anchor frame on a *healthy* run, so a detector that trips on either aborts 100% of runs. Host and path are parsed separately, because an Indeed route containing `/sorry/` is not a Google block page.
+- **Navigation state (A17).** A step is recognised only on its URL segment **and** at least one structural landmark. `WizardStep` stores landmark *names*, not selectors — the adapter maps a name to a real selector at Phase E — and refuses to be constructed with an empty landmark tuple, since that silently degrades the check back to the URL contract A17 replaced. `WIZARD_STEPS` carries only the two segments recon actually observed; the review step was never reached, so it is absent rather than plausibly guessed.
+- **Session expiry (A18).** Checked continuously, and **before** the unrecognised-step branch. An auth page fails the landmark check too, so branch order alone decides whether Tebello is told to re-run the login setup or to debug a form that is fine. Its own test pins this, for the same reason Phase C pinned its two orderings. `INDEED_AUTH_MARKERS` is deliberately short: recon ran signed in and never saw an expiry, so every marker is inferred, and `login_form_present` is the one signal that needs no route guess.
+- **Step log (C3).** A plain-text line per step (timestamp, action, URL) under `.session/logs/` — derived from the session path so one `SESSION_STATE_PATH` override moves both and neither can land outside `.gitignore`. Chosen over Playwright trace/video capture on exposure grounds: an application page carries Tebello's contact details, CV content and employer text, and a trace is a rich artifact of all of it that is easy to forget on disk. **The log takes no field values because there is no parameter to pass one through** — the guarantee is structural, not a rule to remember at each call site.
+
+Not built: the adapter itself, the `playwright` dependency, and any real-site run. Those are Phases E–H of `docs/specs/indeed-submit-adapter.md`.
 
 ---
 
 ## Deferred Phases (not built in this MVP)
 
 ```
-6. Auto-Submit   → Playwright form-fill on supported job boards, paused before final click
 7. Dashboard     → tracking view: applications over time, match-score distribution,
                      interview/offer/response-rate metrics
 ```
 
-These map to Phase 6–7 of the original Drive-doc plan and will be scoped as separate, later work once the MVP pipeline (Stages 1–5) is proven end-to-end.
+Stage 6's core landed 2026-08-06 (`docs/specs/submission-core.md`); only its site adapter remains. The Dashboard maps to Phase 7 of the original Drive-doc plan and will be scoped as separate, later work.
+
+A dashboard reading submission data must treat **`vacancies.status` as current state and `submissions` as history** — the `submissions` table is an append-only attempt log with several rows per vacancy expected, so an older `not_supported` row is not evidence of the current state.
 
 ---
 
 ## Vacancy Status State Machine
 
 ```
-new → scored → asset_ready → approved
-                            → rejected
+new → scored → asset_ready → approved ──▶ submitted
+                            → rejected            ▲
+                                        └▶ submission_failed ─┘
+                                              ↺ (retry may fail again)
 ```
 
 Enforced the same way as `ai-outreach-agency`'s lead status machine (`VALID_TRANSITIONS` dict) — no stage may skip ahead, transitions checked on every write.
+
+`submitted` is terminal. `submission_failed` is reachable **only** from `approved`, which is precisely what lets the submit gate admit it for retries without ever letting an application that skipped the human gate reach a submission path — Hard Rule 1 expressed in the state machine, and asserted by test.
 
 ---
 
@@ -158,6 +210,54 @@ career-engine run-all [--status <status>]
 (`career-engine` is a placeholder console-script name pending user confirmation.)
 
 ---
+
+## Schema Migrations (ADR-004)
+
+One SQLite database (`career.db`, ADR-001), five modules with their own `db.py`
+and `init_db()`. Each module's `init_db()` creates its own tables directly
+(`CREATE TABLE IF NOT EXISTS`) and then delegates any *changes* to those tables
+to `src/shared/migrations.py`, the single migration runner.
+
+```
+src/<module>/migrations.py     MIGRATIONS = [(version, sql | callable), ...]
+        └── delegates to ──►   src/shared/migrations.py::apply_migrations(conn, module, migrations)
+                                        │
+                                        └── records each in ──►  schema_migrations(module, version, applied_at)
+```
+
+- **Versions are per-module, starting at 1.** `(profile, 5)` and
+  `(vacancy_search, 5)` are different ledger keys, so modules cannot collide.
+  Existing numbers were kept, not renumbered — `vacancy_search` holds 1–4 and
+  `profile` holds 5–6 for historical reasons only.
+- **The ledger is the record**, not `PRAGMA user_version`. That counter is
+  frozen and never read or written; the live `career.db` keeps its historical
+  `4`, which now means nothing. It was a single integer being used as a
+  multi-writer applied-migrations record, and could not answer *"has this
+  migration, from this module, already run on this database?"*
+- **A payload is a SQL string or a callable.** Callables exist because
+  `Connection.execute()` rejects multi-statement SQL and `executescript()`
+  implicitly commits — so SQLite's create/copy/drop/rename table rebuild (the
+  only way to change a CHECK) cannot be a string.
+- **Each migration commits with its ledger row, or neither does.** One
+  `BEGIN IMMEDIATE` per migration; a failure rolls both back, stops the run,
+  and leaves earlier migrations applied and recorded so a re-run resumes.
+- **An `ADD COLUMN` whose column already exists is skipped but still
+  recorded.** This is what lets a pre-ledger database be adopted with no
+  special code path: on the live `career.db`, `vacancy_search` 1–4
+  skip-and-record while `profile` 5–6 genuinely apply.
+- **A rebuild migration self-guards.** `(submission, 1)` — the first table
+  rebuild this project has written — checks the stored DDL and returns early
+  when the baseline `CREATE TABLE` already produced the widened shape. A
+  callable gets no `_already_satisfied` shortcut from the runner, so a rebuild
+  that would run against a fresh database has to decline on its own.
+- **A module whose baseline and migrations can diverge should assert it.**
+  `submission/db.py` reads `sqlite_master` after the migration and raises
+  `SubmissionSchemaDriftError` if the stored `submissions.outcome` CHECK
+  doesn't accept every `SubmissionOutcome`. `CREATE TABLE IF NOT EXISTS` is a
+  no-op against an existing table, so a DDL edit alone silently changes nothing
+  on a database that already has the table — the same class of trap the shared
+  counter was, in a different disguise. Failing at init with a named error
+  beats failing at insert with a CHECK violation.
 
 ## Relationship to `ai-outreach-agency`
 

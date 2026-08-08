@@ -17,6 +17,8 @@ def _profile(**overrides) -> CandidateProfile:
     defaults = dict(
         name="Tebello Lelosa",
         region="Gauteng, South Africa",
+        email="tlelosa@gmail.com",
+        phone="078 481 8711",
         skills=["Operations management", "Lean manufacturing", "Supply chain"],
         experience=[
             ExperienceEntry(

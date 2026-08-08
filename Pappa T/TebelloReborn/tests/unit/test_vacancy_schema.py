@@ -86,3 +86,39 @@ class TestVacancyValidation:
         assert vacancy.salary is None
         assert vacancy.deadline is None
         assert vacancy.id is None
+
+
+class TestSubmissionStatuses:
+    """Stage 6 adds two statuses. `vacancies.status` is plain TEXT with no
+    CHECK constraint, so this is Python-level validation only and needs no
+    migration — identical to step 59's VALID_PLATFORMS addition (see
+    docs/specs/submission-core.md §Migration Note)."""
+
+    def test_submitted_status_accepted(self):
+        vacancy = Vacancy(
+            company="Acme",
+            title="Operations Foreman",
+            url="https://example.com",
+            status="submitted",
+        )
+
+        assert vacancy.status == "submitted"
+
+    def test_submission_failed_status_accepted(self):
+        vacancy = Vacancy(
+            company="Acme",
+            title="Operations Foreman",
+            url="https://example.com",
+            status="submission_failed",
+        )
+
+        assert vacancy.status == "submission_failed"
+
+    def test_unknown_status_still_raises(self):
+        with pytest.raises(ValueError, match="status"):
+            Vacancy(
+                company="Acme",
+                title="Operations Foreman",
+                url="https://example.com",
+                status="submitting",
+            )

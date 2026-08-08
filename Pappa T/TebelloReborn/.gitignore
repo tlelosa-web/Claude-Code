@@ -6,14 +6,27 @@
 *.db-shm
 *.db-wal
 
+# Pre-migration database backups. `*.db` does NOT cover these — the timestamp
+# suffix means the filename doesn't end in .db — so without this line a
+# `git add -A` sweeps a full copy of the live career data into the repo.
+*.db.backup-*
+
 # Python
 __pycache__/
 *.pyc
 .pytest_cache/
 .ruff_cache/
+.coverage
+htmlcov/
 
 # Generated PDF exports — data/ itself stays tracked, this is output only
 exports/
+
+# Playwright storageState for the future submission adapter. This is a live
+# authenticated session cookie, not config — committed, it would be a
+# session-hijack credential sitting in git history forever. Guarded by a test
+# (tests/unit/test_submission_session.py) so it can't be trimmed by accident.
+.session/
 
 # NOTE: do NOT add `data/` here. Unlike ai-outreach-agency, this project's
 # data/ directory holds tracked source content (Master CV, profile_seed.json,

@@ -22,8 +22,12 @@ def _vacancy_from_row(row: sqlite3.Row) -> Vacancy:
         scraped_at=row["scraped_at"],
         status=row["status"],
         score=row["score"],
-        strengths=json.loads(row["strengths"]) if row["strengths"] is not None else None,
-        weaknesses=json.loads(row["weaknesses"]) if row["weaknesses"] is not None else None,
+        strengths=(
+            json.loads(row["strengths"]) if row["strengths"] is not None else None
+        ),
+        weaknesses=(
+            json.loads(row["weaknesses"]) if row["weaknesses"] is not None else None
+        ),
         recommendation=row["recommendation"],
     )
 
@@ -47,6 +51,15 @@ def init_db(db_path: Optional[Path] = None) -> sqlite3.Connection:
             deadline TEXT,
             scraped_at TEXT NOT NULL,
             status TEXT NOT NULL DEFAULT 'new',
+            -- Match results (ADR-004 §6). Also migrations 1-4 in migrations.py,
+            -- where they used to live exclusively — a table whose real shape was
+            -- legible only from a migration list, with a crashing read as the
+            -- failure mode. The runner skips an ADD COLUMN whose column already
+            -- exists and records it as applied, so declaring both is safe.
+            score INTEGER,
+            strengths TEXT,
+            weaknesses TEXT,
+            recommendation TEXT,
             UNIQUE(company, title, url)
         )
     """)
@@ -95,16 +108,27 @@ def get_by_id(conn: sqlite3.Connection, vacancy_id: int) -> Optional[Vacancy]:
     return _vacancy_from_row(row)
 
 
+# Stage 6 (submission) extends this past 'approved'. The load-bearing property
+# is that 'submission_failed' is reachable ONLY from 'approved' — that is what
+# lets the submit gate admit it for retries without ever letting an unapproved
+# application reach a submission path (CLAUDE.md Hard Rule 1). No status before
+# the human approval gate has a path to 'submitted'.
 VALID_TRANSITIONS = {
     "new": {"scored"},
     "scored": {"asset_ready"},
     "asset_ready": {"approved", "rejected"},
-    "approved": set(),
+    "approved": {"submitted", "submission_failed"},
+    # Retryable, including a retry that fails again — a second failure has to
+    # be representable, not raise.
+    "submission_failed": {"submitted", "submission_failed"},
+    "submitted": set(),
     "rejected": set(),
 }
 
 
-def update_vacancy_status(conn: sqlite3.Connection, vacancy_id: int, status: str) -> None:
+def update_vacancy_status(
+    conn: sqlite3.Connection, vacancy_id: int, status: str
+) -> None:
     row = conn.execute(
         "SELECT status FROM vacancies WHERE id = ?", (vacancy_id,)
     ).fetchone()
@@ -136,6 +160,12 @@ def save_match_result(
         SET score = ?, strengths = ?, weaknesses = ?, recommendation = ?
         WHERE id = ?
         """,
-        (score, json.dumps(strengths), json.dumps(weaknesses), recommendation, vacancy_id),
+        (
+            score,
+            json.dumps(strengths),
+            json.dumps(weaknesses),
+            recommendation,
+            vacancy_id,
+        ),
     )
     conn.commit()

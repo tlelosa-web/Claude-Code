@@ -16,6 +16,7 @@ from src.matching.pipeline import run_matching
 from src.profile.db import get_profile, init_db as init_profile_db, upsert_profile
 from src.profile.schema import CandidateProfile
 from src.review.cli import run_review_gate
+from src.submission.cli import cmd_prep_submission, cmd_submit
 from src.vacancy_search.apify_client import fetch_vacancies
 from src.vacancy_search.db import (
     get_by_id,
@@ -64,6 +65,31 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p_run_all.add_argument(
         "--status", default="new", help="Status to filter by (default: new)"
+    )
+
+    p_submit = subparsers.add_parser(
+        "submit", help="Submit an approved application, or record why it wasn't"
+    )
+    target = p_submit.add_mutually_exclusive_group(required=True)
+    target.add_argument("--vacancy-id", type=int, help="Vacancy ID to submit")
+    target.add_argument(
+        "--all", action="store_true", help="Submit every approved vacancy"
+    )
+    p_submit.add_argument(
+        "--manual",
+        action="store_true",
+        help="Record that you already submitted this one by hand",
+    )
+
+    # No --all counterpart, deliberately. Prep opens an authenticated browser
+    # against a real employer's form; doing that to six postings from one
+    # command is the same class of unattended action A15 refuses for submit.
+    p_prep = subparsers.add_parser(
+        "prep-submission",
+        help="Read-only walk of one approved posting's apply form (network)",
+    )
+    p_prep.add_argument(
+        "--vacancy-id", type=int, required=True, help="Vacancy ID to inspect"
     )
 
     return parser
@@ -228,6 +254,8 @@ def main(argv=None) -> None:
         "list": cmd_list,
         "run": cmd_run,
         "run-all": cmd_run_all,
+        "submit": cmd_submit,
+        "prep-submission": cmd_prep_submission,
     }
 
     dispatch[args.command](args, settings)

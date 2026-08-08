@@ -37,7 +37,79 @@ you" signal `submission-core.md` already built, never a false `submitted`.
 
 ---
 
-## Findings from live reconnaissance (2026-08-07, this session)
+## Findings from live reconnaissance, second pass (2026-08-08, Phase E build session)
+
+Driven by Playwright against the real site with Tebello's signed-in session, read-only. **No form
+field was filled and nothing was submitted** — proven rather than asserted: every non-GET request
+was recorded, and all of them were telemetry (`beaconrpc/log`, `signals/v1/log`, snowplow,
+`frontendlogging`), `graphql` reads, or a `urlSafetyCheck`.
+
+**This pass ended by hitting Cloudflare's bot challenge, and stopped there.** See finding 5.
+
+1. **Indeed refuses an automated sign-in.** The §Session setup design — a Playwright window driven
+   through Indeed's login, exporting `context.storage_state()` — does not work. Three attempts, all
+   answered with "Something went wrong. Refresh the page and try again" at the email step, in a
+   browser that was otherwise functioning. **Defeating that detection is out of scope and stays out
+   of scope**, on the same hard line as finding 3's CAPTCHA rule: the accepted ToS/account risk
+   covers Indeed *noticing* automation, not hiding it from them, and evasion is the likeliest route
+   to a real account being actioned.
+   **Resolution, built:** the login left automation entirely. `tools/indeed_login_setup.py` starts
+   *ordinary* Chrome as a plain subprocess against a dedicated profile directory; Tebello signs in
+   by hand in a browser nothing is driving; Playwright reuses that profile afterwards via
+   `launch_persistent_context(channel="chrome")`. The profile is dedicated and never a copy of his
+   real one — copying that would pull every site's cookies and his saved passwords into the project
+   directory, far more exposure than the single-site session it replaces.
+
+2. **The apply flow reaches the wizard fine once signed in — it is just slow, and slow in stages.**
+   The `Apply with Indeed` button initialises asynchronously (Indeed emits its own
+   `buttonLoadStart`/`buttonLoadEnd` beacons), and clicking before it settles earns a
+   `buttonRageClick` beacon and a bounce straight back to the posting with `&from=iaBackPress`. The
+   first attempt did exactly that and wrongly read it as the flow refusing.
+   The real sequence, measured: click → `smartapply.indeed.com/beta/indeedapply/applybyapplyablejobid?…`
+   (bootstrap) → `/form/resume-selection-module` (shell, 1 `data-testid`, body text is literally
+   "loading") → ~10–12s later `/form/resume-selection-module/resume-selection` (53 `data-testid`s,
+   21 buttons). **Wait on rendered content, never on the URL** — the URL is correct a full ten
+   seconds before the step exists.
+   The settled URL segment matches `browser.WIZARD_STEPS["resume_selection"]` exactly, so Phase D's
+   constant needs no correction.
+
+3. **`FrameView.visible` must be computed with a real visibility check, not a bounding box.** This
+   is the most load-bearing finding of the pass. The reCAPTCHA v3/enterprise **badge** is an
+   `recaptcha/enterprise/anchor` iframe measuring 256×60 at `visibility: hidden` — it has a real,
+   non-zero bounding box. An adapter that derives `visible` from the box alone reports it as visible;
+   `captcha_reason()` then correctly applies A7 rule 5 ("a visible anchor frame means the flow
+   escalated to v2") and **aborts a perfectly healthy run**. Observed and measured on the live page.
+   `browser.py`'s docstring already specifies the right definition — "a real, non-zero bounding box
+   *that isn't `visibility:hidden`/`display:none`*" — and the first recon implemented half of it.
+   `inspect_apply_flow()` must use Playwright's own `is_visible()`, which accounts for display,
+   visibility and box together. **Phase D's judgment layer was correct throughout; only the
+   observation lied to it**, which is the split working as designed.
+
+4. **The resume-selection step confirms finding 2 of the 2026-08-07 pass, unchanged.** Rendered
+   text shows "Use your Indeed Resume … Recommended" pre-selected, with
+   `Tebello Lelosa CV - 2025.pdf` (uploaded Feb 24, 2025) as the alternative. The adapter must
+   actively select the generated CV on every run. The step also carries the standard
+   "This site is protected by reCAPTCHA…" notice on a completely healthy run — the never-abort case
+   Phase D wrote seven tests for, now observed a second time.
+
+5. **Cloudflare bot-challenges the job page after repeated automated visits.** After four
+   Playwright runs against the same posting inside about fifteen minutes, `za.indeed.com/viewjob`
+   began returning a page titled "Just a moment..." with no apply button. The escalation was visible
+   one run earlier as a `za.indeed.com/cdn-cgi/challenge-platform/h/b/jsd/oneshot/…` POST.
+   **The recon stopped here and no attempt was made to pass the challenge.** Consequences for the
+   remaining build, all of which are real and none of which are worked around:
+   - **The questions step was never reached this pass**, so its selectors, its URL segment and the
+     review step's segment are still unknown. `WIZARD_STEPS["questions"]` remains unverified beyond
+     the 2026-08-07 walkthrough.
+   - **Automated runs must be paced.** Whatever `inspect_apply_flow()` ends up doing, a rapid
+     sequence of them against one posting is enough to trip this. `prep-submission` having no
+     `--all` already helps; it is not sufficient on its own.
+   - **This is evidence about Phase G, not just Phase E.** The same detection sits in front of the
+     submit path, where the cost of hitting it is a real application to a real employer.
+
+---
+
+## Findings from live reconnaissance (2026-08-07, first pass)
 
 Verified directly against Indeed's real SmartApply flow on one of the 6 approved vacancies
 (`Utopia — Project Engineer (Mechanical/Electrical)`, `jk=d7d04674eabafbac`), signed in as Tebello,

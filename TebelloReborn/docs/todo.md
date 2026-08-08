@@ -517,11 +517,20 @@ no longer holds, though `pyproject.toml` still declares the dependency at Phase 
       isolation
 - [x] 138. [GREEN] `src/submission/prep.py` + `cli.py` + `main.py` (`4b5ab8d`)
 - [x] 139. `tools/indeed_login_setup.py` + its two pure helpers' tests (`6fcd866`)
+- [x] 139a. Session reworked from a `storageState` file to a **Chrome profile directory**
+      (`1452059`) — Indeed refuses an automated sign-in, so the login left automation entirely. See
+      the spec's 2026-08-08 recon findings 1.
 - [ ] 140. **Live recon → `inspect_apply_flow()`**, the `WIZARD_STEPS` landmark selectors, the review
       step's URL segment, `INDEED_AUTH_MARKERS` confirmation, and **registering the adapter in
-      `eligibility.ADAPTERS`**. ⚠️ Needs a saved Indeed session, which needs Tebello to run
-      `python tools/indeed_login_setup.py` in a real terminal — the script waits on `input()`, so no
-      agent session can drive it.
+      `eligibility.ADAPTERS`**. **Partially done 2026-08-08 — see the spec's second-pass recon
+      findings.** Established: the wizard renders fine under automation once signed in; the
+      resume-selection URL segment matches `WIZARD_STEPS` exactly; `FrameView.visible` must use a
+      real visibility check, not a bounding box, or the reCAPTCHA v3 badge aborts every healthy run.
+      ⚠️ **Still unknown, and blocked:** the questions step's selectors and the review step's URL
+      segment. The pass ended when Cloudflare bot-challenged the job page ("Just a moment...") after
+      four automated runs in ~15 minutes. **No attempt was made to pass that challenge and none
+      should be** — same hard line as the CAPTCHA rule. Resuming needs a cooldown and much slower
+      pacing, and is a decision for Tebello rather than an automatic retry.
 - [ ] 141. Docs closeout — `docs/architecture.md`, `CLAUDE.md`, this file, `docs/session-log.md`
 
 **Result so far:** 673 tests passing (was 538). Zero regressions.

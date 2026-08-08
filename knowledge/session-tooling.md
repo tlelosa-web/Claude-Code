@@ -1,3 +1,37 @@
+## 2026-08-08 — Two tool-call shapes that fail silently or confusingly
+**Source:** session (this machine, hub `/continue` → TebelloReborn Phase E)
+**Status:** active
+
+**1. Never rewrite a source file with `Get-Content -Raw | Set-Content` in Windows
+PowerShell 5.1 — it corrupts every non-ASCII character.** Used it to rename a function
+across two Python files:
+
+```powershell
+(Get-Content src\x.py -Raw) -replace 'old_name','new_name' | Set-Content src\x.py -Encoding utf8
+```
+
+Every em-dash in every docstring came back as `â€"`. `Get-Content` decodes a UTF-8 file with
+**no BOM** using the system ANSI codepage, so the mojibake is created on *read*; the
+`-Encoding utf8` on the write is correct and irrelevant. **It fails silently** — the rename
+worked, the module imported, the full test suite passed, and only a deliberate
+`'â€' in text` check caught it. Recovery was `git checkout --` on both files and redoing the
+rename with the Edit tool.
+Use the Edit tool (or Python's `read_text(encoding='utf-8')`) for any file rewrite. This is
+the same class as the existing entry about `Add-Content`, and generalises past appending:
+**any** PowerShell round-trip of a source file is unsafe here.
+
+**2. Playwright's `on()` rejects a builtin method as a handler.**
+`context.on("page", popups.append)` raises
+`AttributeError: 'builtin_function_or_method' object has no attribute '_pw_impl_instance_'` —
+Playwright stores an attribute on the handler object, which builtins don't accept. Wrap it in
+a plain `def`:
+
+```python
+def _on_page(new_page):
+    popups.append(new_page)
+context.on("page", _on_page)
+```
+
 # session-tooling
 
 Shell and tool gotchas that bite sessions working in this hub, regardless of

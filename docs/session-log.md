@@ -2607,3 +2607,78 @@ once while still broken.
 **Known risks:** The Step 1.5 staleness risk from the last entry is cleared. Backup failures
 remain silent (backlog).
 **Blockers:** None.
+
+## 2026-08-08 — TebelloReborn Indeed adapter, Phase E: offline half built, live half stopped by the site
+
+Phase 22, steps 131–139 plus one forced refactor. **538 → 676 tests, zero regressions.** 12
+commits in the Pappa T vault (`afeb202`..`1ba6521`), pushed, `0 ahead / 0 behind`. Secrets and
+personal-data scan on the outgoing diff came back clean — no session profile, no `.env`, no
+contact details.
+
+Built and committed: `questions.py` (A6 drift fingerprints, A11 sensitivity classification),
+`drafting.py` (A20's constraint, A11's refusal, A9's throttle handling), the `IndeedAdapter` shell
+with A1's static `can_handle()`, `prep.py` + the `prep-submission` CLI, and
+`tools/indeed_login_setup.py`. `playwright` 1.62 and Chromium 151 installed on this machine,
+ending the constraint Phases A–D were built around.
+
+**Phase E splits at a hard line, and the split is the whole story of the session:** everything
+that *judges* an apply form is buildable offline, and everything that *observes* one needed the
+live site. The offline half is done. The live half got most of the way and then stopped.
+
+**Three spec-level errors found by building against it, corrected rather than followed.**
+A1's own code sketch accepts a lookalike domain (`"notindeed.com".endswith("indeed.com")` is
+`True`) — and the identical bug was then reintroduced by hand-writing the check a second time in
+the login script, where its own test caught it; it is one shared function now, which is the
+actual fix. A6's normalizer is one step short: its four steps leave `"Question *"` as
+`"question "` and `"Question"` as `"question"`, one question with two fingerprints, over exactly
+the styling the rule exists to ignore. And A9's correction needed a companion decision the spec
+never made — a prep row records what was learned about a *posting*, so "no adapter", "never logged
+in" and "no profile imported" all raise without writing one, because the gate builds its own
+operator instruction from the row's status and never reads `detail`.
+
+**Indeed refuses an automated sign-in, which invalidated the spec's §Session setup.** Three
+attempts, "Something went wrong", at the email step. The resolution was to take the login out of
+automation — ordinary Chrome as a plain subprocess against a **dedicated** profile directory,
+signed into by hand, reused afterwards via `launch_persistent_context` — **not** to defeat the
+detection, which stays a hard line on the same reasoning as the CAPTCHA rule. Dedicated rather
+than a copy of the real Chrome profile: copying that would pull every site's cookies and saved
+passwords into the project directory, far more exposure than the single-site session it replaces.
+
+**The finding worth keeping: a bounding box is not visibility.** reCAPTCHA v3's badge is a 256×60
+`enterprise/anchor` iframe at `visibility: hidden` — a real, non-zero box. The first recon derived
+`visible` from the box alone, `captcha_reason()` then *correctly* applied A7 rule 5, and a
+perfectly healthy run aborted. What matters is not the rule but what it demonstrates about Phase
+D's design: the judgment layer was right throughout and only the observation lied to it, so the
+bug was localised to one function instead of being argued about in the detector. A split that
+survives first contact with the live site by isolating the failure is worth more than one that
+merely looks tidy.
+
+Two other live facts, both cheap to get wrong: the apply button initialises asynchronously, so
+clicking early earns a `buttonRageClick` beacon and a bounce to `&from=iaBackPress` that reads
+exactly like the flow refusing (misdiagnosed as such once); and the wizard renders **~10–12s after
+the URL is already correct**, so waits must be on rendered content, never on the URL.
+
+**Where it stopped.** After roughly four automated runs against one posting in fifteen minutes,
+Cloudflare began serving "Just a moment..." on the job page — the escalation visible one run
+earlier as a `cdn-cgi/challenge-platform/…/jsd/oneshot` POST that should have been read as a
+warning. **The recon stopped and no attempt was made to pass it.** The questions step was never
+reached, so its selectors and the review step's URL segment remain unknown, `inspect_apply_flow()`
+is unwritten, and the adapter is deliberately unregistered so nothing can reach a prep run that
+could only fail. Tebello's call: push, and leave the recon overnight.
+
+**Read-only was proven, not asserted.** Every non-GET request was recorded on every run; all were
+telemetry, `graphql` reads, or a `urlSafetyCheck`. Nothing was filled and nothing was submitted.
+That cost about five lines of listener and is the only reason the claim is worth anything.
+
+**Last completed:** Phase E's offline half built, committed and pushed; the live recon's findings
+written into the project spec and this hub's knowledge cache (this entry)
+**Next task:** Step 140 in `TebelloReborn/docs/todo.md` — resume the paced recon after the
+Cloudflare cooldown, map the questions step, write `inspect_apply_flow()`, register the adapter.
+📍 Live `Desktop/Pappa T/TebelloReborn/`. The signed-in Chrome profile already exists at
+`.session/chrome-profile`, so the sign-in does not need repeating.
+**Known risks:** Pacing is now a design constraint, not politeness — four runs in fifteen minutes
+was enough to trip the challenge. **This is evidence about Phase G, not only Phase E:** the same
+detection sits in front of the submit path, where hitting it costs a real application to a real
+employer mid-flight, and that deserves a deliberate answer before Phase G rather than a discovery
+during it. Backup failures remain silent (hub backlog).
+**Blockers:** None technical. Step 140 is paused by choice, not stuck.

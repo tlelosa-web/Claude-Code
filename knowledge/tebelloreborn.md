@@ -1,3 +1,59 @@
+## 2026-08-08 — Phase E: what the live site actually does, and where it stopped us
+**Source:** session (this machine, hub `/continue`) — built in the live
+`Desktop/Pappa T/TebelloReborn/`, vault commits `afeb202`..`1ba6521` (12), pushed
+**Status:** active
+
+Phase 22, steps 131–139 plus a forced refactor. **538 → 676 tests, zero regressions.** The
+offline half of the Indeed adapter is built: `questions.py` (A6 fingerprints, A11 sensitivity),
+`drafting.py` (A20/A9/A11), the `IndeedAdapter` shell with A1's static `can_handle()`, `prep.py`
++ the `prep-submission` CLI, and `tools/indeed_login_setup.py`. `playwright` 1.62 and Chromium
+151 are now installed on this machine, ending the constraint Phases A–D were built around.
+
+**1. Indeed refuses an automated sign-in, and that killed the spec's session design.** The spec
+had a Playwright window driven through Indeed's login, exporting `context.storage_state()`.
+Three attempts, all answered "Something went wrong. Refresh the page and try again" at the email
+step, in a browser otherwise working fine. **The fix was to take the login out of automation, not
+to defeat the detection** — same hard line as the CAPTCHA rule, and the reasoning generalises: an
+accepted ToS/account risk covers the site *noticing* automation, not hiding from it, and evasion
+is the likeliest route to a real account being actioned. Resolution: ordinary Chrome launched as
+a plain subprocess against a **dedicated** profile directory, signed into by hand, then reused via
+`launch_persistent_context(channel="chrome")`. Dedicated matters — copying the real Chrome profile
+would pull every site's cookies and saved passwords into the project directory, far more exposure
+than the single-site session it replaces.
+
+**2. A bounding box is not visibility, and getting that wrong aborts every run.** The most
+reusable finding of the session. reCAPTCHA v3/enterprise renders a **badge** as an
+`recaptcha/enterprise/anchor` iframe measuring 256×60 at `visibility: hidden` — a real, non-zero
+box. An observer deriving `visible` from the box alone reports it visible; the detector then
+*correctly* concludes "a visible anchor frame means the flow escalated to v2" and aborts a
+perfectly healthy run. Use the driver's own `is_visible()`, which accounts for display, visibility
+and box together.
+**What this says about the Phase D design is the durable part:** the judgment layer was right the
+entire time and only the observation lied to it, so the bug was localised to one function instead
+of being argued about in the detector. A split that survives its first contact with the live site
+by isolating the failure is worth more than one that merely looks tidy.
+
+**3. Wait on rendered content, never on the URL.** Indeed's apply button initialises
+asynchronously (the site emits its own `buttonLoadStart`/`buttonLoadEnd` beacons); clicking early
+earns a `buttonRageClick` beacon and bounces straight back to the posting with
+`&from=iaBackPress` — which reads exactly like the flow refusing, and was misdiagnosed as such
+once. The wizard then goes bootstrap URL → shell (1 `data-testid`, body text literally "loading")
+→ **~10–12s later** the real step (53 `data-testid`s). The URL is correct a full ten seconds
+before the step exists.
+
+**4. Cloudflare bot-challenges after roughly four automated runs in fifteen minutes.**
+`za.indeed.com/viewjob` began returning a page titled "Just a moment..." with no apply button;
+the escalation was visible one run earlier as a `cdn-cgi/challenge-platform/…/jsd/oneshot` POST
+that should have been read as a warning. **The recon stopped there and no attempt was made to
+pass it.** Three consequences: the questions step was never reached, so its selectors and the
+review step's URL segment are still unknown; **pacing is now a design constraint rather than
+politeness**; and this is evidence about Phase G, not only Phase E — the same detection sits in
+front of the submit path, where hitting it costs a real application to a real employer mid-flight.
+
+**Proving read-only beats asserting it.** Every non-GET request was recorded during each run; all
+were telemetry, `graphql` reads, or a `urlSafetyCheck`. That is what makes "nothing was submitted"
+a fact rather than an intention, and it cost about five lines of listener.
+
 ## 2026-08-07 — Phase D: how a module that will import playwright got built without it
 **Source:** session (this machine, hub `/continue`) — built in the live
 `Desktop/Pappa T/TebelloReborn/`, vault commits `88123f6` / `a0757c2` / `ed359f8`

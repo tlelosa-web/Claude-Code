@@ -42,31 +42,42 @@ flags re-checked 2026-08-03 after the O-P-C consolidation — see note below)
 > won't reach the actual running project and O-P-C will need re-merging
 > afterward to pick it up.
 
-1. [ ] **TebelloReborn: Indeed site adapter** — **Phases A, B, C and D built
-      2026-08-07. E–H remaining; Phase E is next.** 📍 Live
-      `Desktop/Pappa T/TebelloReborn/`. **Not blocked, but Phase E is the first
-      phase that needs Tebello physically present** — it opens a visible browser
-      for a manual Indeed sign-in (`tools/indeed_login_setup.py`, built first in
-      that phase) and is the first networked phase of the whole build.
+1. [ ] **TebelloReborn: Indeed site adapter** — **Phases A–D built 2026-08-07;
+      Phase E's offline half built 2026-08-08 (676 tests). Phase E's live half is
+      paused overnight at Tebello's direction after Cloudflare bot-challenged the
+      site.** 📍 Live `Desktop/Pappa T/TebelloReborn/`, vault `1ba6521`, pushed.
+
+      **Resume here:** step 140 in that project's `docs/todo.md` — the questions
+      step's selectors and the review step's URL segment are still unknown,
+      `inspect_apply_flow()` is unwritten, and the adapter is deliberately **not
+      registered** in `eligibility.ADAPTERS` so nothing can reach a prep run that
+      could only fail. Everything else in Phase E is done: `questions.py`,
+      `drafting.py`, the `IndeedAdapter` shell, `prep.py` + the `prep-submission`
+      CLI, and `tools/indeed_login_setup.py`. A signed-in Chrome profile now
+      exists at `.session/chrome-profile` (gitignored), so the sign-in does not
+      need repeating.
+
+      **Two findings that change the remaining work**, full detail in that
+      project's spec §2026-08-08 recon and in `knowledge/tebelloreborn.md`:
+      **Indeed refuses an automated sign-in** — resolved by moving the login out
+      of automation into ordinary Chrome against a dedicated profile, never by
+      defeating the detection, which stays a hard line. And **Cloudflare
+      bot-challenges after roughly four automated runs in fifteen minutes**, so
+      pacing is now a design constraint — and that is evidence about **Phase G**,
+      not only Phase E, since the same detection sits in front of the submit path
+      where hitting it costs a real application to a real employer mid-flight.
+      Worth a deliberate answer before Phase G rather than discovering it there.
 
       `TebelloReborn/docs/specs/indeed-submit-adapter.md` §Amendment carries the
       phase-level Build Queue and is authoritative; that project's own
       `docs/todo.md` and `docs/session-log.md` carry the detail. This entry is a
       pointer, per hub-and-spoke.
 
-      **Phase E** is the first networked phase: `can_handle()` as a static
-      predicate, `inspect_apply_flow()`, the `prep-submission` CLI, question
-      extraction with fingerprints, and Claude-Code drafting. It needs
-      `tools/indeed_login_setup.py` built first **and Tebello present** to sign in
-      to Indeed by hand in a visible browser window — that is the one part no
-      session can do unattended.
-
-      **State as of vault `ed359f8` (committed and pushed, verified 2026-08-08
-      `0 ahead / 0 behind`):** 538
-      tests passing, zero regressions across every phase (344 → 399 → 456 → 485 →
-      538). The adapter registry is still empty, so `career.db`'s 6 `approved`
-      Indeed vacancies all route to manual today — verified by running the real
-      `submit --all` against a sqlite3-backup copy of the live database.
+      **State as of vault `1ba6521` (committed and pushed, verified 2026-08-08
+      `0 ahead / 0 behind`):** 676 tests passing, zero regressions across every
+      phase (344 → 399 → 456 → 485 → 538 → 676). The adapter registry is still
+      empty, so `career.db`'s 6 `approved` Indeed vacancies all route to manual
+      today — and will keep doing so until step 140 closes.
 
       - **Phase D** (Phase 21, steps 128–130) — `src/submission/browser.py`:
         CAPTCHA detection (A7), the combined navigation-state check (A17),

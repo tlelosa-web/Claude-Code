@@ -259,7 +259,7 @@ abandoned either — no work is lost by leaving them here.
 
 - [x] **2026-08-09** — **Fan Movement contract terminated Monday 2026-08-03;
       staged the company IP into a single handover folder.**
-      `Desktop/Fan Movement - Company IP/` — **1,064 files, 108 MB, a copy**:
+      `Desktop/Fan Movement - Company IP/` — **917 files, 85.8 MB, a copy**:
       nothing was moved or deleted, every original is in place and every tool
       still runs. Scope was Tebello's call: company business data **plus** the
       four tools built for Fan Movement (SOPS, NamePlateTool,
@@ -267,7 +267,27 @@ abandoned either — no work is lost by leaving them here.
       tooling and personal notes, build artifacts and a downloaded public Node
       installer. Laid out as `01-business-data/`, `02-tools/`, `03-databases/`,
       `04-credentials/`, with `MANIFEST.md` and a sha256 `CHECKSUMS.txt` over
-      all 1,074 files.
+      all 915 files.
+      **Pruned after the first run** (1,064 → 917 files, 108 → 85.8 MB): a
+      159-file, 24.9 MB Electron browser profile — Cache, GPUCache, Local
+      Storage, Network, Session Storage, blob_storage — swept in from
+      NamePlateTool's `5_Archive_and_Debug/`. Chromium runtime state carrying
+      incidental browsing artifacts, not company material. Removed from the
+      copy only; the original is untouched, verified before deleting.
+      `shutil.rmtree` aborted on a Windows attribute and deleted **nothing**,
+      so there was no partial state to clean up — cleared attributes and used
+      `Remove-Item -Recurse -Force` instead. Manifest and checksums are rebuilt
+      by walking the tree rather than recording the copy operation, so they
+      describe what is on disk now; databases were **re-verified**, not
+      restated (`sops.db` still 13 tables / 6,501 rows, integrity ok, row
+      counts matching live source).
+      **`CHECKSUMS.txt` was unusable on the first two writes and nothing about
+      it looked wrong** — Python's text mode wrote CRLF, and `sha256sum -c`
+      takes the rest of each line as the filename, trailing `\r` included, so
+      all 915 entries failed to open. Found by running the command the manifest
+      documents; a Python-side spot-check had passed the same file minutes
+      earlier because `splitlines()` strips `\r`. Fixed with `newline=""` and
+      re-run: **915/915 OK, 0 failed.** See `knowledge/session-tooling.md`.
       **Databases were copied with the sqlite3 backup API, not a file copy** —
       a raw copy of a live database can capture a torn state — then verified by
       `PRAGMA integrity_check` plus a per-table row-count comparison against

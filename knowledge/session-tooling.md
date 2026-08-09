@@ -1,3 +1,31 @@
+## 2026-08-09 — A checksum file written by Python on Windows fails `sha256sum -c` on every line
+**Source:** session — staging the Fan Movement handover folder
+**Status:** active
+
+`open(path, "w")` on Windows translates `\n` to `\r\n`. A `CHECKSUMS.txt` written that way
+looks perfect — correct hashes, correct paths, opens fine in any editor — and then:
+
+```
+sha256sum: '04-credentials/… .env'$'\r': No such file or directory
+sha256sum: WARNING: 915 listed files could not be read
+```
+
+`sha256sum -c` splits each line on the two-space separator and takes **the rest of the line**
+as the filename, trailing `\r` included. Every entry fails, so the failure is total rather
+than partial — which reads like the *data* is corrupt, not the manifest. Fix is one keyword:
+
+```python
+open(path, "w", encoding="utf-8", newline="")   # newline="" is load-bearing
+```
+
+**The reusable part is how it was found.** The manifest documented `sha256sum -c CHECKSUMS.txt`
+as the verification command, so the command got run — and failed on all 915 files. A Python-side
+spot-check had already "passed" the same file minutes earlier, because `splitlines()` strips
+`\r` and hid the defect completely. **A verification artifact is only verified by the tool it
+tells someone else to use**; checking it with a different tool tests the wrong thing. Same
+family as the PowerShell encoding traps below: text-mode round-trips on Windows change bytes
+nobody asked them to change.
+
 ## 2026-08-08 — Two tool-call shapes that fail silently or confusingly
 **Source:** session (this machine, hub `/continue` → TebelloReborn Phase E)
 **Status:** active

@@ -39,7 +39,7 @@ git log --oneline -5
 ```
 
 Uncommitted changes and unpushed commits are part of what this session is
-leaving behind — surface them plainly in the Step 5 report.
+leaving behind — surface them plainly in the Step 6 report.
 
 **Never commit or push on Tebello's behalf just because `/session-end` is
 running.** Only act on explicit confirmation this turn. Surfacing is the
@@ -51,6 +51,45 @@ git repos — run the same check there. O-P-C's `Operations/`/`Pappa T/`
 folders are a historical consolidation snapshot; a commit pushed to a live
 sub-project's own remote does **not** appear here until O-P-C is re-merged.
 Say so explicitly if that re-merge is now outstanding.
+
+## Step 1.5 — Can This Session's Work Be Found?
+
+Committed and pushed is not the same as reachable. Work sitting on a feature
+branch with no PR is invisible to every session that starts from `main` — and
+nothing about that state looks wrong: the tree is clean, the commits are
+pushed, and this close-out reads like a success.
+
+This session is the only one that knows what it just built, and this is the
+last moment anyone will look at that branch on purpose. So check:
+
+```bash
+git rev-parse --abbrev-ref HEAD
+git log --oneline origin/main..HEAD
+```
+
+If HEAD is not `main` and the second command returns commits, report it in
+Step 6:
+
+> **Branch state:** N commit(s) on `<branch>` not reachable from `main`.
+> Invisible to any session starting from `main` until merged or a PR is
+> opened.
+
+**Report a pass in one line too** — "all commits reachable from `main`" —
+because silence and never-ran look identical.
+
+📍 **Run it in the live sub-project too**, on the same reasoning as Step 1's
+caveat and against that repo's own default branch — `Desktop/Operations/2. SOPS`
+is on `master`, not `main`.
+
+**Never open the PR, merge, or push** to resolve this. Same rule as Step 1:
+`/session-end` reports what it is leaving behind; it does not act on Tebello's
+behalf. Naming the branch is the whole job — a branch that has been named is
+one somebody can find again.
+
+Why this belongs here rather than only in `/continue`: a resuming session can
+find stranded work, but only after it has already been stranded, and it has no
+idea which branch mattered. This step costs one command and catches it at the
+source.
 
 ## Step 2 — Reconcile the Task Queue
 
@@ -168,6 +207,7 @@ judgment easy, which is most of the value regardless.
 
 **Committed:** [what's committed this session, or "nothing to commit"]
 **Pushed:** [clean — nothing outstanding | N unpushed commit(s) on <branch>]
+**Branch state:** [Step 1.5 — all commits reachable from main | N commit(s) on <branch> not reachable from main]
 **Logged:** [docs/todo.md updated | + session-log.md entry added | + knowledge/<topic>.md updated]
 **Title set:** [Cont-"<title>" | not available in this environment]
 **Open follow-ups:** [none | listed, each already reflected in docs/todo.md]

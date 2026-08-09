@@ -1,3 +1,50 @@
+## 2026-08-09 — Fan Movement contract terminated 2026-08-03; company IP staged for handover
+**Source:** session — owner notified mid-session, survey and staging performed same session
+**Status:** active
+
+**The contract with Fan Movement (Pty) Ltd ended Monday 2026-08-03.** Everything under
+`Desktop/Operations/` is that company's domain. Recorded here because every other entry in
+this file was written while the contract was live and silently assumes it.
+
+**Staged:** `Desktop/Fan Movement - Company IP/` — 1,064 files, 108 MB, a **copy**. Scope
+was business data plus the four tools built for the company; DCOE tooling, personal notes,
+build artifacts excluded. `MANIFEST.md` + sha256 `CHECKSUMS.txt` over all 1,074 files.
+Databases via the sqlite3 backup API and verified (`sops.db`: 13 tables / 6,501 rows,
+integrity ok). The one `.env` staged into its own `04-credentials/` rather than left inside
+the tool copy.
+
+**The finding worth keeping is what a folder cannot do.** "Put the company IP in a folder"
+sounds like a filesystem task and is mostly not one. The same material sits in **five**
+places, and copying addresses one:
+
+| Where | What | Reach |
+|---|---|---|
+| `Desktop/Operations/` | everything, live | local |
+| `O-P-C/Operations/` | **641 files in git history** — 64 `.xlsx`, 14 `.csv`, 13 `.pdf`, incl. the invoice CSVs and contract register | private GitHub |
+| `tlelosa-web/{sops,NamePlateTool,Claude-Code}` | full commit history, **personal account** | private GitHub |
+| `~/OneDrive/DCOE-Backups/` | 5 dated backups incl. production `sops.db` | Microsoft cloud |
+| `~/Backups/dcoe-{runtime,secrets}/` | same DBs + Operations `.env` | local |
+
+**Generalisable:** when a request names a *destination* ("put it in a folder"), check whether
+the thing being moved has copies the destination does not govern. Here the git history is the
+larger footprint and the one a folder is structurally incapable of touching — and a completed
+folder looks exactly like a completed job.
+
+**One live consequence, handled:** the daily `DCOE runtime-data backup` task was still
+scheduled and would have copied the production `sops.db` into OneDrive at 12:30 the next day.
+**Disabled** (`Disable-ScheduledTask -TaskName "DCOE runtime-data backup"`), not deleted —
+re-enable with `Enable-ScheduledTask`. It also covered Pappa T's `career.db` and
+`outreach.db`, so that protection has lapsed until the script is re-scoped.
+
+**Deliberately not done:** nothing deleted, no history rewritten, no repo made private-er or
+transferred. Retention terms are a contract question, and history rewrites are irreversible
+and break every clone. Tracked as open items in `docs/todo.md`.
+
+**Also now stale by this:** the "IT clearance on record" caveat attached to the
+codex-gate/OpenAI-egress item and to cloud sessions cloning this vault — that clearance was
+granted by a company that is no longer the contracting party. See
+`knowledge/tlelosa-claude-config.md`.
+
 ## 2026-08-09 — `C:\Dev\…` is gone; every cached Operations path predating 2026-08-03 is suspect
 **Source:** session — verifying `/overwatch`'s project→path table before landing it
 **Status:** active

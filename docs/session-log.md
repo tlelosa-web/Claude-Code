@@ -2895,3 +2895,88 @@ session, and agents load at session start. Codex was advisory only, as designed.
 **Blockers:** Neither machine has picked the change up yet; each needs
 `/plugin marketplace update tlelosa-claude-config` and a restart. Operations is
 untouched by this session and still needs that step run locally.
+
+## 2026-08-09 — Fan Movement contract terminated; company IP surveyed and staged
+
+Tebello reported mid-session that the Fan Movement (Pty) Ltd contract was terminated on
+Monday 2026-08-03, and asked for the company IP on this system to be put in a folder.
+
+**The folder exists and is verified. The more useful output was the survey that preceded
+it,** because "put the company IP in a folder" sounds like a filesystem task and mostly
+isn't. The same material sits in five places, and copying files addresses one of them:
+
+| Where | What | Reach |
+|---|---|---|
+| `Desktop/Operations/` | everything, live | local disk |
+| `O-P-C/Operations/` | **641 files tracked in git** — 64 `.xlsx`, 14 `.csv`, 13 `.pdf`, including `CustomerInvoicesReport.csv`, `CustomerSalesOrdersByCustomer.csv` and `Contract register 2025.xlsx` | private GitHub |
+| `tlelosa-web/{sops,NamePlateTool,Claude-Code}` | full commit history, **personal account** | private GitHub |
+| `~/OneDrive/DCOE-Backups/` | 5 dated backups incl. the production `sops.db` | Microsoft cloud |
+| `~/Backups/dcoe-{runtime,secrets}/` | same databases plus the Operations `.env` | local disk |
+
+**Git history is the larger footprint and the one a folder is structurally incapable of
+touching** — and a completed folder looks exactly like a completed job. That was surfaced
+before staging rather than after, so the scope decision was made knowing it.
+
+**One item had a deadline and was handled first.** The daily `DCOE runtime-data backup`
+scheduled task was still active, next run 2026-08-10 12:30 — it would have copied the
+production `sops.db` and the Operations databases into OneDrive again. **Disabled**, not
+deleted. It also covered Pappa T's own `career.db` and `outreach.db`, so that protection has
+lapsed until the script is re-scoped; that is now a queue item rather than a silent
+side-effect.
+
+**Two decisions were Tebello's, not assumed.** Scope: business data **plus** the four tools
+built for the company, on the usual work-for-hire default — flagged explicitly as a contract
+question rather than a technical one, since whether work product transfers depends on terms
+this session has no sight of. And copy rather than move: originals stay in place, every tool
+still runs, and narrowing scope later remains possible.
+
+**Staged:** `Desktop/Fan Movement - Company IP/` — **1,064 files, 108 MB**, laid out as
+`01-business-data/`, `02-tools/`, `03-databases/`, `04-credentials/`, with `MANIFEST.md` and
+a sha256 `CHECKSUMS.txt` covering all 1,074 files.
+
+**Databases were copied with the sqlite3 backup API, not `shutil.copy`** — the same
+discipline `scripts/backup-runtime-data.py` already uses, because a raw copy of a live
+database can capture a torn state — then verified by `PRAGMA integrity_check` plus a
+per-table row-count comparison against source. Production `sops.db`: **13 tables, 6,501 rows,
+integrity ok**. Delivery-note `dev.db` clean. Seven historical pre-migration snapshots copied
+alongside. The single `.env` went into its own `04-credentials/` rather than staying buried
+inside the tool copy, so it is visible in a handover instead of shipped by accident.
+
+**The destination was checked before writing, not assumed.** `knowledge/operations-hub.md`
+carries a 2026-07-24 entry about OneDrive-synced Desktop folders corrupting `.git` — which
+would have made `Desktop/` a bad choice. Resolved the shell folder directly: on *this*
+machine `Desktop` is genuinely local and OneDrive is a separate tree, so the note was about
+the work PC. Same class of stale-path claim as the `C:\Dev\` finding earlier today, and the
+second time in one session that verifying a cached path changed the answer. The folder also
+sits outside every git repo, so staging neither commits nor syncs anything.
+
+**Deliberately not done:** nothing deleted, no history rewritten, no repository transferred or
+made private-er. Retention terms are a contract question, and a history rewrite is
+irreversible and breaks every clone on both machines. Both are queue items now.
+
+Phase 7b was re-scoped rather than left as written — it asked whether hard rule 4 or the
+`Operations/` layout was meant, on the reading that this was rule clarity and not exposure.
+That framing was written while the contract was live. Its two side questions are now sharper
+too: cloud sessions clone this vault, company data included, into an Anthropic container, and
+the IT clearance on record was granted by a company that is no longer the contracting party —
+which is also the standing caveat on the codex-gate egress decision that shipped to Operations
+the same day.
+
+**Note on this commit:** it also carries two `docs/todo.md` Done entries, two
+`docs/session-log.md` lines and `docs/specs/2026-08-09-universal-roster-and-codex-gate.md`
+from a **concurrent session** that had left them uncommitted in the working tree. Committed as
+a real union per Hard Rule 6 rather than stashed or reverted — the alternative was editing the
+same contention files around uncommitted work and risking its loss.
+
+**Last completed:** Fan Movement company IP surveyed across five locations and staged to
+`Desktop/Fan Movement - Company IP/`; daily backup task disabled (this entry)
+**Next task:** Two owner decisions opened by this work, neither safe to guess at: what the
+terminated contract's terms require regarding the material still held in the three private
+GitHub repos and their history, and whether to re-scope the backup script to skip
+`Operations/` or accept the lapse. Phase 7a (root `.gitignore`) is unchanged and still the
+smallest open build item.
+**Known risks:** Pappa T's `career.db` and `outreach.db` are **no longer being backed up** —
+a deliberate side-effect of disabling the task, recorded so it is not rediscovered as a
+surprise. The staged folder is a copy, so every file in it still exists in its original
+location as well.
+**Blockers:** None technical. Both new items are decisions, not work.

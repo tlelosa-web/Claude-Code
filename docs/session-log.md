@@ -2758,3 +2758,95 @@ container. Both are tracked in `tlelosa-claude-config/docs/todo.md` rather than 
 the reading that `/continue` + `/session-end` already cover workflow management) and `/overwatch`.
 Their branches are undeleted so either call stays reversible. All 16 branches remain until those
 two are settled.
+
+## 2026-08-09 — Phase 7's branch checks adopted, and /overwatch landed with its paths verified
+
+A `/continue` run that found the hub stale in its very first check, then closed the two
+remaining pieces of the 2026-08-08 maintenance plan that were this hub's to do.
+
+**The resume report was nearly wrong, and Step 1.75 is the only reason it wasn't.** `HEAD`
+was **7 commits behind** `origin/main` at session start. The `docs/todo.md` and
+`docs/session-log.md` read in Step 1 predated PR #15 entirely — no Phase 7 queue, no
+systems-check entry, none of the stranded-work recovery. Everything reported after the pull
+came from a re-read. Worth stating plainly because the first read gave no signal at all that
+it was incomplete: it was a well-formed queue with a confident final log entry, and the only
+thing wrong with it was that it was four days old.
+
+**Adopted `/continue` Step 1.8 and `/session-end` Step 1.5** — the checks `hub-template/`
+gained on 2026-08-08 that these instances, being separate files in a separate repo under
+ADR-008's file-copy distribution, had never picked up. Each is wired into its command's
+report block, because a check whose result is never reported is indistinguishable from one
+that never ran — the reasoning Step 1.9 already carried, applied to its new neighbour.
+Adapted rather than copied: both name `origin/main` directly and flag that Operations'
+`2. SOPS` is on **`master`**, since a hub-wide check that assumes a single default branch
+silently passes the one repo it got wrong. Step 1.8 also carries this hub's own evidence
+rather than the template's generic version — `main`'s 68-commit vault re-merge is precisely
+why the merge-base warning is not hypothetical here.
+
+Fixed a pre-existing off-by-one while in the file: `session-end.md` Step 1 directed findings
+to "the Step 5 report," but this hub's instance has two steps the template lacks, so its
+report is Step 6. Step 5 is the title step — it would have quietly swallowed the uncommitted
+and unpushed work Step 1 exists to surface.
+
+`hub-template/HUB-CHECKLIST.md` run against this vault afterwards: the branch-checks item was
+the only one failing, and `CLAUDE.md` needed no change.
+
+**Then ran the new Step 1.8 for real, which is how `/overwatch` got decided.** Nine unmerged
+branches (seven now — one was `/overwatch`, one a stale local ref `--prune` cleared). The
+owner call was to land it *with its path table verified first* rather than as-is, and the
+verification is the whole story of the second half of this session.
+
+**Three of nine paths were wrong, in a list that had already passed two reviewer rounds.**
+Two pointed into `C:\Dev\`, a drive that does not exist on this machine. That path was not
+an error when written — `knowledge/operations-hub.md` correctly records a real OneDrive
+corruption fix that relocated repos off the synced Desktop, back when Operations was its own
+machine, before the 2026-08-03 consolidation moved it here. The third told a session to find
+the config repo at `../tlelosa-claude-config/`, which resolves nowhere and re-opens the
+2026-08-08 wrong-clone bug, since two clones of that repo exist on this disk and only one
+governs. A fourth entry shipped hedged as "path inferred from convention" — it was right,
+but a status view unsure whether it is looking at a project is not a status view. And the
+Operations machine-level queue was missing from the table altogether.
+
+**A reviewer reads a path; only a filesystem answers it.** Smoke-tested after correcting:
+all eight paths resolve, 82 open items across them. The two `C:\Dev\` entries alone account
+for **9 of those — 5 NamePlateTool and 4 delivery-note-system items that would have been
+reported "unreachable" on every single run**, silently, by the one command built to make
+open work visible. It would have shipped with the gap it exists to close still open.
+
+**The branch was not merged, and merging it would have been wrong.** Diffed against `main`,
+`claude/continuation-utn4f5` showed 16,050 deletions across 81 files — none of them
+deletions the branch made, all of it `main`'s own four days of later work, including the
+68-commit vault re-merge. Two files were cherry-picked across with `git archive`; the branch
+is deleted. Diffing the other 79 file-by-file, instead of trusting the 2026-08-08 audit's
+summary that the residue was two files, surfaced **one** line `main` genuinely never had:
+the provenance link from `session-end.md` Step 4 back to the spec whose Gap 3 it implements.
+`main`'s copy was written independently three days later and never carried it. Restored — so
+all three gaps now point at each other, which is the difference between a spec that gets
+read again and one that gets rediscovered.
+
+**Corrected the stale path claim where it originated, not just where it hurt.**
+`knowledge/daily-sales-order-files.md` and `delivery-note-system.md` fixed in place with the
+reason; `operations-hub.md` gained a dated entry with the current live path table and a
+superseded marker on the 2026-07-28 one, kept as written per Hard Rule 2 since it records
+what was true then. The generalisable finding: **a cached path is a claim with an expiry
+date that nothing in its own text reveals** — the same shape as a stale `session-log.md`
+entry, applied to filesystem layout instead of commit clocks.
+
+Side items cleared: marketplace clone pulled current (30 commits behind, now `c67798b`), and
+`3. Nameplate & Test Sheet`'s `e288e11` pushed after six days unpushed.
+
+**Last completed:** Phase 6 branch checks adopted into this hub's commands, and `/overwatch`
+landed with a verified path table, closing `docs/specs/2026-08-05-command-center.md` (this
+entry)
+**Next task:** Phase 7a — a root `.gitignore` untracking the 31 MB node MSI, `backend.log.1`
+and the generated PNGs, without rewriting history. Then Phase 7b, which is an owner
+decision, not a build: hard rule 4 versus `Operations/`'s customer invoice CSVs and contract
+register, including whether the IT clearance on record covers cloud sessions cloning that
+data into an Anthropic container. `docs/todo.md` #1 (TebelloReborn step 140) and #2 (the
+gated SOPS migration) are both still open and unchanged.
+**Known risks:** `architect` and `reviewer` still run `claude-opus-4-8` on both machines
+while every document now says `claude-opus-5` — the marketplace clone is current, but agent
+bodies do not travel with the plugin, so this needs a `bootstrap.sh` re-run to actually
+land. Seven unmerged branches remain, none stale by the 7-day rule, all now visible to Step
+1.8. Backup failures remain silent (backlog).
+**Blockers:** None.

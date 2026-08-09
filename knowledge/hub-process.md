@@ -4,6 +4,39 @@ Findings about how this hub's own rules behave in practice — hub-and-spoke,
 the contention files, queue discipline. The rules themselves live in
 `CLAUDE.md`; this file records what using them has actually taught.
 
+## 2026-08-09 — Recovering a stranded branch: diff it file-by-file, and never merge it
+**Source:** session — landing `/overwatch` off `claude/continuation-utn4f5`, four days stranded
+**Status:** active
+
+The 2026-08-08 entry below diagnosed the stranded-branch failure and installed the
+detectors (`/continue` Step 1.8, `/session-end` Step 1.5). This entry is what the
+first actual *recovery* taught, which is a different problem: a detector tells you a
+branch is unmerged, and says nothing about what to do with it.
+
+**Never merge a stranded branch to recover it.** `claude/continuation-utn4f5` diffed
+against `main` showed **16,050 deletions across 81 files** — none of it deletions the
+branch made, all of it `main`'s own four days of work that the branch predates,
+including a 68-commit vault re-merge. Merging would have reverted the lot. Only **two**
+files existed on the branch that `main` lacked. Extract with
+`git archive <sha> <paths> | tar -x`, commit onto `main`, then delete the branch.
+
+**"Everything but N files is stale" is a summary, not a finding — verify it.** The
+2026-08-08 audit's per-branch verdict said the residue here was two files. Diffing the
+*remaining* 79 file-by-file surfaced 228 lines the branch had and `main` did not, and
+almost all of it was genuinely older wording of text `main` had since rewritten — but
+**one line was real**: a provenance link from `session-end.md` Step 4 back to the spec
+whose Gap 3 it implements. `main`'s copy had been written independently three days
+later and never carried it. One command
+(`git diff --numstat origin/main <branch> -- . ':(exclude)<landed paths>'`) is the whole
+check, and without it the spec would have stayed unreachable from the commands that
+implement it — the exact condition that makes a spec get rediscovered instead of read.
+
+**Deleting the branch is the last step, not the first.** Ancestry says a branch is
+unmerged; it never says the branch is empty. Step 1.8's own rule ("surfacing is not
+triaging, and never deleting") is what makes this safe to do at all: by the time a
+session deletes, it has the owner's call *and* a file-level accounting of what it is
+discarding.
+
 ## 2026-08-08 — Pushed is not delivered: the stranded-branch failure mode
 **Source:** session (systems check of `tlelosa-claude-config` + this hub)
 **Status:** active

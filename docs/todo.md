@@ -169,20 +169,8 @@ Phases 1-6 are done; what remains that is *this hub's* to do:
       IT clearance on record covers a personal Anthropic account on the work
       PC; whether it covers that is a separate question, and the same class
       as the open codex-gate/OpenAI-egress item. **Owner decision.**
-- [ ] **Adopt the Phase 6 branch checks in this hub's own
-      `.claude/commands/` copies.** `hub-template/continue.md` gained Step
-      1.8 (unmerged-branch check) and `hub-template/session-end.md` gained
-      Step 1.5 ("can this session's work be found?") on 2026-08-08. These
-      instances are separate files in a separate repo and do not have them.
-      Run `hub-template/HUB-CHECKLIST.md` against this vault — it now names
-      both step headings specifically, because a copy made before that date
-      looks complete and passes every other item.
-- [ ] **Decide on `/overwatch`** (held open 2026-08-08). Built 2026-08-05 as
-      Gap 1 of `docs/specs/2026-08-05-command-center.md`, still unmerged on
-      `claude/continuation-utn4f5`. Gaps 2 and 3 of that spec landed in the
-      config repo today, so this is the last piece of a three-part initiative
-      that is otherwise complete. Still wanted, or does the spec land as
-      historical? The branch is held undeleted until this is answered.
+*(Both remaining items from this section — the Phase 6 branch-check adoption
+and the `/overwatch` decision — closed 2026-08-09; see Done.)*
 
 ## Parked (committed work, deliberately deferred)
 
@@ -240,6 +228,60 @@ abandoned either — no work is lost by leaving them here.
 
 ## Done
 
+- [x] **2026-08-09** — Landed `/overwatch` (Gap 1), closing the last open
+      piece of `docs/specs/2026-08-05-command-center.md` — a three-part
+      initiative that was fully **built** by 2026-08-05 and read as
+      incomplete for four days only because this piece never reached `main`.
+      Owner call was to land it with the path table verified rather than
+      as-is, and that was the right call: **three of its nine paths were
+      wrong**, in a hand-maintained list that had already passed two reviewer
+      rounds. Two pointed into `C:\Dev\`, a drive that does not exist here —
+      the path came from `knowledge/operations-hub.md`, which correctly
+      recorded a relocation off OneDrive back when Operations was its own
+      machine, before the 2026-08-03 consolidation moved it. The third told a
+      session to find the config repo at `../tlelosa-claude-config/`, which
+      resolves nowhere and re-opens the 2026-08-08 wrong-clone bug, since two
+      clones of that repo exist here. Also added the Operations machine-level
+      queue (`Desktop/Operations/docs/todo.md`), which the table omitted.
+      Smoke-tested: all eight paths resolve, 82 open items — **9 of them
+      (5 NamePlateTool, 4 delivery-note-system) would have been silently
+      reported unreachable on every run**, by the one command built to make
+      open work visible.
+      **The branch was not merged, and merging it would have been wrong:**
+      diffed against `main` it showed 16,050 deletions across 81 files, all
+      of it `main`'s own later work the branch predates. Two files were
+      cherry-picked with `git archive`; the branch is deleted. Diffing the
+      other 79 file-by-file rather than trusting the audit's summary found
+      **one** real line `main` never had — the provenance link from
+      `session-end.md` Step 4 back to the spec whose Gap 3 it implements,
+      restored so all three gaps now point at each other.
+      Corrected the same stale-path claim where it originated:
+      `knowledge/daily-sales-order-files.md` and `delivery-note-system.md`
+      in place, `operations-hub.md` with a new dated entry plus a superseded
+      marker on the 2026-07-28 one (Hard Rule 2 — it records what was true
+      then). See `knowledge/operations-hub.md` and `knowledge/hub-process.md`.
+- [x] **2026-08-09** — Adopted the Phase 6 branch checks into this hub's own
+      `.claude/commands/` copies: `/continue` Step 1.8 (unmerged-branch check)
+      and `/session-end` Step 1.5 ("can this session's work be found?"), each
+      with its result wired into that command's report block — a check whose
+      outcome is never reported is indistinguishable from one that never ran,
+      the same reasoning Step 1.9 already carried. Adapted rather than copied
+      per ADR-008: both name `origin/main` directly and flag that Operations'
+      `2. SOPS` is on **`master`**, since a hub-wide check assuming one default
+      branch silently passes the repo it got wrong.
+      Ran `hub-template/HUB-CHECKLIST.md` against this vault afterwards — the
+      branch-checks item was the only one failing and `CLAUDE.md` needed no
+      change. Also fixed a pre-existing off-by-one: `session-end.md` Step 1
+      sent findings to "the Step 5 report", but this hub's instance has two
+      extra steps the template lacks, so its report is Step 6 — Step 5 is the
+      title step, which would have quietly swallowed the one thing Step 1
+      exists to surface.
+      Ran the new Step 1.8 immediately: **7 unmerged branches remain** (was 9;
+      one was `/overwatch`, now landed and deleted, and one was a stale local
+      ref that `--prune` cleared). None are older than 7 days' activity.
+      Side items cleared the same session: pulled the marketplace clone
+      current (30 commits behind, now `c67798b`), and pushed
+      `3. Nameplate & Test Sheet`'s `e288e11`, unpushed since 2026-08-03.
 - [x] **2026-08-08** — Marketplace clone moved back onto `main`. The clone
       `/continue` Step 1.5 actually reads,
       `~/.claude/plugins/marketplaces/tlelosa-claude-config`, was left on

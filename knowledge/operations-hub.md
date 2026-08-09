@@ -1,3 +1,45 @@
+## 2026-08-09 — `C:\Dev\…` is gone; every cached Operations path predating 2026-08-03 is suspect
+**Source:** session — verifying `/overwatch`'s project→path table before landing it
+**Status:** active
+
+**`C:\Dev` does not exist on this machine.** Every Operations project lives under
+`Desktop/Operations/` since the 2026-08-03 consolidation. Confirmed live paths:
+
+| Project | Path |
+|---|---|
+| Operations machine-level queue | `Desktop/Operations/docs/todo.md` |
+| SOPS | `Desktop/Operations/2. SOPS/` (git default branch is **`master`**, not `main`) |
+| NamePlateTool | `Desktop/Operations/3. Nameplate & Test Sheet/` |
+| delivery-note-system | `Desktop/Operations/7. DELIVERY NOTE/delivery-note-system/` |
+| daily-sales-order-files | `Desktop/Operations/1. Daily Sales Order Files/` (no `docs/` scaffold) |
+| This hub | `Desktop/O-P-C/` — **not** `C:\Dev\Claude-Code` |
+
+**The generalisable part is why the cache was wrong rather than that it was.** The
+`C:\Dev\` paths were not errors when written: the 2026-07-24 entry below records a real
+OneDrive-corruption fix that genuinely relocated repos off the synced Desktop, and the
+2026-07-28 entry records a clone that genuinely sat at `C:\Dev\Claude-Code`. Both were
+correct on a machine that no longer exists as a separate thing. **A cached path is a
+claim with an expiry date that nothing in its own text reveals** — the entry reads as
+confidently as it did the day it was true, which is the same failure shape as a stale
+`session-log.md` entry (see `hub-process.md`) applied to filesystem layout instead of
+commit clocks.
+
+**What this cost, concretely:** `/overwatch` shipped its path table through two reviewer
+rounds with two `C:\Dev\` entries in it. A reviewer reads a path; only a filesystem
+answers it. Had it landed unverified, 5 NamePlateTool and 4 delivery-note-system open
+items would have been reported "unreachable" on every run — silently, by the one command
+built to make open work visible.
+
+**Corrected in this pass:** `daily-sales-order-files.md` and `delivery-note-system.md`
+(header paths, in place, with the reason). Left as history per Hard Rule 2: the dated
+entries below, and `docs/todo.md`'s 2026-07-28 Done entry — those record what was true
+then and are not claims about now. `sops.md` already said "was `C:\Dev\…`" and needed
+nothing.
+
+**Standing check:** when a `knowledge/` entry supplies a path you are about to act on,
+test it before trusting it. Cheap, and this session found a 33% error rate in a
+hand-maintained list that had already been reviewed twice.
+
 ## 2026-08-06 — Backup scheduled daily (Windows Task Scheduler)
 **Source:** session (this machine, `TshepangLelosa`)
 **Status:** active
@@ -171,6 +213,11 @@ stale the moment SOPS is used again.
 Set up Operations (work PC) as a DCOE hub client of this repo, mirroring
 the Pappa T setup (see `knowledge/pappa-t.md`). Same architecture: git
 push/pull is the only sync channel, no live remote-environment bridge.
+
+> **Paths in this entry are superseded (2026-08-09).** The bridge and its
+> reasoning still hold; `C:\Dev\…` does not exist since the 2026-08-03
+> consolidation. See the 2026-08-09 entry at the top of this file for current
+> paths. Kept as written per Hard Rule 2 — this records what was true then.
 
 - Clone path on this machine: `C:\Dev\Claude-Code` — a sibling of
   `C:\Dev\Operations`, not nested inside it. Deliberately kept separate:

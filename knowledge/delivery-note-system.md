@@ -1,9 +1,13 @@
 # delivery-note-system
 
 Next.js 16 (App Router) + TypeScript + Prisma ORM + SQLite delivery-note
-register for Fan Movement (Pty) Ltd. Own git repo (`C:\Dev\Operations\7.
-DELIVERY NOTE\delivery-note-system`, no remote configured), onboarded to
-DCOE 2026-07-15. Single-operator tool, no auth.
+register for Fan Movement (Pty) Ltd. Own git repo
+(`Desktop/Operations/7. DELIVERY NOTE/delivery-note-system`, no remote
+configured), onboarded to DCOE 2026-07-15. Single-operator tool, no auth.
+Path corrected 2026-08-09 — the `C:\Dev\Operations\…` path this line carried
+recorded a real relocation off the OneDrive-synced Desktop, but that was
+while Operations was its own machine; `C:\Dev` does not exist since the
+2026-08-03 consolidation.
 
 ## 2026-07-28 — Stack facts and gotchas
 **Source:** delivery-note-system `CLAUDE.md` / `docs/todo.md` / `docs/bugs/`

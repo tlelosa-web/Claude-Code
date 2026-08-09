@@ -3029,3 +3029,65 @@ matters; it is the entire reason a single default template was chosen over a
 chooser directory. Already an open item in the config repo's queue, now due for
 both repos rather than one.
 **Blockers:** None.
+
+## 2026-08-09 — `/retro` installed, and the checklist that found three drifts nobody was looking for
+
+Cloud session, config-repo `/continue`. Task picked: adopt the Phase 6 branch
+checks into this hub's own `.claude/commands/` copies, plus copy in `retro.md`.
+
+**Half the task was already done, and had been for a day.** The config repo's
+open item said this hub's `/continue` and `/session-end` had not picked up the
+branch checks. Both had — on 2026-08-09, recorded in this log two entries above
+and in `docs/todo.md`. That item was written 2026-08-08 and given a 2026-08-09
+addendum ("the hub now needs `retro.md` copied in as well, so this is one pass
+over three commands, not two") by a session that appended to it without
+re-reading the sentence above. So the count was wrong in the addendum itself:
+one command, not three.
+
+This is worth naming precisely, because it is the fifth instance this week of
+the same failure and it is exactly what the file installed today exists to
+detect. `/retro`'s Step 2 lists "a session re-did or re-proposed something a
+prior session already finished" as its first signal. The queue item that sent
+this session to do already-finished work was the last thing it did before
+`/retro` existed.
+
+**What actually landed.** `.claude/commands/retro.md`, tailored per ADR-008
+rather than copied flat: this hub's paths, its `docs/decisions/`, the
+"most recent last" session-log convention with the
+`grep -n "^## " | tail` idiom (this file is 3,000 lines — reading it whole is
+the wrong move and the template didn't say so), the hub-and-spoke boundary on
+whose friction counts, and the reminder that `hub-template/` is copy-source and
+not a plugin, which is the precise reason this task existed at all.
+
+`docs/retro-log.md` becomes the **fourth contention file**. Wired into Hard Rule
+6, `/continue` Step 1.75, and `/retro` Step 5 — which pulls immediately before
+appending rather than once at the start of the run.
+
+**The checklist's diff-don't-assume rule earned its place.** Running
+`HUB-CHECKLIST.md` again meant actually diffing `/continue` against the
+template instead of trusting that a copy made 12 days ago was current. Seven
+items passed; the diff found three drifts unrelated to anything in the task:
+
+1. The mobile slash-command known-gap note has been in the template since
+   2026-07-19 and was never copied here — on a hub whose owner uses the mobile
+   app, the one note explaining why a slash command silently fails there.
+2. Step 1.75's *this prevents conflicts, not misordering* caveat was missing.
+   Added, pointing at `/session-end` Step 3, which holds the tail check.
+3. Drift in the other direction: this hub's `--include=*.md` grep gotcha was a
+   local improvement the template lacked. **Promoted upstream** into
+   `tlelosa-claude-config/hub-template/continue.md`, so both machines get it.
+
+Drift in *both* directions between a template and its copy is what ADR-008's
+file-copy distribution guarantees, and the only thing that surfaces it is
+someone running the diff.
+
+**Last completed:** `/retro` installed and the vault reconciled against
+`HUB-CHECKLIST.md` (this entry)
+**Next task:** In the config repo's queue. Nearest hub-relevant items: recording
+the cloud-session ref-deletion blocker in `knowledge/cloud-sessions.md`, and
+Phase 7 (a root `.gitignore` — the 31 MB installer, logs and generated images
+are tracked today — plus the contradiction between Hard Rule 4 and the company
+data living in `Operations/`).
+**Known risks:** `/retro` has never been run. Its first run is unbounded by
+design (no `docs/retro-log.md` yet) and will review this log's full history.
+**Blockers:** None.

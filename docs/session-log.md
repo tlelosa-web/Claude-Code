@@ -2980,3 +2980,52 @@ a deliberate side-effect of disabling the task, recorded so it is not rediscover
 surprise. The staged folder is a copy, so every file in it still exists in its original
 location as well.
 **Blockers:** None technical. Both new items are decisions, not work.
+
+## 2026-08-09 — The hub's PR template, stranded for a day, landed
+
+Cloud session, config-repo `/continue`. The task picked was reconciling a
+branch count in `tlelosa-claude-config`; landing this file is what that
+reconciliation turned up.
+
+**What was wrong.** `docs/specs/2026-08-09-pr-templates.md` specifies a PR
+template for both repos, both halves were built on 2026-08-09, and the config
+repo's `docs/todo.md` recorded the task Done for both. Only the config half
+merged (PR #16). This repo had no `.github/` directory at all. The Done entry
+was half-true for a day.
+
+**How it surfaced.** The reconciliation measured every branch in both repos two
+ways — ancestry, and *files present on the branch and absent from `main`*. That
+second measure is what found it: across all 14 unmerged hub branches,
+`.github/pull_request_template.md` was the only file `main` did not have. An
+ancestry-only check would have shown 14 unmerged branches and said nothing
+about which one mattered.
+
+Worth recording that this is the same failure mode, in the same week, that
+Phase 6's branch checks were built to catch — and that the check caught it, one
+day late, on the first `/continue` run after the branch was created. The
+mechanism works; the gap is that a session can push a branch and end without
+anything merging it.
+
+**How it landed.** Taken verbatim from `claude/pr-template-linear-planning-40hnrd`
+onto a branch cut from current `main`. The stranded branch was not merged — it
+is thousands of lines behind `main`, and merging it would revert current
+content. Same extract-don't-merge rule the 2026-08-08 triage set for every hub
+branch.
+
+`docs/todo.md` has no entry to close here: the PR-template initiative is
+tracked in `tlelosa-claude-config`'s queue, which is correct under hub-and-spoke
+— it is a config-repo-owned change that happens to touch two repos.
+
+**Last completed:** `.github/pull_request_template.md` landed on this repo
+(this entry)
+**Next task:** In the config repo's queue. The `retro.md` decision is now the
+only thing gating deletion of all four held-open config branches; this repo's
+own 13 triaged branches are unblocked, and `claude/pr-template-linear-planning-40hnrd`
+becomes safe to delete once this commit is on `main`.
+**Known risks:** Two acceptance criteria from the spec still cannot be checked
+from a cloud container — that GitHub pre-fills the body with no `?template=`
+parameter, and that nothing blocks a merge. The pre-fill is the one that
+matters; it is the entire reason a single default template was chosen over a
+chooser directory. Already an open item in the config repo's queue, now due for
+both repos rather than one.
+**Blockers:** None.

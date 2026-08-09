@@ -157,6 +157,12 @@ Don't reorder across it.
 
 ## Step 4 — Update the Knowledge Cache (Hard Rule 5)
 
+Covers **Gap 3** ("the `knowledge/` cache can silently go stale") from
+`docs/specs/2026-08-05-command-center.md`, per the design in
+`tlelosa-claude-config/docs/specs/2026-08-04-session-end-command.md` item 3.
+Gap 1 of that spec is `/overwatch`; Gap 2 is the agent-roster bootstrap in
+the config repo.
+
 If this session surfaced a reusable fact — a config quirk, a decision, an
 API behavior, an approach that didn't work — it belongs in `knowledge/`
 now, not "later." The whole point of the cache is that the next session

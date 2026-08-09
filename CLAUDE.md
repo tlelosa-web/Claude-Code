@@ -35,6 +35,16 @@ Two things live here at once, deliberately kept separate:
   `docs/todo.md` (in its own repo) stays authoritative for anything scoped
   inside that project.
 
+**Session commands.** `/continue` (resume) and `/session-end` (close out) are
+the routine pair — one at each end of a session, per ADR-008. `/retro`
+(`.claude/commands/retro.md`, copied in 2026-08-09) is **periodic, not
+routine**: run it weekly, or whenever a session felt like a repeat of one
+already done. It reads backward across `docs/session-log.md` and
+`docs/todo.md` for *framework* friction — the queue asserting completion it
+didn't have, a fact about another repo that was stale when written, the same
+gap recurring — and proposes a confirmable batch. It records each run in
+`docs/retro-log.md`, which is what stops it repeating its own complaint.
+
 **Hub-and-spoke:** any sub-project with its own `CLAUDE.md`/`AGENTS.md`
 takes precedence over this file for work done inside that project's
 folder. This file governs cross-project decisions and new work started at
@@ -78,9 +88,10 @@ These add to `CORE.md`'s Universal Hard Rules — they never relax them.
 5. Update `docs/todo.md` and `docs/session-log.md` after every hub-level
    task, same discipline as the knowledge-cache update rule above.
 6. **Pull before you edit a contention file.** `docs/todo.md`,
-   `docs/session-log.md`, and `knowledge/INDEX.md` get written by nearly
+   `docs/session-log.md`, `knowledge/INDEX.md`, and `docs/retro-log.md`
+   (the fourth, added 2026-08-09 with `/retro`) get written by nearly
    every hub-level session — with Operations, Pappa T, and cloud sessions
-   all able to run concurrently, stale-base edits to these three files have
+   all able to run concurrently, stale-base edits to these four files have
    already caused two real merge conflicts (see `docs/session-log.md`,
    2026-07-28 entries). Before editing any of them, `git fetch origin` +
    `git pull origin main` (or merge/rebase onto latest `main`) first. If a

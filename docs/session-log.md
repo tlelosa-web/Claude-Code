@@ -2682,3 +2682,79 @@ detection sits in front of the submit path, where hitting it costs a real applic
 employer mid-flight, and that deserves a deliberate answer before Phase G rather than a discovery
 during it. Backup failures remain silent (hub backlog).
 **Blockers:** None technical. Step 140 is paused by choice, not stuck.
+
+## 2026-08-08 — Systems check of both repos, then Phases 1-6 of the maintenance plan
+
+A `/continue` run that turned into a full systems check of `tlelosa-claude-config` and this hub,
+then six of the seven phases of the plan it produced. All work is on
+`claude/continuation-rpdmh0` in both repos.
+
+**What the check found.** The tooling was healthy — all four manifests valid, all ten agent
+bodies well-formed, all command frontmatter real. The *bookkeeping around it* was not. Four
+findings: **16 branches across the two repos unmerged with no open PR**, a Done entry asserting
+an ADR that was not on this hub's `main`, a marketplace catalog still advertising agent bodies
+stripped on 2026-07-29, and a routing table contradicting the deployed agent frontmatter.
+
+**The stranding was systemic, not anyone's mistake.** Cloud sessions each push a `claude/<slug>`
+branch and end; nothing asked whether that work became reachable from `main`; the next session
+started from `main` and had no step that would look. Every session in that loop ended *believing
+it delivered*. The failure has no symptom — clean tree, zero behind, a close-out that reads like
+success.
+
+**What was recovered.** Config repo: `bootstrap.sh` (which closed an open todo item outright),
+the JSON-validation hook spec, the session-end reusable-fact prompt, the config audit, the
+`hub-template/hooks/` pair, `CLAUDE.md.template` v3.4's two live defects (a `cd`-based executor
+isolation rule that produced executors editing the main checkout, and a HOOKS table naming events
+Claude Code does not have), the `Explore` Haiku override, and CORE 1.3. Here: **ADR-010**, three
+stranded `knowledge/` files (`claude-code-sessions`, `cloud-sessions`, `pitcrew-sync`), and four
+PWA service-worker entries.
+
+**The command-center finding is the one worth remembering.** An owner-scoped,
+`AskUserQuestion`-confirmed initiative from 2026-08-05 named three gaps and locked a build order.
+All three were built across both repos — `/overwatch` here, `bootstrap.sh` and the session-end
+prompt in the config repo — and **not one of them merged**. Gaps 2 and 3 landed today; Gap 1 is
+held pending an owner call on whether it is still wanted.
+
+**Two measurement errors made and corrected, both recorded.** Diffing hub branches against their
+*merge-base* showed 43,000-line deltas across ~290 files and looked catastrophic; `main`'s tip is
+a 68-commit vault re-merge that had already absorbed most of it. Diffing `main` *against* each
+branch showed every branch is 2,800-5,600 lines **behind**, each with a small residue — and 7 of
+13 carried nothing but stale state that would have moved the knowledge cache backwards. Separately,
+a verification `grep --include=*.md` silently skipped `CLAUDE.md.template`, because that filename
+does not end in `.md`. Both mistakes are now written into `/continue`'s Step 1.8 as warnings.
+
+**Phases 5 and 6.** Model routing got a spec and shipped as CORE 1.4 / template v3.5 /
+dcoe-roster 3.6.0: a *test* for when a standing model pin is legitimate (every task the role
+receives must already meet an escalation trigger), which documents `architect`'s previously
+invisible pin instead of leaving it contradicting hard rule 7, plus 11 stale `claude-opus-4-8`
+references replaced — the escalation path had been pointing at an older generation than the
+default. Phase 6 added the branch checks that stop all of this recurring: `/continue` Step 1.8
+(inbound) and `/session-end` Step 1.5 (outbound), in both `hub-template/` and the config repo's
+own instances.
+
+**The Phase 6 check caught its own author.** Run against the config repo it returned 5 unmerged
+branches, not the 3 its acceptance criteria predicted — the criterion was wrong. Two results
+matter: `continuation-yon8p3` is byte-identical to `main` and still flags as unmerged (proving
+the "unmerged ≠ lost" warning is not hypothetical), and it flagged **this session's own 22
+commits**, which is exactly the state Step 1.5 exists to name.
+
+**Last completed:** Phases 1-6 of `tlelosa-claude-config/docs/specs/2026-08-08-system-maintenance-plan.md`
+— systems check, branch triage for both repos, recovery of the keeps, record corrections, manifest
+and doc drift, model routing (CORE 1.4), and the unmerged-branch checks
+**Next task:** Phase 7 — hub hygiene and governance. A root `.gitignore` (a 31 MB
+`node-v24.10.0-x64.msi`, a 2 MB log and ~6 MB of generated PNGs are tracked in a 67 MB repo;
+untrack going forward, **do not rewrite history** — that breaks every clone on both machines for a
+cosmetic win), and the contradiction between this hub's hard rule 4 ("no company or project data")
+and `Operations/` holding customer invoice CSVs and a contract register. Also: adopt the Phase 6
+branch checks into this hub's own `.claude/commands/` copies — the templates have them, these
+instances do not.
+**Known risks:** Nothing from today has reached Operations or Pappa T. `architect` and `reviewer`
+are still running `claude-opus-4-8` on both machines while every document now says
+`claude-opus-5` — the rollout needs `/plugin marketplace update` **and** a `bootstrap.sh` re-run,
+because agent bodies do not travel with the plugin. Neither of today's two specs has been through
+`/codex-review` (hard rule 9); codex-gate is Pappa T-only and this session ran in a cloud
+container. Both are tracked in `tlelosa-claude-config/docs/todo.md` rather than left implicit.
+**Blockers:** Two branch-deletion decisions are deliberately held open — `retro.md` (dropped on
+the reading that `/continue` + `/session-end` already cover workflow management) and `/overwatch`.
+Their branches are undeleted so either call stays reversible. All 16 branches remain until those
+two are settled.

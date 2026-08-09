@@ -143,6 +143,47 @@ flags re-checked 2026-08-03 after the O-P-C consolidation — see note below)
       in-session go-ahead): `docs/specs/2026-07-29-sops-avgmovement-migration.md`.
       Detail: `2. SOPS/docs/todo.md`, `knowledge/sops.md`.
 
+### From the 2026-08-08 systems check (config repo + this hub)
+
+Full plan and per-branch verdicts live in `tlelosa-claude-config/docs/specs/`
+(`2026-08-08-system-maintenance-plan.md`, `2026-08-08-branch-triage-verdicts.md`).
+Phases 1-6 are done; what remains that is *this hub's* to do:
+
+- [ ] **Phase 7a — root `.gitignore`.** This repo has none, and build
+      artifacts are tracked: a 31 MB `node-v24.10.0-x64.msi`, a 2 MB
+      `backend.log.1`, and ~6 MB of generated PNGs, in a 67 MB repo. Add a
+      `.gitignore` and untrack going forward. **Do not rewrite history** —
+      that breaks every existing clone on both machines plus any cloud
+      session, for a cosmetic size win. Untracking is enough.
+- [ ] **Phase 7b — resolve the company-data rule contradiction.** This
+      hub's hard rule 4 says "no company or project data beyond what's
+      already public in the source project's own repo," but `Operations/`
+      holds `CustomerInvoicesReport.csv`,
+      `CustomerSalesOrdersByCustomer.csv`, `Contract register 2025.xlsx`
+      and the 07.2026 sales order report. The hub-and-spoke design intends
+      sub-projects to live here, so the rule and the layout contradict each
+      other — decide which is meant and reword the loser. All five repos are
+      confirmed **private**, so this is rule clarity, not exposure. One
+      related question worth answering explicitly: cloud sessions clone this
+      entire vault, company data included, into an Anthropic container. The
+      IT clearance on record covers a personal Anthropic account on the work
+      PC; whether it covers that is a separate question, and the same class
+      as the open codex-gate/OpenAI-egress item. **Owner decision.**
+- [ ] **Adopt the Phase 6 branch checks in this hub's own
+      `.claude/commands/` copies.** `hub-template/continue.md` gained Step
+      1.8 (unmerged-branch check) and `hub-template/session-end.md` gained
+      Step 1.5 ("can this session's work be found?") on 2026-08-08. These
+      instances are separate files in a separate repo and do not have them.
+      Run `hub-template/HUB-CHECKLIST.md` against this vault — it now names
+      both step headings specifically, because a copy made before that date
+      looks complete and passes every other item.
+- [ ] **Decide on `/overwatch`** (held open 2026-08-08). Built 2026-08-05 as
+      Gap 1 of `docs/specs/2026-08-05-command-center.md`, still unmerged on
+      `claude/continuation-utn4f5`. Gaps 2 and 3 of that spec landed in the
+      config repo today, so this is the last piece of a three-part initiative
+      that is otherwise complete. Still wanted, or does the spec land as
+      historical? The branch is held undeleted until this is answered.
+
 ## Parked (committed work, deliberately deferred)
 
 Distinct from "Backlog / ideas" below: these are real, agreed items with

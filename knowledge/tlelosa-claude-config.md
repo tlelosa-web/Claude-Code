@@ -1,3 +1,64 @@
+## 2026-08-09 — The roster was authoritative in CORE.md and absent on disk; hook, not documentation, is the fix
+**Source:** session (Pappa T), `tlelosa-claude-config` `ab95eef` on `main`
+**Status:** active
+
+`~/.claude/agents/` did not exist on Pappa T on 2026-08-09 — six weeks after CORE.md
+declared the roster deployed at user level and "available automatically in every
+project." Consequences, all silent: no DCOE delegation target resolved (every
+`domain`/`planner`/`architect`/`executor`/`tester`/`reviewer`/`doc-writer`/`debugger`/
+`data-agent` call fell through to Claude Code built-ins), and `Explore` inherited the
+session model. With `"model": "opus"` in `~/.claude/settings.json` that made read-only
+search run at Opus — a tier *above* the Sonnet-priced fallback CORE.md warns about.
+A missing agent raises no error, so the only symptom is a quieter, costlier session.
+
+Root cause: the 2026-07-29 strip decision removed `dcoe-roster/agents/` to stop the
+loader triple-listing every agent, and its explicitly accepted tradeoff was that the
+plugin "no longer doubles as a new-machine roster-bootstrap vehicle." The manual copy
+step that replaced it was never run. The 2026-08-08 session log had already recorded
+that a `bootstrap.sh` re-run was needed; that note did not cause the re-run.
+
+**Fix (CORE 1.5, `dcoe-roster` 3.7.0):** `SessionStart` hook in `dcoe-roster` →
+`agent-bodies-reference/bootstrap.mjs`. Bodies stay at repo root, outside every
+plugin-scanned path, so the triple-listing does not return — the hook restores the
+bootstrap role by a different route rather than reverting the strip.
+
+Design points worth reusing:
+- **Node, not bash.** Not portability pedantry: a bash hook cannot report its own
+  absence, which made the "prints one line naming the failure" acceptance criterion
+  unsatisfiable. Node is what Claude Code already guarantees, so this also retired the
+  unverified Git-Bash-on-Operations question instead of leaving it a build blocker.
+- **Missing-only by default.** Per-machine agent edits are legitimate under the
+  2026-07-29 decision, so a session-start overwrite would silently revert them. The
+  hook names divergent files and leaves them; `--repair` is the explicit restore path,
+  `--check` reports without writing. A missing-only hook with no repair path lets a
+  locally broken agent persist forever — both halves are needed.
+- **Manifest over globbing.** `roster-manifest.json` lists the 10 filenames and each
+  one's model, so roster state is checkable by identity rather than by counting files.
+- **Settings writes must be paranoid.** `bootstrap.mjs` parses, backs up, temp-writes,
+  re-validates as JSON, then renames. An unparseable `settings.json` is refused, never
+  overwritten — a bad write here breaks Claude Code on every machine that syncs.
+- Verified: cold start installs 10; steady state silent; **six concurrent
+  session-starts land on a clean 10 files with no empties**; hand-edited `executor.md`
+  and `reviewer.md` both survive; malformed settings left untouched; missing manifest
+  reports one line, exit 1.
+
+**Codex-gate is now unconditional on every machine** via the manifest's
+`requiredPlugins`. Tebello's decision 2026-08-09, taken with the compliance caveat
+stated: it goes to Operations ahead of Fan Movement IT clearance for OpenAI egress,
+and hard rule 9 stays universal — the conditional rewording proposed in the spec's B.3
+was considered and **not** adopted. Until egress exists it fail-warns to "proceeding
+solo" there.
+
+**Gotcha found by testing, not reasoning:** `bootstrap.mjs` self-locates via
+`import.meta.url` and never reads `CLAUDE_PLUGIN_ROOT`; only the hook's command string
+does. With that variable unset, Node throws a multi-line `MODULE_NOT_FOUND` stack, not
+a clean one-liner. Loud enough to satisfy the rule, but an earlier draft of the spec
+claimed otherwise and was wrong.
+
+**Also confirmed:** `gh` is unauthenticated on Pappa T — no PR can be opened from a
+session here, so branch-and-PR would have stranded the branch. Merged to `main`
+directly on instruction.
+
 ## 2026-08-08 — hub-template drifts *both* ways, and it carried vault-specific content
 **Source:** session (this machine), PR
 https://github.com/tlelosa-web/tlelosa-claude-config/pull/14 (merged, `5660e1d`, branch

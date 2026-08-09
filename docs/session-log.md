@@ -2850,3 +2850,48 @@ bodies do not travel with the plugin, so this needs a `bootstrap.sh` re-run to a
 land. Seven unmerged branches remain, none stale by the 7-day rule, all now visible to Step
 1.8. Backup failures remain silent (backlog).
 **Blockers:** None.
+
+2026-08-09 codex-review docs/specs/2026-08-09-universal-roster-and-codex-gate.md: ran
+
+## 2026-08-09 — System map, and the roster that was never actually there
+
+Asked for a spider diagram of how projects and agents connect to the system brain.
+Building it from live config rather than from the docs turned up that the map's
+central claim was false: `~/.claude/agents/` **did not exist on Pappa T**, six weeks
+after CORE.md declared the roster authoritative and available automatically in every
+project. No delegation target existed; `Explore` was inheriting the session model
+(`opus`) rather than Haiku. Nothing had errored — the only symptom was quieter,
+more expensive sessions. The 2026-08-08 entry above had already noted "bodies do not
+travel with the plugin, so this needs a `bootstrap.sh` re-run to actually land"; that
+re-run never happened, which is precisely the `knowledge/hub-process.md` finding that
+a written record is not a control.
+
+Actions taken:
+- Ran `bootstrap.sh` — 10 roster agents now at `~/.claude/agents/` on this machine.
+- Wrote `docs/specs/2026-08-09-universal-roster-and-codex-gate.md`, ran
+  `/codex-review` on it (Codex ran clean, review appended), and folded the strongest
+  points back in as a dated Amendment per hard rule 9.
+- Built and shipped the fix in `tlelosa-claude-config` (`ab95eef`, merged to `main`
+  directly at Tebello's instruction; `gh` is unauthenticated on this machine so no PR
+  could be opened, and a branch with no PR is the documented stranding failure):
+  a `SessionStart` hook in `dcoe-roster` running a new `bootstrap.mjs`, plus
+  `roster-manifest.json`. CORE 1.4→1.5, `dcoe-roster` 3.6.0→3.7.0.
+- Codex-gate now self-enables everywhere via the manifest's `requiredPlugins`.
+
+Codex earned its keep twice: it caught that acceptance criterion 6 was unsatisfiable
+(a bash hook cannot report its own absence), which promoted the Node rewrite from
+third preference to the design, and its manifest suggestion replaced file-counting
+with identity-checking. It also caught a genuine self-contradiction between the
+spec's B.1 and B.3.
+
+One correction folded into the spec: an earlier draft of the amendment claimed an
+unset `CLAUDE_PLUGIN_ROOT` would produce a clean one-line error. Testing disproved
+it — the script self-locates via `import.meta.url` and never reads that variable, so
+Node throws a multi-line `MODULE_NOT_FOUND` stack instead. Loud, as A.4 requires, but
+not what was claimed.
+
+**Not done:** the `reviewer` agent gate never ran — the roster only reached disk this
+session, and agents load at session start. Codex was advisory only, as designed.
+**Blockers:** Neither machine has picked the change up yet; each needs
+`/plugin marketplace update tlelosa-claude-config` and a restart. Operations is
+untouched by this session and still needs that step run locally.

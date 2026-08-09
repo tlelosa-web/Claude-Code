@@ -155,20 +155,49 @@ Phases 1-6 are done; what remains that is *this hub's* to do:
       `.gitignore` and untrack going forward. **Do not rewrite history** —
       that breaks every existing clone on both machines plus any cloud
       session, for a cosmetic size win. Untracking is enough.
-- [ ] **Phase 7b — resolve the company-data rule contradiction.** This
-      hub's hard rule 4 says "no company or project data beyond what's
-      already public in the source project's own repo," but `Operations/`
-      holds `CustomerInvoicesReport.csv`,
+- [ ] **Phase 7b — resolve the company-data rule contradiction.**
+      **Re-scoped 2026-08-09: the Fan Movement contract was terminated on
+      Monday 2026-08-03, which turns this from a documentation question into
+      a live one.** This hub's hard rule 4 says "no company or project data
+      beyond what's already public in the source project's own repo," but
+      `Operations/` holds `CustomerInvoicesReport.csv`,
       `CustomerSalesOrdersByCustomer.csv`, `Contract register 2025.xlsx`
-      and the 07.2026 sales order report. The hub-and-spoke design intends
-      sub-projects to live here, so the rule and the layout contradict each
-      other — decide which is meant and reword the loser. All five repos are
-      confirmed **private**, so this is rule clarity, not exposure. One
-      related question worth answering explicitly: cloud sessions clone this
-      entire vault, company data included, into an Anthropic container. The
-      IT clearance on record covers a personal Anthropic account on the work
-      PC; whether it covers that is a separate question, and the same class
-      as the open codex-gate/OpenAI-egress item. **Owner decision.**
+      and the 07.2026 sales order report — 641 files tracked in this repo,
+      including 64 `.xlsx`, 14 `.csv` and 13 `.pdf`. The hub-and-spoke design
+      intends sub-projects to live here, so the rule and the layout
+      contradict each other — decide which is meant and reword the loser.
+      All five repos are confirmed **private**, so this is not exposure.
+      Two related questions, both now sharper than when this item was
+      written: cloud sessions clone this entire vault, company data included,
+      into an Anthropic container; and the IT clearance on record was granted
+      by a company Tebello no longer contracts to, which is also the standing
+      caveat on the codex-gate/OpenAI-egress item that shipped to Operations
+      the same day. **Owner decision**, and the staged handover folder
+      (below) does not settle it — that folder is a copy, so every file it
+      contains is still here too.
+- [ ] **Decide what happens to the Fan Movement material still in this repo
+      and in the GitHub repos** (opened 2026-08-09, follows the staging
+      below). Copying files into a handover folder does not remove them from
+      anywhere else. Fan Movement material remains in: this repo's
+      `Operations/` tree and **its full commit history**, pushed to private
+      `tlelosa-web/Claude-Code`; the private repos `tlelosa-web/sops` and
+      `tlelosa-web/NamePlateTool`, both under a personal account with
+      complete history; five dated backups in `~/OneDrive/DCOE-Backups/`
+      holding the production `sops.db`, synced to Microsoft's cloud; the
+      local `~/Backups/dcoe-runtime/` and `dcoe-secrets/` sets; and the
+      original `Desktop/Operations/` tree. **None of these are wrong to
+      hold** — the question is what the terminated contract's terms say
+      about retention, and that is a contract question, not a technical one.
+      Nothing here should be deleted or rewritten before it is answered:
+      history rewrites are irreversible and break every clone.
+- [ ] **Re-scope or re-enable the runtime-data backup task** (opened
+      2026-08-09). `DCOE runtime-data backup` was **disabled** this session
+      so it would stop copying Fan Movement databases into OneDrive — its
+      next run was 2026-08-10 12:30. It is disabled, not deleted, and it also
+      covered Pappa T's own `career.db` and `outreach.db`, **which are now
+      unprotected**. Either re-scope `scripts/backup-runtime-data.py` to skip
+      `Operations/` and re-enable, or accept the lapse deliberately. Re-enable
+      with `Enable-ScheduledTask -TaskName "DCOE runtime-data backup"`.
 *(Both remaining items from this section — the Phase 6 branch-check adoption
 and the `/overwatch` decision — closed 2026-08-09; see Done.)*
 
@@ -227,6 +256,79 @@ abandoned either — no work is lost by leaving them here.
       running and verified — but worth a deliberate answer rather than drift.
 
 ## Done
+
+- [x] **2026-08-09** — **Fan Movement contract terminated Monday 2026-08-03;
+      staged the company IP into a single handover folder.**
+      `Desktop/Fan Movement - Company IP/` — **1,064 files, 108 MB, a copy**:
+      nothing was moved or deleted, every original is in place and every tool
+      still runs. Scope was Tebello's call: company business data **plus** the
+      four tools built for Fan Movement (SOPS, NamePlateTool,
+      delivery-note-system, daily-sales-order-files), excluding the DCOE agent
+      tooling and personal notes, build artifacts and a downloaded public Node
+      installer. Laid out as `01-business-data/`, `02-tools/`, `03-databases/`,
+      `04-credentials/`, with `MANIFEST.md` and a sha256 `CHECKSUMS.txt` over
+      all 1,074 files.
+      **Databases were copied with the sqlite3 backup API, not a file copy** —
+      a raw copy of a live database can capture a torn state — then verified by
+      `PRAGMA integrity_check` plus a per-table row-count comparison against
+      source: production `sops.db` **13 tables / 6,501 rows, integrity ok**,
+      delivery-note `dev.db` clean, plus the 7 historical pre-migration
+      snapshots. The single `.env` was staged into its own `04-credentials/`
+      rather than left buried inside the tool copy, so it is visible in a
+      handover instead of shipped by accident.
+      **Destination checked before writing, not assumed:** `Desktop` on this
+      machine is genuinely local, not OneDrive-redirected (the "OneDrive-synced
+      Desktop" note in `knowledge/operations-hub.md` was the *work* PC), and
+      the folder sits outside every git repo — so staging neither commits nor
+      syncs anything.
+      **The task the folder does not do, stated rather than implied:** the same
+      material is still in three private GitHub repos with full history, in
+      five OneDrive backups, and in the originals. That is now its own queue
+      item above, deliberately not acted on — retention is a contract question.
+      Also disabled the daily `DCOE runtime-data backup` task, whose next run
+      (2026-08-10 12:30) would have copied the production `sops.db` into
+      OneDrive again. See `knowledge/operations-hub.md`.
+
+- [x] **2026-08-09** — **The agent roster now deploys itself on every
+      machine** (`tlelosa-claude-config` `ab95eef`, on `main`; CORE 1.4→1.5,
+      `dcoe-roster` 3.6.0→3.7.0). Found while mapping the system: on Pappa T
+      `~/.claude/agents/` **did not exist at all** — six weeks after CORE.md
+      declared the roster authoritative. Every DCOE delegation had been
+      silently falling back to Claude Code's built-ins, so hard rule 3 and
+      the Orchestrate→Execute split were unenforceable, and `Explore` was
+      inheriting the session model (`opus`) instead of Haiku — one tier worse
+      than the Sonnet-priced fallback CORE.md warns about. Nothing errored;
+      the only symptom was quieter, costlier sessions. Root cause was the
+      2026-07-29 strip decision's accepted tradeoff: removing
+      `dcoe-roster/agents/` (to stop triple-listing) also removed the
+      plugin's bootstrap role, leaving a manual per-machine copy nobody ran.
+      Fix: a `SessionStart` hook in `dcoe-roster` running a new
+      `agent-bodies-reference/bootstrap.mjs`, with bodies still outside the
+      plugin so the triple-listing does not come back. Node not bash — that
+      dropped the unverified Git-Bash-on-Operations dependency and fixed an
+      acceptance criterion that was logically unsatisfiable (a bash script
+      cannot report its own absence). Missing-only by default, so local
+      agent edits are named and preserved, never reverted; `--repair`
+      restores, `--check` reports. `roster-manifest.json` makes the roster
+      checkable by identity instead of by file count. Spec, Codex review and
+      amendment: `docs/specs/2026-08-09-universal-roster-and-codex-gate.md`.
+      **Verify on each machine:** `/plugin marketplace update
+      tlelosa-claude-config`, restart, then `/agents` shows all ten
+      unprefixed.
+
+- [x] **2026-08-09** — **`codex-gate` now enables itself on every machine**,
+      via the same `bootstrap.mjs` (`requiredPlugins` in the manifest). Hard
+      rule 9 requires `/codex-review` on every spec, but the plugin was
+      installed per machine and absent on Operations, so the rule was
+      unrunnable on half the estate. **Tebello's decision, taken with the
+      compliance caveat stated and understood:** ship it to Operations now
+      rather than waiting on Fan Movement IT clearance for OpenAI egress —
+      the conditional rewording of hard rule 9 proposed in the spec's B.3
+      was considered and **not** adopted. Until egress exists, the command
+      fail-warns to "proceeding solo" there, which is a runtime outcome
+      rather than a policy caveat. Settings writes are backed up,
+      temp-written, JSON-validated then renamed; an unparseable
+      `settings.json` is refused, never overwritten.
 
 - [x] **2026-08-09** — Landed `/overwatch` (Gap 1), closing the last open
       piece of `docs/specs/2026-08-05-command-center.md` — a three-part

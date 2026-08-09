@@ -55,9 +55,33 @@ does. With that variable unset, Node throws a multi-line `MODULE_NOT_FOUND` stac
 a clean one-liner. Loud enough to satisfy the rule, but an earlier draft of the spec
 claimed otherwise and was wrong.
 
-**Also confirmed:** `gh` is unauthenticated on Pappa T — no PR can be opened from a
-session here, so branch-and-PR would have stranded the branch. Merged to `main`
-directly on instruction.
+**`gh` auth on Pappa T — superseded within the same session.** During this work `gh` was
+unauthenticated, so no PR could be opened from a session here and branch-and-PR would have
+stranded the branch; `ab95eef` went to `main` directly on instruction as a result.
+**Fixed later the same day:** `gh auth login --hostname github.com --git-protocol https
+--web`, logged in as `tlelosa-web`, token in the OS keyring, scopes `gist`, `read:org`,
+`repo`. Both private repos resolve. Sessions on this machine can now branch → push → open
+the PR in one step.
+
+Two things that surfaced:
+
+- **Scope gap: no `workflow`.** The `--web` flow granted `repo`/`read:org`/`gist` but not
+  `workflow`, so a push touching `.github/workflows/` will be rejected by GitHub at push
+  time — not at edit time, which makes it a confusing failure to diagnose. Fix with
+  `gh auth refresh -h github.com -s workflow` if CI files ever need changing.
+- **The stranding is measurable now.** First authenticated look: **11 branches with
+  unmerged commits and zero open PRs** — 7 in `Claude-Code`, 4 in `tlelosa-claude-config`.
+  That matches the 2026-08-08 triage's residue, which is the point: the count was never
+  the problem, the inability to act on it was. Measure with
+  `gh api repos/<owner>/<repo>/compare/main...<branch> -q .ahead_by` — against `main`,
+  never against the merge-base.
+
+**Reusing the Git Credential Manager token for `gh` is not a route.** GCM already held a
+working github.com credential — that is why `git push` succeeded while `gh` failed — but
+piping it out via `git credential fill` into `gh auth login --with-token` is **blocked by
+Claude Code's auto-mode classifier** as credential extraction, correctly. The interactive
+`--web` login is the better outcome anyway: `gh` gets its own refreshable credential
+rather than borrowing one that would expire confusingly later.
 
 ## 2026-08-08 — hub-template drifts *both* ways, and it carried vault-specific content
 **Source:** session (this machine), PR

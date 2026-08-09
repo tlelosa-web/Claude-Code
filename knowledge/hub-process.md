@@ -4,6 +4,54 @@ Findings about how this hub's own rules behave in practice — hub-and-spoke,
 the contention files, queue discipline. The rules themselves live in
 `CLAUDE.md`; this file records what using them has actually taught.
 
+## 2026-08-08 — Pushed is not delivered: the stranded-branch failure mode
+**Source:** session (systems check of `tlelosa-claude-config` + this hub)
+**Status:** active
+
+Sixteen branches accumulated across the two repos over roughly four weeks,
+unmerged with no open PR, holding finished and reviewed work — including an
+ADR another file already claimed existed, three `knowledge/` files, and a
+complete three-gap initiative built across both repos.
+
+**The mechanism.** A cloud session works, pushes `claude/<slug>`, ends.
+Nothing asks whether that work became reachable from `main`. The next
+session starts from `main`, cannot see the branch, and has no step that
+would look. Repeat.
+
+**Why it went unnoticed for four weeks: the failure has no symptom.**
+`git status` is clean, `rev-list HEAD..origin/main` is `0`, and the session
+log reads like a confident close-out. Every session in the loop ended
+believing it delivered, and was right about everything except reachability.
+This is the same shape as the Step 1.9 cross-repo staleness problem, one
+level up — *nothing about stranded work looks stranded*.
+
+**The fix is two checks, not one**, because they answer different questions:
+`/session-end` Step 1.5 asks whether *this* session's commits are reachable
+(the closing session is the only one that knows what it built, and the last
+to look at that branch on purpose), and `/continue` Step 1.8 finds what
+*earlier* sessions stranded (a session that dies badly never runs
+`/session-end` at all). Installed in `hub-template/` 2026-08-08; this hub's
+own copies still need it.
+
+**Two measurement traps, both hit and corrected the same day:**
+
+1. **Diff branches against `origin/main`, never the merge-base.** Against
+   merge-base, 13 hub branches showed ~43,000-line deltas across ~290 files
+   and looked like catastrophic data loss. `main`'s tip was a 68-commit vault
+   re-merge that had already absorbed nearly all of it. Diffing `main`
+   against each branch showed every branch was 2,800-5,600 lines *behind*,
+   with a small unique residue — and 7 of 13 carried nothing but stale
+   `INDEX.md` rows and old todo state that would have moved the cache
+   **backwards** if landed.
+2. **Unmerged by ancestry does not mean content is lost.** One branch was
+   byte-identical to `main` and still failed the ancestor test. Verify
+   per-file before concluding anything, and never delete on ancestry alone.
+
+**A corollary worth keeping:** a `grep -r --include=*.md` silently skips
+`CLAUDE.md.template`, because that filename does not end in `.md`. A
+verification sweep that uses an include filter can report clean while
+missing a whole file.
+
 ## 2026-08-07 — "The project file wins" is about ownership, not correctness
 **Source:** session (this machine), hub `6e3702f` + Pappa T vault `93f8e5b`
 **Status:** active

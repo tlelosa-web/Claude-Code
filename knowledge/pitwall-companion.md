@@ -1,3 +1,16 @@
+## 2026-08-06 — Same stale-PWA trap as CrateTracker; fix not applied here yet
+**Source:** session (fix built and shipped in RMLRACE/cratetracker)
+**Status:** active
+
+`sw.js` is cache-first on the same pattern, so the same trap applies:
+even with the cache version bumped, an installed PWA needs **two** opens
+before a deploy is visible, and the first one reads as "the update didn't
+ship". CrateTracker now prompts instead — full pattern (no `skipWaiting()`,
+`SKIP_WAITING` postMessage, `controllerchange` reload guarded on whether a
+controller existed at load, `reg.update()` on `visibilitychange`) is in the
+2026-08-06 entry of `cratetracker.md`. **Not yet ported here** — worth
+doing given this app has trusted testers who'd hit the same confusion.
+
 ## 2026-07-23 — What it is & structure
 **Source:** tlelosa-web/pitwall-companion README.md
 **Status:** active
@@ -40,6 +53,22 @@ cached file (`index.html`, `sw.js`, `manifest.webmanifest`, an icon),
 bump `CACHE_VERSION` at the top of `sw.js` (e.g. `f1sheet-v1` →
 `f1sheet-v2`) — otherwise installed devices keep serving the stale
 cache even after a push.
+
+## 2026-08-06 — Cache-busting gotcha actually missed three times in a row
+**Source:** session (Spa track, Compare-tab Boosts, GP Event collapsible, PRs #18/#19)
+**Status:** active
+
+The 2026-07-23 rule above was documented but not followed: three
+consecutive `index.html`-only PRs (#18's Spa/Compare-Boosts changes, #19's
+GP Event collapsible) all shipped without bumping `CACHE_VERSION` — none
+of those sessions checked `sw.js` before committing. Caught retroactively
+in the PR #22 session (onboarding slideshow) and fixed with a single
+catch-up bump (`f1sheet-v13` → `v14`) covering all four unbumped changes
+at once, rather than trying to re-open the already-merged PRs. **Concrete
+takeaway:** treat any `index.html`-touching commit as incomplete until
+`sw.js`'s `CACHE_VERSION` has also been bumped in the same commit — don't
+rely on remembering the rule from a knowledge-file read at session start;
+check it at commit time, every time.
 
 ## 2026-07-23 — Modeling notes worth not re-deriving
 **Source:** tlelosa-web/pitwall-companion README.md

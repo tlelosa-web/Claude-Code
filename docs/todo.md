@@ -190,14 +190,28 @@ Phases 1-6 are done; what remains that is *this hub's* to do:
       about retention, and that is a contract question, not a technical one.
       Nothing here should be deleted or rewritten before it is answered:
       history rewrites are irreversible and break every clone.
-- [ ] **Re-scope or re-enable the runtime-data backup task** (opened
-      2026-08-09). `DCOE runtime-data backup` was **disabled** this session
-      so it would stop copying Fan Movement databases into OneDrive — its
-      next run was 2026-08-10 12:30. It is disabled, not deleted, and it also
-      covered Pappa T's own `career.db` and `outreach.db`, **which are now
-      unprotected**. Either re-scope `scripts/backup-runtime-data.py` to skip
-      `Operations/` and re-enable, or accept the lapse deliberately. Re-enable
-      with `Enable-ScheduledTask -TaskName "DCOE runtime-data backup"`.
+- [ ] **Decide whether backup discovery should be default-deny** (opened
+      2026-08-09, from the Codex advisory review on
+      `docs/specs/2026-08-06-runtime-data-backup-script.md`). Both leaks found
+      that day — the Chrome profile, and the manifest's secret-path map — were
+      newly-discovered `DATA` reaching OneDrive **by default**. Codex's point:
+      pruning is a list of mistakes already made, so the next unknown syncs
+      before anyone looks. It proposes flipping discovery from *backup unless
+      pruned* to *report until explicitly approved* (allowlist, or two-phase
+      discover-then-promote). Correct as a diagnosis, but it is a redesign of
+      the script's central premise — "discovery over hardcoding" is the
+      property that caught three files the hand-written list had missed. Owner
+      decision, and its own piece of work. Full reasoning in that spec's
+      §Disposition.
+- [ ] **Decide what to do about the pre-existing synced backup runs**
+      (opened 2026-08-09). Six runs in `~/OneDrive/DCOE-Backups/` predate this
+      session's fixes. The five oldest carry Fan Movement databases; all six
+      carry a manifest listing the full path of every secret file on this
+      machine, and the location of the secrets backup. Redaction applies going
+      forward only. Options range from redacting their manifests in place
+      (non-destructive) to removing runs outright — the latter overlaps the
+      retention question above and should not be done separately from it.
+      Deliberately untouched this session.
 *(Both remaining items from this section — the Phase 6 branch-check adoption
 and the `/overwatch` decision — closed 2026-08-09; see Done.)*
 
@@ -256,6 +270,49 @@ abandoned either — no work is lost by leaving them here.
       running and verified — but worth a deliberate answer rather than drift.
 
 ## Done
+
+- [x] **2026-08-09** — **Re-scoped the runtime-data backup to skip Operations,
+      and the task is running again** (next run 2026-08-10 12:30, Pappa T only).
+      `VAULTS` is Pappa T; `Desktop/Operations` moved to a new `EXCLUDED_VAULTS`
+      constant rather than deleted from the list, because the real failure mode
+      is a *future* session reading a Pappa-T-only backup as a bug and helpfully
+      restoring it — so the constant carries the reason, the date and an explicit
+      "do not add this back". Backed by a run-time invariant (**exit 3**) that
+      resolves every discovered path and writes nothing if one lands inside an
+      excluded vault: not a restatement of `VAULTS`, since a junction under a
+      scanned vault can point into an excluded one and the walk would follow it
+      unnamed — `.claude/worktrees/` already proved that class is real here.
+      Drift output now labels expected removals, or the first run after the
+      change reads like data loss and every run after that like a mystery. The
+      docstring, generated `MANIFEST.md` and secrets `README.md` were corrected
+      too — left alone, every future run would have shipped a manifest asserting
+      coverage it no longer had.
+      **The dry run then exposed a worse leak, unrelated to Fan Movement:** with
+      Operations gone, five *new* databases appeared, all under
+      `TebelloReborn/.session/chrome-profile/` — the hand-signed-in Chrome
+      profile from Phase E, 857 files, `Login Data` and `Network/Cookies`. Its
+      SQLite files were being copied into the **OneDrive-synced** tree: a live
+      authenticated session leaving the machine daily. The credential stores
+      escaped only because Chrome names them with no extension, so the patterns
+      missed them — luck, not design. `.session` and `chrome-profile` are pruned
+      outright. It had been true and unnoticed since 2026-08-08, and only
+      surfaced because narrowing one scope changed what the other discovered.
+      **Ran `/codex-review` per Hard Rule 9, and it earned its keep.** Codex
+      flagged "manifest leakage"; checked against a real run, it was true — the
+      *synced* `manifest.json` listed all six secret paths and the secrets-backup
+      location. No contents, but a precise map of where every credential lives,
+      syncing to a cloud provider. The existing invariant checked for secret
+      *files* and had nothing to say about *references*. Fixed by redacting the
+      synced manifest (local copy stays complete, so restore is unaffected) and
+      extending the invariant to fail on references — **proven with a positive
+      control**, not assumed: 5 references detected in the pre-fix run, 0 in the
+      post-fix run.
+      Verified end to end: 10 unit checks on the new guards, dry run, then two
+      real runs — exit 0, 5 databases verified, and the synced tree confirmed to
+      hold 0 Operations files, 0 Chrome-profile files, 0 secret files and 0
+      secret references. Codex's strongest structural point (flip discovery to
+      default-deny) is recorded as an owner decision above, not silently taken.
+      Spec amended with all of it: `docs/specs/2026-08-06-runtime-data-backup-script.md`.
 
 - [x] **2026-08-09** — **Fan Movement contract terminated Monday 2026-08-03;
       staged the company IP into a single handover folder.**

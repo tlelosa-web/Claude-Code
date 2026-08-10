@@ -1,3 +1,43 @@
+## 2026-08-09 — Narrowing one backup scope revealed what the other scope was leaking
+**Source:** session — re-scoping `scripts/backup-runtime-data.py` after the contract ended
+**Status:** active
+
+Dropping `Desktop/Operations` from the backup was the task. **Two unrelated leaks came out
+of doing it**, and neither was found by reading code.
+
+**1. A signed-in Chrome profile was syncing to OneDrive.** With Operations removed, five
+*new* databases appeared in the discovery set — all under
+`Pappa T/TebelloReborn/.session/chrome-profile/`, the hand-signed-in profile from Phase E
+(857 files, `Login Data`, `Network/Cookies`). Its Chromium `*.db` files were being copied
+into the **synced** tree daily. The credential stores escaped only because Chrome names them
+with no extension, so `*.db` never matched — **luck, not design**. True and unnoticed since
+2026-08-08. Prune browser profiles outright; they are regenerable and re-signable.
+
+**2. The synced manifest was a map of every secret on the machine.** Raised by an advisory
+Codex review, then *confirmed against a real run*: `manifest.json`'s `discovered` list
+carried all six secret paths and `secrets_location` carried the secrets directory. No
+contents left the machine — but the existing invariant checked for secret **files** in the
+synced tree and said nothing about **references** to them, so the local-only split was
+weaker than it read.
+
+**Three reusable rules, in order of how much they earned:**
+
+- **A scope change is a discovery event.** Narrowing one input changed what the other input
+  surfaced. Nothing about the leak was new; removing the noise is what made it visible. After
+  changing what a discovery-based tool scans, *read the dry run* rather than checking it
+  exits 0.
+- **"No X in the output" and "no reference to X in the output" are different invariants**,
+  and the second is the one that gets forgotten. Redacting is not enough on its own —
+  re-check that the redaction held.
+- **Prove a new guard with a positive control.** The reference check was verified by running
+  it against the pre-fix backup (5 detections) as well as the post-fix one (0). A guard only
+  ever tested against clean data is indistinguishable from a guard that never fires.
+
+Fix shape worth copying: `Desktop/Operations` went into a named `EXCLUDED_VAULTS` constant
+carrying the reason, the date and an explicit "do not add this back", *plus* a run-time
+invariant (exit 3) that fails the run if any discovered path resolves inside it. The constant
+alone would have been undone by the first session that read a Pappa-T-only backup as a bug.
+
 ## 2026-08-09 — Fan Movement contract terminated 2026-08-03; company IP staged for handover
 **Source:** session — owner notified mid-session, survey and staging performed same session
 **Status:** active

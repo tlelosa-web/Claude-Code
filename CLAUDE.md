@@ -40,6 +40,73 @@ takes precedence over this file for work done inside that project's
 folder. This file governs cross-project decisions and new work started at
 root — not everything everywhere.
 
+-----
+
+## 📍 Live copies vs. this repo's snapshot
+
+`Operations/` and `Pappa T/` **inside this repo** are a historical
+consolidation snapshot (the 2026-08-03 subtree merges — committed git
+history only). The live working copies are `Desktop/Operations/` and
+`Desktop/Pappa T/`, and those are separate git repos with their own
+remotes, holding the gitignored runtime state (databases, `.env` files,
+generated output) that a subtree merge structurally cannot capture.
+
+Editing a file in this repo's snapshot does **not** reach the running
+project — it only creates a re-merge to do later. Read the snapshot freely;
+do actual project work in the live `Desktop/` copy. This is why `docs/todo.md`
+flags items with 📍, and why `/overwatch` is forbidden from reading the
+snapshot folders even as a fallback.
+
+| Live repo | Default branch | Remote |
+|---|---|---|
+| `Desktop/Pappa T/` — **one** repo covering every sub-project (TebelloReborn, ai-outreach-agency, IQ, MIMS App, Tenders…) | `main` | `tlelosa-web/pappa-t` |
+| `Desktop/Operations/2. SOPS/` | **`master`** | `tlelosa-web/sops` |
+| `Desktop/Operations/3. Nameplate & Test Sheet/` | `main` | `tlelosa-web/NamePlateTool` |
+| `Desktop/Operations/7. DELIVERY NOTE/delivery-note-system/` | `master` | **none — local only** |
+| this hub | `main` | `tlelosa-web/Claude-Code` |
+
+`Desktop/Operations/` is not itself a repo — it's a folder containing
+several. Table verified 2026-08-10; per `knowledge/operations-hub.md` a
+cached path table is a claim with an expiry date nothing in its own text
+reveals, so re-check it rather than trust it.
+
+-----
+
+## Commands
+
+There is no build and no hub-level test suite — this repo is docs, process,
+and one script. Work runs through three commands in `.claude/commands/`:
+
+- **`/continue`** — session resume. Steps 1.75 / 1.8 / 1.9 carry the weight:
+  pull before any edit, find branches earlier sessions stranded, and verify
+  the hub's log against the live sub-projects' commit clocks *before*
+  believing it. It ends by waiting for confirmation — it never starts work.
+- **`/session-end`** — close-out: reconcile `docs/todo.md`, write the dated
+  `docs/session-log.md` entry, update `knowledge/`. Surfaces uncommitted and
+  unpushed work; never commits or pushes without explicit confirmation.
+- **`/overwatch`** — read-only status across this hub, every tracked
+  sub-project, and the config repo. Its project→path table is hand-maintained
+  inside the command file; update it by hand when a project moves.
+
+The one script:
+
+```
+python scripts/backup-runtime-data.py [--dry-run] [--quiet] [--keep N] [--log-file PATH]
+```
+
+Backs up the gitignored live runtime state of the Pappa T vault — the only
+data here with no second copy. Exit `2` or `3` means an invariant broke
+(data/secret separation, or an excluded vault reaching the discovery set),
+not an ordinary failure. `Desktop/Operations` is excluded **deliberately**
+(Fan Movement contract terminated 2026-08-03) — don't add it back to "fix"
+a Pappa-T-only backup.
+
+Decisions live in `docs/decisions/` (ADR-007…ADR-010), build specs in
+`docs/specs/`, dated. A build task with no spec is a spec-gate stop, not a
+green light.
+
+-----
+
 `knowledge/`'s own dated-entry format (below) already carries date, source,
 and status per entry — treat it as satisfying `hub-template`'s note-
 frontmatter convention (date/source/project/status) in spirit; it's not
@@ -86,3 +153,11 @@ These add to `CORE.md`'s Universal Hard Rules — they never relax them.
    `git pull origin main` (or merge/rebase onto latest `main`) first. If a
    conflict still happens anyway, resolve it as a real union of both
    sides' changes — never pick one branch and discard the other's work.
+7. **Windows shell traps that have already cost this repo real time** —
+   full detail in `knowledge/session-tooling.md`. The three that recur:
+   `git commit -m` with a PowerShell here-string splits into pathspecs (use
+   `-F <file>`); `Get-Content -Raw` decodes a BOM-less UTF-8 file as ANSI
+   and silently mojibakes every em-dash, so round-trip source files through
+   Python rather than PowerShell; and a `CHECKSUMS.txt` written by Python on
+   Windows needs `newline=""` or `sha256sum -c` fails every line at once and
+   reads like corrupt data.

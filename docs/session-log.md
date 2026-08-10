@@ -2980,3 +2980,77 @@ a deliberate side-effect of disabling the task, recorded so it is not rediscover
 surprise. The staged folder is a copy, so every file in it still exists in its original
 location as well.
 **Blockers:** None technical. Both new items are decisions, not work.
+
+2026-08-09 codex-review docs/specs/2026-08-06-runtime-data-backup-script.md: ran
+
+## 2026-08-09 — Backup re-scoped to skip Operations, and two leaks it uncovered
+
+Task was narrow: stop the daily backup copying Fan Movement data now the contract has
+ended, so the scheduled task could come back on for Pappa T's own databases. It is done —
+`DCOE runtime-data backup` is **Ready again, next run 2026-08-10 12:30, Pappa T only**.
+
+**The scoping change itself.** `VAULTS` is Pappa T; `Desktop/Operations` moved into a named
+`EXCLUDED_VAULTS` constant rather than being deleted from the list. The failure mode worth
+designing against is not the code, it is a *future session* reading a Pappa-T-only backup as
+a bug and helpfully restoring the second entry — so the constant carries the reason, the
+date and an explicit "do not add this back", and is backed by a run-time invariant (**exit
+3**) that resolves every discovered path and writes nothing if one lands inside an excluded
+vault. That is not a restatement of `VAULTS`: a junction under a scanned vault can point
+into an excluded one and the walk would follow it without ever naming it, and
+`.claude/worktrees/` already proved that class of surprise is real here. Drift output now
+labels expected removals — otherwise the first run after the change reads like data loss and
+every run after it like an unexplained mystery. The docstring, generated `MANIFEST.md` and
+secrets `README.md` were corrected too; left alone, every future run would have shipped a
+manifest asserting coverage it no longer had.
+
+**Then the dry run showed something worse, and nothing to do with Fan Movement.** With
+Operations removed, five *new* databases appeared in the discovery set, all under
+`Pappa T/TebelloReborn/.session/chrome-profile/` — the hand-signed-in Chrome profile from
+Phase E: 857 files, `Login Data`, `Network/Cookies`. Its SQLite files were being copied into
+the **OneDrive-synced** tree, a live authenticated session leaving the machine on a daily
+schedule. The credential stores escaped only because Chrome names them with no extension, so
+`*.db` never matched them — **luck, not design**. It had been true and unnoticed since the
+profile was created on 2026-08-08. `.session` and `chrome-profile` are pruned outright now.
+
+**`/codex-review` was run per Hard Rule 9 and did not rubber-stamp.** Its "manifest leakage"
+point was checked against a real run rather than filed: the *synced* `manifest.json` carried
+all six secret paths in `discovered`, and `secrets_location` carried the secrets directory;
+the synced `MANIFEST.md` named it twice more. No secret contents left the machine — but a
+precise map of where every credential lives did, which is the thing the local-only split
+exists to prevent. The existing invariant checked for secret **files** in the synced tree and
+had nothing to say about **references** to them. Fixed by redacting the synced manifest (the
+local copy keeps everything, so restore is unaffected) and extending the invariant to fail on
+a reference as well as a file.
+
+**The new guard was proven with a positive control rather than assumed.** Run against the
+pre-fix backup it detects 5 references; against the post-fix backup, 0. A guard only ever
+tested against clean data is indistinguishable from one that never fires.
+
+**Codex's strongest structural point was recorded, not taken.** It argues discovery should
+flip from *backup unless pruned* to *report until explicitly approved* — both of today's
+leaks were newly-discovered `DATA` reaching OneDrive by default, so pruning is a list of
+mistakes already made and the next unknown syncs before anyone looks. Correct as a
+diagnosis, but it is a redesign of the script's central premise, and "discovery over
+hardcoding" is the property that originally caught three files a hand-written list had
+missed. Owner decision, now a queue item.
+
+Verification: 10 unit checks on the new guards (including that a lookalike sibling like
+`Operations-archive` is *not* flagged — parent containment, not string prefix), a dry run,
+then two real runs at exit 0. The synced tree was then checked directly: 0 Operations files,
+0 Chrome-profile files, 0 secret files, 0 secret references.
+
+**Deliberately untouched:** the six pre-existing synced backup runs. Five carry Fan Movement
+databases and all six carry the un-redacted manifest; redaction applies going forward only.
+Removing or rewriting them overlaps the open retention question, so it is a queue item rather
+than a side effect.
+
+**Last completed:** backup script re-scoped to Pappa T, two leaks closed, scheduled task
+re-enabled (this entry)
+**Next task:** Two owner decisions this produced — whether backup discovery should become
+default-deny, and what to do about the pre-existing synced runs. Phase 7a (root `.gitignore`)
+remains the smallest open build item, and would also have caught the `scripts/__pycache__/`
+that this session created and removed by hand.
+**Known risks:** Pappa T's databases are protected again. The Fan Movement material in the
+three private GitHub repos and the older backups is unchanged and still awaiting a retention
+decision.
+**Blockers:** None.

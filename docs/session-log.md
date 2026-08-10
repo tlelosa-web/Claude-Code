@@ -3136,9 +3136,23 @@ file `main` lacked. The deletion sheet in
 `tlelosa-claude-config/docs/specs/2026-08-08-branch-triage-verdicts.md` should
 be read with that in mind — its hub count of 14 predates this branch.
 
-**Last completed:** `/retro` and its four supporting edits landed on this repo's
-`main`; `docs/retro-log.md` still does not exist, which is correct — `/retro`
-creates it on its first run.
+**Addendum, same day, after PR #18 was opened.** The original branch was merged
+independently as **PR #17** (`555d348`) while this session was still working, so
+`3354010` reached `main` by its own route as well as by this session's
+cherry-pick (`72fbd19`). Identical content, so git merged the two without
+duplicating a line — but it did conflict on this file, since only one side had
+the later entries. Resolved as a union per Hard Rule 6.
+
+Two things worth keeping from that. First, the recovery was not wasted but it
+was **redundant** — had this session checked the PR list rather than only remote
+refs, it would have seen the branch was already being landed. `git fetch` +
+ancestry answers "is it merged", not "is somebody merging it"; an open PR is
+external state too, and Hard Rule 10 covers it. Second, this is a live instance
+of the concurrent-write problem Hard Rule 6 exists for, and the first one caused
+by *this hub's own owner acting in the UI* rather than by another session.
+
+**Last completed:** `/retro` and its four supporting edits reachable from this
+repo's `main` — by two routes, PR #17 and this branch's cherry-pick.
 **Next:** run `/retro` for the first time (unbounded, per its Step 1).
 **Known risks:** none introduced. The install is byte-identical to what was
 reviewed on 2026-08-09.

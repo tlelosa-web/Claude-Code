@@ -3091,3 +3091,55 @@ data living in `Operations/`).
 **Known risks:** `/retro` has never been run. Its first run is unbounded by
 design (no `docs/retro-log.md` yet) and will review this log's full history.
 **Blockers:** None.
+
+## 2026-08-10 — `/retro`, stranded for a day, landed in the hub
+
+Cloud session, config-repo `/continue`. Second consecutive session in which the
+Step 1.8 branch check was what found the real work — and the second consecutive
+half-landed pair.
+
+**What was wrong.** On 2026-08-09 a session installed `/retro` here and made the
+matching change in `tlelosa-claude-config`. Both repos had a branch named
+`claude/continuation-45sy98`. The config-repo half merged as PR #20. The hub
+half never got a PR, so `.claude/commands/retro.md`, the `CLAUDE.md`
+session-commands paragraph, the fourth-contention-file edits to Hard Rule 6 and
+`/continue` Step 1.75, and the entry above it all sat on an unmerged branch.
+
+Meanwhile `tlelosa-claude-config/docs/todo.md` recorded, in its final Done
+entry, "Landed in the hub: `.claude/commands/retro.md`, tailored per ADR-008 …
+`docs/retro-log.md` wired in as the hub's fourth contention file … `CLAUDE.md`
+now names `/retro` as periodic." None of it was on this repo's `main`. The
+config repo's own queue was the thing asserting state it did not have.
+
+**How it surfaced.** Same two-way measure as the PR-template recovery the day
+before: ancestry, then *files present on the branch and absent from `main`*.
+Across 15 unmerged hub branches, `.claude/commands/retro.md` was the only file
+`main` lacked. The ancestry check alone said "15 unmerged" and nothing more.
+
+Worth stating plainly what this is: `/retro` exists specifically to detect a
+queue entry claiming completion it doesn't have. It was stranded on a branch by
+the very failure mode it was written to catch, and the false Done entry
+describing its own installation is now the sixth such entry in three days. The
+count is itself the finding.
+
+**How it landed.** Unlike the PR template, this branch was **0 commits behind
+`main`** — it was cut from current `main` and never fell behind — so the commit
+cherry-picked cleanly and verbatim rather than needing hand extraction. The
+extract-don't-merge rule from the 2026-08-08 triage still applies to the other
+14 branches, which are all genuinely stale; it simply wasn't needed here. The
+cherry-picked entry keeps its original 2026-08-09 date, because that is when
+the work was done — this entry is the record of when it became reachable.
+
+`claude/continuation-45sy98` is now safe to delete along with the rest, which it
+was not before today: it was the only branch across either repo still holding a
+file `main` lacked. The deletion sheet in
+`tlelosa-claude-config/docs/specs/2026-08-08-branch-triage-verdicts.md` should
+be read with that in mind — its hub count of 14 predates this branch.
+
+**Last completed:** `/retro` and its four supporting edits landed on this repo's
+`main`; `docs/retro-log.md` still does not exist, which is correct — `/retro`
+creates it on its first run.
+**Next:** run `/retro` for the first time (unbounded, per its Step 1).
+**Known risks:** none introduced. The install is byte-identical to what was
+reviewed on 2026-08-09.
+**Blockers:** None.

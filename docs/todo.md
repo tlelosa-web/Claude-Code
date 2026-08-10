@@ -13,17 +13,8 @@ Per DCOE: update after every completed task; one task = one commit.
 on 2026-08-10 (~06:43), deliberately and with the deletion left in place.
 Four things follow from that, all owner decisions rather than work:
 
-- [ ] **Re-point `VAULTS`, or retire the scheduled backup.** Its one entry is
-      the deleted `Desktop/Pappa T`, so `scripts/backup-runtime-data.py` now
-      exits `4` and writes nothing. The task `DCOE runtime-data backup` is
-      still **Ready** and will fail loudly daily until this is answered.
-      **Do not** point it at this repo's `Pappa T/` snapshot — verified
-      2026-08-10 to hold zero databases, zero real `.env` files and no
-      `agent-memory`, so it would look like a working backup and protect
-      nothing. Options: re-clone `tlelosa-web/pappa-t` and restore runtime
-      state from `~/Backups/dcoe-runtime/20260809-215839`, or disable the
-      task and accept that Pappa T's runtime state lives only in that
-      backup set.
+*(The `VAULTS` decision was taken 2026-08-10 — Pappa T restored to `~/Pappa T`
+and coverage resumed. See Done.)*
 
 - [ ] **`delivery-note-system` has no copy anywhere.** Per this hub's own
       table it never had a remote — its git history existed only inside the
@@ -32,15 +23,26 @@ Four things follow from that, all owner decisions rather than work:
       history**. If that history is wanted, it has to come out of the
       Recycle Bin before the bin is emptied. Nothing else recovers it.
 
-- [ ] **Every `Desktop/…` path table in this repo is stale.** Left in place
-      rather than rewritten to a guess, because where these repos live next
-      is the decision above. Affected: `.claude/commands/overwatch.md`
+- [ ] **Every `Desktop/…` path table in this repo is stale — and the sweep is
+      now unblocked.** It was waiting on where the repos would live; that is
+      answered: **Pappa T is at `~/Pappa T`, this hub is at `~/O-P-C`, and
+      Operations is not coming back.** Affected: `.claude/commands/overwatch.md`
       (hand-maintained, both tables), `continue.md` (Steps 1.9 / resume),
-      `session-end.md` (📍 live-copy checks), and the `knowledge/` entries
-      for `sops`, `pappa-t`, `tebelloreborn`, `delivery-note-system`,
-      `daily-sales-order-files`, `operations-hub`. Update them in one pass
-      once the paths are settled — piecemeal edits are how the last table
-      went stale unnoticed.
+      `session-end.md` (📍 live-copy checks), `retro.md`, and the `knowledge/`
+      entries for `sops`, `pappa-t`, `tebelloreborn`, `delivery-note-system`,
+      `daily-sales-order-files`, `operations-hub`. Update them in one pass —
+      piecemeal edits are how the last table went stale unnoticed.
+      **Two things this sweep must decide, not just find-and-replace:**
+      `/continue` Step 1.9 compares the hub's clock against *live sub-project
+      repos*; with Operations gone and Pappa T the only one left, the step
+      needs re-scoping rather than re-pathing. And `/overwatch`'s table lists
+      projects that now exist only as remotes — decide whether it reports them
+      as gone or drops them, because a row that silently resolves nowhere is
+      the exact failure the 2026-08-09 verification caught.
+      **This hub's own move was recorded nowhere until 2026-08-10** — no doc,
+      no log entry, and the scheduled backup task was still pointing at
+      `Desktop/O-P-C`. Worth a line in the sweep about what else holds a copy
+      of a path: scheduled tasks, `.claude/settings.json`, shell profiles.
 
 - [ ] **A private key is committed to this repo's history.**
       `Pappa T/TebelloReborn/_archive_qwen_prototype/2_Source_Data/Legacy_CV_Archive/TebelloLelosa.pfx`
@@ -90,7 +92,10 @@ flags re-checked 2026-08-03 after the O-P-C consolidation — see note below)
 1. [ ] **TebelloReborn: Indeed site adapter** — **Phases A–D built 2026-08-07;
       Phase E's offline half built 2026-08-08 (676 tests). Phase E's live half is
       paused overnight at Tebello's direction after Cloudflare bot-challenged the
-      site.** 📍 Live `Desktop/Pappa T/TebelloReborn/`, vault `1ba6521`, pushed.
+      site.** 📍 Live **`~/Pappa T/TebelloReborn/`** (re-cloned there 2026-08-10;
+      was `Desktop/Pappa T/`), vault `1ba6521`, pushed — the clone is at exactly
+      that commit, and `career.db` is restored and verified at 4 tables / 64 rows,
+      so the 6 `approved` Indeed vacancies are intact.
 
       **Resume here:** step 140 in that project's `docs/todo.md` — the questions
       step's selectors and the review step's URL segment are still unknown,
@@ -98,9 +103,14 @@ flags re-checked 2026-08-03 after the O-P-C consolidation — see note below)
       registered** in `eligibility.ADAPTERS` so nothing can reach a prep run that
       could only fail. Everything else in Phase E is done: `questions.py`,
       `drafting.py`, the `IndeedAdapter` shell, `prep.py` + the `prep-submission`
-      CLI, and `tools/indeed_login_setup.py`. A signed-in Chrome profile now
-      exists at `.session/chrome-profile` (gitignored), so the sign-in does not
-      need repeating.
+      CLI, and `tools/indeed_login_setup.py`. A signed-in Chrome profile once
+      existed at `.session/chrome-profile` (gitignored) — ⚠️ **it is gone as of
+      2026-08-10.** Being gitignored, it was not in the repo; being a credential
+      store, it was deliberately pruned from the backup on 2026-08-09; so it
+      existed only in the deleted vault. **The sign-in does need repeating**, via
+      `tools/indeed_login_setup.py`. The two decisions that removed it were each
+      correct on their own, which is the point worth keeping: a file excluded
+      from every copy on purpose has no copy.
 
       **Two findings that change the remaining work**, full detail in that
       project's spec §2026-08-08 recon and in `knowledge/tebelloreborn.md`:
@@ -355,6 +365,65 @@ abandoned either — no work is lost by leaving them here.
       running and verified — but worth a deliberate answer rather than drift.
 
 ## Done
+
+- [x] **2026-08-10** — **Pappa T restored to `~/Pappa T`, and the daily backup
+      is covering it again** — but re-pointing `VAULTS` turned out to be the
+      smallest part of it. Re-cloned `tlelosa-web/pappa-t` (282 commits, at
+      `1ba6521`, the exact commit the TebelloReborn queue item names), then
+      restored 5 databases, 1 historical snapshot, 6 secrets and 2 agent-memory
+      trees from the `20260809-215839` run. **Restore was driven off the
+      manifest's recorded source paths, not by un-flattening the filenames** —
+      `_` was a space in `Pappa_T` and not in `4_Scripts`, so un-flattening is a
+      guess. Every database re-verified by `integrity_check` plus per-table row
+      counts against the backup: `career.db` 4/64, `outreach.db` 2/1, Tenders
+      5/44 and 5/0. The `.pfx` was already present from the clone and
+      byte-identical, so it was reported rather than overwritten; the one
+      `discovered` entry with no stored copy (`TebelloReborn/data/career.db`)
+      was confirmed as the script's deliberate zero-byte skip, not a gap.
+      **Three defects surfaced, none of which the queue item anticipated:**
+      **1. The scheduled task held its own copy of the path.** It named
+      `Desktop/O-P-C/scripts/backup-runtime-data.py` — because *this hub* moved
+      to `~/O-P-C` at some point and nothing recorded it. At 12:30 it would have
+      died with a Python "can't open file", not the deliberate exit `4`, so the
+      symptom would have read as a broken script rather than a config problem.
+      Re-pointing `VAULTS` alone would have fixed nothing.
+      **2. `prune_old()` reported success while failing.** `rmtree` with
+      `ignore_errors=True` under an unconditional "pruned" line hid that Windows
+      refuses `rmdir` on a ReadOnly directory, and `copytree` inherits ReadOnly
+      from the vault's `agent-memory` trees. Every prune since 2026-08-06 deleted
+      a run's *files* and left the directory shell — which then occupied a
+      retention slot, so `--keep 7` was quietly retaining one fewer real run each
+      cycle. Only `dcoe-secrets` escaped, by being flat. **No backup data was
+      lost** (contents did go), and 3 accumulated shells were cleared, returning
+      all three roots to exactly 7 runs. Fixing the delete is protective, not
+      destructive: it changes which *shells* are removed, never which runs are
+      chosen — which matters, because the older synced runs carry Fan Movement
+      databases whose retention is still an open question below, and a more
+      aggressive prune would have answered it by accident.
+      **3. `rel_to_desktop()` hardcoded `…\Desktop` as the manifest's path root.**
+      Left alone, every path would have fallen through to an absolute one: a
+      changed manifest format, all 15 files reported `GONE` then `NEW`, and the
+      "(expected: vault excluded)" drift label silently stopping, since it
+      identifies an excluded path by its first segment. Replaced with
+      `rel_to_vault()`, which matches the containing vault and *then* takes the
+      parent-relative path — matching on the parent alone would render an
+      excluded path as `Desktop/Operations/...` and break the same label, because
+      `~/Pappa T`'s parent is also an ancestor of Desktop.
+      Also excluded SQLite `-shm`/`-wal`/`-journal` sidecars, which next to a
+      *snapshot* matched `*.db.*` and were being stored as "rollback points with
+      no other copy". Every guard was checked with a positive control as well as
+      a negative one — the classify table still returns `DATA`/`SNAPSHOT`/`SECRET`
+      for real files, and `missing_vaults` still stays silent on the real vault.
+      Verified end to end: unit checks on `rel_to_vault`, `classify` and the
+      missing/empty-vault guard, a dry run with zero drift, a manual run, then a
+      **real scheduled run** (`LastTaskResult 0`) whose log and manifest were both
+      read — exit code alone is not evidence a backup happened. Synced tree
+      independently confirmed to hold 0 secret files, 0 Operations files, 0
+      chrome-profile files and 0 secret references.
+      **Not restored, and not recoverable:** `TebelloReborn/.session/chrome-profile`,
+      the hand-signed-in Indeed profile. It was pruned from the backup on
+      2026-08-09 as a credential leak — correctly — so it existed only in the
+      deleted tree. Phase E needs a fresh sign-in via `tools/indeed_login_setup.py`.
 
 - [x] **2026-08-09** — **Re-scoped the runtime-data backup to skip Operations,
       and the task is running again** (next run 2026-08-10 12:30, Pappa T only).

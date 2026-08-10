@@ -3397,3 +3397,84 @@ erosion but does not restore coverage, and the only copy is
 `~/Backups/dcoe-runtime/20260809-215839`. The Recycle Bin holds the sole copy of
 `delivery-note-system`'s history; emptying it is irreversible.
 **Blockers:** None technical. All four open items are decisions, not work.
+
+## 2026-08-10 — Pappa T restored, and three copies of the same path that had to agree
+
+`/continue` resumed onto the four open decisions from this morning. Tebello took the first —
+`VAULTS` — as restore rather than retire. The restore itself was routine. Everything around it
+was not.
+
+**Sync first, and it mattered.** The hub was 4 ahead / 8 behind: three cloud sessions had landed
+`/retro`, corrected the `/session-end` self-titling claim, and recorded the first `/retro` run
+while this machine held four unpushed commits. Both contention files conflicted and were
+resolved as a real union per Hard Rule 6 — `todo.md` keeps both 2026-08-09 Done entries;
+`session-log.md` keeps all six, with the incoming 2026-08-09 `/retro` entry slotted *before* the
+2026-08-10 one so the file stays most-recent-last. Verified 0 markers, 550 em-dashes, 0 mojibake.
+
+**Step 1.9 could not run, and the reason is the finding.** It compares the hub's clock against
+the live sub-project repos. None of them exist. `Desktop/` holds exactly one folder now. But the
+check also surfaced something no document recorded: **this hub itself had moved from
+`Desktop/O-P-C` to `~/O-P-C`** — no doc, no log entry, and nothing had noticed.
+
+**The restore.** Re-cloned `tlelosa-web/pappa-t` to `~/Pappa T` (282 commits, at `1ba6521` —
+exactly the commit the TebelloReborn queue item names), then restored 5 databases, 1 snapshot,
+6 secrets and 2 agent-memory trees from the `20260809-215839` run. Driven off the manifest's
+recorded `source` paths rather than un-flattening the filenames, because the flattening is not
+invertible: `_` was a space in `Pappa_T` and not in `4_Scripts`. Every database re-verified by
+`integrity_check` plus per-table row counts against the backup — `career.db` 4 tables/64 rows,
+so the 6 approved Indeed vacancies are intact. The `.pfx` was already present from the clone and
+byte-identical, so it was reported, not overwritten. The one `discovered` entry with no stored
+copy was confirmed as the script's deliberate zero-byte skip rather than a gap in the backup.
+
+**Then three defects, none of them the task as written.**
+
+*The scheduled task held its own copy of the path.* It still named
+`Desktop/O-P-C/scripts/backup-runtime-data.py`. At 12:30 it would have died with a Python
+"can't open file" — which reads as a broken script, not a stale path, and would never have
+reached the exit-4 guard added this morning for exactly this class of problem. Re-pointing
+`VAULTS` alone would have fixed nothing. **A config change in a script is not a config change in
+the thing that runs it.**
+
+*`prune_old()` was reporting success while failing.* `rmtree(..., ignore_errors=True)` under an
+unconditional "pruned" line hid that Windows refuses `rmdir` on a ReadOnly directory, and
+`copytree` inherits ReadOnly from the vault's `agent-memory` trees. Every prune since 2026-08-06
+deleted a run's *files* and left the shell — which then occupied a retention slot, so `--keep 7`
+was quietly keeping one fewer real run each cycle. Only `dcoe-secrets` escaped, by being flat.
+No backup data was lost; 3 accumulated shells were cleared and all three roots returned to
+exactly 7 runs. Fixing the delete is protective, not destructive — it changes which *shells* go,
+never which runs are chosen, which matters because the older synced runs carry Fan Movement
+databases whose retention is still an open contract question. A more aggressive prune would have
+answered it by accident. Third appearance of this Windows attribute trap in this repo.
+
+*`rel_to_desktop()` hardcoded the manifest's path root.* Left alone, every path would have
+fallen through to absolute — changing the manifest's format, reporting all 15 files `GONE` then
+`NEW`, and silently disabling the "(expected: vault excluded)" drift label, which identifies an
+excluded path by its first segment. Replaced with `rel_to_vault()`, matching the containing
+vault and *then* taking the parent-relative path; matching on the parent alone would have
+rendered excluded paths as `Desktop/Operations/...` and broken the same label, because
+`~/Pappa T`'s parent is also an ancestor of Desktop.
+
+Also excluded SQLite `-shm`/`-wal`/`-journal` sidecars, which next to a *snapshot* matched
+`*.db.*` and were being stored as "rollback points with no other copy".
+
+**Every guard checked with a positive control, not only a negative one** — `classify` still
+returns `DATA`/`SNAPSHOT`/`SECRET` for real files, `missing_vaults` still stays silent on the
+real vault, and the read-only prune fix was proven against a synthetic run tree before being
+pointed at real backups. Verified end to end: unit checks, a zero-drift dry run, a manual run,
+then a **real scheduled run** whose log *and* manifest were read — `LastTaskResult 0` is not
+evidence a backup happened. Synced tree independently confirmed at 0 secret files, 0 Operations
+files, 0 chrome-profile files, 0 secret references.
+
+**One thing is gone and no option recovered it:** `TebelloReborn/.session/chrome-profile`. It was
+gitignored, so not in the repo, and deliberately pruned from the backup on 2026-08-09 as a
+credential leak, so not in the backup. Both decisions were correct alone; together they meant
+deleting the vault destroyed it. Phase E needs a fresh sign-in via `tools/indeed_login_setup.py`.
+
+**Last completed:** Pappa T restored to `~/Pappa T`, `VAULTS` re-pointed, scheduled task
+re-pointed and test-run green, three backup-script defects fixed
+**Next task:** the three remaining open decisions — `delivery-note-system`'s history in the
+Recycle Bin, the stale path-table sweep (now unblocked), the committed `.pfx`
+**Known risks:** the Recycle Bin still holds the only copy of `delivery-note-system`'s git
+history; emptying it is irreversible. The root `.gitignore` gap cost a hand-removed
+`scripts/__pycache__/` for the third session running.
+**Blockers:** None.

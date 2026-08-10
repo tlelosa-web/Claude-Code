@@ -4,8 +4,13 @@ This data is the only thing in the DCOE system with no second copy: git never
 captured it by design. See docs/specs/2026-08-06-runtime-data-backup-script.md
 and knowledge/operations-hub.md.
 
-Scope narrowed 2026-08-09: Desktop/Operations is deliberately NOT backed up.
+Scope narrowed 2026-08-09: Operations is deliberately NOT backed up.
 See EXCLUDED_VAULTS below before adding it back.
+
+Vault relocated 2026-08-10: Desktop/Pappa T was deleted, and the vault was
+re-cloned from tlelosa-web/pappa-t to ~/Pappa T with its runtime state restored
+from the 20260809-215839 backup run. Paths in the manifest stay vault-relative
+(see rel_to_vault) so they are unchanged by the move.
 
 Usage:
     python scripts/backup-runtime-data.py [--dry-run] [--quiet] [--keep N]
@@ -24,14 +29,16 @@ import argparse
 import fnmatch
 import hashlib
 import json
+import os
 import shutil
 import sqlite3
+import stat
 import sys
 from datetime import datetime
 from pathlib import Path
 
 HOME = Path.home()
-VAULTS = [Path(r"C:\Users\tlelo\Desktop\Pappa T")]
+VAULTS = [Path(r"C:\Users\tlelo\Pappa T")]
 
 # Desktop/Operations is Fan Movement (Pty) Ltd's data. The contract was terminated
 # on 2026-08-03, so this script stopped copying it on 2026-08-09 - it was writing the
@@ -42,6 +49,12 @@ VAULTS = [Path(r"C:\Users\tlelo\Desktop\Pappa T")]
 # ~/OneDrive/DCOE-Backups from earlier runs is a separate, deliberate decision that
 # has not been taken - retention is a contract question. See docs/todo.md and
 # knowledge/operations-hub.md.
+#
+# The folder itself was deleted on 2026-08-10. The entry stays anyway: this is a
+# never-back-this-up list, not an inventory, and excluded_leaks() resolves it so a
+# junction pointing at a restored copy would still be caught. It is deliberately
+# NOT covered by missing_vaults() - an absent excluded vault is the desired state,
+# while an absent configured vault is the error that check exists for.
 EXCLUDED_VAULTS = [Path(r"C:\Users\tlelo\Desktop\Operations")]
 
 DATA_LOCAL_ROOT = HOME / "Backups" / "dcoe-runtime"
@@ -70,6 +83,13 @@ DATA_PATTERNS = ("*.db", "*.sqlite", "*.sqlite3")
 SNAPSHOT_PATTERNS = ("*.db.*", "*.sqlite.*", "*.sqlite3.*")
 SECRET_PATTERNS = (".env", ".env.*", "credentials*.json", "token*.json", "*.pem", "*.pfx", "*.key")
 SECRET_EXCLUDE = ("*.example", "*.example.*", "*.sample")
+# SQLite write-ahead sidecars. Merely opening a WAL-mode database creates them, so any
+# tool that reads one - including this script's own verification - leaves a pair behind.
+# Next to a live *.db they match nothing and were already ignored, but next to a dated
+# snapshot they match SNAPSHOT_PATTERNS ("*.db.*") and got stored as rollback points
+# with no other copy. They are regenerable state, never a rollback point; a restored
+# -wal paired with the wrong -shm is worse than neither.
+SIDECAR_SUFFIXES = ("-shm", "-wal", "-journal")
 AGENT_MEMORY_DIRNAME = "agent-memory"
 
 
@@ -111,7 +131,7 @@ def matches(name: str, patterns) -> bool:
 
 def classify(path: Path) -> str | None:
     name = path.name
-    if matches(name, SECRET_EXCLUDE):
+    if matches(name, SECRET_EXCLUDE) or name.endswith(SIDECAR_SUFFIXES):
         return None
     if matches(name, SECRET_PATTERNS):
         return "SECRET"
@@ -196,11 +216,27 @@ def missing_vaults(vaults) -> list:
     return [v for v in vaults if not v.exists()]
 
 
-def rel_to_desktop(p: Path) -> str:
-    try:
-        return p.relative_to(Path(r"C:\Users\tlelo\Desktop")).as_posix()
-    except ValueError:
-        return p.as_posix()
+def rel_to_vault(p: Path) -> str:
+    """Path relative to its containing vault's PARENT, e.g. "Pappa T/TebelloReborn/career.db".
+
+    Was hardcoded to C:\\Users\\tlelo\\Desktop until 2026-08-10, when the vault moved
+    out of Desktop. Every path would then have fallen through to an absolute one,
+    which is not cosmetic: it changes the manifest's recorded format, makes the drift
+    report call all 15 files GONE and then NEW, and breaks the "vault excluded" label,
+    which identifies an excluded path by its first segment.
+
+    Matching on the vault itself and *then* taking the parent-relative path matters -
+    ~/Pappa T's parent is ~, which is also an ancestor of Desktop/Operations, so a
+    parent-only match would render an excluded path as "Desktop/Operations/..." and
+    the label would silently stop firing.
+    """
+    for v in VAULTS + EXCLUDED_VAULTS:
+        try:
+            p.relative_to(v)
+        except ValueError:
+            continue
+        return p.relative_to(v.parent).as_posix()
+    return p.as_posix()
 
 
 def flat_name(rel: str) -> str:
@@ -254,13 +290,53 @@ def backup_db(src: Path, dst: Path) -> tuple[bool, str]:
         return False, f"{type(exc).__name__}: {exc}"
 
 
+def _clear_readonly(func, path, _exc) -> None:
+    """rmtree error hook: clear the Windows read-only attribute and retry once.
+
+    copytree preserves directory attributes, and the vault's agent-memory subtrees
+    carry ReadOnly. Windows rmdir refuses a read-only directory even when it is empty,
+    so the files inside were deleted and the shell was not. Written to match both the
+    old `onerror` and the 3.12+ `onexc` signature - both pass (func, path, exc).
+    """
+    try:
+        os.chmod(path, stat.S_IWRITE)
+        func(path)
+    except OSError:
+        pass
+
+
 def prune_old(root: Path, keep: int, quiet: bool) -> None:
+    """Retire runs beyond the newest `keep`, and report honestly whether it worked.
+
+    Two separate defects found 2026-08-10, both silent for four days:
+
+    1. `shutil.rmtree(..., ignore_errors=True)` under an unconditional "pruned" line
+       made a failed delete indistinguishable from a successful one - the same
+       silent-success shape as the 0-file backup the exit-4 guard was added for.
+    2. It really was failing. Directories copied from the vault's agent-memory trees
+       inherit ReadOnly, and Windows rmdir refuses those, so every prune deleted the
+       run's files and left the directory shell behind. Only dcoe-secrets escaped, by
+       being flat. This lost no backup data - the contents did go - but each shell
+       kept occupying a retention slot, so `--keep 7` was quietly retaining one fewer
+       real run every cycle.
+
+    Fixing the delete is protective, not destructive: it changes which *shells* are
+    removed, never which runs are chosen. That matters, because several older synced
+    runs carry Fan Movement databases whose retention is an open contract question
+    (docs/todo.md) - this must not answer it by accident.
+    """
     if not root.exists():
         return
+    hook = {"onexc": _clear_readonly} if sys.version_info >= (3, 12) else {"onerror": _clear_readonly}
     runs = sorted((d for d in root.iterdir() if d.is_dir()), key=lambda d: d.name)
     for old in runs[:-keep] if keep > 0 else []:
-        shutil.rmtree(old, ignore_errors=True)
-        log(f"  pruned  {old.name}", quiet)
+        shutil.rmtree(old, **hook)
+        if old.exists():
+            left = sum(1 for _ in old.rglob("*"))
+            log(f"  PRUNE INCOMPLETE  {old.name}: directory remains ({left} entries "
+                f"left inside). See prune_old().", quiet)
+        else:
+            log(f"  pruned  {old.name}", quiet)
 
 
 def load_previous_manifest(root: Path) -> set:
@@ -333,10 +409,10 @@ def main() -> int:
         return 4
 
     discovered = sorted(
-        [rel_to_desktop(p) for p in data_files]
-        + [rel_to_desktop(p) for p in snapshot_files]
-        + [rel_to_desktop(p) for p in secret_files]
-        + [rel_to_desktop(p) for p in memory_dirs]
+        [rel_to_vault(p) for p in data_files]
+        + [rel_to_vault(p) for p in snapshot_files]
+        + [rel_to_vault(p) for p in secret_files]
+        + [rel_to_vault(p) for p in memory_dirs]
     )
 
     previous = load_previous_manifest(DATA_LOCAL_ROOT)
@@ -365,13 +441,13 @@ def main() -> int:
         for p in data_files:
             size = p.stat().st_size
             note = "  (empty, would skip)" if size == 0 else ""
-            log(f"  DATA    {size:>10,}  {rel_to_desktop(p)}{note}", args.quiet)
+            log(f"  DATA    {size:>10,}  {rel_to_vault(p)}{note}", args.quiet)
         for p in snapshot_files:
-            log(f"  SNAP    {p.stat().st_size:>10,}  {rel_to_desktop(p)}", args.quiet)
+            log(f"  SNAP    {p.stat().st_size:>10,}  {rel_to_vault(p)}", args.quiet)
         for p in secret_files:
-            log(f"  SECRET  {p.stat().st_size:>10,}  {rel_to_desktop(p)}", args.quiet)
+            log(f"  SECRET  {p.stat().st_size:>10,}  {rel_to_vault(p)}", args.quiet)
         for p in memory_dirs:
-            log(f"  MEMORY              {rel_to_desktop(p)}", args.quiet)
+            log(f"  MEMORY              {rel_to_vault(p)}", args.quiet)
         return 0
 
     data_local = DATA_LOCAL_ROOT / stamp
@@ -383,7 +459,7 @@ def main() -> int:
     manifest_rows = []
     log("=== databases (sqlite backup API + verify) ===", args.quiet)
     for src in data_files:
-        rel = rel_to_desktop(src)
+        rel = rel_to_vault(src)
         if src.stat().st_size == 0:
             log(f"  skip     empty        {rel}", args.quiet)
             continue
@@ -400,7 +476,7 @@ def main() -> int:
     snap_dir = data_local / "databases" / "historical-snapshots"
     snap_dir.mkdir(exist_ok=True)
     for src in snapshot_files:
-        rel = rel_to_desktop(src)
+        rel = rel_to_vault(src)
         try:
             shutil.copy2(src, snap_dir / flat_name(rel))
             log(f"  ok       {src.stat().st_size:>10,}  {rel}", args.quiet)
@@ -410,7 +486,7 @@ def main() -> int:
 
     log("\n=== agent memory ===", args.quiet)
     for src in memory_dirs:
-        rel = rel_to_desktop(src)
+        rel = rel_to_vault(src)
         dst = data_local / "agent-memory" / flat_name(rel)
         try:
             shutil.copytree(src, dst, dirs_exist_ok=True)
@@ -422,7 +498,7 @@ def main() -> int:
 
     log("\n=== secrets (local only, never synced) ===", args.quiet)
     for src in secret_files:
-        rel = rel_to_desktop(src)
+        rel = rel_to_vault(src)
         dst = secrets_local / flat_name(rel)
         try:
             shutil.copy2(src, dst)
@@ -451,10 +527,10 @@ def main() -> int:
     lines = [
         f"# DCOE runtime-data backup — {stamp}",
         "",
-        "Gitignored live runtime state from Desktop/Pappa T.",
+        f"Gitignored live runtime state from {', '.join(str(v) for v in VAULTS)}.",
         "Git never captured these by design, so this is their only copy.",
         "",
-        "**Desktop/Operations is deliberately excluded** (scope narrowed 2026-08-09).",
+        "**Operations is deliberately excluded** (scope narrowed 2026-08-09).",
         "Runs dated before that carry it; this one does not.",
         "",
         "Databases were copied with Python's sqlite3 backup API, which stays",
@@ -492,7 +568,7 @@ def main() -> int:
     # machine was syncing to a cloud provider, which is the thing the local-only
     # split exists to prevent. The invariant below checked for secret *files* in the
     # synced tree and had nothing to say about *references* to them.
-    secret_rels = {rel_to_desktop(p) for p in secret_files}
+    secret_rels = {rel_to_vault(p) for p in secret_files}
     sm = data_synced / "manifest.json"
     if sm.exists():
         payload = json.loads(sm.read_text(encoding="utf-8"))
@@ -514,7 +590,7 @@ def main() -> int:
             [
                 f"# Secrets backup — {stamp}",
                 "",
-                "Live credentials from Desktop/Pappa T.",
+                f"Live credentials from {', '.join(str(v) for v in VAULTS)}.",
                 "",
                 "**Local-only by design.** Do not move this into OneDrive, a git repo,",
                 "or any synced location. The database backup is at",
@@ -523,7 +599,7 @@ def main() -> int:
                 "Flattened names encode the original path: `__` was `/`, `_` was a space.",
                 "",
             ]
-            + [f"- `{flat_name(rel_to_desktop(p))}` <- `{rel_to_desktop(p)}`" for p in secret_files]
+            + [f"- `{flat_name(rel_to_vault(p))}` <- `{rel_to_vault(p)}`" for p in secret_files]
         ),
         encoding="utf-8",
     )

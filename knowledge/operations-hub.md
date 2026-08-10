@@ -1,3 +1,66 @@
+## 2026-08-10 — Restoring the vault was the easy half; three copies of the same path had to agree
+**Source:** session — taking the `VAULTS` decision after both live vaults were deleted
+**Status:** active
+
+Pappa T was re-cloned from `tlelosa-web/pappa-t` to **`~/Pappa T`** (not Desktop) and its
+runtime state restored from `~/Backups/dcoe-runtime/20260809-215839`: 5 databases, 1 historical
+snapshot, 6 secrets, 2 agent-memory trees, every database re-verified by `integrity_check` plus
+per-table row counts against the backup. That part went exactly as the manifest promised. What
+followed is the reusable part.
+
+**Restore from the manifest's recorded source paths, never by un-flattening the filenames.**
+The backup flattens `/`→`__` and ` `→`_`, which is not invertible: `Pappa_T` was a space,
+`4_Scripts` was not. The manifest's `discovered` and `databases[].source` fields carry the real
+paths, so the mapping is recorded rather than reconstructed. A restore script that parses the
+filename will silently write `Pappa T/Tenders/4 Scripts/cache.db` and nothing will complain.
+
+**A configuration change in a script is not a configuration change in whatever runs it.**
+Re-pointing `VAULTS` fixed nothing on its own: the Windows scheduled task held its *own* copy
+of the path and still named `Desktop/O-P-C/scripts/backup-runtime-data.py`, because the hub
+itself had moved to `~/O-P-C` and nothing recorded that. The task would have failed with a
+Python "can't open file" — which reads as a broken script, not a stale path, and would not have
+reached the deliberate exit-4 guard at all. **When a thing moves, enumerate every place that
+stores its location**: scheduled tasks, `.claude/settings.json`, shell profiles, and any script
+constant. Verify with `(Get-ScheduledTask "<name>").Actions`, not by assumption.
+
+**On Windows, an `rmtree` that cannot fail is a bug.** `prune_old()` used
+`shutil.rmtree(..., ignore_errors=True)` under an unconditional `pruned` log line. It had been
+failing since 2026-08-06: `copytree` preserves the ReadOnly attribute from the vault's
+`agent-memory` directories, and Windows refuses `rmdir` on a ReadOnly directory even when empty.
+So every prune deleted the run's *files* and left the directory shell behind. No backup data was
+lost — but each shell kept occupying a retention slot, so `--keep 7` was quietly retaining one
+fewer real run per cycle. Only `dcoe-secrets` escaped, by being a flat directory with no
+subdirectories to fail on. Fix is an `onexc`/`onerror` hook that clears `S_IWRITE` and retries.
+This is the third appearance of the same Windows attribute trap in this repo (see the Fan
+Movement staging entry, where `rmtree` aborted and deleted *nothing*) — the constant is the
+attribute, the variable is whether the failure is loud.
+
+**Two guards that look alike are not alike, and the difference is which one is silent.** The
+exit-4 missing-vault guard was added because a false empty destroyed data loudly-shaped-as-quiet.
+`prune_old`'s failure was the mirror image: the operation failed, the log said it succeeded, and
+the consequence accrued a slot at a time. Both were invisible for days. The shared prescription:
+**report the outcome you observed, not the outcome you attempted** — check `old.exists()` after
+the delete rather than trusting the call.
+
+**Deriving a display path from configuration beats hardcoding its root.** `rel_to_desktop()`
+hardcoded `C:\Users\tlelo\Desktop` as the manifest's path root. After the move every path would
+have fallen through to an absolute one — changing the manifest's recorded format, reporting all
+15 files as `GONE` then `NEW` in the drift output, and silently disabling the
+"(expected: vault excluded)" label, which identifies an excluded path by its first segment.
+Replaced by `rel_to_vault()`, which matches the *containing vault* and then takes the
+parent-relative path. Matching on the parent alone is wrong in a way that only shows up here:
+`~/Pappa T`'s parent is `~`, which is also an ancestor of `Desktop/Operations`, so an excluded
+path would render as `Desktop/Operations/...` and the label would stop firing without any error.
+
+**A file deliberately excluded from every copy has no copy.**
+`TebelloReborn/.session/chrome-profile` — the hand-signed-in Indeed session — was gitignored
+(so not in the repo) and pruned from the backup on 2026-08-09 as a credential leak (so not in
+the backup). Both decisions were individually correct. Together they meant deleting the vault
+destroyed it. This is not an argument for backing up credential stores; it is an argument for
+knowing which artifacts are *regenerable by a human step* and recording that step next to them,
+which is why `tools/indeed_login_setup.py` existing is what makes this an inconvenience rather
+than a loss.
+
 ## 2026-08-10 — A backup whose source vanished reported success and ate its own history
 **Source:** session — reviewing the hub after both live vaults were deleted
 **Status:** active

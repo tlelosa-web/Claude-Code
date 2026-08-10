@@ -59,20 +59,35 @@ consolidation snapshot (the 2026-08-03 subtree merges — committed git
 history only). They hold no runtime state: no databases, no real `.env`
 files (only `.env.example`), no `agent-memory`. Verified 2026-08-10.
 
-> ⚠️ **The live working copies no longer exist on this machine.**
+> ⚠️ **Nothing lives under `Desktop/` any more, including this hub.**
 > `Desktop/Operations/` and `Desktop/Pappa T/` were deleted to the Recycle
-> Bin on 2026-08-10 (~06:43), deliberately. Every path table in this repo
-> that names a `Desktop/…` working copy is therefore **stale**, including
-> the ones in `.claude/commands/overwatch.md`, `continue.md` and
-> `session-end.md`, and several `knowledge/` entries. They are left in
-> place rather than rewritten to a guess — where these repos live next is
-> an open decision in `docs/todo.md`. Re-check before trusting any of them.
+> Bin on 2026-08-10 (~06:43), deliberately. Separately — and recorded
+> nowhere until 2026-08-10 — **this repo itself moved from
+> `Desktop/O-P-C/` to `~/O-P-C/`**. `Desktop/` now holds exactly one
+> folder, `Fan Movement - Company IP/`.
+>
+> **Pappa T is back, at a new path.** Re-cloned 2026-08-10 from
+> `tlelosa-web/pappa-t` to **`~/Pappa T/`** (not Desktop), with its runtime
+> state restored from the `20260809-215839` backup run and every database
+> re-verified. `Operations` was **not** restored and is not intended to be.
+>
+> Every path table in this repo naming a `Desktop/…` copy is therefore
+> **still stale** — `.claude/commands/overwatch.md`, `continue.md` and
+> `session-end.md`, and several `knowledge/` entries. They are left in place
+> rather than rewritten piecemeal; that sweep is an open item in
+> `docs/todo.md`. Re-check before trusting any of them.
+>
+> One thing the restore does **not** bring back:
+> `TebelloReborn/.session/chrome-profile`, the hand-signed-in Indeed profile
+> from Phase E. It was deliberately pruned from the backup on 2026-08-09 as
+> a credential leak, so it existed only in the deleted tree. Phase E needs a
+> fresh manual sign-in via `tools/indeed_login_setup.py`.
 
 What survives, and what does not:
 
 | Repo | Default branch | Remote — now the only copy | Runtime state |
 |---|---|---|---|
-| Pappa T — **one** repo covering every sub-project (TebelloReborn, ai-outreach-agency, IQ, MIMS App, Tenders…) | `main` | `tlelosa-web/pappa-t` | `~/Backups/dcoe-runtime/20260809-215839` + `dcoe-secrets` |
+| Pappa T — **one** repo covering every sub-project (TebelloReborn, ai-outreach-agency, IQ, MIMS App, Tenders…) — live again at **`~/Pappa T/`** | `main` | `tlelosa-web/pappa-t` | live in `~/Pappa T/`, backed up daily; also `~/Backups/dcoe-runtime/` + `dcoe-secrets` |
 | SOPS | **`master`** | `tlelosa-web/sops` | `sops.db` in the Fan Movement staged copy only |
 | Nameplate & Test Sheet | `main` | `tlelosa-web/NamePlateTool` | — |
 | delivery-note-system | `master` | ⚠️ **none — no copy anywhere** | `dev.db` + `.env` in the Fan Movement staged copy only |
@@ -122,15 +137,31 @@ configured vault missing/empty), not an ordinary failure. `Desktop/Operations`
 is excluded **deliberately** (Fan Movement contract terminated 2026-08-03) —
 don't add it back to "fix" a Pappa-T-only backup.
 
-> ⚠️ **`VAULTS` currently points at nothing.** Its one entry is
-> `Desktop/Pappa T`, deleted 2026-08-10, so the script exits `4` and writes
-> nothing. That is the guard working, not a new fault — before it existed the
-> same condition produced a silent 0-file backup that still exited `0`, while
-> `prune_old()` retired a real run to make room for it. The scheduled task is
-> still **Ready**; it will now fail loudly every day until `VAULTS` is
-> re-pointed. Do **not** point it at this repo's `Pappa T/` snapshot: that
-> holds no runtime state, so it would restore the silent-success failure in a
-> new disguise.
+**Coverage restored 2026-08-10.** `VAULTS` is now `~/Pappa T` and the daily
+task runs against it again — verified by a real scheduled run, not just an
+exit code. Do **not** re-point it at this repo's `Pappa T/` snapshot: that
+holds no runtime state, so it would look like a working backup and protect
+nothing.
+
+Two traps this script has now hit twice, both worth knowing before editing it:
+
+- **The scheduled task holds its own copy of the path.** Re-pointing `VAULTS`
+  fixed nothing on its own — the task still named
+  `Desktop/O-P-C/scripts/backup-runtime-data.py`, which no longer exists, so
+  it would have died with a Python "can't open file" rather than the
+  deliberate exit `4`. **A config change in the script is not a config change
+  in the thing that runs it.** Check
+  `(Get-ScheduledTask "DCOE runtime-data backup").Actions` after any move.
+- **`prune_old()` was reporting success while failing.** `rmtree` with
+  `ignore_errors=True` plus an unconditional "pruned" line hid that Windows
+  refuses `rmdir` on a ReadOnly directory — and `copytree` inherits ReadOnly
+  from the vault's `agent-memory` trees. Every prune deleted a run's *files*
+  and left the directory shell, which then occupied a retention slot, so
+  `--keep 7` quietly kept one fewer real run each cycle. Only `dcoe-secrets`
+  escaped, by being flat. Fixed 2026-08-10. Same shape as the exit-4 bug and
+  the same shape as the `rmtree` attribute failure already recorded in
+  `docs/todo.md`'s Fan Movement entry — **on Windows, treat any `rmtree` that
+  cannot fail as a bug.**
 
 Decisions live in `docs/decisions/` (ADR-007…ADR-010), build specs in
 `docs/specs/`, dated. A build task with no spec is a spec-gate stop, not a

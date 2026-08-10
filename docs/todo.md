@@ -201,6 +201,46 @@ Phases 1-6 are done; what remains that is *this hub's* to do:
 *(Both remaining items from this section — the Phase 6 branch-check adoption
 and the `/overwatch` decision — closed 2026-08-09; see Done.)*
 
+### From the first `/retro` run (2026-08-10)
+
+> Unbounded first run — all 47 `session-log.md` entries (2026-07-28 →
+> 2026-08-10) plus this queue in full. Six patterns proposed, all six
+> selected. The four **universal** ones (record-is-not-a-control `CORE.md`
+> rule, per-repo `/session-end` branch check, Done-entries-cite-a-SHA, roster
+> delivery to cloud sessions) are queued in
+> `tlelosa-claude-config/docs/todo.md` per ADR-008, since they change shared
+> core or `hub-template/`. The two below are this hub's own. Run recorded in
+> `docs/retro-log.md`.
+
+- [ ] **Stop writing counts as prose** — every literal count recorded in these
+      files has gone stale within 48 hours. The unmerged-hub-branch count ran
+      13 → 14 → 15 across three days; the config-repo count 3 → 4; one session
+      summary says 18. Each was accurate when written and wrong before it was
+      next read, because a count is a measurement of a thing that keeps moving
+      and prose has no way to say so. Convention to adopt: record the **command
+      that regenerates** the count rather than the number, and where a literal
+      number is genuinely needed, stamp it as-of and say re-measure before
+      acting on it. Touches this file, `docs/session-log.md` habits, and the
+      deletion sheet in
+      `tlelosa-claude-config/docs/specs/2026-08-08-branch-triage-verdicts.md`,
+      which is the highest-consequence instance — it is a list of branches to
+      delete. One instance was patched in place on 2026-08-10; that is not the
+      fix.
+
+- [ ] **Promote or park items recited in "Known risks"** — "Backup failures
+      remain silent (backlog)" appears in **11** session-log entries. It has
+      never been decided, never been dropped, and never been moved to Parked —
+      it is simply re-typed at every close-out, which reads like tracking and
+      functions like forgetting. `/codex-review`'s `docs/specs/`-only path
+      guard is the same shape: it has now refused an ADR **twice** (2026-08-07
+      TebelloReborn, and once before), the second time with a hand-run
+      `codex exec` workaround, and it is still Backlog. Note this hub already
+      has a **Parked** section that does this job honestly, with a real entry
+      in it — so the fix is applying the existing distinction, not inventing
+      one. Rule to adopt: an item recited in Known risks of 3+ consecutive
+      entries gets promoted to a decision item or explicitly moved to Parked,
+      and `/session-end` checks for it.
+
 ## Parked (committed work, deliberately deferred)
 
 Distinct from "Backlog / ideas" below: these are real, agreed items with

@@ -187,17 +187,36 @@ If `set_session_title` is available, set **this** session's title to
 actually did — the same convention `/continue` Step 0 uses when renaming
 other sessions.
 
-**On this hub's usual surface (CCD desktop) this step is impossible, not
-merely unreliable — there is nothing to attempt.** Confirmed 2026-08-06 on
-the command's first real run: `set_session_title` rejects the current
-session *and* `list_sessions` excludes it, so a session has no way to obtain
-its own ID. No call can be constructed, so there is no error to report.
+**Which case you're in depends on the surface — this hub runs on both, so
+establish it rather than assuming.**
 
-- **Self-titling reachable** → set the title.
-- **No way to identify this session** (the case here) → report
+- **CCD desktop** — impossible, not merely unreliable; there is nothing to
+  attempt. Confirmed 2026-08-06 on the command's first real run:
+  `set_session_title` rejects the current session *and* `list_sessions`
+  excludes it, so a session has no way to obtain its own ID. No call can be
+  constructed, so there is no error to report.
+- **Claude Code Remote / web** — reachable, and this is the surface most of
+  this hub's cloud sessions actually run on. Confirmed 2026-08-10: the
+  session ID appears verbatim in the session URL, `list_sessions` returns the
+  **current** session as its first row rather than excluding it, and
+  `get_session`/`set_session_title` accept that ID. Sessions titled `Cont-"…"`
+  already exist in this account's list, which is proof it has worked here.
+  The call may still be gated on a tool-permission approval — an ordinary
+  failure, not an impossibility.
+
+- **Title set** → report it.
+- **Attempted and refused** (permission denied, tool error) → say what
+  happened in Step 6. Don't relabel this `not available in this environment`;
+  that claims something stronger than what occurred.
+- **No way to identify this session at all** (the CCD desktop case) → report
   `not available in this environment` in Step 6 and move on. Expected, not a
   failure. Don't go hunting for the session ID in logs, config, or
   transcripts.
+
+Check the session URL and one `list_sessions` call before settling on the
+third. Until 2026-08-10 this step named the desktop case as "this hub's usual
+surface" and told every session not to try — which was wrong on the surface
+doing most of the work.
 
 **Never** call `archive_session` on this session either way.
 
@@ -215,7 +234,7 @@ judgment easy, which is most of the value regardless.
 **Pushed:** [clean — nothing outstanding | N unpushed commit(s) on <branch>]
 **Branch state:** [Step 1.5 — all commits reachable from main | N commit(s) on <branch> not reachable from main]
 **Logged:** [docs/todo.md updated | + session-log.md entry added | + knowledge/<topic>.md updated]
-**Title set:** [Cont-"<title>" | not available in this environment]
+**Title set:** [Cont-"<title>" | attempted, refused — <reason> | not available in this environment]
 **Open follow-ups:** [none | listed, each already reflected in docs/todo.md]
 ```
 

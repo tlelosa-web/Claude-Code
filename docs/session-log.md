@@ -3091,3 +3091,175 @@ data living in `Operations/`).
 **Known risks:** `/retro` has never been run. Its first run is unbounded by
 design (no `docs/retro-log.md` yet) and will review this log's full history.
 **Blockers:** None.
+
+## 2026-08-10 — `/retro`, stranded for a day, landed in the hub
+
+Cloud session, config-repo `/continue`. Second consecutive session in which the
+Step 1.8 branch check was what found the real work — and the second consecutive
+half-landed pair.
+
+**What was wrong.** On 2026-08-09 a session installed `/retro` here and made the
+matching change in `tlelosa-claude-config`. Both repos had a branch named
+`claude/continuation-45sy98`. The config-repo half merged as PR #20. The hub
+half never got a PR, so `.claude/commands/retro.md`, the `CLAUDE.md`
+session-commands paragraph, the fourth-contention-file edits to Hard Rule 6 and
+`/continue` Step 1.75, and the entry above it all sat on an unmerged branch.
+
+Meanwhile `tlelosa-claude-config/docs/todo.md` recorded, in its final Done
+entry, "Landed in the hub: `.claude/commands/retro.md`, tailored per ADR-008 …
+`docs/retro-log.md` wired in as the hub's fourth contention file … `CLAUDE.md`
+now names `/retro` as periodic." None of it was on this repo's `main`. The
+config repo's own queue was the thing asserting state it did not have.
+
+**How it surfaced.** Same two-way measure as the PR-template recovery the day
+before: ancestry, then *files present on the branch and absent from `main`*.
+Across 15 unmerged hub branches, `.claude/commands/retro.md` was the only file
+`main` lacked. The ancestry check alone said "15 unmerged" and nothing more.
+
+Worth stating plainly what this is: `/retro` exists specifically to detect a
+queue entry claiming completion it doesn't have. It was stranded on a branch by
+the very failure mode it was written to catch, and the false Done entry
+describing its own installation is now the sixth such entry in three days. The
+count is itself the finding.
+
+**How it landed.** Unlike the PR template, this branch was **0 commits behind
+`main`** — it was cut from current `main` and never fell behind — so the commit
+cherry-picked cleanly and verbatim rather than needing hand extraction. The
+extract-don't-merge rule from the 2026-08-08 triage still applies to the other
+14 branches, which are all genuinely stale; it simply wasn't needed here. The
+cherry-picked entry keeps its original 2026-08-09 date, because that is when
+the work was done — this entry is the record of when it became reachable.
+
+`claude/continuation-45sy98` is now safe to delete along with the rest, which it
+was not before today: it was the only branch across either repo still holding a
+file `main` lacked. The deletion sheet in
+`tlelosa-claude-config/docs/specs/2026-08-08-branch-triage-verdicts.md` should
+be read with that in mind — its hub count of 14 predates this branch.
+
+**Addendum, same day, after PR #18 was opened.** The original branch was merged
+independently as **PR #17** (`555d348`) while this session was still working, so
+`3354010` reached `main` by its own route as well as by this session's
+cherry-pick (`72fbd19`). Identical content, so git merged the two without
+duplicating a line — but it did conflict on this file, since only one side had
+the later entries. Resolved as a union per Hard Rule 6.
+
+Two things worth keeping from that. First, the recovery was not wasted but it
+was **redundant** — had this session checked the PR list rather than only remote
+refs, it would have seen the branch was already being landed. `git fetch` +
+ancestry answers "is it merged", not "is somebody merging it"; an open PR is
+external state too, and Hard Rule 10 covers it. Second, this is a live instance
+of the concurrent-write problem Hard Rule 6 exists for, and the first one caused
+by *this hub's own owner acting in the UI* rather than by another session.
+
+**Last completed:** `/retro` and its four supporting edits reachable from this
+repo's `main` — by two routes, PR #17 and this branch's cherry-pick.
+**Next:** run `/retro` for the first time (unbounded, per its Step 1).
+**Known risks:** none introduced. The install is byte-identical to what was
+reviewed on 2026-08-09.
+**Blockers:** None.
+
+## 2026-08-10 — `/session-end` self-titling claim corrected on all three instances
+
+Same session as the `/retro` recovery above. Third of three tasks picked from
+the config-repo queue.
+
+**What was wrong.** `/session-end` Step 5 here (and Step 3 in both
+`tlelosa-claude-config` instances) stated that a session has no way to obtain
+its own ID, so "no call can be constructed, so there is no error to report" —
+and this instance additionally framed the CCD desktop surface as "this hub's
+usual surface," telling every session not to try. Most of this hub's sessions
+run on Claude Code Remote, where it works.
+
+**Verified before rewriting**, per `CORE.md` hard rule 10 — which matters here,
+because the queue item describing the fix was itself half wrong. It recorded one
+false count (the session ID is reachable from the session URL). There were two:
+
+- `get_session` accepts the ID taken verbatim from the session URL, and returns
+  *this* session.
+- `list_sessions` does **not** exclude the current session. It returns it as the
+  **first** row. The original text asserted the opposite, and that assertion was
+  load-bearing for the "impossible, cannot be attempted" conclusion.
+
+Direct proof it has worked on this surface all along: this account's session
+list contains `Cont-"Branch triage reconciled, retro landed"` and `Cont-"Systems
+check + maintenance Phases 1-6"` — both self-titled by prior remote sessions
+running this very command.
+
+**The shape of the fix.** Each instance now splits the two surfaces explicitly
+and reports **three** outcomes rather than two: title set / attempted and
+refused / genuinely unidentifiable. A permission denial is an ordinary failure;
+labelling it `not available in this environment` claims something stronger than
+what happened and is how a per-surface quirk got generalised into a rule in the
+first place. The Step 6 report line gained the middle outcome.
+
+Worth noting the general lesson, since this is the second time this week a
+documented impossibility turned out to be surface-specific: a finding confirmed
+once, on one surface, was written as unconditional. The fix is not just the
+wording but the instruction to spend two cheap calls checking before concluding
+you're in the impossible case.
+
+**Last completed:** all three `/session-end` instances corrected; the open item
+closed in `tlelosa-claude-config/docs/todo.md`, which owns this initiative under
+hub-and-spoke.
+**Next:** first `/retro` run in this hub — unbounded, per its Step 1.
+**Known risks:** none. Documentation-only, no manifest or version impact.
+**Blockers:** None.
+
+## 2026-08-10 — First `/retro` run: six patterns, six selected
+
+Third and last task of the session, and only possible because the first task
+landed `/retro` off the branch it had been stranded on since 2026-08-09.
+
+**Unbounded, per Step 1** — no `docs/retro-log.md` existed, so the window was
+the entire history: all 47 `session-log.md` entries from 2026-07-28 onward, plus
+`docs/todo.md` in full and the four ADR titles. Read via the `grep -n "^## " |
+tail` index the hub instance specifies rather than reading 3,192 lines whole.
+
+**Six patterns, each cited by 2+ entries. All six selected.** Four are universal
+and queued in `tlelosa-claude-config/docs/todo.md` per ADR-008; two are this
+hub's and queued here:
+
+1. **A record is not a control** (universal, spec + core bump). The
+   highest-evidence finding in the log — and the only one the log had already
+   diagnosed itself, four times (l.2343, 2406, 2466, 2866), recurring after
+   each. `ef247bc`'s message said the staleness check "moved to `/continue`";
+   it moved into `knowledge/hub-process.md` and the command file went untouched
+   for three sessions. The 2026-08-08 note that agent bodies needed a
+   `bootstrap.sh` re-run was correct and never acted on, leaving Pappa T with no
+   `~/.claude/agents/` for six weeks.
+2. **`/session-end` Step 1.5 is per-session, should be per-repo** (universal).
+   Both half-landed pairs came from sessions that pushed two repos and PR'd one.
+   The step exists to catch this; a session that opened *a* PR looks finished.
+3. **Done entries must cite a SHA on `main`** (universal). Six false-completion
+   entries in three days. Care has failed six times, so make it mechanical.
+4. **Roster delivery to cloud sessions** (universal, spec). No
+   `~/.claude/agents/` in a cloud container, and Core 1.5's `SessionStart` hook
+   can't fire there — it ships inside the plugin, which a cloud clone never
+   installs.
+5. **Stop writing counts as prose** (this hub). 13 → 14 → 15 in three days.
+6. **Promote or park items recited in "Known risks"** (this hub). "Backup
+   failures remain silent (backlog)" appears in **11** entries without ever
+   being decided, dropped, or moved to the Parked section that exists for it.
+
+**Two counts were verified rather than estimated** before being written into
+proposals — the 11 recitations and the four-entry record-is-not-a-control
+lineage — on the grounds that a command whose subject is unverified assertions
+should not contain any.
+
+**Nothing was built.** Step 4 queues; it does not implement. Two of the four
+universal items are structural and want specs before an Executor runs.
+
+**Item 4 deserves stating plainly:** this entire session — landing `/retro`,
+correcting three `/session-end` instances, and running this retrospective — ran
+with no roster on disk and every delegation falling back to built-ins. The
+finding and its own best evidence are the same session.
+
+**Last completed:** first `/retro` run; `docs/retro-log.md` created, which bounds
+the next run to entries after this one (this entry)
+**Next:** the six queued items, four of them in the config repo. Nothing is
+blocked.
+**Known risks:** none introduced. Note per item 6 that this line is where items
+go to be quietly re-typed — the two standing ones (silent backup failures, the
+`/codex-review` path guard) are now queued as decisions rather than repeated
+here.
+**Blockers:** None.

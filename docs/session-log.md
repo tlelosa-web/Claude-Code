@@ -3190,3 +3190,62 @@ hub-and-spoke.
 **Next:** first `/retro` run in this hub — unbounded, per its Step 1.
 **Known risks:** none. Documentation-only, no manifest or version impact.
 **Blockers:** None.
+
+## 2026-08-10 — First `/retro` run: six patterns, six selected
+
+Third and last task of the session, and only possible because the first task
+landed `/retro` off the branch it had been stranded on since 2026-08-09.
+
+**Unbounded, per Step 1** — no `docs/retro-log.md` existed, so the window was
+the entire history: all 47 `session-log.md` entries from 2026-07-28 onward, plus
+`docs/todo.md` in full and the four ADR titles. Read via the `grep -n "^## " |
+tail` index the hub instance specifies rather than reading 3,192 lines whole.
+
+**Six patterns, each cited by 2+ entries. All six selected.** Four are universal
+and queued in `tlelosa-claude-config/docs/todo.md` per ADR-008; two are this
+hub's and queued here:
+
+1. **A record is not a control** (universal, spec + core bump). The
+   highest-evidence finding in the log — and the only one the log had already
+   diagnosed itself, four times (l.2343, 2406, 2466, 2866), recurring after
+   each. `ef247bc`'s message said the staleness check "moved to `/continue`";
+   it moved into `knowledge/hub-process.md` and the command file went untouched
+   for three sessions. The 2026-08-08 note that agent bodies needed a
+   `bootstrap.sh` re-run was correct and never acted on, leaving Pappa T with no
+   `~/.claude/agents/` for six weeks.
+2. **`/session-end` Step 1.5 is per-session, should be per-repo** (universal).
+   Both half-landed pairs came from sessions that pushed two repos and PR'd one.
+   The step exists to catch this; a session that opened *a* PR looks finished.
+3. **Done entries must cite a SHA on `main`** (universal). Six false-completion
+   entries in three days. Care has failed six times, so make it mechanical.
+4. **Roster delivery to cloud sessions** (universal, spec). No
+   `~/.claude/agents/` in a cloud container, and Core 1.5's `SessionStart` hook
+   can't fire there — it ships inside the plugin, which a cloud clone never
+   installs.
+5. **Stop writing counts as prose** (this hub). 13 → 14 → 15 in three days.
+6. **Promote or park items recited in "Known risks"** (this hub). "Backup
+   failures remain silent (backlog)" appears in **11** entries without ever
+   being decided, dropped, or moved to the Parked section that exists for it.
+
+**Two counts were verified rather than estimated** before being written into
+proposals — the 11 recitations and the four-entry record-is-not-a-control
+lineage — on the grounds that a command whose subject is unverified assertions
+should not contain any.
+
+**Nothing was built.** Step 4 queues; it does not implement. Two of the four
+universal items are structural and want specs before an Executor runs.
+
+**Item 4 deserves stating plainly:** this entire session — landing `/retro`,
+correcting three `/session-end` instances, and running this retrospective — ran
+with no roster on disk and every delegation falling back to built-ins. The
+finding and its own best evidence are the same session.
+
+**Last completed:** first `/retro` run; `docs/retro-log.md` created, which bounds
+the next run to entries after this one (this entry)
+**Next:** the six queued items, four of them in the config repo. Nothing is
+blocked.
+**Known risks:** none introduced. Note per item 6 that this line is where items
+go to be quietly re-typed — the two standing ones (silent backup failures, the
+`/codex-review` path guard) are now queued as decisions rather than repeated
+here.
+**Blockers:** None.

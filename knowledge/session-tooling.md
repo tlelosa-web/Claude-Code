@@ -1,3 +1,32 @@
+## 2026-08-10 — PowerShell's `..` silently turns a git revision range into a number range
+**Source:** session — auditing a stranded branch before deleting it
+**Status:** active
+
+`git rev-list --count $b..main` does not do what it looks like. In PowerShell `..` is the
+**range operator**, so `$b..main` is evaluated *before* git sees it: PowerShell tries to build
+a sequence, `main` is an unset variable, and git is handed an argument that has nothing to do
+with the revision range that was written.
+
+The damage is that it **succeeds**. It returned `0` — "the branch has nothing `main` lacks" —
+which is a plausible, useful-looking answer and the one that gets acted on. The real value was
+**625**. Deleting a branch on the strength of that `0` is a real possibility, and the same
+shape applies to any `A..B` git range built with a PowerShell variable: `git log`, `git diff`,
+`git rev-list`.
+
+Two ways out, both cheap:
+
+- **Quote the whole range as one string:** `git rev-list --count "main..$b"`. The quotes stop
+  PowerShell parsing `..` and pass the literal spec through.
+- **Prefer the exit-code form for the question actually being asked.**
+  `git merge-base --is-ancestor <branch> main` answers "is this branch fully merged?" directly,
+  with no range to mis-parse and no count to misread.
+
+Generalisable: this is the third entry in this file where a Windows shell **succeeded** with
+the wrong value instead of failing (see the `Get-Content -Raw` mojibake and the `git commit -m`
+here-string entries). The recurring shape is that the shell reinterprets a string before the
+tool sees it. Where a shell can rewrite an argument, verify the *value* the tool received, not
+just that the command exited 0.
+
 ## 2026-08-09 — A checksum file written by Python on Windows fails `sha256sum -c` on every line
 **Source:** session — staging the Fan Movement handover folder
 **Status:** active

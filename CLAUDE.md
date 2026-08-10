@@ -175,10 +175,15 @@ These add to `CORE.md`'s Universal Hard Rules — they never relax them.
    conflict still happens anyway, resolve it as a real union of both
    sides' changes — never pick one branch and discard the other's work.
 7. **Windows shell traps that have already cost this repo real time** —
-   full detail in `knowledge/session-tooling.md`. The three that recur:
+   full detail in `knowledge/session-tooling.md`. The four that recur:
    `git commit -m` with a PowerShell here-string splits into pathspecs (use
    `-F <file>`); `Get-Content -Raw` decodes a BOM-less UTF-8 file as ANSI
    and silently mojibakes every em-dash, so round-trip source files through
-   Python rather than PowerShell; and a `CHECKSUMS.txt` written by Python on
+   Python rather than PowerShell; a `CHECKSUMS.txt` written by Python on
    Windows needs `newline=""` or `sha256sum -c` fails every line at once and
-   reads like corrupt data.
+   reads like corrupt data; and a git `A..B` revision range built with a
+   PowerShell variable is eaten by the `..` **range operator** before git
+   sees it — quote the whole spec (`"main..$b"`) or ask the question with
+   `git merge-base --is-ancestor`. All four **succeed** with a wrong value
+   rather than failing, which is what makes them expensive: where a shell
+   can rewrite an argument, verify the value the tool received.

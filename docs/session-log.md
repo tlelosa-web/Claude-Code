@@ -3143,3 +3143,50 @@ creates it on its first run.
 **Known risks:** none introduced. The install is byte-identical to what was
 reviewed on 2026-08-09.
 **Blockers:** None.
+
+## 2026-08-10 — `/session-end` self-titling claim corrected on all three instances
+
+Same session as the `/retro` recovery above. Third of three tasks picked from
+the config-repo queue.
+
+**What was wrong.** `/session-end` Step 5 here (and Step 3 in both
+`tlelosa-claude-config` instances) stated that a session has no way to obtain
+its own ID, so "no call can be constructed, so there is no error to report" —
+and this instance additionally framed the CCD desktop surface as "this hub's
+usual surface," telling every session not to try. Most of this hub's sessions
+run on Claude Code Remote, where it works.
+
+**Verified before rewriting**, per `CORE.md` hard rule 10 — which matters here,
+because the queue item describing the fix was itself half wrong. It recorded one
+false count (the session ID is reachable from the session URL). There were two:
+
+- `get_session` accepts the ID taken verbatim from the session URL, and returns
+  *this* session.
+- `list_sessions` does **not** exclude the current session. It returns it as the
+  **first** row. The original text asserted the opposite, and that assertion was
+  load-bearing for the "impossible, cannot be attempted" conclusion.
+
+Direct proof it has worked on this surface all along: this account's session
+list contains `Cont-"Branch triage reconciled, retro landed"` and `Cont-"Systems
+check + maintenance Phases 1-6"` — both self-titled by prior remote sessions
+running this very command.
+
+**The shape of the fix.** Each instance now splits the two surfaces explicitly
+and reports **three** outcomes rather than two: title set / attempted and
+refused / genuinely unidentifiable. A permission denial is an ordinary failure;
+labelling it `not available in this environment` claims something stronger than
+what happened and is how a per-surface quirk got generalised into a rule in the
+first place. The Step 6 report line gained the middle outcome.
+
+Worth noting the general lesson, since this is the second time this week a
+documented impossibility turned out to be surface-specific: a finding confirmed
+once, on one surface, was written as unconditional. The fix is not just the
+wording but the instruction to spend two cheap calls checking before concluding
+you're in the impossible case.
+
+**Last completed:** all three `/session-end` instances corrected; the open item
+closed in `tlelosa-claude-config/docs/todo.md`, which owns this initiative under
+hub-and-spoke.
+**Next:** first `/retro` run in this hub — unbounded, per its Step 1.
+**Known risks:** none. Documentation-only, no manifest or version impact.
+**Blockers:** None.

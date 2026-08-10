@@ -257,6 +257,33 @@ abandoned either — no work is lost by leaving them here.
 
 ## Done
 
+- [x] **2026-08-09** — **Installed `/retro`, and re-ran `HUB-CHECKLIST.md`
+      against this vault.** `.claude/commands/retro.md` — the backward-looking
+      counterpart to `/continue`, copied in from `hub-template/retro.md`
+      (which landed in the config repo the same day) and tailored per ADR-008:
+      this hub's real paths, the "most recent last" session-log convention
+      with the `grep -n "^## " | tail` idiom so a 3,000-line file isn't read
+      whole, the hub-and-spoke boundary on what counts as *this* hub's
+      friction, and the `hub-template/`-is-copy-source note in the promotion
+      path. Optional and **periodic**, not part of the routine pair.
+      **`docs/retro-log.md` becomes this hub's fourth contention file** —
+      added to Hard Rule 6, to `/continue`'s Step 1.75, and flagged in
+      `/retro`'s own Step 5, which pulls immediately before appending.
+      The checklist's other seven items passed. Its diff-don't-assume rule on
+      `/continue` found three real drifts beyond the retro work, all folded:
+      the mobile slash-command known-gap note (template-only since 2026-07-19,
+      never copied here), Step 1.75's *conflicts-≠-misordering* caveat (now
+      pointing at `/session-end` Step 3, which holds the tail check), and — in
+      the other direction — this hub's `--include=*.md` grep gotcha, which was
+      a local improvement the template lacked and has now been **promoted
+      upstream** into `tlelosa-claude-config/hub-template/continue.md`.
+      **Correction to the config repo's queue:** its open item claimed this
+      hub had not yet adopted the Phase 6 branch checks. It had — on
+      2026-08-09, recorded in the entry below and in `docs/session-log.md`.
+      The item's own 2026-08-09 addendum was written without re-reading the
+      half above it, so only the `retro.md` half was ever outstanding. Closed
+      there with that correction.
+
 - [x] **2026-08-09** — **Fan Movement contract terminated Monday 2026-08-03;
       staged the company IP into a single handover folder.**
       `Desktop/Fan Movement - Company IP/` — **917 files, 85.8 MB, a copy**:

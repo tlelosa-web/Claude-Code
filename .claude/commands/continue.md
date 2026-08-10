@@ -7,6 +7,18 @@ description: Resume hub work from where the last root-level session ended
 Resumes work from where the last root-level session ended. Project-aware:
 identifies which project folder is in play before acting.
 
+> **Known gap (confirmed 2026-07-19, still unresolved):** on at least one
+> session surface — a "Default"-type session in the Claude Code mobile app —
+> typing `/continue` returns "isn't available in this environment" even with
+> a correctly formed command file, while the same file works when invoked
+> via the `Skill` tool in a Claude Code Remote/web session. It looks like a
+> client-side restriction on that surface, not a broken file.
+> **Workaround:** ask in plain text ("continue" / "run continue") instead of
+> the slash form. Whether the desktop CLI has the same restriction is still
+> unconfirmed — tracked as an open item in
+> `tlelosa-claude-config/docs/todo.md`; update this note once confirmed
+> either way.
+
 ## Step 0 — Rename Stale Sessions
 
 Before orienting, clean up titles left over from prior `/continue` runs:
@@ -127,12 +139,13 @@ plainly too rather than silently skipping the check.
 
 ## Step 1.75 — Sync Check (prevents contention-file conflicts)
 
-`docs/todo.md`, `docs/session-log.md`, and `knowledge/INDEX.md` are edited
-by nearly every hub-level session, and this hub can have Operations,
-Pappa T, and cloud sessions running concurrently. Editing any of these
-three from a stale local `main` has already caused two real merge
-conflicts (see `docs/session-log.md`, 2026-07-28 entries) — this step
-exists to stop a third.
+`docs/todo.md`, `docs/session-log.md`, `knowledge/INDEX.md`, and
+`docs/retro-log.md` (added 2026-08-09 with `/retro`) are edited by nearly
+every hub-level session, and this hub can have Operations, Pappa T, and
+cloud sessions running concurrently. Editing any of these four from a
+stale local `main` has already caused two real merge conflicts (see
+`docs/session-log.md`, 2026-07-28 entries) — this step exists to stop a
+third.
 
 ```
 git fetch origin main --quiet
@@ -142,9 +155,14 @@ git -C . rev-list HEAD..origin/main --count
 If the count is > 0, `git pull origin main` before doing anything else in
 this session (Step 0-1's reads above are safe either way; this just makes
 sure any *edit* later in the session starts from a current base). If the
-pull produces conflicts on the three contention files, resolve as a real
-union per `CLAUDE.md` Hard Rule 6 — never pick one side and drop the
+pull produces conflicts on any of the four contention files, resolve as a
+real union per `CLAUDE.md` Hard Rule 6 — never pick one side and drop the
 other's work.
+
+Note this prevents *conflicts*, not *misordering*: a clean auto-merge can
+still insert a session-log entry above an older one, which matters here
+because Step 1 reads only the final entry. `/session-end`'s Step 3 carries
+the tail check that catches it.
 
 ## Step 1.8 — Unmerged-Branch Check (finds work earlier sessions stranded)
 

@@ -46,29 +46,40 @@ root — not everything everywhere.
 
 `Operations/` and `Pappa T/` **inside this repo** are a historical
 consolidation snapshot (the 2026-08-03 subtree merges — committed git
-history only). The live working copies are `Desktop/Operations/` and
-`Desktop/Pappa T/`, and those are separate git repos with their own
-remotes, holding the gitignored runtime state (databases, `.env` files,
-generated output) that a subtree merge structurally cannot capture.
+history only). They hold no runtime state: no databases, no real `.env`
+files (only `.env.example`), no `agent-memory`. Verified 2026-08-10.
 
-Editing a file in this repo's snapshot does **not** reach the running
-project — it only creates a re-merge to do later. Read the snapshot freely;
-do actual project work in the live `Desktop/` copy. This is why `docs/todo.md`
+> ⚠️ **The live working copies no longer exist on this machine.**
+> `Desktop/Operations/` and `Desktop/Pappa T/` were deleted to the Recycle
+> Bin on 2026-08-10 (~06:43), deliberately. Every path table in this repo
+> that names a `Desktop/…` working copy is therefore **stale**, including
+> the ones in `.claude/commands/overwatch.md`, `continue.md` and
+> `session-end.md`, and several `knowledge/` entries. They are left in
+> place rather than rewritten to a guess — where these repos live next is
+> an open decision in `docs/todo.md`. Re-check before trusting any of them.
+
+What survives, and what does not:
+
+| Repo | Default branch | Remote — now the only copy | Runtime state |
+|---|---|---|---|
+| Pappa T — **one** repo covering every sub-project (TebelloReborn, ai-outreach-agency, IQ, MIMS App, Tenders…) | `main` | `tlelosa-web/pappa-t` | `~/Backups/dcoe-runtime/20260809-215839` + `dcoe-secrets` |
+| SOPS | **`master`** | `tlelosa-web/sops` | `sops.db` in the Fan Movement staged copy only |
+| Nameplate & Test Sheet | `main` | `tlelosa-web/NamePlateTool` | — |
+| delivery-note-system | `master` | ⚠️ **none — no copy anywhere** | `dev.db` + `.env` in the Fan Movement staged copy only |
+| this hub | `main` | `tlelosa-web/Claude-Code` | n/a |
+
+`delivery-note-system` is the one real loss: it never had a remote, so its
+git history existed only inside the deleted tree. The Fan Movement staged
+copy carries its `dev.db` and `.env` but explicitly **not** git history.
+
+Editing a file in this repo's snapshot still does **not** reach a running
+project — it only creates a re-merge to do later. That is why `docs/todo.md`
 flags items with 📍, and why `/overwatch` is forbidden from reading the
 snapshot folders even as a fallback.
 
-| Live repo | Default branch | Remote |
-|---|---|---|
-| `Desktop/Pappa T/` — **one** repo covering every sub-project (TebelloReborn, ai-outreach-agency, IQ, MIMS App, Tenders…) | `main` | `tlelosa-web/pappa-t` |
-| `Desktop/Operations/2. SOPS/` | **`master`** | `tlelosa-web/sops` |
-| `Desktop/Operations/3. Nameplate & Test Sheet/` | `main` | `tlelosa-web/NamePlateTool` |
-| `Desktop/Operations/7. DELIVERY NOTE/delivery-note-system/` | `master` | **none — local only** |
-| this hub | `main` | `tlelosa-web/Claude-Code` |
-
-`Desktop/Operations/` is not itself a repo — it's a folder containing
-several. Table verified 2026-08-10; per `knowledge/operations-hub.md` a
-cached path table is a claim with an expiry date nothing in its own text
-reveals, so re-check it rather than trust it.
+Per `knowledge/operations-hub.md`, a cached path table is a claim with an
+expiry date nothing in its own text reveals. This one expired four minutes
+after it was written — re-check rather than trust it.
 
 -----
 
@@ -95,11 +106,21 @@ python scripts/backup-runtime-data.py [--dry-run] [--quiet] [--keep N] [--log-fi
 ```
 
 Backs up the gitignored live runtime state of the Pappa T vault — the only
-data here with no second copy. Exit `2` or `3` means an invariant broke
-(data/secret separation, or an excluded vault reaching the discovery set),
-not an ordinary failure. `Desktop/Operations` is excluded **deliberately**
-(Fan Movement contract terminated 2026-08-03) — don't add it back to "fix"
-a Pappa-T-only backup.
+data here with no second copy. Exit `2`, `3` or `4` means an invariant broke
+(data/secret separation; an excluded vault reaching the discovery set; or a
+configured vault missing/empty), not an ordinary failure. `Desktop/Operations`
+is excluded **deliberately** (Fan Movement contract terminated 2026-08-03) —
+don't add it back to "fix" a Pappa-T-only backup.
+
+> ⚠️ **`VAULTS` currently points at nothing.** Its one entry is
+> `Desktop/Pappa T`, deleted 2026-08-10, so the script exits `4` and writes
+> nothing. That is the guard working, not a new fault — before it existed the
+> same condition produced a silent 0-file backup that still exited `0`, while
+> `prune_old()` retired a real run to make room for it. The scheduled task is
+> still **Ready**; it will now fail loudly every day until `VAULTS` is
+> re-pointed. Do **not** point it at this repo's `Pappa T/` snapshot: that
+> holds no runtime state, so it would restore the silent-success failure in a
+> new disguise.
 
 Decisions live in `docs/decisions/` (ADR-007…ADR-010), build specs in
 `docs/specs/`, dated. A build task with no spec is a spec-gate stop, not a

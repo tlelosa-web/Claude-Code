@@ -1,3 +1,37 @@
+## 2026-08-10 — A backup whose source vanished reported success and ate its own history
+**Source:** session — reviewing the hub after both live vaults were deleted
+**Status:** active
+
+`Desktop/Operations/` and `Desktop/Pappa T/` were deleted to the Recycle Bin on 2026-08-10.
+`scripts/backup-runtime-data.py` had `VAULTS` hardcoded to the second one, and `discover()`
+skips a vault that does not exist (`if not root.exists(): continue`). The scheduled task was
+Ready for the same day. A dry run showed the whole failure: 15 items `GONE`, 0 files backed
+up, **exit 0** — and `prune_old()` with `--keep 7` against exactly 7 held runs would then have
+retired one real backup to make room for the empty one, every day, until the set was gone.
+
+**The generalisable finding: an absent input and an empty input are not the same thing, and
+discovery-based tools conflate them by default.** "Found nothing" is the correct answer to
+"scan this empty directory" and a *catastrophic* answer to "scan this directory that no longer
+exists" — but `os.walk`-shaped code returns the identical empty list for both. Any tool whose
+output feeds a retention/rotation policy has to distinguish them, because rotation converts a
+false empty into destruction of the real data. The rule: **a retention policy must never act
+on a run that discovered nothing.**
+
+Two corollaries worth keeping:
+
+- **`exists()` is not a sufficient guard when a plausible wrong path exists.** Pointing
+  `VAULTS` at this repo's `Pappa T/` snapshot would pass `exists()` and reintroduce silent
+  success in a new disguise — the snapshot is subtree-merged committed history, verified
+  2026-08-10 to hold zero databases, zero real `.env` files (only `.env.example`, which the
+  script's `SECRET_EXCLUDE` discards) and no `agent-memory`. Guard on *yield*, not presence.
+- **Deleting a redundant copy silently promotes the remaining one.** `~/Backups/dcoe-runtime/`
+  was a backup while the vault existed; the moment the vault was deleted it became the
+  primary — and it was the thing the broken script was pointed at eroding. After deleting any
+  working copy, re-ask what is now the only copy of what it held.
+
+Fixed as exit `4` on a missing *or empty* vault, writing nothing and pruning nothing, proven
+with a positive control (silent against a populated vault) as well as the negative ones.
+
 ## 2026-08-09 — Narrowing one backup scope revealed what the other scope was leaking
 **Source:** session — re-scoping `scripts/backup-runtime-data.py` after the contract ended
 **Status:** active

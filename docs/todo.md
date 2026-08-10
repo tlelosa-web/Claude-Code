@@ -7,6 +7,51 @@ detail, only tracks it at a glance and links out.
 
 Per DCOE: update after every completed task; one task = one commit.
 
+## ⚠️ Open decisions — opened 2026-08-10, none of them started
+
+`Desktop/Operations/` and `Desktop/Pappa T/` were deleted to the Recycle Bin
+on 2026-08-10 (~06:43), deliberately and with the deletion left in place.
+Four things follow from that, all owner decisions rather than work:
+
+- [ ] **Re-point `VAULTS`, or retire the scheduled backup.** Its one entry is
+      the deleted `Desktop/Pappa T`, so `scripts/backup-runtime-data.py` now
+      exits `4` and writes nothing. The task `DCOE runtime-data backup` is
+      still **Ready** and will fail loudly daily until this is answered.
+      **Do not** point it at this repo's `Pappa T/` snapshot — verified
+      2026-08-10 to hold zero databases, zero real `.env` files and no
+      `agent-memory`, so it would look like a working backup and protect
+      nothing. Options: re-clone `tlelosa-web/pappa-t` and restore runtime
+      state from `~/Backups/dcoe-runtime/20260809-215839`, or disable the
+      task and accept that Pappa T's runtime state lives only in that
+      backup set.
+
+- [ ] **`delivery-note-system` has no copy anywhere.** Per this hub's own
+      table it never had a remote — its git history existed only inside the
+      deleted Operations tree. The Fan Movement staged copy on the Desktop
+      carries its `dev.db` and `.env` but, by its own manifest, **no git
+      history**. If that history is wanted, it has to come out of the
+      Recycle Bin before the bin is emptied. Nothing else recovers it.
+
+- [ ] **Every `Desktop/…` path table in this repo is stale.** Left in place
+      rather than rewritten to a guess, because where these repos live next
+      is the decision above. Affected: `.claude/commands/overwatch.md`
+      (hand-maintained, both tables), `continue.md` (Steps 1.9 / resume),
+      `session-end.md` (📍 live-copy checks), and the `knowledge/` entries
+      for `sops`, `pappa-t`, `tebelloreborn`, `delivery-note-system`,
+      `daily-sales-order-files`, `operations-hub`. Update them in one pass
+      once the paths are settled — piecemeal edits are how the last table
+      went stale unnoticed.
+
+- [ ] **A private key is committed to this repo's history.**
+      `Pappa T/TebelloReborn/_archive_qwen_prototype/2_Source_Data/Legacy_CV_Archive/TebelloLelosa.pfx`
+      — a PKCS#12 bundle (certificate **plus** private key), the only
+      secret-pattern file tracked repo-wide. It arrived with the 2026-08-03
+      subtree merge, so it is already in history and already on
+      `tlelosa-web/Claude-Code`. Deleting the file does not remove it from
+      history; that needs a history rewrite, and probably rotating the cert.
+      Contradicts Hard Rule 4 (no data beyond what's public in the source
+      project's own repo).
+
 ## In progress
 
 - [ ] **O-P-C machine consolidation** — Operations and Pappa T subtree-

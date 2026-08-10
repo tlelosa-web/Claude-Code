@@ -3103,3 +3103,63 @@ that this session created and removed by hand.
 three private GitHub repos and the older backups is unchanged and still awaiting a retention
 decision.
 **Blockers:** None.
+
+## 2026-08-10 — Both live vaults deleted, and the backup that would have quietly eaten itself
+
+Session opened as "review the folder and clean it up so I can sync it" — the folder being this
+hub, the sync being GitHub. The review is what mattered; the cleanup was small.
+
+**What had actually happened.** `Desktop/Operations/` (2.69 GB) and `Desktop/Pappa T/` were
+deleted to the Recycle Bin at ~06:43–06:44, minutes before the session started. Confirmed
+deliberate and left in place. This repo's `Operations/`/`Pappa T/` folders still exist and
+still look like the projects, which is exactly why this was worth stating out loud: they are
+the 2026-08-03 subtree snapshot, verified today to contain **zero** databases, zero real
+`.env` files (only `.env.example`, which the backup script discards by design) and no
+`agent-memory`. Committed history, nothing else.
+
+**The finding that had a deadline.** `VAULTS` is a hardcoded `Desktop/Pappa T`, and
+`discover()` skips a vault that does not exist — `if not root.exists(): continue`. So the
+scheduled `DCOE runtime-data backup`, **Ready, next run 2026-08-10 12:30**, would have
+discovered 0 files, written an empty run, exited **0**, and then let `prune_old()` retire one
+genuine run to make room for it. With `--keep 7` and exactly 7 runs held in each destination,
+a week of that erases the entire backup set without emitting a single error. That set is now
+the *primary* surviving copy of `career.db`, `outreach.db`, both `cache.db`s and six
+secret files — the deletion turned a redundant backup into the only one, and the script was
+pointed at eroding it. A dry run reproduced all of it: 15 items `GONE`, 0 backed up, exit 0.
+
+**Fixed as an invariant, not a path edit.** Re-pointing `VAULTS` would have fixed today and
+left the mechanism intact for the next move. Instead a missing *or present-but-empty* vault is
+now exit `4`, writing nothing and pruning nothing, on the reasoning that this data has no
+second copy so a 0-file run is never the expected outcome. The empty-vault half matters as
+much as the missing half: pointing `VAULTS` at this repo's snapshot would satisfy `exists()`
+and reintroduce silent success in a new disguise. Tested with a positive control as well as a
+negative — silent against a vault holding real runtime state, fires against an empty one,
+fires against an absent one. A guard only ever tested against broken data is indistinguishable
+from one that always fires.
+
+**Two things found in passing, both recorded rather than acted on.**
+`delivery-note-system` never had a remote, so its git history existed only inside the deleted
+tree; the Fan Movement staged copy has its `dev.db` and `.env` but, by its own manifest, no
+history. And `TebelloReborn/_archive_qwen_prototype/.../TebelloLelosa.pfx` — a PKCS#12 bundle,
+certificate plus private key — is tracked in this repo and already on the remote via the
+2026-08-03 subtree merge. Deleting it now would not remove it from history.
+
+**Path tables left deliberately stale.** Every `Desktop/…` table in `.claude/commands/` and
+`knowledge/` is now wrong, and rewriting them to a guess would just re-run the failure that
+`/overwatch`'s own note warns about — a table that was correct when written is not evidence
+about where a file is today. `CLAUDE.md` carries the warning and `docs/todo.md` carries the
+decision; the tables get one pass once the paths are settled.
+
+Also: the root `.gitignore` gap bit twice now. The 2026-08-09 session created and hand-removed
+a `scripts/__pycache__/`, and this session did the same thing for the same reason.
+
+**Last completed:** missing/empty-vault guard (exit `4`) in `scripts/backup-runtime-data.py`,
+plus the merge of `origin/main` (PR template) union-resolved against the uncommitted
+2026-08-09 backup re-scope
+**Next task:** the four open decisions at the top of `docs/todo.md` — `VAULTS`,
+`delivery-note-system`'s history, the stale path tables, the committed `.pfx`
+**Known risks:** Pappa T's databases are **no longer being backed up** — the guard stops the
+erosion but does not restore coverage, and the only copy is
+`~/Backups/dcoe-runtime/20260809-215839`. The Recycle Bin holds the sole copy of
+`delivery-note-system`'s history; emptying it is irreversible.
+**Blockers:** None technical. All four open items are decisions, not work.

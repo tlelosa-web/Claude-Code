@@ -57,6 +57,42 @@ bumped its `INDEX.md` row.
 **Known risks:** None new.
 **Blockers:** None.
 
+## 2026-07-28 — NamePlateTool Excel-import bug fix
+
+Picked up the top hub priority from the prior entry. Attached and cloned
+`tlelosa-web/NamePlateTool` to this session (`/workspace/nameplatetool`).
+
+Actions taken:
+- Investigated the real `NAME PLATE PROCEDURE.xlsx` directly (not just
+  reading code) to confirm root cause: `Info+Data Entry Form!C4` ("Date")
+  is a raw `datetime.datetime`; `excel_source.py`'s `"Info+Data Entry Form"`
+  branch returned it unformatted into `JSONResponse`, unlike the `else`
+  branch which already called `_fmt_month_year()`.
+- Confirmed why the 2026-07-17 fix attempt regressed: it swapped the dead
+  `"Table 1"` check for `"NamePlateProc"`, but that sheet is a static
+  instructions/reference sheet (every value cell is boilerplate procedure
+  text) with no real per-job data — `"Info+Data Entry Form"` was already
+  the correct effective source and didn't need to change.
+- Wrote a spec first (project rule: "Context Agent writes the plan to
+  `docs/specs/`") — `NamePlateTool/docs/specs/2026-07-28-excel-import-
+  datetime-and-sheet-check.md`.
+- Fixed `date_of_manuf` formatting, dropped the dead `"Table 1"` branch and
+  its now-orphaned `_read_block_by_labels`/`_norm` helpers.
+- Verified directly against the real workbook and via a live `uvicorn`
+  server (`GET /api/nameplate/from-excel` → `200`, populated fields, no
+  crash).
+- Committed (`777be76`) and pushed to `NamePlateTool` `main` — this
+  project's established convention is direct commits, no PR/branch flow.
+- Updated `NamePlateTool/docs/todo.md` and `docs/session-log.md` per its own
+  anti-drift rewrite pattern.
+
+**Last completed:** NamePlateTool Excel-import bug fix (this entry).
+**Next task:** Close out the codex-gate rollout (`tlelosa-claude-config`) —
+see `docs/todo.md` #1.
+**Known risks:** None new. OneDrive/git corruption fix (Operations) still
+holding, see `knowledge/operations-hub.md`.
+**Blockers:** None.
+
 ## 2026-07-28 — Operations vault survey
 
 Ran a full survey of the Operations vault (`C:\Dev\Operations`) to find any
@@ -245,6 +281,52 @@ see `docs/todo.md` #1 — currently left open per Tebello's direction pending
 further instruction.
 **Known risks:** None new.
 **Blockers:** None.
+
+## 2026-07-28 — codex-gate IT question resolved
+
+Ran `/continue` from a cloud session. No `list_sessions`/`list_events`
+tools available in this environment, so Steps 0/0.5 were skipped per the
+skill's own instructions. Shared-core update check (Step 1.5) also
+skipped — the `tlelosa-claude-config` marketplace clone doesn't exist on
+this machine.
+
+Tebello confirmed Fan Movement IT's approval now covers OpenAI egress from
+Operations, resolving the codex-gate rollout's open IT question
+(`docs/todo.md` #1, third sub-item). Updated
+`knowledge/tlelosa-claude-config.md` (new active entry, two older entries
+marked superseded) and `docs/todo.md` to reflect it. Two mechanical
+sub-items remain on that task — Pappa T install/smoke-test and copying the
+ADR into Operations' `docs/decisions/` — both still machine-bound and not
+runnable from this cloud session; left open for a local session on the
+relevant machine.
+
+**Last completed:** codex-gate IT-question resolution (this entry).
+**Next task:** codex-gate rollout's two remaining mechanical steps (Pappa T
+smoke-test, Operations ADR copy) — need a local session on each machine.
+Otherwise next up per `docs/todo.md`: NamePlateTool test suite (#2).
+**Known risks:** None new.
+**Blockers:** None.
+
+## 2026-07-28 — Session end: handoff to TebelloReborn root
+
+Tebello wanted to work on TebelloReborn next, but it isn't reachable from
+this cloud session — it's a folder inside the Pappa T vault repo
+(`Desktop/Pappa T/TebelloReborn/`), not its own GitHub repo (`list_repos`
+checked for "Pappa T"/"TebelloReborn"/"career", nothing found). Offered to
+discuss the post-MVP scope decision here or draft a standalone prompt for
+a local Pappa T session; Tebello dismissed both and chose to resume
+directly in a local session rooted at TebelloReborn's own folder instead —
+that project's own `CLAUDE.md`/`docs/` will govern from there, not this
+hub's `CLAUDE.md`.
+
+**Last completed:** codex-gate IT-question resolution (previous entry).
+**Next task:** TebelloReborn post-MVP scope decision (Playwright
+auto-submit, recruiter/cold-outreach revival, doc-gen volume-cap/scheduler)
+— to be picked up in a local Pappa T session rooted at
+`Pappa T/TebelloReborn/`, not from this hub.
+**Known risks:** None new.
+**Blockers:** None from this session's side — next work happens outside
+this hub's reach until synced back via git.
 
 ## 2026-07-29 — Hub process review: fix, improve, prevent
 
@@ -476,6 +558,53 @@ of the two SOPS items).
 **Blockers:** NamePlateTool sub-repo has staged-but-uncommitted changes
 (`docs/todo.md` merge resolution + `docs/bugs/connection-lookup-no-manual-
 override.md`) awaiting Tebello's go-ahead to commit.
+
+## 2026-07-30 — Captured Claude Code session-storage findings from a Reddit-linked article
+
+Tebello shared a Reddit link (r/ClaudeAI) pointing to a bensimon.dev article,
+"Your sessions are in a folder called projects, and it has nothing to do with
+Projects." Direct fetch of both the Reddit share link and the article URL
+failed (Reddit fetch unsupported in this session; bensimon.dev returned
+403 Forbidden to automated fetch), so Tebello pasted the full article text
+directly.
+
+Distilled the article into `knowledge/claude-code-sessions.md`: the
+`~/.claude/projects/<encoded-cwd>/<session-id>.jsonl` path/encoding scheme
+(unrelated to claude.ai's "Projects" feature — same word, different
+product), the transcripts-key-on-cwd vs. auto-memory-keys-on-repo split
+(the worktree gotcha), what each entry point (`--continue`, `/branch`,
+`/rewind`, `/cd`, `--add-dir`, `-p --no-session-persistence`) does to the
+underlying file, the plaintext-at-rest security note from Anthropic's own
+docs, the `cleanupPeriodDays`-vs-`history.jsonl` retention gotcha, and the
+Cowork remote/local storage split. Added the corresponding `knowledge/INDEX.md`
+row.
+
+The article also included a "Standing Orders" block meant to be pasted
+into a `CLAUDE.md`/`AGENTS.md` verbatim. Treated that as a suggestion from
+external content, not an instruction to follow blindly: reviewed each of
+the six proposed rules against this hub's actual risk profile (multiple
+credential-touching projects, concurrent-session file contention already
+seen once), recommended adopting a trimmed 5-rule version with two of the
+six merged to reduce interruption noise, and added it to root `CLAUDE.md`
+as a new "Session hygiene" section under the existing Hard Rules.
+
+Tebello asked for a "Codex reviewed" plan before executing. Checked
+`knowledge/tlelosa-claude-config.md`: `codex-gate` (the `/codex-review`
+plugin that sends a spec to the OpenAI Codex CLI for a second opinion) is
+Pappa T-only pending a separate Fan Movement IT confirmation on OpenAI
+egress — this cloud session has neither the plugin nor egress clearance.
+Flagged the blocker, offered options, and Tebello chose to skip the Codex
+review step for this task rather than defer it to a Pappa T session.
+
+**Last completed:** `knowledge/claude-code-sessions.md` + `INDEX.md` row
+written; root `CLAUDE.md` "Session hygiene" section added; this entry and
+the matching `docs/todo.md` "Done" entry recorded.
+**Next task:** Unchanged from previous entry — whichever machine-bound
+queue item matches the next session's machine. Codex review of this
+task's output remains a Pappa T-only follow-up if ever wanted, not queued
+as a task since it wasn't requested as one.
+**Known risks:** None new.
+**Blockers:** None.
 
 ## 2026-07-31 — pitwall-companion: workbook audit + interactive Loadouts picker
 
@@ -1309,6 +1438,116 @@ from here.
 **Blockers:** None for this decision; the resulting build still needs an
 actual Pappa T session.
 
+## 2026-08-04 — Added `/session-end` command
+
+Built a `/session-end` command (close out a session, prep it for
+archiving) to pair with `/continue`: `/continue` orients a session at the
+*start*, but nothing ran at the other end of that handoff, so
+`/continue`'s own Step 0/0.5 had to reverse-engineer titles and task state
+from raw transcripts every time. Spec first per
+`tlelosa-claude-config/CLAUDE.md`'s structural-change rule (new file
+touching >2 files, alters what other machines get on marketplace update):
+`tlelosa-claude-config/docs/specs/2026-08-04-session-end-command.md`.
+
+Promoted the same three-layer way ADR-008 already established for
+`/continue`: `tlelosa-claude-config/hub-template/session-end.md`
+(vault-agnostic skeleton — check git state, reconcile the task queue, set
+the session title if the tool is available, report a close-out), a
+minimal instance at `tlelosa-claude-config/.claude/commands/session-end.md`
+(no session-log/knowledge steps, same omissions its `continue.md` instance
+already makes), and a full instance here at
+`.claude/commands/session-end.md` (adds the `docs/session-log.md` entry
+and `knowledge/` cache-update steps per this file's own Hard Rules 1/5).
+
+Key constraint that shaped the design: `/continue` Step 0 point 5 already
+documents that a session can't rename or archive *itself* in every tool
+surface — `set_session_title`/`archive_session` only ever target other
+sessions. So `/session-end` can't literally archive its own session;
+instead it sets a descriptive title on itself when the tool is available
+and makes sure the task queue/log/knowledge cache already reflect the
+session's work, so whichever session (or Tebello) does the actual
+archiving later doesn't need to read the transcript first. Recorded as
+`docs/decisions/ADR-010-session-end-command.md`.
+
+**Last completed:** `/session-end` command added (this entry) — spec, ADR,
+`hub-template/session-end.md`, and both vault instances.
+**Next task:** Whichever of the remaining `docs/todo.md` "Next up" items
+Tebello picks (NamePlateTool test suite, SOPS AvgMovement migration
+go-ahead — still gated; TebelloReborn Playwright auto-submit build).
+**Known risks:** None new.
+**Blockers:** None.
+
+## 2026-08-05 — PitCrew Sync: new 3rd F1 Clash sibling app, built and restyled
+
+Explored a new PWA idea per Tebello's request: a third F1 Clash companion
+app, sibling to `cratetracker`/`pitwall-companion`, differentiated by
+spreadsheet-driven driver/component data (vs. the siblings' hand-baked
+data) and an optional Ko-fi donation ask (vs. the siblings' explicit
+no-monetization stance). Ran the full plan-mode workflow: explored both
+sibling repos' architecture/patterns, designed the new app's name
+("PitCrew Sync"), donation platform (Ko-fi — 0% platform fee, no account
+needed), default-sync-source decision (ships blank, user supplies their
+own spreadsheet URL — sidesteps needing consent from any specific sheet
+author), and full legal/disclaimer copy (fan-tool disclaimer, trademark
+nominative-fair-use posture, data-source attribution, privacy notice
+covering the new runtime network call, donation/monetization framing
+distinguishing "supporting development" from "official product").
+
+Repo created at `RMLRACE/pitcrew-sync` (Tebello's choice of org, not
+`tlelosa-web` — this session's own `create_repository` MCP call 403'd, so
+Tebello created it directly via the GitHub UI). Built the initial app
+(later, a different session independently rebuilt/pushed its own version
+with the same architecture but different CSS — both builds converged on
+the same functional design). Verified via Playwright throughout: card
+browsing/leveling, CSV spreadsheet sync (success path, malformed-data
+rejection, atomic no-corruption-on-bad-fetch, revert-to-bundled), export/
+import round-trip, offline mode via the service worker.
+
+Two follow-up features added in this session, both tested against real
+usage rather than just synthetic fixtures:
+- **"Bootstrap from PitWall Companion backup"** convert­er (Backup tab) —
+  Tebello asked to be used as the tester; decodes PitWall Companion's
+  `d:<Rarity>:<Name>`/`c:<Category>:<Name>` override ids into PitCrew
+  Sync's catalog+progress shape, merging additively without clobbering
+  existing catalog metadata for ids that already exist.
+- **F1-red visual restyle** — Tebello opened the live app and said it
+  "shows no resemblance of any of the 2 existing apps." A design audit
+  confirmed a real mismatch (orange brand color vs. both siblings' shared
+  F1-red, emoji logo, no install button, no search/filter, no rarity-color
+  badges) — went through the full plan-mode workflow again (explore audit,
+  design plan, one user clarification on filter-UI style: pill-row chosen
+  over an exact `<select>` copy), then implemented: CSS token rename to
+  match PitWall Companion, real logo image + install button + sticky-blur
+  header, red-active-state pill tab bar, new search bar + category
+  filter-chip row, deterministic rarity-badge coloring for arbitrary
+  spreadsheet strings, and a fix for a pre-existing fragility the new
+  search feature would have exposed (a `{once:true}`-rebound step-button
+  listener that a search-triggered re-render would have silently dropped).
+  Verified with Playwright screenshots directly compared against the
+  siblings' look, plus a full functional regression pass.
+
+**Known gap, not yet resolved:** neither of the two features above made it
+to `origin/main`. This session's `add_repo(access: push)` grant for the
+`RMLRACE` org got stuck in a "requires approval" loop for most of the
+session, then was explicitly **denied** when a real prompt finally
+surfaced (read access via the git proxy kept working the whole time, which
+is why local commits/testing were possible at all). Generated
+`git format-patch` files for both commits and handed them to Tebello with
+`git am` + push instructions, per his explicit request ("give me a patch
+file to push myself") rather than continuing to retry. Tebello said to
+leave it as-is.
+
+**Last completed:** PitCrew Sync built (2 sibling-parity fixes: PitWall-
+import bootstrap, F1-red restyle), both committed locally but handed off
+as patch files pending Tebello's own push (this entry).
+**Next task:** None queued — whichever of the existing `docs/todo.md`
+"Next up" items Tebello picks next. If picking up PitCrew Sync work again,
+first check `git log origin/main` on `RMLRACE/pitcrew-sync` to see whether
+Tebello has applied the patch files yet — see `knowledge/pitcrew-sync.md`.
+**Known risks:** None new.
+**Blockers:** None (the push-access gap is resolved for now via the patch-
+file handoff, not left open as a blocker).
+
 ## 2026-08-06 — Housekeeping: session-log ordering, core pull, superseded session archived
 
 Ran from `/continue` on `TshepangLelosa`. Step 1.75's sync check found this
@@ -1897,6 +2136,32 @@ core.
 **Known risks:** None new. Backup failures remain silent (backlog).
 **Blockers:** None — the scope question that blocked the build is answered.
 
+## 2026-08-06 — Session resume: pitwall-companion feature slideshow started
+
+Ran `/continue`. Both hub "Next up" items (TebelloReborn Playwright,
+SOPS AvgMovement) are 📍 live-machine-only and unreachable from this cloud
+session — surfaced that plainly rather than attempting either. Tebello
+redirected to `pitwall-companion` instead (still no `docs/todo.md` of its
+own). Confirmed the branch was 506 commits behind `origin/main` (heavy
+concurrent Operations/Pappa T consolidation work landed since the last
+push) with zero unique commits of its own, so fast-forwarded clean — no
+conflict, nothing lost. Also checked pitwall-companion itself: no open
+PRs/issues, everything merged, including a "new driver from screenshot"
+feature and a QR/APP_URL update (`rmlrace.github.io`) that landed since
+this hub last touched it.
+
+**New task:** Tebello wants an in-app feature slideshow for pitwall-companion
+users — introducing the app's features, exact scope (onboarding carousel vs.
+something else, trigger condition, content) still to be pinned down this
+session. Logged as a new `docs/todo.md` "In progress" item rather than
+"Next up," since it's not machine-bound and work is starting now.
+
+**Last completed:** Session resume + task redirect (this entry) — no
+pitwall-companion code written yet.
+**Next task:** Scope and build the pitwall-companion feature slideshow.
+**Known risks:** None new.
+**Blockers:** None.
+
 ## 2026-08-06 — TebelloReborn: Stage 6 submission core built
 
 Completed `docs/todo.md` #1's build half. **249 → 344 tests, zero regressions,
@@ -1965,6 +2230,123 @@ ToS/account-risk acknowledgement. Neither is a coding question. #2 (SOPS
 AvgMovement migration) remains gated on an explicit go-ahead.
 **Known risks:** None new. Backup failures remain silent (backlog).
 **Blockers:** The adapter task cannot start until the two decisions above are made.
+
+## 2026-08-06 — pitwall-companion feature-tour slideshow built and PR'd
+
+Continuing the cloud session from the "Session resume" entry above. Scoped
+the slideshow with Tebello first (`AskUserQuestion`): first-launch only,
+core feature tour (Drivers & Parts, Season, Tools, Rewards reference) —
+not a reopenable "What's new," not every-update, not custom slide content.
+
+**Built as a standalone overlay, not a tab.** New `#onboarding` full-screen
+div (blurred scrim, centered card) with its own click-delegation listener,
+separate from the app's existing `#app`-scoped one — the slideshow needs
+to sit above whatever tab is currently rendered, not replace it. Six
+slides (Welcome, Drivers & Parts, Season, Tools, Rewards reference,
+closing "You're set"), each with an inline SVG icon in the app's existing
+stroke-icon style, a dot progress indicator, and Back/Skip/Next nav ("Next"
+becomes "Get Started" on the last slide, "Skip" disappears on it). New
+`f1sheet.onboarding.v1` localStorage key follows the app's existing
+namespaced/schema-guarded convention (mirrors `CUSTOM_DRIVERS_KEY` etc.) —
+stores only a `seen` boolean, checked once at boot.
+
+**Real bug found and fixed during testing, not just a content check.** A
+headless-Chromium test showed the overlay staying visible after dismissal
+despite `element.hidden = true` being set correctly in the DOM. Root cause:
+the `hidden` attribute's UA-stylesheet rule (`[hidden]{display:none}`) and
+the overlay's own `.onb-overlay{display:flex}` class rule are equal CSS
+specificity, so our own rule was winning the cascade tie and the attribute
+was silently doing nothing. A second related gap: the *first* render only
+ever called `renderOnboarding()` when the tour needed to show, so a
+returning user (already `seen`) got the raw static-HTML `hidden` state —
+same broken-tie bug, just never exercised by the "show it" test path.
+Fixed both: an explicit `element.style.display` toggle alongside `hidden`
+(inline style always wins the specificity tie), and boot now calls
+`renderOnboarding()` unconditionally instead of only in the "show" branch.
+Verified after the fix: shows on first load, all 6 slides reachable via
+Next, Back returns correctly, Skip and Get Started both dismiss and
+persist, a reload after dismissal stays dismissed, clearing the storage key
+brings it back — zero console errors across all of that.
+
+**Repo moved mid-session.** `git push` and PR creation both auto-redirected
+from `tlelosa-web/pitwall-companion` to `RMLRACE/pitwall-companion` (GitHub
+follows the rename transparently) — consistent with the `rmlrace.github.io`
+APP_URL/QR update already on `main` from a prior session. Opened PR #22
+against `tlelosa-web/pitwall-companion` (the redirect handled it); worth
+pointing any future `add_repo`/session setup at the new location directly
+rather than relying on the redirect indefinitely.
+
+Recorded a screen-capture video of the slideshow (playwright
+`recordVideo`) and sent it to Tebello directly per their request, rather
+than only describing the feature in text.
+
+**Caught a real process gap while closing out: `sw.js`'s `CACHE_VERSION`
+was never bumped, three times in a row.** `knowledge/pitwall-companion.md`
+already documented the rule (2026-07-23) — every `index.html` change needs
+a matching `CACHE_VERSION` bump so installed devices don't keep serving a
+stale cache — but neither this PR's slideshow commit nor the two from
+earlier this session (Spa track, Compare-tab Boosts + GP Event collapsible,
+PRs #18/#19) actually did it. Fixed with one catch-up bump (`f1sheet-v13`
+→ `v14`) covering all four changes at once, pushed as part of PR #22 since
+#18/#19 are already merged. Added a sharper knowledge-cache entry over the
+existing one: reading the rule at session start clearly isn't enough by
+itself — it needs checking at commit time, every commit that touches
+`index.html`.
+
+**Last completed:** pitwall-companion feature-tour slideshow + a
+retroactive `CACHE_VERSION` catch-up bump for this session's three prior
+`index.html` changes, PR #22 (this entry).
+**Next task:** Unchanged from the entry above — `docs/todo.md` #1
+(TebelloReborn site adapter, blocked on two decisions from Tebello) or #2
+(SOPS AvgMovement migration, gated on explicit go-ahead). Both are
+📍 live-machine-only, unreachable from a cloud session.
+**Known risks:** None new. Backup failures remain silent (backlog). Note
+the `RMLRACE/pitwall-companion` rename above for future sessions.
+**Blockers:** None.
+
+## 2026-08-06 — CrateTracker: total-race-count indicator + PWA update prompt
+
+Cloud session, driven from screenshots Tebello sent of the live app. Four
+PRs on `RMLRACE/cratetracker`, all merged and deployed green.
+
+- **PR #7** — added a second pill badge to the "Log a race result" header
+  beside the existing 🏁 per-step counter. Reused the existing `.pill`
+  class; both pills wrapped in a flex `<span>` because `.card h2` is
+  `justify-content:space-between` and would otherwise fling them apart.
+- **PR #8** — the #7 change deployed green but wasn't visible on device.
+  Root cause was *not* a failed deploy: the cache-first service worker
+  only re-fetches when `CACHE_VERSION` changes, and #7 hadn't bumped it.
+- **PR #9** — fixed that class of bug at the root rather than repeating
+  the bump-and-hope cycle: the worker no longer calls `skipWaiting()`, so
+  a new version parks in *waiting* and the page shows a "New version
+  available" toast (Update / dismiss). Verified in headless Chromium by
+  mutating the served files mid-session to simulate a real deploy, then
+  confirmed on the next real deploy — Tebello reported the prompt working.
+- **PR #10** — Tebello corrected the spec from a screenshot: the 🏆 badge
+  should show **race wins** (2497), not a tally of button presses (which
+  read 1). Repointed it at the `win` value `computeSeries()` already
+  derives, and deleted the `totalRacesLogged` state added in #7.
+
+Worth carrying forward: the deploy-looks-broken symptom was really a
+service-worker caching artifact, and the live URL could not be fetched
+from this session at all (agent proxy denies `*.github.io`), so the deploy
+had to be verified through the GitHub Actions API instead. Both written up
+in the new `knowledge/cloud-sessions.md`.
+
+Knowledge cache updated: `knowledge/cratetracker.md` (3 new entries, old
+cache-busting entry marked superseded), `knowledge/pitwall-companion.md`
+(shares the same stale-PWA trap, fix not ported), new
+`knowledge/cloud-sessions.md`, `knowledge/INDEX.md`.
+
+**Last completed:** CrateTracker win-count badge + PWA update prompt (this
+entry).
+**Next task:** Unchanged — whichever of the three `docs/todo.md` "Next up"
+items Tebello picks (NamePlateTool test suite, TebelloReborn Playwright
+auto-submit, or the still-gated SOPS AvgMovement migration).
+**Known risks:** `pitwall-companion` still has the un-fixed stale-PWA
+trap; its trusted testers will hit the same "update didn't ship"
+confusion until the #9 pattern is ported.
+**Blockers:** None.
 
 ## 2026-08-07 — Queue accuracy: the adapter was already being built
 
@@ -2980,7 +3362,6 @@ a deliberate side-effect of disabling the task, recorded so it is not rediscover
 surprise. The staged folder is a copy, so every file in it still exists in its original
 location as well.
 **Blockers:** None technical. Both new items are decisions, not work.
-
 
 ## 2026-08-09 — The hub's PR template, stranded for a day, landed
 

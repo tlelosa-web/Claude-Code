@@ -69,3 +69,21 @@ is simulated by **mutating the served files on disk mid-session** and
 reloading — the browser byte-diffs `service-worker.js` and runs the
 genuine update path, which is the only way to test install → waiting →
 prompt → activate → reload end to end.
+
+## 2026-08-12 — `git push origin --delete` returns HTTP 403 from cloud containers
+**Source:** session (task: delete triaged branches; 2026-08-09 attempt)
+**Status:** active
+
+`git push origin --delete <branch>` fails with HTTP 403 from a Claude Code
+cloud/web container, while ordinary pushes to the same remote succeed and
+the agent proxy logs no failure. The session's git credentials (deployed as a
+checkout credential helper) create and update refs but cannot delete them.
+
+Workaround: delete branches from a surface with full git access — the
+Operations or Pappa T machine, or the GitHub web UI. Automation that runs
+entirely in the cloud and needs to clean up branches after itself is blocked
+at present.
+
+**Scope:** This was measured on a restricted-access cloud container and does
+not reproduce on the full-filesystem-access session surface (CCR with local
+disk). A confirmed failure on one surface does not imply it everywhere.

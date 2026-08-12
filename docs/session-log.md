@@ -4012,3 +4012,53 @@ decision item Tebello picks next. `claude/new-game-drivers-update-1hp4dq`
 is now the sole remaining unmerged hub branch, untriaged.
 **Known risks:** None new.
 **Blockers:** None.
+
+## 2026-08-12 — Branch state investigation + resume report
+
+Ran `/continue` from a cloud Claude-Code-on-the-web session. Session
+management tools (`list_sessions`, `get_session`, etc.) are not available
+in this environment, so Step 0/0.5 (session renaming/archival) were skipped.
+Shared core update check (Step 1.5) skipped — marketplace clone doesn't
+exist on this machine.
+
+**Hub sync state verified:** `git fetch + pull` showed 0 commits behind
+`origin/main` — hub is current.
+
+**Unmerged branches audited:** Found 9 unmerged branches, with 5 older than
+the 7-day staleness threshold:
+- Oldest: `origin/claude/continuation-s2a36h` (2026-07-26, 16 days)
+- **⚠️ 4 other stale branches** (2026-07-28 and 2026-07-29 cohort, all ~14-15 days)
+- 3 recent branches (2026-08-12, all < 1 day old)
+
+Session log and branch diffs suggest the older branches (2026-07-28/29) hold
+work that was merged via PR #6 per the 2026-07-28 session log entry ("Merged
+the Pappa T vault survey into main"). Ancestry tests inconclusive from this
+environment. **3 very recent branches (2026-08-12) need investigation** on a
+local machine to determine which represent unfinished work vs. orphaned state.
+
+**Step 1.9 staleness check skipped:** Cannot reach live Pappa T vault
+(`~/Pappa T/.git` not found from cloud session) to verify hub state against
+the authoritative source. Hub's last write (2026-08-12) shows 0 commits
+behind `origin/main`, but Pappa T's current state is unknown.
+
+**Resume report prepared** per `/continue` Step 3, with flags for:
+- Hub cannot verify staleness without access to live sub-project repos
+- 9 unmerged branches with 5 exceeding staleness threshold
+- All machine-bound queue items (TebelloReborn, SOPS) are unreachable from
+this cloud session
+
+**Work this session:** Read-only investigation only — no commits, no pushes,
+no file edits. All findings surfaced in the resume report for Tebello's
+direction.
+
+**Last completed:** Branch state investigation + `/continue` resume report
+prepared (this entry).
+**Next task:** Tebello to pick direction — defer branch cleanup to a local
+session (per `/continue` Step 1.8 protocol), or shift to a different queue
+item. TebelloReborn and SOPS remain machine-bound and unreachable from this
+cloud session.
+**Known risks:** None new. Live Pappa T vault state unknown (no local access
+from this session).
+**Blockers:** Cloud session cannot reach Pappa T for staleness verification or
+to run machine-bound queue items. No blockers for further hub-level work from
+this session.

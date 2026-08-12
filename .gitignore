@@ -1,0 +1,69 @@
+# Build artifacts
+*.msi
+*.exe
+*.zip
+*.tar.gz
+*.dmg
+
+# Node.js
+node_modules/
+package-lock.json
+*.tgz
+
+# Logs
+*.log
+*.log.[0-9]
+logs/
+*.err
+*.out
+
+# Generated images
+Gemini_Generated_Image*.png
+*_generated_*.png
+
+# Build output
+dist/
+build/
+.next/
+out/
+
+# IDE / Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Database
+*.db
+*.db-shm
+*.db-wal
+*.db-journal
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+
+# MacOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows
+Thumbs.db
+Desktop.ini
+
+# Temporary files
+*.tmp
+*.temp
+*.bak

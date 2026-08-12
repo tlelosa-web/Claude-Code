@@ -32,45 +32,35 @@ individual projects — see the spec's Gap 1 correction). Update this list by
 hand whenever a project repo is added or removed; there is no automatic
 source for it.
 
-All paths below are the **live** per-machine working copies
-(`Desktop/Operations/...`, `Desktop/Pappa T/...`) — never the O-P-C
-merged-snapshot folders that also exist inside this repo (`Operations/`,
-`Pappa T/`). This hub's own `docs/todo.md` explicitly flags those snapshot
-folders as historical, not live; `/overwatch` must never read them, even as a
-fallback.
+All paths below are the **live** per-machine working copies. The hub's own
+`docs/todo.md` explicitly flags O-P-C's `Operations/` and `Pappa T/` snapshot
+folders as historical; `/overwatch` must never read them, even as a fallback.
 
-> **Every path in the tables below was checked against the live filesystem on
-> 2026-08-09**, before this command was first landed on `main`. That pass
-> found three wrong entries — two `C:\Dev\...` paths pointing at a drive that
-> does not exist on this machine, and a config-repo path that resolved
-> nowhere. A hand-maintained table is only worth what its last verification
-> was worth: re-check these paths whenever a project moves, and treat a
-> missing path as a defect in this file rather than as an unreachable project.
+> **Path verification as of 2026-08-12:** Operations folder and all its
+> sub-projects (SOPS, NamePlateTool, delivery-note-system, daily-sales-order-files)
+> were **deleted to the Recycle Bin on 2026-08-10** and are not being restored.
+> `Desktop/Operations/` no longer exists. The Fan Movement contract terminated
+> 2026-08-03; project data is archived in the Fan Movement staged copy only.
+> See `CLAUDE.md`'s "Live copies vs. this repo's snapshot" section.
 
-**Operations:**
+**⚠️ Operations — ARCHIVED (not monitored):**
 
-| Project | `docs/todo.md` path |
-|---|---|
-| Operations hub queue | `Desktop/Operations/docs/todo.md` — the machine-level queue, sibling to this hub's own. Not a sub-project; read it alongside Step 1 |
-| NamePlateTool | `Desktop/Operations/3. Nameplate & Test Sheet/docs/todo.md` |
-| SOPS | `Desktop/Operations/2. SOPS/docs/todo.md` |
-| delivery-note-system | `Desktop/Operations/7. DELIVERY NOTE/delivery-note-system/docs/todo.md` |
-| daily-sales-order-files | `Desktop/Operations/1. Daily Sales Order Files/` — **no `docs/todo.md`, no `docs/` scaffold at all** (lightweight DCOE onboarding; history lives in `1_Documentation/USER_GUIDE.md` instead, per `knowledge/daily-sales-order-files.md`) |
+Operations projects are no longer live on this machine. Their state is
+preserved in:
+- This repo's `Operations/` snapshot folder (git history only, no runtime state)
+- The Fan Movement staged copy (`Desktop/Fan Movement - Company IP/`, if present)
+- GitHub private repos (`tlelosa-web/sops`, `tlelosa-web/NamePlateTool`)
 
-**The two `C:\Dev\...` paths this table used to carry are gone, and the reason
-matters:** `knowledge/operations-hub.md` records delivery-note-system being
-relocated off the OneDrive-synced Desktop path to `C:\Dev\`, which was true
-when Operations was its own machine. The 2026-08-03 consolidation moved
-Operations onto this one, where **`C:\Dev` does not exist at all**. Both
-projects live under `Desktop/Operations/` now. A knowledge entry that was
-correct when written is not evidence about where a file is today.
+`/overwatch` does **not** attempt to read these — they are archived and the
+deletion is deliberate. If a project needs to be reactivated, restore from the
+GitHub remote or the Fan Movement handover folder.
 
 **Pappa T sub-projects:**
 
 | Project | `docs/todo.md` path |
 |---|---|
-| TebelloReborn | `Desktop/Pappa T/TebelloReborn/docs/todo.md` |
-| ai-outreach-agency | `Desktop/Pappa T/ai-outreach-agency/docs/todo.md` — verified present 2026-08-09; the earlier "path inferred from convention" hedge is resolved |
+| TebelloReborn | `~/Pappa T/TebelloReborn/docs/todo.md` |
+| ai-outreach-agency | `~/Pappa T/ai-outreach-agency/docs/todo.md` — verified present 2026-08-09 |
 
 **No `docs/todo.md` — verified absent 2026-08-09, not merely unconfirmed:**
 MIMS App, IQ Signal Generator, and Tenders all use a different scaffold from the
@@ -79,9 +69,9 @@ as an actual source, and none has one on disk:
 
 | Project | Live folder | Brain/status file actually cited |
 |---|---|---|
-| MIMS App | `Desktop/Pappa T/MIMS App/` | `GEMINI.md` (Gemini-driven, not DCOE — "Directive → Orchestration → Execution" structure, per `knowledge/mims-app.md`) |
-| IQ Signal Generator | `Desktop/Pappa T/IQ/` | `1_Documentation/AGENT.md` (generic "MASTER AGENT DIRECTIVE" boilerplate, per `knowledge/iq-signal-generator.md`) |
-| Tenders | `Desktop/Pappa T/Tenders/` | `1_Documentation/AGENT.md` (same boilerplate as IQ; the only `docs/todo.md` `knowledge/tenders-sa.md` cites is the **hub's own** `docs/todo.md` tracking a submodule fix, not a project-level file, per `knowledge/tenders-sa.md`) |
+| MIMS App | `~/Pappa T/MIMS App/` | `GEMINI.md` (Gemini-driven, not DCOE — "Directive → Orchestration → Execution" structure, per `knowledge/mims-app.md`) |
+| IQ Signal Generator | `~/Pappa T/IQ/` | `1_Documentation/AGENT.md` (generic "MASTER AGENT DIRECTIVE" boilerplate, per `knowledge/iq-signal-generator.md`) |
+| Tenders | `~/Pappa T/Tenders/` | `1_Documentation/AGENT.md` (same boilerplate as IQ; the only `docs/todo.md` `knowledge/tenders-sa.md` cites is the **hub's own** `docs/todo.md` tracking a submodule fix, not a project-level file, per `knowledge/tenders-sa.md`) |
 
 For these three, do not attempt to read a `docs/todo.md` at all — the point is
 not that one might exist unfound, but that these projects genuinely don't use
@@ -156,26 +146,14 @@ Format:
 - [item] — [status]
 - ...  (or "no open items")
 
-### Operations
-**Operations hub queue**
-- [item] — [status]  (or "no open items")
-
-**NamePlateTool**
-- [item] — [status]
-  (or: ⚠️ unreachable from this environment)
-
-**SOPS**
-- ...
-
-**delivery-note-system**
-- ...
-
-**daily-sales-order-files**
-- no confirmed docs/todo.md convention — status per last known knowledge-cache entry
+### Operations (ARCHIVED)
+All Operations sub-projects were deleted 2026-08-10 and are not monitored.
+Data preserved in: O-P-C snapshot, Fan Movement handover folder, GitHub remotes.
 
 ### Pappa T
 **TebelloReborn**
-- ...
+- [item] — [status]
+  (or: ⚠️ unreachable from this environment)
 
 **ai-outreach-agency**
 - ...

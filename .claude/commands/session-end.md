@@ -46,11 +46,12 @@ running.** Only act on explicit confirmation this turn. Surfacing is the
 job; deciding is Tebello's.
 
 📍 **Also check the live copy, not just this repo.** If this session did
-work in `Desktop/Operations/…` or `Desktop/Pappa T/…`, those are separate
-git repos — run the same check there. O-P-C's `Operations/`/`Pappa T/`
-folders are a historical consolidation snapshot; a commit pushed to a live
-sub-project's own remote does **not** appear here until O-P-C is re-merged.
-Say so explicitly if that re-merge is now outstanding.
+work in `~/Pappa T/…`, that is a separate git repo — run the same check
+there. O-P-C's `Pappa T/` folder is a historical consolidation snapshot;
+a commit pushed to the live vault's own remote does **not** appear here
+until O-P-C is re-merged. Say so explicitly if that re-merge is now
+outstanding. Operations sub-projects are archived (deleted 2026-08-10) and
+do not need checking.
 
 ## Step 1.5 — Can This Session's Work Be Found?
 
@@ -88,8 +89,8 @@ Step 6, once per repo checked:
 because silence and never-ran look identical.
 
 📍 **Run it in the live sub-project too**, on the same reasoning as Step 1's
-caveat and against that repo's own default branch — `Desktop/Operations/2. SOPS`
-is on `master`, not `main`.
+caveat and against that repo's own default branch — Pappa T vault is on
+`main`. (Operations sub-projects are archived.)
 
 **Never open the PR, merge, or push** to resolve this. Same rule as Step 1:
 `/session-end` reports what it is leaving behind; it does not act on Tebello's

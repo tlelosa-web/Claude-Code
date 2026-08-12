@@ -216,12 +216,11 @@ Three things to get right, each learned the expensive way:
    and let Tebello decide. Do not merge, open a PR, or delete a branch from
    this step — an ancestry test is not enough evidence to discard work.
 
-📍 **This step covers this hub's repo.** The live sub-project repos
-(`Desktop/Pappa T/`, Operations' `2. SOPS` and `3. Nameplate & Test Sheet`)
-have their own remotes and their own default branches — note that `2. SOPS`
-is on `master`, not `main`. Step 1.9 already reads their clocks; if one of
-them is where the next task lives, run this check there too rather than
-assuming this hub's branch list speaks for it.
+📍 **This step covers this hub's repo only.** Operations sub-projects were
+deleted 2026-08-10 and are not monitored — their history is preserved in
+the O-P-C snapshot and GitHub remotes, but no live working copies exist.
+The Pappa T vault at `~/Pappa T/` is live and has its own remote; Step 1.9
+reads its clock separately if any task mentions it.
 
 ## Step 1.9 — Cross-Repo Staleness Check (verifies Step 1 before you believe it)
 
@@ -243,15 +242,16 @@ design. Full reasoning: `knowledge/hub-process.md`.
 1. **List the live repos to check.** Take every sub-project named by the
    final `session-log.md` entry and by the `todo.md` "Next task." The repo
    root is not always the project folder, and it is never O-P-C's
-   consolidation snapshot — use the live `Desktop/` working copy per the
-   📍 convention in `docs/todo.md`:
-   - `Desktop/Pappa T/` is **one** repo covering all of its sub-projects
+   consolidation snapshot — use the live working copy per the 📍 convention
+   in `docs/todo.md`:
+   - `~/Pappa T/` is **one** repo covering all of its sub-projects
      (TebelloReborn, ai-outreach-agency, …) — check the vault root.
-   - `Desktop/Operations/2. SOPS/` and
-     `Desktop/Operations/3. Nameplate & Test Sheet/` are their **own**
-     separate repos.
-   If a named machine isn't reachable from this session, say so in the
-   report and skip that repo — never guess at its state.
+   - Operations sub-projects are archived (deleted 2026-08-10) — do not check
+     them. If an old `session-log.md` entry names SOPS or NamePlateTool, note
+     that they are no longer live and reference the GitHub remotes or the
+     O-P-C snapshot instead.
+   If a named repo isn't reachable from this session, say so in the report
+   and skip that repo — never guess at its state.
 
 2. **Compare newest-commit clocks**, one call per repo:
 

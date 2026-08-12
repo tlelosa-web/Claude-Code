@@ -46,11 +46,12 @@ running.** Only act on explicit confirmation this turn. Surfacing is the
 job; deciding is Tebello's.
 
 📍 **Also check the live copy, not just this repo.** If this session did
-work in `Desktop/Operations/…` or `Desktop/Pappa T/…`, those are separate
-git repos — run the same check there. O-P-C's `Operations/`/`Pappa T/`
-folders are a historical consolidation snapshot; a commit pushed to a live
-sub-project's own remote does **not** appear here until O-P-C is re-merged.
-Say so explicitly if that re-merge is now outstanding.
+work in `~/Pappa T/…`, that is a separate git repo — run the same check
+there. O-P-C's `Pappa T/` folder is a historical consolidation snapshot;
+a commit pushed to the live vault's own remote does **not** appear here
+until O-P-C is re-merged. Say so explicitly if that re-merge is now
+outstanding. Operations sub-projects are archived (deleted 2026-08-10) and
+do not need checking.
 
 ## Step 1.5 — Can This Session's Work Be Found?
 
@@ -88,8 +89,8 @@ Step 6, once per repo checked:
 because silence and never-ran look identical.
 
 📍 **Run it in the live sub-project too**, on the same reasoning as Step 1's
-caveat and against that repo's own default branch — `Desktop/Operations/2. SOPS`
-is on `master`, not `main`.
+caveat and against that repo's own default branch — Pappa T vault is on
+`main`. (Operations sub-projects are archived.)
 
 **Never open the PR, merge, or push** to resolve this. Same rule as Step 1:
 `/session-end` reports what it is leaving behind; it does not act on Tebello's
@@ -118,6 +119,30 @@ Open `docs/todo.md`:
 **Hub-and-spoke:** if the work happened inside a project that keeps its own
 `docs/todo.md`, that file is authoritative for the detail — update it there
 and keep this hub's entry to a one-line at-a-glance pointer, per `CLAUDE.md`.
+
+## Step 2.5 — Promote or Park Recurring "Known Risks" (per /retro findings)
+
+Items that appear in 3+ consecutive session-log entries under "Known risks"
+have never been decided, never been dropped, and are simply re-typed at every
+close-out, which reads like tracking and functions like forgetting.
+
+```bash
+# Identify recurring items in the last 10 Known risks lines:
+grep "^**Known risks:**" docs/session-log.md | tail -10
+```
+
+**If any risk appears in 3+ consecutive entries:**
+- **Option 1 — Promote to decision:** Move it to `docs/todo.md` as an open
+  decision item (Open or Backlog section). Reword it as a clear decision to
+  be made, not a risk to be lived with. Add it to this entry's
+  `**Next task:**` block in Step 3 so the next `/continue` notices it.
+- **Option 2 — Move to Parked:** If the item has research behind it or
+  explicit acknowledgment it's deferred (e.g., "parked at Tebello's
+  direction"), move it to the Parked section of `docs/todo.md` and reference
+  that in the Known risks line. Stop re-typing it in every session.
+
+**Do not just re-type it again.** Once an item has been re-typed 3+ times,
+it needs a deliberate disposition, not repetition.
 
 ## Step 3 — Write the Session-Log Entry
 
@@ -243,6 +268,7 @@ judgment easy, which is most of the value regardless.
 **Committed:** [what's committed this session, or "nothing to commit"]
 **Pushed:** [clean — nothing outstanding | N unpushed commit(s) on <branch>]
 **Branch state:** [Step 1.5, per repo touched this session — <repo>: all commits reachable from main | <repo>: N commit(s) on <branch> not reachable from main]
+**Recurring Known risks:** [none found | <item> promoted to decision | <item> moved to Parked]
 **Logged:** [docs/todo.md updated | + session-log.md entry added | + knowledge/<topic>.md updated]
 **Title set:** [Cont-"<title>" | attempted, refused — <reason> | not available in this environment]
 **Open follow-ups:** [none | listed, each already reflected in docs/todo.md]

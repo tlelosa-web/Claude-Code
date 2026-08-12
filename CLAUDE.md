@@ -216,7 +216,17 @@ These add to `CORE.md`'s Universal Hard Rules — they never relax them.
    `git pull origin main` (or merge/rebase onto latest `main`) first. If a
    conflict still happens anyway, resolve it as a real union of both
    sides' changes — never pick one branch and discard the other's work.
-7. **Windows shell traps that have already cost this repo real time** —
+7. **Record the command, not the count.** Literal numbers in todos/logs
+   (branch counts, open-items tallies, file counts) go stale within 48
+   hours in active repos — the unmerged-branch count has run 13 → 14 → 15
+   across three days, nothing looks wrong, and the next reader is misled.
+   Convention: **record the command that regenerates the count** rather than
+   the number itself (e.g. `"git branch -r --no-merged origin/main | wc -l"`),
+   and where a literal number is genuinely needed in a critical list (like
+   branch deletion sheets), stamp it as-of a specific `git fetch` and
+   explicitly say "re-measure before acting on it." This costs one line and
+   prevents decisions made on stale data.
+8. **Windows shell traps that have already cost this repo real time** —
    full detail in `knowledge/session-tooling.md`. The four that recur:
    `git commit -m` with a PowerShell here-string splits into pathspecs (use
    `-F <file>`); `Get-Content -Raw` decodes a BOM-less UTF-8 file as ANSI

@@ -4121,14 +4121,29 @@ sheet is not. Step 2.5 found no risk recited across 3+ consecutive entries —
 the "backup failures remain silent" recitation that `/retro` flagged has
 genuinely stopped.
 
+**Amended on a second `/session-end` run** (same session, per Step 3's
+extend-don't-duplicate rule), after Tebello asked for the PR to be merged:
+the close-out above was committed as `d201fae`, opened as **PR #26** and
+**merged to `main`** as `1be5d5e` — verified with
+`git merge-base --is-ancestor d201fae origin/main` rather than trusting the
+merge response. The "1 commit not reachable from `main`" state the first run
+reported is therefore resolved, and
+`claude/system-architecture-download-injjbi` is safe to delete. Note that
+branch deletion from a cloud container returns HTTP 403
+(`knowledge/cloud-sessions.md`, 2026-08-12), so it needs Pappa T or the
+GitHub web UI. This amendment is the last write of this session — a
+close-out that logs its own merge cannot also log the merge of that log.
+
 **Last completed:** Consolidated DCOE architecture export delivered to
 Tebello as a download (not committed, by design); `knowledge/cloud-sessions.md`
 + `knowledge/INDEX.md` updated with the stale-cloud-refs finding;
 `docs/todo.md` Done entry added and the counts-as-prose item annotated with
-its partial landing.
+its partial landing; all of it landed on `main` via PR #26.
 **Next task:** Unchanged — whichever `docs/todo.md` "Next up"/open-decision
 item Tebello picks next. Still available if wanted, neither queued: commit
-the export as `docs/ARCHITECTURE.md`, and publish it as a shared page.
+the export as `docs/ARCHITECTURE.md` (note it states Core **1.5** and `main`
+is now at **1.6**, so regenerate before committing), and publish it as a
+shared page. Housekeeping: delete the merged branch.
 **Known risks:** None new. Note for any cloud session that follows: verify
 `origin/*` against `git ls-remote` before trusting a comparison — this
 session's checkout looked current and was 13 commits behind.

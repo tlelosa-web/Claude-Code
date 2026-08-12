@@ -404,7 +404,11 @@ abandoned either — no work is lost by leaving them here.
       **already fixed on `main`**, where both read `1.6` — no item was filed. A
       stale checkout manufactures findings that are no longer true as readily as
       it hides work that is.
-      Nothing committed to either repo; both left clean on `main`.
+      The export itself is committed nowhere; `tlelosa-claude-config` was left
+      untouched and clean. This close-out landed as `d201fae`, **PR #26**,
+      merged to `main` as `1be5d5e` (SHA cited per the pending `/retro` item 3
+      convention). The export states Core **1.5** while `main` now reads
+      **1.6** — regenerate it before committing if that offer is taken up.
 - [x] **2026-08-12** — **Recovered 9 `docs/session-log.md` entries stranded on
       unmerged branches, then deleted the 8 branches that held them.** The
       2026-08-10 triage found 8 unmerged `origin/claude/*` branches predating

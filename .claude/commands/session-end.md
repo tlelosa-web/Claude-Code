@@ -60,7 +60,17 @@ nothing about that state looks wrong: the tree is clean, the commits are
 pushed, and this close-out reads like a success.
 
 This session is the only one that knows what it just built, and this is the
-last moment anyone will look at that branch on purpose. So check:
+last moment anyone will look at that branch on purpose.
+
+**Run this in every repo this session touched, not just this hub.** A cloud
+session commonly has this hub plus `tlelosa-claude-config` and/or a project
+repo checked out together — a session that pushes two of them and opens a PR
+for one looks finished, and the repo it didn't return to is easy to forget.
+Two real cases landed this way: a PR template and a `/retro` install each sat
+stranded in a second repo for a day while the queue recorded both as done,
+because the session that built them only ran this check where it happened to
+end up. List every repo this session touched, then run this — and Step 6's
+report — once per repo:
 
 ```bash
 git rev-parse --abbrev-ref HEAD
@@ -68,7 +78,7 @@ git log --oneline origin/main..HEAD
 ```
 
 If HEAD is not `main` and the second command returns commits, report it in
-Step 6:
+Step 6, once per repo checked:
 
 > **Branch state:** N commit(s) on `<branch>` not reachable from `main`.
 > Invisible to any session starting from `main` until merged or a PR is
@@ -232,7 +242,7 @@ judgment easy, which is most of the value regardless.
 
 **Committed:** [what's committed this session, or "nothing to commit"]
 **Pushed:** [clean — nothing outstanding | N unpushed commit(s) on <branch>]
-**Branch state:** [Step 1.5 — all commits reachable from main | N commit(s) on <branch> not reachable from main]
+**Branch state:** [Step 1.5, per repo touched this session — <repo>: all commits reachable from main | <repo>: N commit(s) on <branch> not reachable from main]
 **Logged:** [docs/todo.md updated | + session-log.md entry added | + knowledge/<topic>.md updated]
 **Title set:** [Cont-"<title>" | attempted, refused — <reason> | not available in this environment]
 **Open follow-ups:** [none | listed, each already reflected in docs/todo.md]

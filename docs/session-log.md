@@ -4012,3 +4012,66 @@ decision item Tebello picks next. `claude/new-game-drivers-update-1hp4dq`
 is now the sole remaining unmerged hub branch, untriaged.
 **Known risks:** None new.
 **Blockers:** None.
+
+## 2026-08-12 — Phase 7 repository cleanup, hard rule documentation, and process enhancements
+
+Completed Phase 7 (final of the 2026-08-08 systems-check maintenance plan)
+across the Claude-Code hub: root `.gitignore` with patterns for build
+artifacts (31 MB Node installer, 2 MB backend log, ~6 MB generated PNGs),
+untracked going forward without history rewrites (Phase 7a complete).
+
+Created `docs/specs/2026-08-12-phase-7b-company-data-resolution.md`
+documenting the contradiction between CLAUDE.md hard rule 4 ("no company or
+project data") and actual state (641 tracked company files in `Operations/`,
+now a live question since Fan Movement contract terminated 2026-08-03).
+Outlined three resolution options with cost/benefit analysis: A) status quo
+(document as-is, no changes), B) move company data to separate repo, C)
+clarify rule 4 as hub-and-spoke override (Recommended). Awaiting owner
+decision; spec promotes the decision to explicit queue item rather than
+leaving it implied.
+
+Updated three command files to fix stale `Desktop/` paths (Operations
+deleted 2026-08-10, Pappa T relocated to `~/Pappa T/`):
+`.claude/commands/overwatch.md` (removed Operations section, updated project
+paths), `continue.md` (Step 1.8 caveat + Step 1.9 sub-project list), and
+`session-end.md` (added Step 2.5 for recurring Known risks items, updated
+Step 1.5 live-copy checks).
+
+Documented hard rules in both repos: added Hard Rule 7 to `Claude-Code`
+CLAUDE.md and Hard Rule 6 to `tlelosa-claude-config` CLAUDE.md —
+"Record the command, not the count." Literal counts (branch tallies,
+open-item counts) go stale within 48 hours; convention is to record the
+regeneration command instead (e.g., `git branch -r --no-merged
+origin/main | wc -l`). For genuinely needed literal numbers, stamp
+as-of date and explicitly require re-measurement before acting.
+
+Implemented session-end process improvement: Step 2.5 "Promote or park
+recurring 'Known risks'" — items appearing in 3+ consecutive session-log
+entries without resolution now get explicit disposition (promote to
+decision item or move to Parked section) rather than being re-typed in
+perpetuity. `/session-end` Step 6 report now includes "Recurring Known
+risks:" line.
+
+All work committed on `claude/repo-cleanup-decisions-558rdr` across three
+repos:
+- Claude-Code: 11892d2 (docs todo reconciliation), 8d0dc1a (Phase 7 work)
+- tlelosa-claude-config: ce8cd0e (docs todo reconciliation), b6a0902 (Hard
+  Rule 6 documentation)
+- ai-product-factory: synced, no todos to update
+
+PR #24 (Claude-Code) merged via squash to `d15808a` before this session-end
+run. Secondary repos' PRs remain unmerged; branches pushed and ready for
+manual creation/merge via GitHub web interface.
+
+**Last completed:** Phase 7 repository cleanup, process documentation, and
+hard rule codification across hub and config repos. Merged main PR (#24).
+Updated todo.md in both repos to mark Phase 7 done.
+**Next task:** Owner decision on Phase 7b three options (A: status quo, B:
+separate repo, C: clarify rule 4). Secondary repos need PR creation/merge.
+Open decisions remain: backup discovery default-deny, Fan Movement data
+retention, backup failure alerting strategy.
+**Known risks:** None new; Phase 7b remains unresolved pending owner
+decision. Company-data spec sits documented and awaits action.
+**Blockers:** None. Secondary repo PRs blocked only by GitHub API creation
+failures; branches are pushed and reachable.
+

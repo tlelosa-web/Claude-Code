@@ -349,13 +349,6 @@ abandoned either — no work is lost by leaving them here.
       two disagreeing — this is a marketplace change (`tlelosa-claude-config`,
       codex-gate plugin + `dcoe-roster/CORE.md`), upstream-first per ADR-008, not
       a local edit.
-- [ ] **Add `*.db-shm` / `*.db-wal` to the Pappa T vault `.gitignore`** — the
-      2026-08-06 backup run opens each SQLite DB read-only, and opening a
-      WAL-mode database creates its `-shm`/`-wal` sidecars. Two now show as
-      untracked in the Pappa T repo (`ai-outreach-agency/outreach.db-shm`,
-      `-wal`). Harmless and regenerable, but they will reappear after every
-      backup run and clutter `git status`. TebelloReborn's own `.gitignore`
-      already covers them; the vault-level one does not.
 - [ ] **Decide whether backup failures should alert** — the daily task (below)
       writes failures to `~/Backups/backup-runtime.log` and sets a non-zero
       `LastTaskResult`, but nothing tells anyone. A silent failure would look
@@ -366,6 +359,18 @@ abandoned either — no work is lost by leaving them here.
 
 ## Done
 
+- [x] **2026-08-12** — **Added `*.db-shm` / `*.db-wal` / `*.db-journal` to the
+      Pappa T vault `.gitignore`** — closes the backlog item opened after the
+      2026-08-06 backup run left `ai-outreach-agency/outreach.db-shm`/`-wal`
+      untracked. Confirmed again after the 2026-08-10 07:46 run reproduced the
+      same two sidecars. TebelloReborn's own `.gitignore` already covered
+      these patterns; only the vault-level one was missing them. `*.db-journal`
+      added alongside for the same rollback-journal-mode case, even though it
+      hadn't been observed yet. This is the git-ignore half only — the
+      backup script's own `SIDECAR_SUFFIXES` was fixed separately on
+      2026-08-10 to stop backing these sidecars up in the first place; both
+      were needed since they solve different problems (git noise vs backup
+      noise).
 - [x] **2026-08-10** — **Pappa T restored to `~/Pappa T`, and the daily backup
       is covering it again** — but re-pointing `VAULTS` turned out to be the
       smallest part of it. Re-cloned `tlelosa-web/pappa-t` (282 commits, at

@@ -3478,3 +3478,28 @@ Recycle Bin, the stale path-table sweep (now unblocked), the committed `.pfx`
 history; emptying it is irreversible. The root `.gitignore` gap cost a hand-removed
 `scripts/__pycache__/` for the third session running.
 **Blockers:** None.
+
+## 2026-08-12 — Pappa T vault `.gitignore` gap closed for WAL sidecars
+
+Added `*.db-shm`, `*.db-wal`, `*.db-journal` to the Pappa T vault-level `.gitignore`. The daily
+`DCOE runtime-data backup` scheduled task opens every discovered SQLite database read-only via
+`backup-runtime-data.py`, and opening a WAL-mode database creates its `-shm`/`-wal` sidecars
+regardless of read-only intent. Confirmed recurring: `ai-outreach-agency/outreach.db-shm`/`-wal`
+showed untracked after the 2026-08-10 07:46 run, matching the same pair first seen 2026-08-06.
+Checked `TebelloReborn/.gitignore` first — it already carried all three patterns — so only the
+vault root was missing them; no duplication introduced. `*.db-journal` added alongside on the same
+reasoning even though it hadn't been observed yet (rollback-journal mode would hit the same gap).
+
+This is the git-ignore half only. The backup script's own `SIDECAR_SUFFIXES` was fixed separately
+on 2026-08-10 (see the 2026-08-10 restore entry above) to stop *backing up* these sidecars — a
+different concern from git tracking them, and both fixes were needed.
+
+Closed the matching `docs/todo.md` Backlog item, moved to Done.
+
+**Last completed:** Pappa T vault `.gitignore` updated for `*.db-shm`/`*.db-wal`/`*.db-journal`
+(this entry).
+**Next task:** the three remaining open decisions — `delivery-note-system`'s history in the
+Recycle Bin, the stale path-table sweep, the committed `.pfx`; or "Decide whether backup failures
+should alert" in Backlog.
+**Known risks:** None new.
+**Blockers:** None.

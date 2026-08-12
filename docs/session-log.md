@@ -3860,6 +3860,70 @@ history; emptying it is irreversible. The root `.gitignore` gap cost a hand-remo
 `scripts/__pycache__/` for the third session running.
 **Blockers:** None.
 
+## 2026-08-10 — pitwall-companion: new game content, a level-0 seed, and per-card event availability
+
+Four PRs (#23–#26) against `RMLRACE/pitwall-companion`, all merged. Started from
+screenshots of new in-game content and ended up fixing two data-loss traps that the
+content work itself introduced.
+
+**New content.** Added the 16 Paddock Picks / Paddock Picks: Turbo cards and Johnny
+Herbert as the 23rd Legendary. Paddock Picks and Paddock Picks: Turbo are two separate
+in-game collections sharing one rarity ("Special"), so section name and rarity come apart
+for the first time in this app; `GROUP_RARITY` is the single place that mapping lives.
+
+**A wrong reading, corrected mid-flight.** The first commit recorded those 16 stat lines
+as *max level*, because each card shows a "Stats at Max Level" chip. It is an un-pressed
+toggle, not a label for the numbers below it — the compare panel shows **level 1**. Senna
+settled it: his locked card resolves to exactly his level-1 row in the sheet the app
+already ships. The numbers were right; the level they described was not, and the
+consequence was not cosmetic — `CAP.Special = 1` had made every Paddock Picks card claim
+to be maxed on unlock.
+
+**Deriving what was never published.** Herbert's level-1 line is a permutation of the
+Fisichella / G.Villeneuve / McLaren cohort's, and that cohort shares one stat *and* cost
+curve, so his full 1–7 curve clones from it — the same cohort rule the app already applies
+to user-added drivers. His card's 70,000 upgrade price at level 1 later confirmed the
+derived coin costs independently, and no published source covers his row at all.
+
+**Legendary event availability is not uniform.** All 23 cards were read: 4 Junior+,
+5 Challenger+, 6 Contender+, 8 Champion. That means the single "Legendary drivers allowed"
+toggle was wrong for them as a group — Senna was being offered in Junior events. Fifteen
+of the readings came from locked cards' compare views and each derives from **both**
+reference columns to exactly that driver's level-1 row already in the app, so the readings
+check themselves rather than being trusted transcription. Tier rises monotonically with
+level-1 power and no power cohort spans two tiers; both are now asserted.
+
+**Two data-loss traps, same shape as the backup-script defects in the entry above** —
+code that succeeds with a wrong value rather than failing:
+
+- The seed shipped one collection's progress, so a new download opened onto someone else's
+  levels. Zeroing it looked like a one-line change, but stored state is only a **diff**
+  against the seed (`setOverride()` deletes an override the moment a value returns to its
+  seeded number), so 74 cards on every existing install had no stored entry at all and
+  would have silently reset. Fixed with `SCHEMA` 1→2 plus `LEGACY_SEED` /
+  `migrateLegacySeed()`.
+- **Import bypassed that same migration.** Found only by checking a user question — can a
+  new user upload workbook data? — not by any test. Restoring a pre-change backup reset 73
+  of 74 cards behind a prompt that merely quoted schema numbers.
+
+**Two testing lessons worth keeping.** One assertion run passed while executing nothing: a
+`sed` append silently produced an empty block, and a green result from a test that never
+ran looks identical to a real pass. And the Import bug survived the first pass because it
+was checked by *transcribing* the handler into a harness rather than driving it; its
+regression test now drives the real file input and was run against the pre-fix code to
+confirm it actually fails there.
+
+**Last completed:** pitwall-companion PR #26 merged — Import now takes the same migration
+path as `load()`
+**Next task:** explore letting a new user bring in workbook data (Import accepts only the
+app's own backup JSON today); tracked in the project's own `docs/todo.md`
+**Known risks:** the schema 1→2 migration is verified in a harness and end-to-end through
+the real Import handler, but has not yet run against real `localStorage` on a device
+holding a real collection — first load after the update is the moment to check.
+`CAP.Special` is a flagged assumption (7, mirroring Legendary); no Paddock Picks card's
+real cap has been observed.
+**Blockers:** None.
+
 ## 2026-08-12 — Pappa T vault `.gitignore` gap closed for WAL sidecars
 
 Added `*.db-shm`, `*.db-wal`, `*.db-journal` to the Pappa T vault-level `.gitignore`. The daily

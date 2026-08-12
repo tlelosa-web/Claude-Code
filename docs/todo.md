@@ -403,6 +403,40 @@ abandoned either — no work is lost by leaving them here.
       2026-08-10 to stop backing these sidecars up in the first place; both
       were needed since they solve different problems (git noise vs backup
       noise).
+- [x] **2026-08-10** — **pitwall-companion: new game content, a level-0 seed for
+      new downloads, and per-card GP Event availability** — four PRs (#23–#26).
+      Added the 16 Paddock Picks / Paddock Picks: Turbo cards ("Special" rarity,
+      two separate collections sharing one rarity) and Johnny Herbert as the
+      23rd Legendary. **Corrected a wrong reading mid-flight:** a locked card's
+      *Stats at Max Level* chip is an un-pressed toggle, not a label for the
+      numbers below it, so those 16 stat lines are level 1 — proven by Senna,
+      whose locked card resolves to exactly his level-1 row in the shipped
+      sheet. Herbert's full level 1–7 curve was then derived from his stat
+      cohort and independently confirmed by his card's 70,000 upgrade price,
+      which no published data covered. Read GP Event availability off all 23
+      Legendary cards (4 Junior+ / 5 Challenger+ / 6 Contender+ / 8 Champion) —
+      availability is **not** uniform, so the single "Legendary drivers allowed"
+      toggle was wrong for them as a group; it is now inert and kept only as the
+      fallback for a Legendary added before its card is read. Seed dropped to
+      level 0 across all 151 cards so a new download stops opening onto the
+      owner's collection. **Two data-loss traps came out of that one change**, of
+      the same shape as the backup-script defects logged above — code that
+      succeeds with a wrong value rather than failing. Stored state is only a
+      *diff* against the seed, so zeroing it would have silently reset 74 cards
+      on every existing install; `SCHEMA` 1→2 plus `LEGACY_SEED`/
+      `migrateLegacySeed()` fixes the load path. The **Import** path then turned
+      out to bypass that same migration (found only by checking whether a new
+      user could upload workbook data), resetting 73 of 74 cards behind a prompt
+      that just quoted schema numbers. Its regression test drives the real file
+      input and was **run against the pre-fix code to confirm it fails there** —
+      a transcription of the handler is what let the bug through first time.
+      Project-scoped follow-ups live in the project's own
+      `pitwall-companion/docs/todo.md` (created that session), not here. Recovered
+      2026-08-12 from `claude/new-game-drivers-update-1hp4dq`, a 9th unmerged
+      branch that surfaced after the main recovery pass above — same shape as
+      the other 8 (a single-commit, additions-only branch forked before this
+      hub's later work), triaged and deleted the same way. See
+      `docs/session-log.md` for full detail.
 - [x] **2026-08-10** — **Pappa T restored to `~/Pappa T`, and the daily backup
       is covering it again** — but re-pointing `VAULTS` turned out to be the
       smallest part of it. Re-cloned `tlelosa-web/pappa-t` (282 commits, at

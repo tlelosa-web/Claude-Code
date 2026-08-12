@@ -202,34 +202,7 @@ flags re-checked 2026-08-03 after the O-P-C consolidation — see note below)
 
 Full plan and per-branch verdicts live in `tlelosa-claude-config/docs/specs/`
 (`2026-08-08-system-maintenance-plan.md`, `2026-08-08-branch-triage-verdicts.md`).
-Phases 1-6 are done; what remains that is *this hub's* to do:
-
-- [ ] **Phase 7a — root `.gitignore`.** This repo has none, and build
-      artifacts are tracked: a 31 MB `node-v24.10.0-x64.msi`, a 2 MB
-      `backend.log.1`, and ~6 MB of generated PNGs, in a 67 MB repo. Add a
-      `.gitignore` and untrack going forward. **Do not rewrite history** —
-      that breaks every existing clone on both machines plus any cloud
-      session, for a cosmetic size win. Untracking is enough.
-- [ ] **Phase 7b — resolve the company-data rule contradiction.**
-      **Re-scoped 2026-08-09: the Fan Movement contract was terminated on
-      Monday 2026-08-03, which turns this from a documentation question into
-      a live one.** This hub's hard rule 4 says "no company or project data
-      beyond what's already public in the source project's own repo," but
-      `Operations/` holds `CustomerInvoicesReport.csv`,
-      `CustomerSalesOrdersByCustomer.csv`, `Contract register 2025.xlsx`
-      and the 07.2026 sales order report — 641 files tracked in this repo,
-      including 64 `.xlsx`, 14 `.csv` and 13 `.pdf`. The hub-and-spoke design
-      intends sub-projects to live here, so the rule and the layout
-      contradict each other — decide which is meant and reword the loser.
-      All five repos are confirmed **private**, so this is not exposure.
-      Two related questions, both now sharper than when this item was
-      written: cloud sessions clone this entire vault, company data included,
-      into an Anthropic container; and the IT clearance on record was granted
-      by a company Tebello no longer contracts to, which is also the standing
-      caveat on the codex-gate/OpenAI-egress item that shipped to Operations
-      the same day. **Owner decision**, and the staged handover folder
-      (below) does not settle it — that folder is a copy, so every file it
-      contains is still here too.
+Phases 1-7 are done; what remains that is *this hub's* to do:
 - [ ] **Decide what happens to the Fan Movement material still in this repo
       and in the GitHub repos** (opened 2026-08-09, follows the staging
       below). Copying files into a handover folder does not remove them from
@@ -358,6 +331,25 @@ abandoned either — no work is lost by leaving them here.
       running and verified — but worth a deliberate answer rather than drift.
 
 ## Done
+
+- [x] **2026-08-12** — **Phase 7: Repository cleanup, documentation improvements,
+      and process enhancements.** Completed root `.gitignore` with patterns for
+      build artifacts (31 MB Node installer, 2 MB logs, 6 MB generated PNGs)
+      and untracked going forward without history rewrites (Phases 7a complete).
+      Added spec for Phase 7b company-data rule contradiction
+      (`docs/specs/2026-08-12-phase-7b-company-data-resolution.md`), documenting
+      the three resolution options (A: status quo, B: separate repo, C: clarify
+      rule 4) — awaiting owner decision. Updated three command files
+      (`.claude/commands/overwatch.md`, `continue.md`, `session-end.md`) to fix
+      stale Desktop paths (Operations deleted 2026-08-10, Pappa T relocated to
+      `~/Pappa T/`). Added `session-end.md` Step 2.5: "Promote or park recurring
+      'Known risks'" — items in 3+ consecutive session-log entries now get
+      explicit disposition (promote to decision or move to Parked) rather than
+      re-typed in perpetuity. Documented Hard Rule 7 in `CLAUDE.md`: "Record the
+      command, not the count" — literal counts go stale within 48 hours; record
+      regeneration commands instead (e.g., `git branch -r --no-merged origin/main
+      | wc -l`). Pushed to `claude/repo-cleanup-decisions-558rdr`. Merged PR #24
+      via squash merge (`d15808a`).
 
 - [x] **2026-08-12** — **Recovered 9 `docs/session-log.md` entries stranded on
       unmerged branches, then deleted the 8 branches that held them.** The

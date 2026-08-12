@@ -295,6 +295,17 @@ and the `/overwatch` decision — closed 2026-08-09; see Done.)*
       which is the highest-consequence instance — it is a list of branches to
       delete. One instance was patched in place on 2026-08-10; that is not the
       fix.
+      **Partly landed, noticed 2026-08-12 rather than done by that session:**
+      the convention is now `CLAUDE.md` **Hard Rule 7** ("Record the command,
+      not the count"), added in `d15808a`, carrying both halves — regenerate-
+      command by default, and an as-of stamp plus "re-measure before acting on
+      it" where a literal number is genuinely needed. What that does **not**
+      settle is the applying: this queue and `docs/session-log.md` still hold
+      counts written under the old habit, and the deletion sheet in
+      `tlelosa-claude-config/docs/specs/2026-08-08-branch-triage-verdicts.md` —
+      named above as the highest-consequence instance — has not been re-checked
+      against the new rule. Left open deliberately, with the remaining scope now
+      being the sweep rather than the decision.
 
 - [ ] **Promote or park items recited in "Known risks"** — "Backup failures
       remain silent (backlog)" appears in **11** session-log entries. It has
@@ -359,6 +370,41 @@ abandoned either — no work is lost by leaving them here.
 
 ## Done
 
+- [x] **2026-08-12** — **Exported a consolidated DCOE architecture document for
+      Tebello, and measured how stale a fresh cloud checkout starts.** The export
+      itself is a **reading copy delivered as a download, deliberately not
+      committed** — `CORE.md` stays the single source of truth, and a second
+      copy in-repo is a thing to keep in step for no gain. It consolidates the
+      pipeline + Router + Reviewer Loop, the roster and its auto-bootstrap, model
+      routing and the standing-pin test, the 10 universal hard rules, the
+      distribution topology (why a read instruction and not `@import`), both
+      repos' layouts, the session commands, the Windows/backup gotchas, and the
+      ADR-007–010 index — with a provenance table naming the source file behind
+      each section. Offered as a commit (`docs/ARCHITECTURE.md`) and as a shared
+      page; neither taken up this session, so both remain available rather than
+      queued.
+      **The durable finding is the checkout state, not the document.** This
+      session's containers started **13 commits behind** `origin/main` on this
+      hub, with a clean tree, a cached `origin/main` equal to `HEAD`, and an
+      empty `git log origin/main..HEAD` — all three of which read as "current."
+      Compounding it: `remotes/origin/claude/system-architecture-download-injjbi`
+      existed in `git branch -a` in **both** repos while `git ls-remote` showed
+      it on neither, so the tracking ref proved nothing about a push; and
+      `git fetch origin main <that-branch>` aborted atomically on the bad ref,
+      leaving `origin/main` stale while every follow-up comparison answered
+      confidently from the stale cache. Same shape as the `..` range operator and
+      the `rmtree` that cannot fail — a plausible wrong answer rather than an
+      error. Both repos were reset onto current `main` only after
+      `git merge-base --is-ancestor` confirmed neither branch held unique
+      commits. Full detail and the practice that avoids it:
+      `knowledge/cloud-sessions.md`.
+      **Corrected in-flight, and worth keeping as the reason:** this session
+      first reported a `roster-manifest.json` `coreVersion` drift (manifest
+      `1.4` against `CORE.md` `1.5`). It was real in the stale checkout and
+      **already fixed on `main`**, where both read `1.6` — no item was filed. A
+      stale checkout manufactures findings that are no longer true as readily as
+      it hides work that is.
+      Nothing committed to either repo; both left clean on `main`.
 - [x] **2026-08-12** — **Recovered 9 `docs/session-log.md` entries stranded on
       unmerged branches, then deleted the 8 branches that held them.** The
       2026-08-10 triage found 8 unmerged `origin/claude/*` branches predating

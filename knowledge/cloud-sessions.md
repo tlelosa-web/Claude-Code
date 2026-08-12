@@ -87,3 +87,48 @@ at present.
 **Scope:** This was measured on a restricted-access cloud container and does
 not reproduce on the full-filesystem-access session surface (CCR with local
 disk). A confirmed failure on one surface does not imply it everywhere.
+
+## 2026-08-12 — A cloud container starts with stale `origin/*` refs, and a bad ref name aborts the whole fetch
+**Source:** session (architecture export; both repos checked out together)
+**Status:** active
+
+A freshly-provisioned cloud session's checkout is **not** necessarily at
+`origin/main`, and its cached remote-tracking refs can be well behind the real
+remote. Measured this session: `Claude-Code` `HEAD` and its cached
+`origin/main` both read `855f392`, while the actual `refs/heads/main` on GitHub
+was `64583a0` — **13 commits ahead**. `tlelosa-claude-config` was behind by a
+comparable margin. Nothing looks wrong: `git status` is clean, and
+`git log origin/main..HEAD` returns empty, which reads as "up to date" when it
+actually means "up to date with a stale cached ref."
+
+Two compounding traps:
+
+1. **The designated branch may exist locally and not on the remote.** Both
+   repos had `remotes/origin/claude/system-architecture-download-injjbi` in
+   `git branch -a`, and `git ls-remote --heads origin` showed no such ref on
+   either remote. The tracking ref is created by the container's own setup, so
+   `git branch -a` is not evidence a branch was ever pushed.
+2. **`git fetch origin main <nonexistent-branch>` aborts entirely** with
+   `fatal: couldn't find remote ref <branch>` — and because the fetch is
+   atomic, `origin/main` is **not** updated either. Any `git log` comparison
+   run after that fatal silently answers from the stale ref. This is the
+   `..`-range-operator shape from `session-tooling.md` again: the command
+   returns a plausible wrong answer instead of failing visibly.
+
+**Practice:** at the start of a cloud session, verify against the remote itself
+rather than the cached ref, and fetch one ref at a time so a bad name cannot
+take the good fetch down with it:
+
+    git ls-remote --heads origin              # ground truth, no local cache
+    git fetch origin main                     # separately from any branch fetch
+    git rev-list --count HEAD..origin/main    # 0 only after a *successful* fetch
+
+Where the working branch holds no unique commits,
+`git merge-base --is-ancestor HEAD origin/main` confirms a `reset --hard
+origin/main` discards nothing — check it rather than assuming.
+
+**Consequence worth noting:** anything read before that fetch is suspect. This
+session first reported a `roster-manifest.json` `coreVersion` drift (manifest
+`1.4` vs `CORE.md` `1.5`) that was real in the stale checkout and **already
+fixed on main**, where both read `1.6`. A stale checkout does not just hide new
+work — it manufactures findings that are no longer true.

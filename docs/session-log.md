@@ -4062,3 +4062,74 @@ from this session).
 **Blockers:** Cloud session cannot reach Pappa T for staleness verification or
 to run machine-bound queue items. No blockers for further hub-level work from
 this session.
+
+## 2026-08-12 — Architecture export, and a checkout that was 13 commits behind while looking current
+
+Tebello asked for a download copy of the system architecture, "or point me
+to it if it isn't here." It was here — spread across `CORE.md`, both
+`CLAUDE.md`s, the config repo's `README.md`, `marketplace.json`,
+`roster-manifest.json` and the four ADRs — so the work was consolidation,
+not authoring. Delivered as a single Markdown export covering the pipeline
+(Router, the four stages, the Reviewer Loop), the roster and its Core-1.5
+auto-bootstrap, model routing and the standing-pin test, the 10 universal
+hard rules, distribution topology, both repos' layouts and their own hard
+rules, the session commands, the Windows/backup gotchas, and the ADR index —
+each section tagged with the source file behind it, and an explicit list of
+what was *not* flattened in (agent bodies, `hub-template/` skeletons,
+`shared-skills/` SKILL.md files, full ADR bodies, the 20 `knowledge/` files).
+
+**Deliberately not committed.** `CORE.md` is the single source of truth; a
+second in-repo copy is one more file to keep in step, for a document whose
+whole value is being a point-in-time reading copy. Offered as
+`docs/ARCHITECTURE.md` and as a shared page — neither taken up, so both stay
+available rather than becoming queue items.
+
+**The part worth keeping is what the close-out found, not the document.**
+Running `/session-end`'s Step 0 pull-gate turned up that this session's
+containers had started **13 commits behind** `origin/main` on this hub, and
+comparably behind on `tlelosa-claude-config`. Every signal said otherwise:
+clean tree, cached `origin/main` identical to `HEAD`, and
+`git log origin/main..HEAD` empty — which means "up to date with a stale
+cached ref," not "up to date." Two things compounded it. Both repos carried
+`remotes/origin/claude/system-architecture-download-injjbi` in
+`git branch -a` while `git ls-remote --heads origin` showed it on **neither**
+remote, so the container's own setup had created tracking refs that were
+never evidence of a push. And `git fetch origin main <that-branch>` aborted
+atomically — `fatal: couldn't find remote ref` — which left `origin/main`
+un-updated, so the comparisons run immediately afterward answered
+confidently from the stale cache. Same shape as PowerShell's `..` range
+operator and the `rmtree` that could not fail: a plausible wrong answer in
+place of a visible error. Recorded in `knowledge/cloud-sessions.md` with the
+practice that avoids it (`ls-remote` for ground truth, fetch refs
+separately, `rev-list --count` only after a fetch that actually succeeded).
+
+**One reported finding was withdrawn, and the reason is the finding.**
+Reading the stale checkout, this session told Tebello that
+`roster-manifest.json` declared `coreVersion` `1.4` against `CORE.md`'s
+`1.5`, and flagged it as real drift. On current `main` both read `1.6` — it
+had already been fixed. Corrected before anything was filed. A stale
+checkout manufactures findings that are no longer true just as readily as it
+hides work that is, and the second failure mode is the easier one to miss
+because a fabricated defect still looks like diligence.
+
+**Reconciled while closing, not worked on:** `docs/todo.md`'s open
+"Stop writing counts as prose" item (from the 2026-08-10 `/retro`) is now
+partly landed — the convention shipped as `CLAUDE.md` Hard Rule 7 in
+`d15808a`. Annotated in place rather than closed: the decision is made, the
+sweep across this queue, this log and the config repo's branch-deletion
+sheet is not. Step 2.5 found no risk recited across 3+ consecutive entries —
+the "backup failures remain silent" recitation that `/retro` flagged has
+genuinely stopped.
+
+**Last completed:** Consolidated DCOE architecture export delivered to
+Tebello as a download (not committed, by design); `knowledge/cloud-sessions.md`
++ `knowledge/INDEX.md` updated with the stale-cloud-refs finding;
+`docs/todo.md` Done entry added and the counts-as-prose item annotated with
+its partial landing.
+**Next task:** Unchanged — whichever `docs/todo.md` "Next up"/open-decision
+item Tebello picks next. Still available if wanted, neither queued: commit
+the export as `docs/ARCHITECTURE.md`, and publish it as a shared page.
+**Known risks:** None new. Note for any cloud session that follows: verify
+`origin/*` against `git ls-remote` before trusting a comparison — this
+session's checkout looked current and was 13 commits behind.
+**Blockers:** None.

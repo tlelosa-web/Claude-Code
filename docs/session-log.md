@@ -3884,3 +3884,67 @@ Recycle Bin, the stale path-table sweep, the committed `.pfx`; or "Decide whethe
 should alert" in Backlog.
 **Known risks:** None new.
 **Blockers:** None.
+
+## 2026-08-12 — Session close-out: 9 stranded session-log entries recovered, 8 branches deleted
+
+Picked up a direct task from Tebello: recover `docs/session-log.md` entries
+that existed only on 8 unmerged `origin/claude/*` branches per the
+2026-08-10 triage, without merging any of them — merging would have
+deleted main's later work (one branch diffed as 313k deletions against
+main). Extracted each branch's `docs/session-log.md` via `git show`, found
+exactly the 9 headers the triage predicted, and placed each into main's
+copy using a precise chronological method rather than trusting branch
+adjacency: walked `git log --format=%cI` per commit to find exactly when
+each existing entry was added to main, cross-referenced that against each
+orphan entry's own commit timestamp, and checked the surrounding entries'
+"Last completed"/"Next task" prose for narrative confirmation before
+committing to a placement. This mattered because branch-adjacency alone
+was actively misleading in two places — `continuation-sqlkfd`'s two
+entries and the `pwa-component-driver-app-ysxe8a`/`session-end-archive-afo043`/
+`total-race-count-indicator-keqb18` cluster all showed the *same* branch-
+side "previous entry," since each branch forked from the same point on
+main and never saw the others' later, concurrently-merged work.
+
+Round-tripped the file through Python (`newline=None` on read, `newline=
+"\r\n"` on write) rather than PowerShell, per this file's own Hard Rule 7
+— `core.autocrlf=true` here means the working-tree file is CRLF while
+every git blob is LF-only, and writing plain LF back would have turned a
+9-entry insert into a whole-file diff. Verified before committing: em-dash
+count increased by exactly the sum of em-dashes in the 9 inserted blocks
+(569 → 626), header count 64 → 73, zero out-of-order date transitions.
+
+`docs/todo.md` was checked, not edited, for the open-item side of the same
+question: every "Next up" edit these branches carried (codex-gate rollout
+wording) is superseded — grep confirmed that item no longer exists in
+main's queue at all. The branches' Done-only bullets (PitCrew Sync,
+CrateTracker's win-badge fix, the pitwall-companion slideshow,
+`/session-end`'s original authoring) weren't duplicated into todo.md's Done
+log; the restored session-log entries are now that record's full detail.
+
+**A concurrent session landed a real commit in O-P-C mid-task** —
+`8c26f26` (the `.gitignore` fix in the entry above), touching both
+`docs/session-log.md` and `docs/todo.md`, appeared between this session's
+first `git status` check and its write. Caught by re-checking `git log -1`
+immediately before every write per Hard Rule 6; committed `bc194f1` on top
+of it rather than resetting or overwriting, so nothing from that session
+was lost.
+
+Pushed to `origin/main` (fast-forward, `855f392..bc194f1`) on Tebello's
+explicit go-ahead — GitHub reported bypassing a PR-required branch-
+protection rule on the push itself, worth knowing for future pushes to this
+repo. Re-verified all 8 branches' HEAD SHAs were unchanged immediately
+before deletion (matched the extraction exactly), then deleted all 8 from
+`origin` on Tebello's explicit confirmation and pruned local refs.
+**One additional unmerged branch surfaced during the prune that wasn't
+part of this triage:** `claude/new-game-drivers-update-1hp4dq` — left
+untouched, out of scope for this task.
+
+**Last completed:** 9 session-log entries recovered and spliced into `main`
+at their correct chronological position, 8 fully-triaged branches deleted
+from `origin`, both `docs/session-log.md` and `docs/todo.md` reconciled
+(this entry).
+**Next task:** Unchanged — whichever `docs/todo.md` "Next up"/open-
+decision item Tebello picks next. `claude/new-game-drivers-update-1hp4dq`
+is now the sole remaining unmerged hub branch, untriaged.
+**Known risks:** None new.
+**Blockers:** None.

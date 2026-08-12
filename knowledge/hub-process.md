@@ -4,6 +4,51 @@ Findings about how this hub's own rules behave in practice — hub-and-spoke,
 the contention files, queue discipline. The rules themselves live in
 `CLAUDE.md`; this file records what using them has actually taught.
 
+## 2026-08-12 — Recovering log entries (not files) from a stranded branch: splice by commit timestamp, not branch adjacency
+**Source:** session — recovering 9 `docs/session-log.md` entries from 8 branches triaged 2026-08-10
+**Status:** active
+
+The 2026-08-09 entry below covers recovering *files* a stranded branch has that `main`
+lacks. This is the other shape of the same problem: recovering `docs/session-log.md`
+*entries* that exist only on stranded branches, where every file the branches added was
+already superseded in `main` — so `git archive` had nothing to extract, and the loss was
+entirely inside a single shared file's history.
+
+**A stranded branch's own "previous entry" is not evidence of where an entry belongs in
+`main`.** Each branch forked from the same point on `main` and never saw what merged
+there afterward, so two or more branches can show the *same* "previous entry" in their
+own copy of the file while `main` inserted several unrelated entries at that exact point
+from concurrent sessions. Trusting branch-adjacency here would have put multiple orphan
+entries in the wrong place with high confidence and no error to catch it.
+
+**What worked: walk `git log --format="%cI %H %s" -- <file>` on `main`, then `git show`
+each commit's diff to find exactly when each existing entry's header was added.** That
+produces a real timeline of *when `main` actually acquired each entry*, not just the
+order they appear in the file. Cross-referencing each orphan entry's own commit
+timestamp (from the stranded branch, same command) against that timeline pinpoints the
+correct insertion point directly — and the surrounding entries' prose ("Last completed" /
+"Next task" fields referencing the same fix, or explicitly describing an orphan's work as
+already done "in a session outside this hub") corroborated every placement independently,
+which is what made the timestamp method trustworthy rather than merely plausible.
+
+**Verify a large multi-entry text splice numerically, not by re-reading it.** Before
+committing: em-dash count must increase by exactly the sum of em-dashes in the inserted
+blocks (a mismatch means a block got truncated or duplicated), header count must increase
+by exactly the number of entries inserted, and no adjacent pair of dated headers may go
+backward. All three are cheap, all three catch a different failure mode a visual scan
+would miss in a 3000+ line file.
+
+## 2026-08-12 — `tlelosa-web/Claude-Code`'s `main` has a PR-required branch-protection rule, but pushes bypass it
+**Source:** session — `git push origin main`, `bc194f1`
+**Status:** active
+
+A direct `git push origin main` on this repo succeeded but GitHub returned
+`remote: Bypassed rule violations for refs/heads/main: - Changes must be made through a
+pull request.` — the rule exists and is being reported, not silently absent, but this
+account's push was allowed through anyway. Worth knowing before assuming a direct push
+will be rejected here, and worth flagging if a future push is unexpectedly refused
+instead — that would mean the bypass permission changed, not that the rule is new.
+
 ## 2026-08-09 — Recovering a stranded branch: diff it file-by-file, and never merge it
 **Source:** session — landing `/overwatch` off `claude/continuation-utn4f5`, four days stranded
 **Status:** active

@@ -81,6 +81,15 @@ because silence and never-ran look identical.
 caveat and against that repo's own default branch — `Desktop/Operations/2. SOPS`
 is on `master`, not `main`.
 
+**Run this per repo, not once per session — the general case beyond just
+the 📍 live-sub-project caveat above.** If this session touched more than one
+repo (this hub plus `tlelosa-claude-config`, or any other repo attached
+during the session), repeat the check in **each** one, not just whichever is
+currently checked out. Two commits landed 2026-08-09/10 (the PR template,
+`/retro`) each got a PR in one repo and were left stranded with no PR in the
+other, both recorded done in a `docs/todo.md` anyway — a session that
+finishes *a* PR still looks finished from inside a single repo.
+
 **Never open the PR, merge, or push** to resolve this. Same rule as Step 1:
 `/session-end` reports what it is leaving behind; it does not act on Tebello's
 behalf. Naming the branch is the whole job — a branch that has been named is
@@ -104,6 +113,11 @@ Open `docs/todo.md`:
   committed)" — don't promote on your own.
 - Leave items this session didn't touch alone. This step reconciles; it
   does not re-audit the backlog.
+- **Any Done entry claiming a file landed cites the commit it landed in** —
+  verify with `git log origin/main --oneline -- <path>` and put the SHA in
+  the entry. Six entries in three days claimed a landing that wasn't
+  actually on `main`; a cited, verified SHA kills that class of error
+  mechanically instead of relying on care.
 
 **Hub-and-spoke:** if the work happened inside a project that keeps its own
 `docs/todo.md`, that file is authoritative for the detail — update it there

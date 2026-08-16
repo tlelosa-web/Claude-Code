@@ -370,6 +370,17 @@ abandoned either — no work is lost by leaving them here.
 
 ## Done
 
+- [x] **2026-08-12** — **Reverted a flawed SHA-citation requirement from this
+      hub's `.claude/commands/session-end.md`, briefly live via PR #19.** The
+      counterpart spec in `tlelosa-claude-config`
+      (`docs/specs/2026-08-12-done-sha-citation.md`) was reviewer-BLOCKED
+      after PR #19 already shipped the pre-review command text here (`git log
+      origin/main --oneline -- <path>` — misses changed-file cases, no
+      fresh-fetch guard, no pending state for PR-merge lag). Replaced with a
+      pointer note to the blocked spec so this file doesn't carry a
+      known-defective mechanism live while the spec is revised. Same fix
+      applied to `tlelosa-claude-config`'s two `session-end.md` instances
+      during that repo's PR #22 merge-conflict resolution.
 - [x] **2026-08-12** — **Exported a consolidated DCOE architecture document for
       Tebello, and measured how stale a fresh cloud checkout starts.** The export
       itself is a **reading copy delivered as a download, deliberately not

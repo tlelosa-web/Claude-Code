@@ -4148,3 +4148,85 @@ shared page. Housekeeping: delete the merged branch.
 `origin/*` against `git ls-remote` before trusting a comparison — this
 session's checkout looked current and was 13 commits behind.
 **Blockers:** None.
+
+## 2026-08-17 — pitwall-companion: a day of feature work, then discovering it was in the wrong repo
+
+Long session building out `tlelosa-web/pitwall-companion` (F1 Clash
+companion PWA): renamed the app "PitWall Companion" (trademark concern with
+the old "F1 Clash Resource Sheet" name), added Loadouts "By Track" mode
+(track dropdown, best-2-drivers 1x2 grid, Suggested Boost, customizable
+loadout card), a Boosts-ownership tab with a dropdown picker and a
+collapsible custom-boost entry form, 4 newly-identified boosts transcribed
+from the owner's own screenshots, and a GP Event availability filter
+(Junior/Challenger/Contender/Champion Series caps plus a separate Legendary
+toggle). Each feature went through the session's established pattern —
+implement, Playwright-verify, commit, PR, merge — and repeatedly hit and
+resolved the same class of bug: a long-lived branch surviving its own prior
+squash-merged PRs causes real conflicts and, once, silently resurrected
+already-deleted dead code that git's 3-way merge did not flag as
+conflicting (fixed with a 4-step verification: resolve keeping HEAD, a
+Node syntax check, a duplicate-declaration grep, and a full regression
+suite against a fresh `origin/main` checkout).
+
+Also prepared a copy-paste Discord message for TMD, the server owner, to
+trial the app with trusted members for a week before wider launch, and set
+a scheduled reminder to send it on the Monday before the next Grand Prix
+(Zandvoort, 2026-08-21–23) — with a reminder to first set the repo public.
+
+**When the reminder fired, it surfaced a bigger problem than "make it
+public."** `knowledge/pitwall-companion.md` already recorded, from
+2026-08-06, that pitwall-companion had moved from `tlelosa-web` to
+Tebello's own `RMLRACE` gaming-projects org. This entire day's feature work
+had landed in `tlelosa-web/pitwall-companion` anyway — the INDEX.md pointer
+existed but nothing in this session's startup cross-checked it before
+beginning feature work. Cloning `RMLRACE/pitwall-companion` read-only and
+diffing confirmed it is a strict superset of what this session had been
+building on: 3,173 lines vs. 2,560, a newer cache version (`f1sheet-v22`
+vs. `v11`), and features `tlelosa-web` entirely lacked — an onboarding
+modal, per-card GP-availability badges, a Paddock Picks/Special-rarity card
+collection, a 23rd Legendary driver, custom-driver support, a Season-tab
+scoring fix, and a schema migration. It also already had Loadouts By Track
+and Suggested Boost, built independently. Every feature this session added
+to `tlelosa-web` already existed in `RMLRACE`, so none of it needed
+porting — but the day's work was effectively redundant, built in a fork
+other sessions had already moved past.
+
+Tebello confirmed RMLRACE is their gaming-projects org and the one true
+copy going forward, and chose to delete `tlelosa-web/pitwall-companion`
+outright rather than keep it as a parallel experiment. No MCP tool deletes
+a whole GitHub repo (`ToolSearch` for "delete repository" surfaced only
+`delete_file`/`create_repository`/`fork_repository`/
+`list_repository_collaborators`), so that step is manual — GitHub Settings
+→ Danger Zone. Cross-org push to RMLRACE from this session was tried
+(`add_repo access:"push"`) and explicitly rejected: "cross-tier adds are
+not supported in v1 — start a new session with the requested repo as the
+initial source." Future pitwall-companion sessions need to open with
+RMLRACE as their initial repo, not discover it mid-session.
+
+**Reusable lesson**, recorded in `knowledge/pitwall-companion.md`: an
+INDEX.md line documenting a repo move is not enough on its own to stop a
+later session from working in the old location — worth a sharper flag
+(a first line inside the topic file itself, not just the index row) the
+next time a repo relocates across orgs, so a session reading the topic
+file first (not just the index) still catches it.
+
+**Last completed:** `tlelosa-web/pitwall-companion` reconciled against
+`RMLRACE/pitwall-companion` — confirmed RMLRACE is the sole canonical repo
+and a strict superset of today's `tlelosa-web` work; `tlelosa-web`'s copy
+queued for manual deletion at Tebello's direction (not done by this
+session — no repo-delete tool exists). `knowledge/pitwall-companion.md`,
+`knowledge/INDEX.md`, and `docs/todo.md` updated with the finding.
+**Next task:** Confirm `tlelosa-web/pitwall-companion` has been deleted
+(GitHub Settings → Danger Zone, manual). Any future pitwall-companion work
+should start a session with `RMLRACE/pitwall-companion` as the initial
+repo source rather than adding it mid-session, since cross-org push adds
+are rejected once a session is already running. The Discord trial-invite
+message prepared for TMD was written against `tlelosa-web/pitwall-companion`
+and its now-obsolete URL — needs rewriting against `RMLRACE`'s repo/Pages
+URL before it's actually sent.
+**Known risks:** None new beyond the reusable lesson above. Worth a
+`/retro` candidate: a topic file recording a cross-org move should carry
+its own top-of-file flag, not just an INDEX.md row, since INDEX.md rows are
+read as a router and not necessarily followed through to the file's own
+most-recent entry before work starts.
+**Blockers:** None.

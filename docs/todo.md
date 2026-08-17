@@ -370,6 +370,31 @@ abandoned either — no work is lost by leaving them here.
 
 ## Done
 
+- [x] **2026-08-17** — **Reconciled `tlelosa-web/pitwall-companion` vs.
+      `RMLRACE/pitwall-companion`: confirmed RMLRACE is sole canonical repo,
+      tlelosa-web queued for manual deletion.** Triggered by a scheduled
+      reminder to send a Discord trial-invite message for pitwall-companion —
+      investigation surfaced a second, more advanced repo under Tebello's own
+      `RMLRACE` gaming-projects org that `knowledge/pitwall-companion.md`
+      already recorded as the move-to target back on 2026-08-06. A full day
+      of this session's feature work (PitWall Companion rename, Loadouts By
+      Track + Suggested Boost, Boosts-ownership tab, 4 new boosts, GP Event
+      availability filter, collapsible New Boost form) had landed in
+      `tlelosa-web/pitwall-companion` anyway, after that move was already
+      documented. Diff comparison confirmed `RMLRACE/pitwall-companion` is a
+      strict superset (3,173 vs 2,560 lines, newer cache version, plus
+      onboarding modal, per-card GP badges, Paddock Picks/Special cards, a
+      23rd Legendary, custom-driver support, a Season-tab fix, and a schema
+      migration `tlelosa-web` never got) — every feature this session added
+      already exists there independently, so nothing needed porting.
+      Tebello confirmed RMLRACE as the one true copy and chose to **delete**
+      `tlelosa-web/pitwall-companion` (manual step, GitHub Settings →
+      Danger Zone — no MCP tool deletes a whole repo, confirmed via
+      `ToolSearch`). Cross-org push to RMLRACE was attempted mid-session via
+      `add_repo access:"push"` and explicitly rejected ("cross-tier adds are
+      not supported in v1") — future pitwall-companion sessions need to
+      start with RMLRACE as their initial source. Full detail:
+      `knowledge/pitwall-companion.md` (2026-08-17 entry).
 - [x] **2026-08-12** — **Reverted a flawed SHA-citation requirement from this
       hub's `.claude/commands/session-end.md`, briefly live via PR #19.** The
       counterpart spec in `tlelosa-claude-config`

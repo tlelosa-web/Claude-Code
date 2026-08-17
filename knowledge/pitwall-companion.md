@@ -1,3 +1,44 @@
+## 2026-08-17 — tlelosa-web/pitwall-companion was a stale fork; RMLRACE is sole canonical repo, tlelosa-web deleted
+**Source:** session (RMLRACE-reconciliation task, triggered by a scheduled Discord-message reminder)
+**Status:** active
+
+The 2026-08-06 entry below already recorded the repo move
+`tlelosa-web`→`RMLRACE`, but a full day of session work on 2026-08-06
+through roughly 2026-08-16 (rename to "PitWall Companion", Loadouts By
+Track + Suggested Boost, Boosts-ownership tab with custom-boost entry,
+4 newly-identified boosts, GP Event availability filter, collapsible
+New Boost form) happened against `tlelosa-web/pitwall-companion` anyway
+— a session picked the stale fork back up without the INDEX.md pointer
+being followed. Diff comparison (`RMLRACE/pitwall-companion` cloned
+read-only, `tlelosa-web/pitwall-companion` HEAD at the time) confirmed
+`RMLRACE` is a strict superset: 3,173 lines vs 2,560, `CACHE_VERSION
+f1sheet-v22` vs `v11`, plus welcome/onboarding modal, per-card
+GP-availability badges, Paddock Picks/Special-rarity collection (16
+cards), a 23rd Legendary driver, custom-driver support, a Season-tab
+scoring fix, and a schema 1→2 migration that `tlelosa-web` never got.
+`RMLRACE` also already has Loadouts By Track, Suggested Boost, and a
+more general collapsible-panel component (`.coll-summary`, covers both
+the New Boost form and the GP filter panel, not just the one this
+session built).
+
+**Resolution:** owner (Tebello) confirmed `RMLRACE` is their own
+gaming-projects org and is the one true copy going forward.
+`tlelosa-web/pitwall-companion` is being deleted (manual step via
+GitHub Settings → Danger Zone — no MCP tool deletes a whole repo).
+Nothing from the 2026-08-06→08-16 `tlelosa-web` work needs to be
+ported: every feature it added already exists in `RMLRACE`'s superset,
+independently built. Going forward, **all pitwall-companion work must
+target `RMLRACE/pitwall-companion`** — cross-org push needs a session
+started with that repo as its initial source (`add_repo` with
+`access:"push"` mid-session was tried and explicitly rejected:
+"cross-tier adds are not supported in v1").
+
+**Reusable lesson:** an INDEX.md line documenting a repo move is not
+enough to stop a later session from working in the old location if
+that session doesn't cross-check the org before starting feature work.
+Worth a sharper flag (e.g. a first line in this file itself, not just
+the index row) next time a repo relocates across orgs.
+
 ## 2026-08-06 — Same stale-PWA trap as CrateTracker; fix not applied here yet
 **Source:** session (fix built and shipped in RMLRACE/cratetracker)
 **Status:** active

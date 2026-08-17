@@ -4216,14 +4216,21 @@ and a strict superset of today's `tlelosa-web` work; `tlelosa-web`'s copy
 queued for manual deletion at Tebello's direction (not done by this
 session — no repo-delete tool exists). `knowledge/pitwall-companion.md`,
 `knowledge/INDEX.md`, and `docs/todo.md` updated with the finding.
+**Amended same session:** the Discord trial-invite message for TMD was
+rewritten against `RMLRACE/pitwall-companion`'s real Pages URL
+(`https://rmlrace.github.io/pitwall-companion/`, read from `index.html`'s
+`APP_URL` constant in a read-only clone of that repo) and **Tebello has
+confirmed it was sent.** The exact original wording from the 2026-07-31
+session wasn't available (compacted out of context by the time of the
+rewrite), so this was a reconstruction from the app's known feature set
+rather than a verbatim URL swap — flagged to Tebello as such; no correction
+came back.
 **Next task:** Confirm `tlelosa-web/pitwall-companion` has been deleted
-(GitHub Settings → Danger Zone, manual). Any future pitwall-companion work
-should start a session with `RMLRACE/pitwall-companion` as the initial
-repo source rather than adding it mid-session, since cross-org push adds
-are rejected once a session is already running. The Discord trial-invite
-message prepared for TMD was written against `tlelosa-web/pitwall-companion`
-and its now-obsolete URL — needs rewriting against `RMLRACE`'s repo/Pages
-URL before it's actually sent.
+(GitHub Settings → Danger Zone, manual — still outstanding, not something
+this session can do). Any future pitwall-companion work should start a
+session with `RMLRACE/pitwall-companion` as the initial repo source rather
+than adding it mid-session, since cross-org push adds are rejected once a
+session is already running.
 **Known risks:** None new beyond the reusable lesson above. Worth a
 `/retro` candidate: a topic file recording a cross-org move should carry
 its own top-of-file flag, not just an INDEX.md row, since INDEX.md rows are

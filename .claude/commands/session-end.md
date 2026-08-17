@@ -124,11 +124,14 @@ Open `docs/todo.md`:
   committed)" — don't promote on your own.
 - Leave items this session didn't touch alone. This step reconciles; it
   does not re-audit the backlog.
-- **Any Done entry claiming a file landed cites the commit it landed in** —
-  verify with `git log origin/main --oneline -- <path>` and put the SHA in
-  the entry. Six entries in three days claimed a landing that wasn't
-  actually on `main`; a cited, verified SHA kills that class of error
-  mechanically instead of relying on care.
+
+> SHA-citation for Done entries is proposed but not yet live here — spec at
+> `tlelosa-claude-config/docs/specs/2026-08-12-done-sha-citation.md` is
+> BLOCKED by reviewer (defects: `git log` misses changed-file cases, needs
+> a fresh-fetch guard per Hard Rule 10, needs a pending state for
+> PR-merge lag). This file briefly shipped the pre-review version live
+> (PR #19, 2026-08-12) — reverted once the block was found. Don't add the
+> requirement here until that spec is revised and approved.
 
 **Hub-and-spoke:** if the work happened inside a project that keeps its own
 `docs/todo.md`, that file is authoritative for the detail — update it there

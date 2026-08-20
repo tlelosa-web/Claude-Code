@@ -4277,3 +4277,72 @@ directly before writing anything, not just trusting `INDEX.md`.
 `knowledge/INDEX.md`'s `tlelosa-claude-config.md` row updated to match.
 **Next task:** none from this sweep — routine knowledge-cache maintenance.
 **Blockers:** None.
+
+## 2026-08-20 — Second `/retro` run: 3 proposals, all selected; two sent to reviewer, one landed in a day
+
+Ran `/retro` per the periodic-not-routine convention. Bounded to the 5
+session-log entries since the 2026-08-10 marker (2026-08-12 → 08-20). Found
+three patterns, all with the same "record, not a control" shape Hard Rule 11
+exists to catch:
+
+1. **Moved-repo topic files need a top-of-file banner, not just an
+   `INDEX.md` row.** The 2026-08-17 pitwall-companion entry above had
+   already flagged this as "worth a `/retro` candidate" — no queue item ever
+   named the fix. Implemented directly, same session:
+   `knowledge/pitwall-companion.md` now opens with a MOVED banner.
+2. **Strengthen `CORE.md` Hard Rule 10** — the 2026-08-12 architecture-export
+   entry's stale-cache incident showed the rule doesn't cover verifying a
+   fetch's own exit status or cross-checking a tracking ref via
+   `git ls-remote`. Queued in `tlelosa-claude-config/docs/todo.md`,
+   structural, spec required.
+3. **Cross-project knowledge-cache checklist** in close-out commands — the
+   same session's cross-repo sweep entry above is itself the evidence: two
+   findings sat un-mirrored here for days. Queued alongside item 2.
+
+Run recorded in `docs/retro-log.md`.
+
+**Both queued items were written up as specs in `tlelosa-claude-config` and
+sent through the `reviewer` agent before implementation** (no live
+`reviewer` sub-agent type in this session's environment, so a general-purpose
+agent was dispatched at Opus, instructed with `agent-bodies-reference/reviewer.md`'s
+actual persona and criteria, read-only, APPROVE/APPROVE WITH NITS/BLOCK).
+Hard Rule 10's amendment passed on the first pass (APPROVE WITH NITS — a
+misattributed hard-rule citation, a withdrawn finding that was actually
+still open, an incomplete Touches list, all folded in). The knowledge-cache
+spec **BLOCKED twice**: first for proposing no actual text for the three
+files it changes, then — after a full rewrite — for a load-bearing timing
+claim that turned out to be wrong by a factor of two (verified: 4 days, not
+the rewrite's claimed 8) and for proposed text that told `/session-end` to
+commit and push, contradicting an explicit prohibition already stated in
+every file it edits. Both fixed and re-reviewed; **APPROVE WITH NITS** on
+the third pass, five minor findings folded in, no further review required.
+
+**Both specs implemented and merged straight to `main` in `tlelosa-claude-config`**
+(CORE 1.7 → 1.8; `hub-template/session-end.md` + that repo's own instance),
+**this hub's own retro/todo/knowledge updates merged straight to `main`
+here**, and **`ai-product-factory`'s half of the knowledge-cache checklist
+merged straight to `master` there** — all three directly, no PR, on
+explicit instruction: Operations and Pappa T are retired as of this
+session, so there is no second machine left to gate a PR-based rollout on.
+`ai-product-factory` is now the sole environment.
+
+**A related, deliberately narrow fix landed the same session in
+`tlelosa-claude-config`:** the rollout-mechanics references to a two-machine
+split (`CLAUDE.md`'s Project Overview/Essential Commands, the 2026-07-21
+machine rollout checklist, two todo items blocked on "run this on
+Operations/Pappa T") were updated to reflect the single-environment reality.
+**The full historical sweep — every `knowledge/`/`CLAUDE.md`/`docs/todo.md`
+reference to Operations/Pappa T as live machines, across all three repos —
+was explicitly deferred**, not done, on instruction; queued in
+`tlelosa-claude-config/docs/todo.md`'s Open section per Hard Rule 11 rather
+than left unrecorded.
+
+**Last completed:** Second `/retro` run, both universal proposals specced,
+reviewed (including two BLOCK/fix cycles on one spec), implemented, and
+merged straight to `main`/`master` across all three repos (this entry).
+**Next task:** The deferred Operations/Pappa T historical sweep, queued in
+`tlelosa-claude-config/docs/todo.md` — needs a spec first (>2 files, Hard
+Rule 1), start from this repo's own stale `Desktop/…` path table and
+`knowledge/INDEX.md`'s per-topic pointers. Otherwise owner-driven.
+**Known risks:** None new.
+**Blockers:** None.

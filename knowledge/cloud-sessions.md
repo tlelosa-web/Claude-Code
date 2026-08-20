@@ -132,3 +132,37 @@ session first reported a `roster-manifest.json` `coreVersion` drift (manifest
 `1.4` vs `CORE.md` `1.5`) that was real in the stale checkout and **already
 fixed on main**, where both read `1.6`. A stale checkout does not just hide new
 work — it manufactures findings that are no longer true.
+
+## 2026-08-20 — No registered `reviewer` sub-agent type in this environment; simulate it via a general-purpose Agent call
+**Source:** session (reviewer pass on two `tlelosa-claude-config` specs, `docs/specs/2026-08-20-verify-fetch-succeeded-hard-rule-10.md` and `docs/specs/2026-08-20-cross-project-knowledge-checklist.md`)
+**Status:** active
+
+`ls ~/.claude/agents/` is empty in this cloud environment — the `dcoe-roster`
+plugin's `SessionStart` hook (which populates it, missing-only, from
+`agent-bodies-reference/`) apparently doesn't run here, or hasn't yet at the
+point a session needs it. The `Agent` tool's available `subagent_type`
+values are the generic built-ins (`general-purpose`, `Explore`, `Plan`,
+`claude-code-guide`, `statusline-setup`) — no `reviewer`, `architect`,
+`executor`, etc. registered as first-class agent types, even though
+`tlelosa-claude-config/agent-bodies-reference/reviewer.md` (and the other 9
+roster bodies) exist as files in a checked-out repo.
+
+**Workaround that worked:** dispatch a `general-purpose` Agent call with
+`model: "opus"` (matching `reviewer.md`'s own `model: claude-opus-5`
+frontmatter) and a prompt that embeds the persona verbatim — its review
+criteria, its read-only/report-don't-fix constraint, its
+APPROVE/APPROVE WITH NITS/BLOCK output format — rather than relying on a
+`subagent_type` that doesn't exist here. Worked across three review passes
+on the same spec (two BLOCKs, one APPROVE WITH NITS), each independently
+verifying every factual claim in the spec against the real files rather than
+trusting the spec's own prose — exactly the read-only, verify-don't-trust
+behavior the real persona file asks for.
+
+**Why this matters:** any DCOE hard rule that names a specific roster agent
+by role (reviewer gates every spec per Hard Rule 9/repo-specific rules,
+`architect` for schema decisions, etc.) is satisfiable from a cloud session
+even when the roster isn't installed as first-class agent types — the
+persona file is the actual contract, and the `Agent` tool's model override
+plus a persona-embedding prompt reproduces it faithfully. Don't skip a
+reviewer gate here just because `subagent_type: "reviewer"` isn't listed;
+read the persona file and simulate it instead.

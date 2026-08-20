@@ -1,3 +1,9 @@
+> **MOVED to `RMLRACE/pitwall-companion`, 2026-08-06 — do not work in
+> `tlelosa-web/pitwall-companion` (deleted 2026-08-17).** This banner exists
+> because an `INDEX.md` row alone did not stop a full day of feature work
+> landing in the old location after the move (see the 2026-08-17 entry
+> below) — read this line before starting any pitwall-companion work.
+
 ## 2026-08-17 — tlelosa-web/pitwall-companion was a stale fork; RMLRACE is sole canonical repo, tlelosa-web deleted
 **Source:** session (RMLRACE-reconciliation task, triggered by a scheduled Discord-message reminder)
 **Status:** active

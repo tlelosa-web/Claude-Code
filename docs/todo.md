@@ -321,6 +321,28 @@ and the `/overwatch` decision — closed 2026-08-09; see Done.)*
       entries gets promoted to a decision item or explicitly moved to Parked,
       and `/session-end` checks for it.
 
+### From the second `/retro` run (2026-08-20)
+
+> Bounded run — session-log entries 2026-08-12 → 2026-08-20 (5 entries) since
+> the 2026-08-10 marker. Three patterns proposed, all three selected. The two
+> **universal** ones (strengthen Hard Rule 10, cross-project knowledge
+> checklist) are queued in `tlelosa-claude-config/docs/todo.md` per ADR-008,
+> since they change shared core or `hub-template/`. The one below is this
+> hub's own. Run recorded in `docs/retro-log.md`.
+
+- [x] **Give a moved-repo topic file its own top-of-file banner, not just an
+      `INDEX.md` row.** A full day of pitwall-companion feature work
+      (2026-08-17) landed in `tlelosa-web/pitwall-companion` even though
+      `knowledge/pitwall-companion.md` had already recorded, on 2026-08-06,
+      that the repo moved to `RMLRACE`. The session that hit this explicitly
+      flagged it as "worth a `/retro` candidate," but no queue item ever
+      named the fix — a record without a control, per Hard Rule 11. Convention
+      adopted: a topic file recording a cross-org/cross-repo move opens with
+      a first-line banner above its first dated entry, not buried in it, so a
+      session reading the topic file — not just the `INDEX.md` summary row —
+      still catches it before starting feature work. Applied retroactively to
+      `knowledge/pitwall-companion.md` in the same session (this run).
+
 ## Parked (committed work, deliberately deferred)
 
 Distinct from "Backlog / ideas" below: these are real, agreed items with

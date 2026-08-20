@@ -4237,3 +4237,43 @@ its own top-of-file flag, not just an INDEX.md row, since INDEX.md rows are
 read as a router and not necessarily followed through to the file's own
 most-recent entry before work starts.
 **Blockers:** None.
+
+## 2026-08-20 — Cross-repo learnings sweep: two gaps closed in `knowledge/tlelosa-claude-config.md`
+
+**Source:** session (requested to check `ai-product-factory`, then this
+hub and `tlelosa-claude-config` for this week's uncaptured learnings)
+**Status:** active
+
+Reviewed this week's (2026-08-14 → 08-20) commits and session logs in
+`tlelosa-claude-config` and this hub for reusable findings not yet in
+`knowledge/`. `tlelosa-claude-config` has no `knowledge/` directory of its
+own (config repo, per its `CLAUDE.md` — cross-project facts about it live
+here per this hub's own convention), so its two real gaps this week landed
+in `knowledge/tlelosa-claude-config.md`:
+
+1. **2026-08-20 — `SessionStart` hook `MODULE_NOT_FOUND` crash on every
+   session.** Root cause: installed plugins run from a per-plugin cache
+   with no repo-root siblings, not the marketplace-checkout layout
+   `agent-bodies-reference/` assumed. Fixed in `tlelosa-claude-config`
+   `4691578`; fuller write-up lives in `ai-product-factory`'s
+   `knowledge/claude-code-plugin-hooks.md` (that vault hit the same bug
+   independently in a stale local duplicate and fixed it there too).
+2. **2026-08-16 — a PR shipped the very text a still-blocked spec review
+   was gating.** The SHA-citation spec was BLOCKED by reviewer 2026-08-12;
+   PR #22 independently landed the pre-review flawed version into all
+   three `/session-end` instances anyway, since its own scope happened to
+   touch the same file and never went through that review at all. Reverted
+   to a pointer note. Reusable lesson: a reviewer BLOCK gates the reviewed
+   change, not every future change that happens to touch the same surface
+   — worth an explicit check for other in-flight PRs touching a
+   just-blocked mechanism's keywords, not just an assumption that "blocked"
+   means "can't land."
+
+Everything else from this week in both repos (pitwall-companion
+reconciliation, the "record is not a control" self-referential cleanup)
+was either already captured same-day or is corroboration of an existing
+entry rather than a new finding — confirmed by reading `knowledge/`
+directly before writing anything, not just trusting `INDEX.md`.
+`knowledge/INDEX.md`'s `tlelosa-claude-config.md` row updated to match.
+**Next task:** none from this sweep — routine knowledge-cache maintenance.
+**Blockers:** None.

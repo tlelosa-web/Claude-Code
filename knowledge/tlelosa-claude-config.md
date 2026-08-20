@@ -1,3 +1,80 @@
+## 2026-08-20 — `SessionStart` hook crashed on every session: installed plugins run from a per-plugin cache, not the marketplace checkout's sibling layout
+**Source:** session (`ai-product-factory`, `4691578` on `main`), see also `ai-product-factory/knowledge/claude-code-plugin-hooks.md` for the fuller write-up
+**Status:** active
+
+`dcoe-roster`'s `SessionStart` hook (`bootstrap.mjs`, added 2026-08-09 per
+the entry below) referenced `agent-bodies-reference/` via a path relative
+to the plugin's own folder, assuming the repo-root-sibling layout that
+exists in a full git checkout
+(`~/.claude/plugins/marketplaces/tlelosa-claude-config/`). Claude Code
+does not run installed plugins from that checkout — it runs them from a
+separate **per-plugin cache**
+(`~/.claude/plugins/cache/<marketplace>/<plugin>/<sha>/`) containing only
+that plugin's own folder, no repo-root siblings. The path resolved to
+nothing, `node` threw an uncaught `MODULE_NOT_FOUND`, and this happened on
+**every session start**, before any of `bootstrap.mjs`'s own error
+handling could run — a regression in the exact mechanism the 2026-08-09
+fix below shipped to prevent silent roster loss, just via a different
+failure path (loud crash instead of silent no-op).
+
+**Fix:** guard the hook so a missing cache-relative path no-ops instead of
+crashing; anything a plugin hook needs at runtime must live inside that
+plugin's own directory tree so it travels with the cached copy, or the
+hook command must check the path exists before using it.
+
+**How to test this class of bug before shipping a hook change:** point
+`CLAUDE_PLUGIN_ROOT` at the actual cache path
+(`~/.claude/plugins/cache/...`), not the marketplace checkout, and run the
+hook command by hand. Testing only against the checkout — which is what
+this repo's own SESSION START instructions direct every session to read
+from — will not catch this class of bug, since the checkout has the
+sibling folder the cache doesn't.
+
+Fixed + pushed here (`4691578`), verified via plugin-cache-hash check and
+a live new-session smoke test, then ported into the stale local duplicate
+under `ai-product-factory/Projects/tlelosa-claude-config/` (inert, but
+fixed per owner request). No other installed plugin hook had the same
+pattern (audited).
+
+## 2026-08-16 — A PR can ship the very text a still-open spec review is meant to gate — the reviewer's BLOCK doesn't retroactively un-ship it
+**Source:** session (revert commit `02462dd` on `main`), `docs/specs/2026-08-12-done-sha-citation.md`, `docs/todo.md`
+**Status:** active
+
+A spec proposing a SHA-citation requirement for `/session-end`'s Done
+entries (`docs/specs/2026-08-12-done-sha-citation.md`) went to reviewer on
+2026-08-12 and was **BLOCKED**: the verification command it specified
+(`git log` scoped to a path) misses changed-file cases, the design
+violates Hard Rule 10 (defends against uncached `origin/main` reads), its
+own worked example cited a SHA that doesn't exist, and it had no pending
+state for PR-merge lag. Routed back to planner for revision — never
+approved, never merged as a spec.
+
+**Independently, in the same window, PR #22 shipped the pre-review
+flawed version live** into all three `/session-end` instances (this
+repo's two, plus `Claude-Code`'s separate copy) — not by reopening or
+ignoring the blocked spec, but because the PR's own scope happened to
+touch the same text and carried the same (already-rejected) mechanism.
+The spec-review gate blocking the spec did nothing to stop the code from
+shipping through an unrelated PR that never went through that gate at
+all — **a BLOCK verdict on a spec review only gates dispatches that go
+through that review, not every future change that happens to touch the
+same file.**
+
+**Fix:** reverted the live flawed text in all three files (this repo's
+two instances plus `Claude-Code`'s, which the spec's own scope note says
+is technically outside its two-file remit — but the flawed text still
+needed pulling from it), replaced with a pointer note back to the blocked
+spec so no file carries a known-defective mechanism while the spec is
+still being revised.
+
+**Reusable lesson:** a reviewer BLOCK is a control on the reviewed change,
+not a lock on the files or the mechanism it describes. When a spec is
+blocked pending revision, treat any *other* in-flight PR that touches the
+same surface as a live risk of re-introducing the exact thing just
+blocked — check for this explicitly (search recent/open PRs for the
+blocked mechanism's keywords) rather than assuming "it's blocked" means
+"it can't land."
+
 ## 2026-08-09 — The roster was authoritative in CORE.md and absent on disk; hook, not documentation, is the fix
 **Source:** session (Pappa T), `tlelosa-claude-config` `ab95eef` on `main`
 **Status:** active

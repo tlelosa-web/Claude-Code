@@ -1,9 +1,11 @@
 # SOPS
 
 Flask/SQLAlchemy sales-order & works-order system for Fan Movement (Pty)
-Ltd. Live copy at `Desktop/Operations/2. SOPS` (post-consolidation; old path
-was `C:\Dev\Operations\2. SOPS`) — currently the most DCOE-mature project
-(own `CLAUDE.md` v3.2, full `docs/` scaffold, TDD test suite).
+Ltd. **Retired 2026-08-20 along with Operations** — the live copy was at
+`Desktop/Operations/2. SOPS` (post-consolidation; old path was
+`C:\Dev\Operations\2. SOPS`) until the machine retired; it was, at the time,
+the most DCOE-mature project (own `CLAUDE.md` v3.2, full `docs/` scaffold,
+TDD test suite). Its GitHub remote (`tlelosa-web/sops`) is still reachable.
 
 **Correction (2026-08-03):** earlier entries below say "no remote
 configured" — that's stale. It has a real remote,

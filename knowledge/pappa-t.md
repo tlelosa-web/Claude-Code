@@ -1,3 +1,8 @@
+> **RETIRED 2026-08-20.** The `tlelosa-web/pappa-t` vault/machine is retired
+> — `ai-product-factory` is the sole environment now. Every entry below is
+> the historical record of what was true on its date, not current state —
+> read them as history, not as a live runbook.
+
 ## 2026-08-06 — Pappa T vault given a private remote
 **Source:** session (this machine, `TshepangLelosa`)
 **Status:** active

@@ -1,7 +1,8 @@
 Findings about the Claude Code **remote/cloud execution environment** (web,
 mobile, GitHub-triggered sessions) — the ephemeral container, its network
 policy, and tooling quirks. Machine-specific findings for Operations and
-Pappa T live in their own files.
+Pappa T live in their own files (`operations-hub.md`, `pappa-t.md` — both
+retired 2026-08-20, kept as history).
 
 ## 2026-08-06 — The agent proxy blocks arbitrary hosts; HTTP 000 ≠ empty page
 **Source:** session (verifying a GitHub Pages deploy for RMLRACE/cratetracker)
@@ -80,9 +81,11 @@ the agent proxy logs no failure. The session's git credentials (deployed as a
 checkout credential helper) create and update refs but cannot delete them.
 
 Workaround: delete branches from a surface with full git access — the
-Operations or Pappa T machine, or the GitHub web UI. Automation that runs
-entirely in the cloud and needs to clean up branches after itself is blocked
-at present.
+GitHub web UI. (Originally also named the Operations or Pappa T machine;
+**corrected 2026-08-20** — both are retired, so the GitHub web UI is now the
+only such surface, unless a future live machine replaces them.) Automation
+that runs entirely in the cloud and needs to clean up branches after itself
+is blocked at present.
 
 **Scope:** This was measured on a restricted-access cloud container and does
 not reproduce on the full-filesystem-access session surface (CCR with local

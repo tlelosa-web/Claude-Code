@@ -14,7 +14,7 @@ on 2026-08-10 (~06:43), deliberately and with the deletion left in place.
 Four things follow from that, all owner decisions rather than work:
 
 *(The `VAULTS` decision was taken 2026-08-10 — Pappa T restored to `~/Pappa T`
-and coverage resumed. See Done.)*
+and coverage resumed for a time; both retired 2026-08-20. See Done.)*
 
 - [ ] **`delivery-note-system` has no copy anywhere.** Per this hub's own
       table it never had a remote — its git history existed only inside the
@@ -25,8 +25,9 @@ and coverage resumed. See Done.)*
 
 - [ ] **Every `Desktop/…` path table in this repo is stale — and the sweep is
       now unblocked.** It was waiting on where the repos would live; that is
-      answered: **Pappa T is at `~/Pappa T`, this hub is at `~/O-P-C`, and
-      Operations is not coming back.** Affected: `.claude/commands/overwatch.md`
+      answered: **this hub is at `~/O-P-C`; Pappa T was at `~/Pappa T` until
+      retired 2026-08-20 alongside Operations** (which was already not
+      coming back). Affected: `.claude/commands/overwatch.md`
       (hand-maintained, both tables), `continue.md` (Steps 1.9 / resume),
       `session-end.md` (📍 live-copy checks), `retro.md`, and the `knowledge/`
       entries for `sops`, `pappa-t`, `tebelloreborn`, `delivery-note-system`,
@@ -34,8 +35,10 @@ and coverage resumed. See Done.)*
       piecemeal edits are how the last table went stale unnoticed.
       **Two things this sweep must decide, not just find-and-replace:**
       `/continue` Step 1.9 compares the hub's clock against *live sub-project
-      repos*; with Operations gone and Pappa T the only one left, the step
-      needs re-scoping rather than re-pathing. And `/overwatch`'s table lists
+      repos*; with Operations gone and Pappa T also retired 2026-08-20, the
+      step needs re-scoping rather than re-pathing — there is no longer a
+      local live sub-project repo for it to compare against at all. And
+      `/overwatch`'s table lists
       projects that now exist only as remotes — decide whether it reports them
       as gone or drops them, because a row that silently resolves nowhere is
       the exact failure the 2026-08-09 verification caught.
@@ -61,12 +64,16 @@ and coverage resumed. See Done.)*
       history preserved for their git sub-repos). Old `Claude-Code` Desktop
       folder removed 2026-08-03 (redundant clone, nothing untracked, fully
       superseded by O-P-C's already-pushed history). `Operations` and
-      `Pappa T` Desktop folders deliberately **kept, not superseded** —
-      both hold live gitignored data with no other copy (SOPS's production
+      `Pappa T` Desktop folders were deliberately **kept, not superseded**,
+      at the time — both held live gitignored data with no other copy
+      (SOPS's production
       `instance/sops.db`, delivery-note-system's `.env`/`dev.db`, Pappa T's
       `.env` files/`credentials.json`/`career.db`/`outreach.db`/etc.) that
       the git-based subtree-merges never captured, since that only pulls
-      committed history. See `docs/session-log.md`, 2026-08-03 entry. Not
+      committed history. See `docs/session-log.md`, 2026-08-03 entry. (Both
+      Desktop folders were later deleted 2026-08-10, and Pappa T's replacement
+      clone at `~/Pappa T` retired in turn 2026-08-20 — the live runtime data
+      named above no longer exists anywhere this repo can reach.) Not
       a task to revisit unless Tebello decides to deliberately migrate that
       live runtime state too (and repoint whatever scripts/services use
       those paths) — no urgency stated.
@@ -76,26 +83,34 @@ and coverage resumed. See Done.)*
 ## Next up (priority order, set 2026-07-28; specs added 2026-07-29; machine
 flags re-checked 2026-08-03 after the O-P-C consolidation — see note below)
 
-> **2026-08-03 re-flag:** the old ⚠️ "Pappa T only"/"Operations only" flags
-> meant "unreachable from a cloud session on a different machine." That's
-> gone — Operations and Pappa T are now physically on this same machine.
-> But O-P-C's `Operations/`/`Pappa T/` folders are a **historical
-> consolidation snapshot** (git history only), not the live working copy —
-> per `docs/session-log.md`'s 2026-08-03 "old Desktop folders" entry, the
-> live databases/secrets/generated output only exist in the original
-> `Desktop/Operations/`/`Desktop/Pappa T/` folders. So every item below now
-> gets a 📍 flag instead: reachable from this machine, but work must
-> happen in the **live** Desktop copy, not O-P-C's snapshot, or the fix
-> won't reach the actual running project and O-P-C will need re-merging
-> afterward to pick it up.
+> **2026-08-03 re-flag (superseded 2026-08-20 — see below):** the old ⚠️
+> "Pappa T only"/"Operations only" flags meant "unreachable from a cloud
+> session on a different machine." That's gone — Operations and Pappa T
+> were, at the time, physically on this same machine. But O-P-C's
+> `Operations/`/`Pappa T/` folders are a **historical consolidation
+> snapshot** (git history only), not the live working copy — per
+> `docs/session-log.md`'s 2026-08-03 "old Desktop folders" entry, the live
+> databases/secrets/generated output only existed in the original
+> `Desktop/Operations/`/`Desktop/Pappa T/` folders. So every item below got
+> a 📍 flag instead: reachable from this machine, work had to happen in the
+> **live** Desktop copy, not O-P-C's snapshot, or the fix wouldn't reach the
+> actual running project.
+>
+> **2026-08-20:** both machines are now retired — Operations was never
+> restored after the 2026-08-10 deletion, and Pappa T's replacement clone
+> retired in turn. Every 📍 item below is now **blocked on a reachable
+> machine**, not merely flagged; see each item's own note.
 
-1. [ ] **TebelloReborn: Indeed site adapter** — **Phases A–D built 2026-08-07;
-      Phase E's offline half built 2026-08-08 (676 tests). Phase E's live half is
-      paused overnight at Tebello's direction after Cloudflare bot-challenged the
-      site.** 📍 Live **`~/Pappa T/TebelloReborn/`** (re-cloned there 2026-08-10;
-      was `Desktop/Pappa T/`), vault `1ba6521`, pushed — the clone is at exactly
-      that commit, and `career.db` is restored and verified at 4 tables / 64 rows,
-      so the 6 `approved` Indeed vacancies are intact.
+1. [ ] **TebelloReborn: Indeed site adapter** — **BLOCKED 2026-08-20: Pappa T
+      is retired, and this item's resume point lives only at
+      `~/Pappa T/TebelloReborn/`, which no longer exists on any reachable
+      machine.** **Phases A–D built 2026-08-07; Phase E's offline half built
+      2026-08-08 (676 tests). Phase E's live half was paused overnight at
+      Tebello's direction after Cloudflare bot-challenged the site, and has
+      not resumed.** As of last verified state (2026-08-10, before
+      retirement): vault `1ba6521`, pushed — the clone was at exactly that
+      commit, and `career.db` was restored and verified at 4 tables / 64
+      rows, so the 6 `approved` Indeed vacancies were intact.
 
       **Resume here:** step 140 in that project's `docs/todo.md` — the questions
       step's selectors and the review step's URL segment are still unknown,
@@ -185,16 +200,19 @@ flags re-checked 2026-08-03 after the O-P-C consolidation — see note below)
       backups, untouched because it's real career data — pick one and the other
       gets deleted.
 2. [ ] **SOPS: give the go-ahead to run the AvgMovement migration against
-      `instance/sops.db`** — Supplier/Lead-Time + AMU/Min-Max logic ported
+      `instance/sops.db`** — **BLOCKED 2026-08-20: Operations is retired,
+      and this migration must run against the live `sops.db`, which existed
+      only at `Desktop/Operations/2. SOPS/instance/sops.db`, no copy
+      elsewhere.** Supplier/Lead-Time + AMU/Min-Max logic ported
       and fully tested (Batch 32/33, commits `fe06eaa`/`112e321`), held for
       Tebello per SOPS's standing schema-change convention. This is the
       blocking step before `8. AvgMovement` (already Retired in the
-      Operations hub project index) can be decommissioned. 📍 **Must** run
-      against `Desktop/Operations/2. SOPS/instance/sops.db` — O-P-C's
+      Operations hub project index) can be decommissioned. O-P-C's
       `Operations/2. SOPS/` has no `instance/` at all (gitignored, never
       merged), so running this from O-P-C would either fail outright or
       silently create a fresh empty database instead of migrating the real
-      one. Spec (ready, but gated — do not run without explicit
+      one — and there is no other reachable copy to run it against now.
+      Spec (ready, but gated — do not run without explicit
       in-session go-ahead): `docs/specs/2026-07-29-sops-avgmovement-migration.md`.
       Detail: `2. SOPS/docs/todo.md`, `knowledge/sops.md`.
 
@@ -208,8 +226,9 @@ Phases 1-6 are done; what remains that is *this hub's* to do:
       artifacts are tracked: a 31 MB `node-v24.10.0-x64.msi`, a 2 MB
       `backend.log.1`, and ~6 MB of generated PNGs, in a 67 MB repo. Add a
       `.gitignore` and untrack going forward. **Do not rewrite history** —
-      that breaks every existing clone on both machines plus any cloud
-      session, for a cosmetic size win. Untracking is enough.
+      that breaks every existing clone (Operations and Pappa T while they
+      were live, plus any cloud session) for a cosmetic size win. Untracking
+      is enough.
 - [ ] **Phase 7b — resolve the company-data rule contradiction.**
       **Re-scoped 2026-08-09: the Fan Movement contract was terminated on
       Monday 2026-08-03, which turns this from a documentation question into
@@ -352,11 +371,15 @@ abandoned either — no work is lost by leaving them here.
 - [ ] **NamePlateTool: add a real automated test suite** — parked 2026-08-06 at
       Tebello's direction, no reason given and none needed; it was never urgent
       (`tests/` is ad-hoc manual-check scripts only, and the tool works).
-      Everything needed to restart is already in place: 📍 build in the live
-      `Desktop/Operations/3. Nameplate & Test Sheet/`, then push to its own
-      GitHub remote — that remote, not O-P-C, is the source of truth O-P-C's
-      copy gets re-merged from. Spec (ready, starter scope — confirm before
-      building; also carries a 2026-08-03 Codex second-opinion advisory note):
+      **BLOCKED 2026-08-20: Operations is retired.** The restart plan
+      required building in the live `Desktop/Operations/3. Nameplate & Test
+      Sheet/`, then pushing to its own GitHub remote — that remote, not
+      O-P-C, is the source of truth O-P-C's copy gets re-merged from — but
+      that live path no longer exists on any reachable machine; the GitHub
+      remote (`tlelosa-web/NamePlateTool`) is still reachable and could be a
+      fresh clone target if this is picked back up. Spec (ready, starter
+      scope — confirm before building; also carries a 2026-08-03 Codex
+      second-opinion advisory note):
       `docs/specs/2026-07-29-nameplatetool-test-suite.md`.
 
 ## Backlog / ideas (not committed)
@@ -382,13 +405,16 @@ abandoned either — no work is lost by leaving them here.
       two disagreeing — this is a marketplace change (`tlelosa-claude-config`,
       codex-gate plugin + `dcoe-roster/CORE.md`), upstream-first per ADR-008, not
       a local edit.
-- [ ] **Decide whether backup failures should alert** — the daily task (below)
-      writes failures to `~/Backups/backup-runtime.log` and sets a non-zero
-      `LastTaskResult`, but nothing tells anyone. A silent failure would look
-      identical to success until someone checks. Options range from doing
+- [ ] **Decide whether backup failures should alert** — **moot as written
+      since 2026-08-20: the Pappa T vault the daily task backed up is
+      retired, so the task itself no longer runs.** Kept as a record of an
+      undecided question in case a backup task is stood up again for a
+      future live environment. The daily task (below) wrote failures to
+      `~/Backups/backup-runtime.log` and set a non-zero `LastTaskResult`,
+      but nothing told anyone. A silent failure would have looked
+      identical to success until someone checked. Options ranged from doing
       nothing (check `Get-ScheduledTaskInfo` occasionally) to a Task Scheduler
-      on-failure action or a notification. Not urgent — the backup itself is
-      running and verified — but worth a deliberate answer rather than drift.
+      on-failure action or a notification.
 
 ## Done
 

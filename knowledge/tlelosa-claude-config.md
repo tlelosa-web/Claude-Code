@@ -1,3 +1,13 @@
+> **Machine-split entries below are RETIRED as of 2026-08-20.** Several
+> entries in this file (the two 2026-07-23 entries, the 2026-07-29
+> codex-gate entry) describe `tlelosa-claude-config` as cloned on two live
+> machines — Operations (work PC) and Pappa T (personal) — with codex-gate
+> gated Pappa-T-only pending Operations' IT clearance. Both machines are
+> retired; `ai-product-factory` is the sole environment now, and codex-gate
+> is installed there with no machine-split gate (see
+> `tlelosa-claude-config/CLAUDE.md`). Read those entries as history of a
+> setup that no longer exists, not as current instruction.
+
 ## 2026-08-20 — `SessionStart` hook crashed on every session: installed plugins run from a per-plugin cache, not the marketplace checkout's sibling layout
 **Source:** session (`ai-product-factory`, `4691578` on `main`), see also `ai-product-factory/knowledge/claude-code-plugin-hooks.md` for the fuller write-up
 **Status:** active

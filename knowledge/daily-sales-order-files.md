@@ -1,11 +1,13 @@
 # Daily Sales Order Files (pipeline)
 
 Python pipeline for Fan Movement (Pty) Ltd that rebuilds a Sales Order Excel
-report from SAGE ERP CSV exports plus a Contract Register workbook. No git
-repo (`Desktop/Operations/1. Daily Sales Order Files` — path corrected
+report from SAGE ERP CSV exports plus a Contract Register workbook.
+**Retired 2026-08-20 along with Operations.** No git
+repo (was at `Desktop/Operations/1. Daily Sales Order Files` — path corrected
 2026-08-09; the `C:\Dev\Operations\…` path this line carried was true only
-while Operations was its own machine, and `C:\Dev` does not exist since the
-2026-08-03 consolidation) — lightweight DCOE
+while Operations was its own machine, and `C:\Dev` did not exist since the
+2026-08-03 consolidation; the whole machine is gone since 2026-08-20) —
+lightweight DCOE
 onboarding per the hub's ADR-003 pipeline convention (own `CLAUDE.md`, no
 `docs/` scaffold; history lives in `1_Documentation/USER_GUIDE.md` instead).
 Runs roughly once per weekday, manually (no scheduler).

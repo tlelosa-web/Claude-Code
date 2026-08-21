@@ -1,3 +1,10 @@
+> **RETIRED 2026-08-20.** Operations (the Fan Movement work PC) is retired —
+> the Fan Movement contract terminated 2026-08-03, the machine was never
+> restored after the 2026-08-10 Desktop deletion, and `ai-product-factory` is
+> the sole environment now. Every entry below is the historical record of
+> what was true on its date, not current state — read them as history, not
+> as a live runbook.
+
 ## 2026-08-10 — Restoring the vault was the easy half; three copies of the same path had to agree
 **Source:** session — taking the `VAULTS` decision after both live vaults were deleted
 **Status:** active

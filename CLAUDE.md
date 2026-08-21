@@ -54,6 +54,15 @@ root — not everything everywhere.
 
 ## 📍 Live copies vs. this repo's snapshot
 
+> **Retired 2026-08-20.** Operations and Pappa T (the `tlelosa-web/pappa-t`
+> vault) are retired — `ai-product-factory` is the sole environment now (see
+> `tlelosa-claude-config/docs/todo.md`). Everything below this banner is the
+> historical record of the 2026-08-03 consolidation and the 2026-08-10
+> restore, not current state — kept because it's real incident-response
+> history, not because either machine is still reachable. Any 📍-flagged
+> `docs/todo.md` item pointing at a "live" path below is now blocked on a
+> reachable machine, not actionable as written.
+
 `Operations/` and `Pappa T/` **inside this repo** are a historical
 consolidation snapshot (the 2026-08-03 subtree merges — committed git
 history only). They hold no runtime state: no databases, no real `.env`
@@ -87,7 +96,7 @@ What survives, and what does not:
 
 | Repo | Default branch | Remote — now the only copy | Runtime state |
 |---|---|---|---|
-| Pappa T — **one** repo covering every sub-project (TebelloReborn, ai-outreach-agency, IQ, MIMS App, Tenders…) — live again at **`~/Pappa T/`** | `main` | `tlelosa-web/pappa-t` | live in `~/Pappa T/`, backed up daily; also `~/Backups/dcoe-runtime/` + `dcoe-secrets` |
+| Pappa T — **one** repo covering every sub-project (TebelloReborn, ai-outreach-agency, IQ, MIMS App, Tenders…) — was at `~/Pappa T/` until retired 2026-08-20 | `main` | `tlelosa-web/pappa-t` | was in `~/Pappa T/`, backed up daily until retirement; also `~/Backups/dcoe-runtime/` + `dcoe-secrets` |
 | SOPS | **`master`** | `tlelosa-web/sops` | `sops.db` in the Fan Movement staged copy only |
 | Nameplate & Test Sheet | `main` | `tlelosa-web/NamePlateTool` | — |
 | delivery-note-system | `master` | ⚠️ **none — no copy anywhere** | `dev.db` + `.env` in the Fan Movement staged copy only |
@@ -130,18 +139,20 @@ The one script:
 python scripts/backup-runtime-data.py [--dry-run] [--quiet] [--keep N] [--log-file PATH]
 ```
 
-Backs up the gitignored live runtime state of the Pappa T vault — the only
-data here with no second copy. Exit `2`, `3` or `4` means an invariant broke
+**Retired 2026-08-20, along with the Pappa T vault it backed up.** The
+description below is the historical record of what this script did while
+Pappa T was live — kept as design/incident history, not as a currently
+running task; there is no live `~/Pappa T` for `VAULTS` to point at anymore.
+
+Backed up the gitignored live runtime state of the Pappa T vault — the only
+data there with no second copy. Exit `2`, `3` or `4` meant an invariant broke
 (data/secret separation; an excluded vault reaching the discovery set; or a
 configured vault missing/empty), not an ordinary failure. `Desktop/Operations`
-is excluded **deliberately** (Fan Movement contract terminated 2026-08-03) —
-don't add it back to "fix" a Pappa-T-only backup.
+was excluded **deliberately** (Fan Movement contract terminated 2026-08-03).
 
-**Coverage restored 2026-08-10.** `VAULTS` is now `~/Pappa T` and the daily
-task runs against it again — verified by a real scheduled run, not just an
-exit code. Do **not** re-point it at this repo's `Pappa T/` snapshot: that
-holds no runtime state, so it would look like a working backup and protect
-nothing.
+**Coverage restored 2026-08-10, then retired 2026-08-20.** `VAULTS` pointed
+at `~/Pappa T` and the daily task ran against it — verified by a real
+scheduled run, not just an exit code — until Pappa T itself retired.
 
 Two traps this script has now hit twice, both worth knowing before editing it:
 
@@ -209,10 +220,11 @@ These add to `CORE.md`'s Universal Hard Rules — they never relax them.
 6. **Pull before you edit a contention file.** `docs/todo.md`,
    `docs/session-log.md`, `knowledge/INDEX.md`, and `docs/retro-log.md`
    (the fourth, added 2026-08-09 with `/retro`) get written by nearly
-   every hub-level session — with Operations, Pappa T, and cloud sessions
-   all able to run concurrently, stale-base edits to these four files have
-   already caused two real merge conflicts (see `docs/session-log.md`,
-   2026-07-28 entries). Before editing any of them, `git fetch origin` +
+   every hub-level session — cloud sessions can run concurrently (Operations
+   and Pappa T could too, before their 2026-08-20 retirement), and stale-base
+   edits to these four files have already caused two real merge conflicts
+   (see `docs/session-log.md`, 2026-07-28 entries). Before editing any of
+   them, `git fetch origin` +
    `git pull origin main` (or merge/rebase onto latest `main`) first. If a
    conflict still happens anyway, resolve it as a real union of both
    sides' changes — never pick one branch and discard the other's work.

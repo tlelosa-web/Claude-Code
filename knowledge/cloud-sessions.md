@@ -169,3 +169,56 @@ persona file is the actual contract, and the `Agent` tool's model override
 plus a persona-embedding prompt reproduces it faithfully. Don't skip a
 reviewer gate here just because `subagent_type: "reviewer"` isn't listed;
 read the persona file and simulate it instead.
+
+## 2026-08-20 — A proper-noun grep survey cannot prove completeness; the real recurring miss was document position, not vocabulary
+**Source:** session (Operations/Pappa T historical-reference sweep,
+`tlelosa-claude-config/docs/specs/2026-08-20-operations-pappa-t-historical-sweep.md`)
+**Status:** active
+
+A docs-only cross-repo sweep (retiring stale "Operations/Pappa T are live"
+language across three repos) went through five real BLOCK→fix review rounds
+with a simulated `reviewer` (the workaround above) before a sixth was cut
+short by hitting this account's monthly spend limit. Two findings worth
+keeping past that specific task:
+
+**A `grep -i 'Operations|Pappa T'` survey cannot prove a repo is clear.**
+Present-tense claims describing the same retired fact were repeatedly
+phrased without either proper noun — "both machines," "each machine," "an
+employer machine" — and survived three consecutive review passes precisely
+because the survey method was a proper-noun pattern search. Widening the
+pattern (`both machines|each machine|employer machine|...`) closed most of
+the gap but not all of it: one instance was split across a hard-wrapped line
+("run on both\nmachines"), invisible to any single-line grep regardless of
+pattern width. **A pattern search only tells you where the pattern matched
+— it cannot tell you the file is otherwise clear, and stating "no further
+hits" as a completeness claim is a bare assertion the tool itself cannot
+support.**
+
+**The actual recurring failure shape across all five review rounds was
+document *position*, not vocabulary.** Concretely: a bullet-and-file
+inventory (list every affected file, list every affected todo item) reliably
+found live-machine assertions stated as their own bullet or their own dated
+entry, but reliably *missed* the same claim restated in a **section
+preamble** (text that introduces several bullets below it), an **INDEX.md
+summary row** (a one-line restatement of a file's content, for a reader who
+doesn't open the file), or a **table cell**. Three separate section
+preambles and three separate INDEX rows were each caught only on a later
+pass, after the bullets/files they governed had already been fixed —
+producing a section that would have contradicted itself the moment the fix
+landed (the bullets corrected, the preamble introducing them still asserting
+the old state). The generalizable rule: **a claim restated *about* content
+elsewhere (a preamble, a summary row, a table cell) is exactly as much a
+live assertion as the content itself, and a survey scoped to "files and
+bullets" will not enumerate it** — check preambles and summary/index rows
+as their own category, not as incidentally covered by the file or bullet
+they describe.
+
+**On stopping a review loop:** five rounds of real, independently-verified
+findings with genuinely shrinking severity (major scope gaps → a single
+misattributed quote and a stale index-row phrase) was treated as sufficient
+to judge the *content* converged, declining the fifth reviewer's own
+recommendation to switch to a full positional re-audit — a proportionate
+call for a docs-only sweep, not a universal rule. The signal that mattered
+wasn't a fixed round count; it was that each round's findings were a
+different, narrower instance of the same known failure shape rather than a
+new open-ended category.

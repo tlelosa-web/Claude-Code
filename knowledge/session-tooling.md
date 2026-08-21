@@ -1,3 +1,41 @@
+## 2026-08-21 — `claude-in-chrome`: stale refs, native selects, and blank screenshots in repeated-form flows
+**Source:** session (ai-product-factory hub) — live PNet/Careers24/LinkedIn job-alert and profile automation for TebelloReborn, ~15 repeated "click Add → fill → Save" cycles across 2 real sites
+**Status:** active
+
+Four `claude-in-chrome` tool behaviors bit a session that repeatedly filled the same one-item
+form pattern (add a job alert, add a skill tag, add a work-experience entry):
+
+1. **A `find()`/`read_page()` ref goes stale the moment the form it points into re-renders**
+   (e.g. an Enter-to-add collapses the form back to a static list) — even reusing the *same*
+   ref within one batch call silently does nothing on the second use, no error. A later
+   `find()` can return a ref with the identical numeric ID, which is misleading: same ID does
+   not mean same live binding. **Re-find immediately before every click that opens/reopens a
+   repeating form — never reuse a ref across an open→submit→reopen cycle.**
+2. **Native `<select>` elements don't reliably take click+type.** Sometimes the browser's
+   native type-ahead jump happens to match what was typed, sometimes the field silently stays
+   unset — no visible difference between the two until a `get_page_text` check. `form_input(ref,
+   value)` with the exact visible option text was 100% reliable across every dropdown tested
+   (dates, sectors, contract types, provinces). **Default to `form_input` for every `<select>`,
+   never click+type.**
+3. **`computer:screenshot` can return a fully blank image, or `CDP sendCommand
+   "Page.captureScreenshot" timed out`, with no other symptom** — happened repeatedly right
+   after `scroll_to(ref)`. `get_page_text` (reads the DOM directly, doesn't rasterize) worked
+   every time as a fallback. **Treat a blank/failed screenshot as "unknown," not "empty page" —
+   confirm via `get_page_text` before concluding a field is empty or an action didn't land.**
+4. **A Save spinner can keep animating client-side after the server-side save already
+   succeeded.** One modal spun 15+ seconds with no resolution; `get_page_text` in a parallel
+   check showed the underlying data had already updated behind the still-spinning overlay.
+   Reloading the page (not re-clicking Save, not waiting indefinitely) both cleared the stuck
+   overlay and confirmed the save had landed. Re-clicking Save on an already-succeeded form
+   risks a duplicate submission if the site's own idempotency isn't guaranteed.
+
+Generalisable: none of these are bugs in the site being automated — they're `claude-in-chrome`
+tool/interaction quirks that surface because a scripted agent chains actions faster and more
+mechanically than a human naturally re-orients between them. Same underlying shape as this
+file's other entries: verify the actual value/state a layer produced, don't trust that a
+call returning without an error means the intended effect happened. Full write-up:
+`ai-product-factory/shared-memory/learnings/process/claude-in-chrome-stale-refs-and-native-selects.md`.
+
 ## 2026-08-10 — PowerShell's `..` silently turns a git revision range into a number range
 **Source:** session — auditing a stranded branch before deleting it
 **Status:** active

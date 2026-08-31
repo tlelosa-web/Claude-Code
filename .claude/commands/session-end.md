@@ -74,8 +74,10 @@ end up. List every repo this session touched, then run this — and Step 6's
 report — once per repo:
 
 ```bash
+git fetch origin --prune --quiet
 git rev-parse --abbrev-ref HEAD
 git log --oneline origin/main..HEAD
+git ls-remote --heads origin refs/heads/$(git rev-parse --abbrev-ref HEAD)
 ```
 
 If HEAD is not `main` and the second command returns commits, report it in
@@ -85,8 +87,23 @@ Step 6, once per repo checked:
 > Invisible to any session starting from `main` until merged or a PR is
 > opened.
 
-**Report a pass in one line too** — "all commits reachable from `main`" —
-because silence and never-ran look identical.
+**The final `ls-remote` line is a separate check from the reachability
+question above it, and both matter.** A branch can pass "commits ahead of
+`main`, pushed" trivially and still have vanished from the remote by the
+time a later session checks — the local cached tracking ref never
+invalidates itself just because the remote side changed. Confirmed for
+real in `ai-product-factory` (2026-08-20): a branch that session pushed was
+gone from the remote with no PR, merge, or force-push visible from the
+pushing session, while `git status`/`git branch -vv` kept reading "up to
+date" throughout. If `ls-remote` returns nothing for a branch this session
+just pushed, re-push it now (`git push -u origin <branch>`) and re-verify
+with the same command — don't trust the push's own "success" message
+either, that's exactly what read as success the first time. Report the
+discrepancy in Step 6 even after re-pushing fixes it.
+
+**Report a pass in one line too** — "all commits reachable from `main`,
+branch verified via ls-remote" — because silence and never-ran look
+identical.
 
 📍 **Run it in the live sub-project too**, on the same reasoning as Step 1's
 caveat and against that repo's own default branch — Pappa T vault is on
@@ -284,7 +301,7 @@ judgment easy, which is most of the value regardless.
 
 **Committed:** [what's committed this session, or "nothing to commit"]
 **Pushed:** [clean — nothing outstanding | N unpushed commit(s) on <branch>]
-**Branch state:** [Step 1.5, per repo touched this session — <repo>: all commits reachable from main | <repo>: N commit(s) on <branch> not reachable from main]
+**Branch state:** [Step 1.5, per repo touched this session — <repo>: all commits reachable from main, branch verified via ls-remote | <repo>: N commit(s) on <branch> not reachable from main | <repo>: branch had vanished from the remote and was re-pushed — see notes]
 **Recurring Known risks:** [none found | <item> promoted to decision | <item> moved to Parked]
 **Logged:** [docs/todo.md updated | + session-log.md entry added | + knowledge/<topic>.md updated]
 **Title set:** [Cont-"<title>" | attempted, refused — <reason> | not available in this environment]

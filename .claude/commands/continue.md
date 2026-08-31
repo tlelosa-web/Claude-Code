@@ -180,8 +180,28 @@ file already claimed existed, three `knowledge/` files, and a finished
 three-part initiative (`docs/specs/2026-08-05-command-center.md`) nobody could
 see.
 
+**First, prune stale refs — this loop is only as good as the cache it
+reads.** A plain `fetch` does not delete local tracking refs for branches
+removed upstream, so a branch deleted from the remote after being pushed
+still appears here as if it exists, and `git status` still reads "up to
+date" from that same stale cache — confirmed for real in `ai-product-factory`
+(2026-08-20): a branch pushed successfully in one turn was gone from the
+remote by the next session's close-out check, with no PR, merge, or
+force-push visible from the session that pushed it, and nothing locally
+ever re-verified it. Re-fetch with `--prune` before this loop, and
+separately verify the branch this session is actually resuming:
+
 ```
-git fetch origin --quiet
+git fetch origin --prune --quiet
+git ls-remote --heads origin refs/heads/$(git rev-parse --abbrev-ref HEAD)
+```
+
+If that second command returns nothing, this session's own current branch
+doesn't exist on the remote despite what `git status` claimed — report it
+in Step 3 as a blocker, not folded silently into "clean." Then run the
+unmerged-branch scan against the now-pruned cache:
+
+```
 git for-each-ref --format='%(refname:short)|%(committerdate:short)' refs/remotes/origin
 ```
 

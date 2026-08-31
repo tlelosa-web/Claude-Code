@@ -55,6 +55,61 @@ this next; not re-verified against this hub's own `continue.md` for
 remaining drift in the other direction (fold-up gaps can go either way),
 which would be the natural next check.
 
+## 2026-08-20 — Fold a safety check into the executable command itself, not prose beside it — three review passes found the same defect relocated, not removed
+**Source:** `tlelosa-claude-config` session — eight-pass reviewer loop on `docs/specs/2026-08-20-cross-project-knowledge-checklist.md`; full write-up at `ai-product-factory/shared-memory/learnings/process/fold-safety-checks-into-the-executable-command-not-prose.md`
+**Status:** active
+
+A spec proposed writing a shared-`knowledge/` entry now but deferring the
+actual commit/push to explicit confirmation (an already-correct rule —
+commits should never happen automatically). Between the write and that
+later confirmation, the upstream repo could move, so the spec needed a
+freshness check still true *at commit time*, not just at write time.
+
+**Three consecutive reviewer passes found the same defect recurring in a
+new place each time, because each fix moved the check instead of anchoring
+it to the moment it actually needed to protect:** first a freshness check
+that re-ran "before writing" with an undefined fallback misrouted into an
+unrelated precondition's branch; then a fix that moved the check to "prose
+describing something to do immediately before the commit" — with nothing
+forcing that to happen, since the step stating the instruction had already
+finished and reported by the time confirmation (possibly a different turn)
+arrived; then a second precondition (is the checkout on the right branch)
+that was *still* only checked at write time, so a checkout that changed
+branches in the gap could commit onto the wrong branch and `push origin
+main` would push the untouched local `main`, reporting success while
+nothing reached the remote.
+
+**The fix that actually closed it: make the check the outermost clause of
+the literal command itself** — not a step before the command, not a
+sentence above it, the first `if` the command's own shell evaluates.
+Running the command *is* running the check; nothing can separate them in
+time because they're the same executable unit.
+
+**Reusable beyond this instance:** this is a narrower, easy-to-miss form of
+Hard Rule 11 ("a record is not a control") — the prose *describing* a check
+reads as though it already discharges the obligation, and doesn't, until
+the check is textually inside the thing that runs at the moment that
+matters. And the review-process lesson generalizes past this one spec:
+**when a fix relocates a misplaced guard, verify the new location is the
+actual point of execution, not just closer to it than before** — each of
+the three passes above genuinely fixed the named defect and left the next
+adjacent gap unexamined, because reviewer and fixer alike were checking
+that the named defect was gone, not asking where that class of defect
+appears next.
+
+Shipped fix, all three copies: `tlelosa-claude-config/hub-template/session-end.md`,
+that repo's own `.claude/commands/session-end.md`, and
+`ai-product-factory/.claude/commands/session-end.md` — the deferred-commit
+shell block's outermost clause is now a `main`-branch check; only inside
+its success branch does the fetch/staleness/commit sequence run at all.
+
+**This entry itself is a live instance of the pattern it names.** The
+cross-project write mechanism that spec built refused to write directly
+when it found `Claude-Code` checked out but not on `main` (twice, on the
+same day) — filed a `docs/todo.md` queue item in `ai-product-factory`
+instead, per its own designed fallback, and this entry is that queued
+write finally landing once the precondition held.
+
 ## 2026-08-12 — Recovering log entries (not files) from a stranded branch: splice by commit timestamp, not branch adjacency
 **Source:** session — recovering 9 `docs/session-log.md` entries from 8 branches triaged 2026-08-10
 **Status:** active

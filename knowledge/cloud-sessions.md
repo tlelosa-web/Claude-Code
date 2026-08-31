@@ -133,6 +133,45 @@ session first reported a `roster-manifest.json` `coreVersion` drift (manifest
 fixed on main**, where both read `1.6`. A stale checkout does not just hide new
 work — it manufactures findings that are no longer true.
 
+## 2026-08-20 — A pushed branch can vanish from the remote with zero local symptom, the mirror image of the 2026-08-12 entry above
+**Source:** `ai-product-factory` session — `claude/continuation-2gbew7` pushed successfully, found gone from the remote at the next check
+**Status:** active
+
+The 2026-08-12 entry above is the local cache starting *behind* the real
+remote. This is the same root cause running the other direction: the
+*remote* changed (a branch was deleted) and the local cache never
+invalidated to reflect it, so every later local check kept reading fine.
+
+`git push -u origin <branch>` reported success (`[new branch] ... -> ...`).
+Some time later, `git status` and `git branch -vv` both still read "up to
+date with 'origin/<branch>'" — but `git fetch origin --prune --quiet` +
+`git ls-remote --heads origin refs/heads/<branch>` returned nothing. The
+branch was genuinely gone from GitHub, independently confirmed via the
+GitHub API's `list_branches`. No PR, no merge, no force-push visible from
+anything the pushing session did — cause unresolved from inside the
+session, only the fact of it. `git fetch` without `--prune` does not
+delete local tracking refs for branches removed upstream, which is why
+every subsequent `git status` kept answering from stale cache with zero
+symptom, same as the 2026-08-12 case.
+
+**Practice, extending the one above:** verify push survival the same way
+you verify checkout freshness — ground truth, not cache:
+
+    git fetch origin --prune --quiet
+    git ls-remote --heads origin refs/heads/<branch>   # empty = gone, despite a successful push
+
+If empty despite a successful push: confirm the commits are still intact
+locally (`git log --oneline`, `git branch -vv`), re-push, then re-verify
+with the *same* command — don't trust the second push's own success
+message either, that's exactly what read as success the first time.
+
+**Now installed as a standing check**, not just a note: `/continue` and
+`/session-end` in every known copy in this ecosystem (`ai-product-factory`,
+`tlelosa-claude-config` own instances + its shared `hub-template/`, and
+this hub's own copies) run this check per repo touched, each verified
+reachable via `ls-remote` after landing. Full write-up:
+`ai-product-factory/shared-memory/learnings/process/verify-push-survival-with-ls-remote-not-cached-status.md`.
+
 ## 2026-08-20 — No registered `reviewer` sub-agent type in this environment; simulate it via a general-purpose Agent call
 **Source:** session (reviewer pass on two `tlelosa-claude-config` specs, `docs/specs/2026-08-20-verify-fetch-succeeded-hard-rule-10.md` and `docs/specs/2026-08-20-cross-project-knowledge-checklist.md`)
 **Status:** active

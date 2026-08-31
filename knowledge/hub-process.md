@@ -4,6 +4,57 @@ Findings about how this hub's own rules behave in practice — hub-and-spoke,
 the contention files, queue discipline. The rules themselves live in
 `CLAUDE.md`; this file records what using them has actually taught.
 
+## 2026-08-31 — Unmerged-by-ancestry is not the same claim as unmerged content, and a stated cleanup rule is not a control either
+
+**Source:** `ai-product-factory` session — hub-level `/continue` verification run, followed by a full branch/worktree cleanup
+**Status:** active
+
+`git merge-base --is-ancestor <branch> master` answers "is this exact commit
+object reachable from master," not "is this branch's content on master." In
+a repo using the Executor-per-worktree pattern, the Orchestrator routinely
+re-commits a worktree's commit under a **new hash** when merging (sometimes
+wrapped in its own `merge(...)` commit) — so the ancestry check reports
+false "unmerged" for content that fully landed. A single `/continue` audit
+in `ai-product-factory` found 4 remote branches and 42 local
+`worktree-agent-*` branches this way; every one, checked by diffing the
+branch's own unique commits against the equivalent file/feature on trunk
+(not message-matching, not a raw two-dot diff against current master, which
+is dominated by unrelated drift on an old base), turned out to already be
+on master. One looked like a real gap on first pass — two "Phase 0
+complete" session-log commits appeared missing for a sub-project — until a
+second look found the log at the hub's own `docs/session-logs/` path, not
+inside the project folder the first check had searched; byte-identical to
+the branch, aside from line endings. Full write-up:
+`ai-product-factory/shared-memory/learnings/process/verify-unmerged-branches-by-content-not-ancestry.md`.
+
+**The bigger number was the second finding, and it's this file's own
+pattern again.** `ai-product-factory/CLAUDE.md` states "clean up worktrees
+after merge" as a rule. It was never actually followed: 22 registered
+worktrees and 40 associated branches had accumulated (some going back to
+2026-08-12), plus 6 further orphaned directories under `.claude/worktrees/`
+with no `.git` at all — not even registered as worktrees, left behind by
+some earlier incomplete removal. This is the 2026-08-08 entry below's
+finding ("a `knowledge/` entry is a record, not a control") generalized
+past `knowledge/` specifically: **any stated rule with no enforcement
+mechanism decays the same way, whether it's a lesson in a log file or a
+workflow step in `CLAUDE.md`.** Writing "clean up worktrees after merge"
+did not make it happen; nothing re-checked whether it happened until an
+unrelated audit stumbled into 42 stale branches.
+
+**A loose end from the 2026-08-08 entry below turned out to be resolved.**
+That entry flagged `tlelosa-claude-config/hub-template/continue.md` as four
+steps behind this hub's own `Claude-Code/.claude/commands/continue.md`
+(missing Step 0.5's category B, Step 2.5, Step 3's machine-bound fields,
+and more). Confirmed 2026-08-31 while installing the template into
+`ai-product-factory` (a *different* hub, previously running a 56-line
+skeleton with none of ADR-005's session-archival mechanism at all): the
+template now carries Steps 0/0.5/1.5/1.75/1.8/1.9/2/2.5 in full — the gap
+this file flagged has closed since, presumably via a fold-up session not
+recorded here. Worth a corrective note in case that's news to whoever reads
+this next; not re-verified against this hub's own `continue.md` for
+remaining drift in the other direction (fold-up gaps can go either way),
+which would be the natural next check.
+
 ## 2026-08-12 — Recovering log entries (not files) from a stranded branch: splice by commit timestamp, not branch adjacency
 **Source:** session — recovering 9 `docs/session-log.md` entries from 8 branches triaged 2026-08-10
 **Status:** active

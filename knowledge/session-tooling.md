@@ -1,3 +1,33 @@
+## 2026-09-01 — Headless/scheduled `claude -p` has no browser tool unless explicitly wired up; the mode degrades quietly rather than failing
+**Source:** session (ai-product-factory hub) — setting up a Windows Task Scheduler job to run `career-ops`'s `/career-ops scan` + `pipeline` headlessly via `claude -p "prompt" --allowedTools ...`
+**Status:** active
+
+`career-ops`'s scan mode has explicit levels: Level 0/2 are zero-token local
+parsers/ATS APIs; Level 1 (direct Playwright) and Level 3 (WebSearch discovery)
+require verifying every hit's liveness through the interactive browser tool
+before it's trusted. A headless `claude -p` invocation has no MCP browser
+server attached by default — only whatever's named in `--allowedTools`
+(`Bash,Read,Write,Edit,Glob,Grep,WebFetch,WebSearch` here). The agent correctly
+recognized it couldn't complete the Level-3 liveness check and **silently
+skipped that whole level** rather than erroring — the run still exited 0,
+still produced a clean summary, and only mentioned the skip in prose
+("Playwright wasn't available this session, so Level 1 and Level 3 didn't
+run"). Nothing about the task's exit code or log structure flagged this as
+degraded.
+
+The generalizable shape: **a headless/scheduled Claude Code session that
+depends on a mode's browser-verification step will quietly narrow to a
+cheaper path instead of failing loudly**, because the mode's own conservative
+design (don't trust an unverified hit) reads, from the outside, identical to
+"nothing new was found today." Anyone wiring up unattended `claude -p`
+automation for a mode that has a Playwright/browser-tool step should either
+(a) attach a browser MCP server to the headless invocation if the mode truly
+needs to run unattended end-to-end, or (b) explicitly scope the automation to
+the tool-independent levels only (as done here — daily automation kept to
+pipeline hygiene/re-evaluation; real new-lead discovery stayed a manual,
+interactive `/career-ops scan`) and say so in the automation's own docs, so a
+future session doesn't mistake "0 new" for "checked thoroughly, found none."
+
 ## 2026-08-21 — `claude-in-chrome`: stale refs, native selects, and blank screenshots in repeated-form flows
 **Source:** session (ai-product-factory hub) — live PNet/Careers24/LinkedIn job-alert and profile automation for TebelloReborn, ~15 repeated "click Add → fill → Save" cycles across 2 real sites
 **Status:** active

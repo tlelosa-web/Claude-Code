@@ -202,3 +202,36 @@ Appending via a short Python script (`io.open(..., encoding="utf-8",
 newline="")`) is deterministic and lets the same script verify the result —
 e.g. printing the last few `## ` headings to confirm the new entry actually
 landed last, which `/session-end` Step 3 requires checking explicitly.
+
+## 2026-09-14 — A multi-line `Edit` `new_string` silently breaks a markdown table row it targets
+**Source:** session (ai-product-factory hub) — `docs/specs/2026-09-11-dashboard-realignment.md`, pass-6-to-pass-7 fix session
+**Status:** active
+
+A markdown table row meant to stay one physical line (dense per-task cells in
+a `| ... |` row) silently split across 23 physical lines after an `Edit` call
+whose `new_string` argument contained literal newlines — the kind that come
+from composing a multi-paragraph replacement directly rather than writing the
+whole block as one continuous line. Nothing in the tool call failed or
+warned: the edit applied exactly as written, producing syntactically valid
+markdown text that no longer rendered as a table row past the first embedded
+newline (everything after it became bare paragraph lines sitting between two
+`|`-delimited rows).
+
+**Nothing about the break was visible without checking line length directly.**
+File line count stayed plausible, `grep` for content still found every phrase
+(it matches across lines same as within one), and a normal `Read` of the
+region showed correct *content*, just no longer laid out as a table — easy to
+skim past when reviewing for words rather than row structure.
+
+**Caught by:** `awk 'NR==<line>{print NR": "length($0)}'` across the suspect
+region — a genuine one-physical-line table row with dense cells runs
+thousands of characters; a handful of ~70-character lines immediately after
+it is the signature of a broken row, not a formatting choice.
+
+**Fix:** compose table-cell replacement text as one continuous string with no
+literal newlines, even when drafting feels more natural with paragraph
+breaks. After editing inside a markdown table row, spot-check integrity with
+a line-length scan (`awk '/^\| [0-9#-]/{print NR": len="length($0)}'`) rather
+than assuming a successful `Edit` call preserved row structure.
+
+Single instance so far — not yet promoted past a documented habit.

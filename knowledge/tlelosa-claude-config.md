@@ -1,3 +1,56 @@
+## 2026-09-22 — the version-drift bug is a 4th recurrence, and the fix this time is a checklist, not another manual re-verify
+
+**Source:** session (`ai-product-factory`), spec `docs/specs/2026-09-22-investigator-agent.md` in
+`tlelosa-claude-config` itself (PR #36, open), reviewer memory
+`ai-product-factory/.claude/agent-memory/reviewer/tlelosa-claude-config-roster-change-review-gaps.md`
+**Status:** active
+
+The 2026-08-31 entry below predicted this: "worth a CI/hook-level
+version-consistency check if this recurs a fourth time." It recurred a
+fourth time, in a brand-new spec written from scratch specifically to add a
+roster agent — not an edit that drifted, a **fresh planning pass that still
+omitted `plugin.json` from its file list entirely** on its first two drafts.
+No CI check exists yet; what caught it was a `reviewer` agent doing a third
+adversarial pass and reading `plugin.json` directly rather than trusting the
+spec's own claimed file list.
+
+**The generalizable finding: adding or renaming a roster agent touches (at
+least) eight non-adjacent surfaces across (at least) two repos, and no
+single command checks all of them.** Confirmed by direct read this session:
+`dcoe-roster/CORE.md`'s version line, `agent-bodies-reference/roster-manifest.json`'s
+`coreVersion` **and** its `agents[]` array (two independent things, easily
+conflated — see `manifestVersion` below), `dcoe-roster/plugin.json`'s
+`version` field **and** its `description` string's two embedded version
+mentions, `CLAUDE.md.template`'s own version line **and** its roster table
+**and** its separate directory-tree agent-count block (three edits in one
+file), `hub-template/hooks/cloud-roster-bootstrap.sh`'s hardcoded
+`EXPECTED_COUNT` (a **third**, fully independent copy of the agent count,
+alongside the manifest's `agents[]` length and `bootstrap.sh`'s own `AGENTS`
+array length — this one fails silently: a cloud session with the old count
+short-circuits its roster-sync check at `exit 0` and never installs the new
+agent, with no error at all), and `README.md`'s own prose count (missed
+entirely by two drafts, in the repo's front-door file).
+
+**New trap found this pass, not previously recorded:** `roster-manifest.json`
+carries two version-shaped fields — `coreVersion` (moves with every CORE.md
+bump) and `manifestVersion` (the JSON schema version of the manifest file
+itself, effectively static). An acceptance criterion or spec sentence that
+says "bump the manifest's version fields" without naming which one invites
+bumping the wrong one — `bootstrap.mjs`'s `loadManifest` never reads
+`manifestVersion` for anything roster-related, so a wrong bump there passes
+every existing check silently.
+
+**What changed this time, not fixed:** the `reviewer` agent's own persistent
+memory in `ai-product-factory` now carries a named 8-surface, 10-check list
+for "does this roster-agent change touch every place the count/version
+lives" — the first time this recurring class of bug has produced a
+standing, checkable list rather than a fifth prose write-up. Still not a
+CI/hook-level check; still relies on the reviewer role being invoked and
+reading the live files rather than trusting a spec's self-reported scope.
+If this recurs a fifth time despite the reviewer-memory checklist existing,
+that is the signal the fix genuinely needs to move into an executable
+script, not another `knowledge/` entry.
+
 ## 2026-08-31 — CORE.md 1.8→1.10: Hard Rules 11-12, a recurring version-drift bug (3rd instance), and a measured local-model review fallback
 **Source:** session (`ai-product-factory`), full detail in `ai-product-factory/docs/session-logs/2026-08-31-governance-hard-rules-and-review-fallback.md` and `ai-product-factory/docs/specs/2026-08-31-multi-tier-review-fallback.md`
 **Status:** active
